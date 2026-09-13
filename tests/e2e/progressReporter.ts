@@ -38,10 +38,15 @@ class E2EDiagnosticsReporter implements Reporter {
     if (result.status !== 'failed' && result.status !== 'timedOut') return;
     const seconds = Math.round(result.duration / 1000);
     const label = result.status === 'timedOut' ? '超时' : '失败';
-    const round = result.retry > 0 ? `（第 ${result.retry + 1} 次）` : '';
-    // 失败用例的数量由 annotation 上限兜底；每个用例只发一条，
-    // 保证「前若干条」就是最有价值的信息。
-    this.annotate('failure', `用例${label}${round}（${seconds}s，第 ${this.finished}/${this.total} 个）：${test.titlePath().join(' › ')}`);
+    // 取错误详情：不同 Playwright 版本把断言消息放在 error / errors[0] 上，
+    // 只读 error.message 可能拿到空串（本地实测如此），两边都看。
+    const raw = result.error?.message ?? result.errors?.[0]?.message ?? '';
+    const detail = raw
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 1400);
+    this.annotate('failure', `用例${label}（${seconds}s，第 ${this.finished}/${this.total} 个）：${test.titlePath().filter(Boolean).join(' › ')}${detail ? ` | ${detail}` : ''}`);
   }
 
   onEnd(result: FullResult): void {
