@@ -36,18 +36,23 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   // and click Cancel in the same browser task as soon as React mounts it.
   // 热服务器上生成可能赶在观察器建立前就完成（「取消」按钮从未出现）——给观察
   // 一个截止时间，超时按「跳过取消断言」处理，绝不让用例挂满 120s。
-  // 取消门禁的测量口径：只看应用自己的时间戳。
+  // 取消门禁的口径：只考核「点击那一刻发生了什么」。
   //
-  // 之前用「点击 → MutationObserver 观察到卸载」的墙钟差来测，CI 上会漂到
-  // 215~422ms——那里面混着 Playwright 自己的轮询/事件循环延迟与 runner 的调度抖动，
-  // 不是应用把按钮留在 DOM 里的时间。现在应用在取消处理器里打两个标记
-  // （workbench-cancel-handler / workbench-cancel-unmounted，见 Workbench.tsx），
-  // 两者之间只有 flushSync 的同步卸载，量出来就是应用实际花的时间。
-  await page.evaluate(() => {
-    (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks = [];
-  });
+  // 走过两次弯路：最早用「点击 → rAF/观察器看到卸载」的墙钟差，CI 上会漂到
+  // 215~422ms（混进 Playwright 轮询与 runner 调度延迟）；随后改用应用自打的
+  // performance 标记之差，又被 abortGeneration() 同步拆 Worker 的时间污染。
+  // 现在直接量 cancel.click() 这一次同步调用：它返回时按钮是否已经离开 DOM，
+  // 以及这次调用总共花了多久——两者都是应用在点击任务内真实花掉的时间，
+  // 不含任何跨任务等待。
   const cancellation = page.evaluate(() => new Promise<
-    { widthDisabled: boolean; pngDisabled: boolean; saveDisabled: boolean; cancelUiMs: number }
+    {
+      widthDisabled: boolean;
+      pngDisabled: boolean;
+      saveDisabled: boolean;
+      cancelUiMs: number;
+      handlerMs: number;
+      goneSynchronously: boolean;
+    }
     | { skipped: true }
   >((resolve) => {
     let settled = false;
@@ -58,6 +63,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       pngDisabled: boolean;
       saveDisabled: boolean;
       cancelUiMs: number;
+      handlerMs: number;
+      goneSynchronously: boolean;
     } | { skipped: true }): void => {
       if (settled) return;
       settled = true;
@@ -78,14 +85,28 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
         pngDisabled: Boolean(png?.disabled),
         saveDisabled: Boolean(save?.disabled),
       };
-      // 原生按钮：click() 会同步进入 React 的 onClick，处理器里 flushSync 同步卸载。
+      // 原生按钮：click() 会同步进入 React 的 onClick（处理器里 flushSync 同步卸载），
+      // 所以「click() 返回时按钮是否已经不在了」就是「同步卸载」的直接证据；
+      // 同时记下点击处理器的总耗时，失败信息里带上，下一轮不必再猜。
+      const startedAt = performance.now();
       cancel.click();
-      const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
-      const handler = marks.find((mark) => mark.name === 'workbench-cancel-handler');
-      const unmounted = marks.find((mark) => mark.name === 'workbench-cancel-unmounted');
-      // 没进过取消处理器（按钮不是取消按钮 / 生成已自行结束）→ 按跳过处理，不误报。
-      if (!handler || !unmounted) { finish({ skipped: true }); return; }
-      finish({ ...observed, cancelUiMs: unmounted.at - handler.at });
+      const handlerMs = performance.now() - startedAt;
+      const goneSynchronously = !document.body.contains(cancel);
+      if (goneSynchronously) {
+        finish({ ...observed, cancelUiMs: handlerMs, handlerMs, goneSynchronously });
+        return;
+      }
+      // 没做到同步卸载：监听真实的移除时刻（只影响失败信息与门禁判定）。
+      const removal = new MutationObserver(() => {
+        if (document.body.contains(cancel)) return;
+        removal.disconnect();
+        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false });
+      });
+      removal.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => {
+        removal.disconnect();
+        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false });
+      }, 5_000);
     };
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
     inspect();
@@ -98,8 +119,13 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     await widthInput.blur();
     await expect(page.getByText(/共 400 粒/).first()).toBeVisible({ timeout: 20_000 });
   } else {
-    expect(cancelled).toEqual(expect.objectContaining({ widthDisabled: true, pngDisabled: true, saveDisabled: true }));
-    expect(cancelled.cancelUiMs).toBeLessThan(100);
+    // 失败信息里带上实测值：退出码 41 只能说明是这个 spec，带上数字下一轮不用再猜。
+    const measured = `cancelUiMs=${cancelled.cancelUiMs.toFixed(1)} handlerMs=${cancelled.handlerMs.toFixed(1)} 同步卸载=${cancelled.goneSynchronously}`;
+    expect(cancelled, measured).toEqual(expect.objectContaining({ widthDisabled: true, pngDisabled: true, saveDisabled: true }));
+    // 契约一：点击处理器返回时按钮已经离开 DOM（不是等下一轮提交才消失）。
+    expect(cancelled.goneSynchronously, `取消按钮必须在点击处理器内同步卸载（${measured}）`).toBe(true);
+    // 契约二：点击处理器总耗时要留在预算内（<100ms）。
+    expect(cancelled.handlerMs, `取消点击处理器应在 100ms 内返回（${measured}）`).toBeLessThan(100);
     await expect(cancelBtn).toBeHidden({ timeout: 1_000 });
     await expect(widthInput).toHaveValue('20');
     await expect(widthInput).toBeEnabled();
