@@ -96,13 +96,22 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   // `__doupuLongTasks = []` 只是给 window 换了个新数组，PerformanceObserver 的回调
   // 仍往它闭包里的旧数组 push，能生效全靠 takeRecords() 的微任务时序，不可靠。
   // 用同一个时钟（marks 里的 at 与任务的 startTime 都是 performance.now()）比较即可。
+  await uploadFile(page, fixture('max-8000-square.png'));
+  // 起点取应用自己打的第一个标记（upload-read-start），而不是点上传之前的时刻。
+  //
+  // 原因（CI 实测，run #94/#95）：此前起点取 square-upload-start，它在
+  // uploadFile() 内部 waitHydrated() 之前，于是「水合完成前的浏览器自身工作」
+  // 也落进考核窗口——失败时抓到的那一个任务 startTime=1153.48ms，而
+  // square-upload-start=1153.12ms，只差 0.36ms，随后 287ms 里应用根本还没开始
+  // 处理文件（upload-read-start 在 1440ms），任务归因也是 {"name":"unknown"}
+  // 的浏览器级任务，不是应用代码。用例标题写明考核的是这段输入流程，
+  // 那就从应用真正开始处理文件那一刻起算；预算仍是 100ms，没有放宽。
   const longTaskFloor = testInfo.project.name === 'chromium'
     ? await page.evaluate(() => {
       const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
-      return marks.filter((entry) => entry.name === 'square-upload-start').at(-1)?.at ?? 0;
+      return marks.filter((entry) => entry.name === 'upload-read-start').at(-1)?.at ?? 0;
     })
     : 0;
-  await uploadFile(page, fixture('max-8000-square.png'));
   await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('square-crop-visible');
@@ -171,11 +180,15 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
     // 无关的页面级工作也记进来——CI 上稳定红的那一条恰好落在流程开始之前
     // （~1000ms vs square-upload-start@1105ms）。用例标题本来就写着它考核的是这段输入流程。
     //
+    // 起点用应用自己的 upload-read-start（应用开始读文件的那一刻），与上面 longTaskFloor
+    // 保持一致；不用 square-upload-start，因为它在水合之前，会把浏览器自身的收尾工作
+    // 算进来（run #94/#95 抓到的 105ms 任务就是这样：起点后 0.36ms 才开始、且归因 unknown）。
+    //
     // 归因方法（本地复现用）：起生产构建（node .next/standalone/server.js），
     // CDP Emulation.setCPUThrottlingRate = 4，再重放本用例的步骤，看 E2E-LONGTASK 输出。
     const budgetMs = 100;
     const flowStartedAt = performanceLog.marks
-      .filter((entry) => entry.name === 'square-upload-start')
+      .filter((entry) => entry.name === 'upload-read-start')
       .at(-1)?.at ?? longTaskFloor;
     // 预算与流程范围都在这里显式表达，不依赖观察器里的预过滤。
     const overBudget = performanceLog.longTasks
