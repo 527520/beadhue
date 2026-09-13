@@ -576,6 +576,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           perfMark('workbench-generation-start');
           setShowProgress(false);
           setErrorMsg(null);
+          // 新一轮生成开始：清掉上一轮的「已点取消」，让取消按钮重新出现。
           setCancelDismissed(false);
           track({
             name: 'generation_started',
@@ -633,6 +634,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     // 被测窗口只包含「按钮消失」这件 UI 工作：abortGeneration() 会同步终止 Worker，
     // 把它留在两个标记之间会把 Worker 拆除的时间也算成「取消 UI 消失耗时」。
     // 顺序与语义不变：按钮先卸载、Worker 随后在同一任务里停掉。
+    //
+    // 注意：不要改成「直接调用 DOM 的 remove() 把节点挪走、绕过 React」——实测那样会打乱
+    // React 的插入锚点，后续渲染（blur / 重新上传等）会卡住。DOM 必须由 React 拥有。
     perfMark('workbench-cancel-handler');
     flushSync(() => setCancelDismissed(true));
     perfMark('workbench-cancel-unmounted');
