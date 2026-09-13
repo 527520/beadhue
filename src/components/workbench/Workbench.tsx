@@ -640,7 +640,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     perfMark('workbench-cancel-handler');
     flushSync(() => setCancelDismissed(true));
     perfMark('workbench-cancel-unmounted');
+    perfMark('workbench-cancel-abort-start');
     const cancelled = abortGeneration();
+    perfMark('workbench-cancel-abort-end');
     if (!cancelled) return;
     const epoch = cancelEpochRef.current;
     pendingCropRef.current = null;

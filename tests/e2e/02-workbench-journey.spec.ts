@@ -52,6 +52,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       cancelUiMs: number;
       handlerMs: number;
       goneSynchronously: boolean;
+      flushSyncMs: number | null;
+      abortMs: number | null;
     }
     | { skipped: true }
   >((resolve) => {
@@ -65,6 +67,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       cancelUiMs: number;
       handlerMs: number;
       goneSynchronously: boolean;
+      flushSyncMs: number | null;
+      abortMs: number | null;
     } | { skipped: true }): void => {
       if (settled) return;
       settled = true;
@@ -92,20 +96,34 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       cancel.click();
       const handlerMs = performance.now() - startedAt;
       const goneSynchronously = !document.body.contains(cancel);
+      // 细分同步成本：flushSync（卸载按钮需重渲染的那部分）与 abortGeneration（拆 Worker）。
+      const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
+      const at = (name: string): number | null => {
+        const hit = [...marks].reverse().find((mark) => mark.name === name);
+        return hit ? hit.at : null;
+      };
+      const handlerAt = at('workbench-cancel-handler');
+      const unmountedAt = at('workbench-cancel-unmounted');
+      const abortStartAt = at('workbench-cancel-abort-start');
+      const abortEndAt = at('workbench-cancel-abort-end');
+      const breakdown = {
+        flushSyncMs: handlerAt !== null && unmountedAt !== null ? Math.round((unmountedAt - handlerAt) * 10) / 10 : null,
+        abortMs: abortStartAt !== null && abortEndAt !== null ? Math.round((abortEndAt - abortStartAt) * 10) / 10 : null,
+      };
       if (goneSynchronously) {
-        finish({ ...observed, cancelUiMs: handlerMs, handlerMs, goneSynchronously });
+        finish({ ...observed, cancelUiMs: handlerMs, handlerMs, goneSynchronously, ...breakdown });
         return;
       }
       // 没做到同步卸载：监听真实的移除时刻（只影响失败信息与门禁判定）。
       const removal = new MutationObserver(() => {
         if (document.body.contains(cancel)) return;
         removal.disconnect();
-        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false });
+        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false, ...breakdown });
       });
       removal.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => {
         removal.disconnect();
-        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false });
+        finish({ ...observed, cancelUiMs: performance.now() - startedAt, handlerMs, goneSynchronously: false, ...breakdown });
       }, 5_000);
     };
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
@@ -120,7 +138,7 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     await expect(page.getByText(/共 400 粒/).first()).toBeVisible({ timeout: 20_000 });
   } else {
     // 失败信息里带上实测值：退出码 41 只能说明是这个 spec，带上数字下一轮不用再猜。
-    const measured = `cancelUiMs=${cancelled.cancelUiMs.toFixed(1)} handlerMs=${cancelled.handlerMs.toFixed(1)} 同步卸载=${cancelled.goneSynchronously}`;
+    const measured = `handlerMs=${cancelled.handlerMs.toFixed(1)} flushSync=${cancelled.flushSyncMs} abort=${cancelled.abortMs} 同步卸载=${cancelled.goneSynchronously}`;
     expect(cancelled, measured).toEqual(expect.objectContaining({ widthDisabled: true, pngDisabled: true, saveDisabled: true }));
     // 契约一：点击处理器返回时按钮已经离开 DOM（不是等下一轮提交才消失）。
     expect(cancelled.goneSynchronously, `取消按钮必须在点击处理器内同步卸载（${measured}）`).toBe(true);
