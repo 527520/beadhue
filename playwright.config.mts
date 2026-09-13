@@ -9,7 +9,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // 可信门禁不使用重试掩盖随机失败；失败保留 trace/report 直接定位。
   retries: 0,
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [['list'], ['html', { open: 'never' }], ['./tests/e2e/progressReporter.ts']]
+    : 'list',
   use: {
     baseURL: 'http://127.0.0.1:3100',
     trace: 'retain-on-failure',

@@ -99,7 +99,12 @@ jobs:
     # 3 浏览器 × 完整套件 × 连续 3 轮，实测 32~35 分钟；40 分钟余量太小，
     # 再加上失败时的诊断重跑（--last-failed）会顶到上限被 cancelled——
     # 那等于把门禁关掉（run #81 实测 39.9 分钟仍在跑）。余量给足。
-    timeout-minutes: 60
+    #
+    # run #92 又撞了一次：59.1 分钟仍在跑，被 60 分钟上限 cancelled。
+    # 被 cancelled 时步骤直接中断，连诊断重跑都没机会执行——门禁再次被静默关掉。
+    # 所以把上限抬到 90：正常一次（约 33 分钟）不受影响，真卡住时也能跑完剩下的
+    # 用例并把「卡在哪」暴露出来（进度心跳见 tests/e2e/progressReporter.ts）。
+    timeout-minutes: 90
     needs: [static, coverage, integration, performance]
     steps:
       - uses: actions/checkout@v4
