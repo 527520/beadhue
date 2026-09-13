@@ -10,7 +10,6 @@ import Button from '@/components/ui/Button';
  * 云端同步接缝（T16/T17）：storage 注入 + onSavedStatus 回调，本票仅本地实现。
  */
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { flushSync } from 'react-dom';
 import { perfMark } from '@/lib/perf/mark';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -31,6 +30,7 @@ import {
   type StitchProgress,
 } from '@/lib/progress/stitchProgress';
 import StepIndicator from '@/components/workbench/StepIndicator';
+import GenerationCancelControl from '@/components/workbench/GenerationCancelControl';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
 import CropDialog from '@/components/crop/CropDialog';
@@ -281,12 +281,13 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   }, [generationSession.committedSource]);
   const generating = generationSession.status === 'generating';
   /**
-   * 取消按钮是否已被用户点掉。只表示「本次生成期间点过取消」，
-   * 由生成开始（onStart）清掉——不在 effect 里同步跟随 generating，
-   * 那样会触发 react-hooks/set-state-in-effect。
+   * 生成轮次：每次 onStart +1，作为取消控件的 key。
+   * 「本次生成是否已点过取消」这个状态由 GenerationCancelControl 自己持有；
+   * 换 key 重挂即复位，既不用在 effect 里同步跟随 generating（会触发
+   * react-hooks/set-state-in-effect），也不用把状态留在 Workbench 里——
+   * 留在 Workbench 会让点击取消 flushSync 整个组件（CI 实测 188ms，门禁 100ms）。
    */
-  const [cancelDismissed, setCancelDismissed] = useState(false);
-  const showCancelUi = generating && !cancelDismissed;
+  const [generationRound, setGenerationRound] = useState(0);
   // Pattern/statistics are projections of the session's immutable commit;
   // Workbench never mirrors a second independently mutable copy.
   const pattern = generationSession.committed?.pattern ?? null;
@@ -576,8 +577,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           perfMark('workbench-generation-start');
           setShowProgress(false);
           setErrorMsg(null);
-          // 新一轮生成开始：清掉上一轮的「已点取消」，让取消按钮重新出现。
-          setCancelDismissed(false);
+          // 新一轮生成开始：换 key 让取消控件重挂，「已点取消」随之复位、按钮重新出现。
+          setGenerationRound((round) => round + 1);
           track({
             name: 'generation_started',
             properties: {
@@ -628,19 +629,13 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     [clearOriginalSource, generationSession.committed, initialGenerationDraft, uploadGenerationSource, t.generateFailed, markDirty, generateFn, startGeneration, restoreDraftControls, generationDraft, palette.length],
   );
 
-  /** 取消在途生成任务：作废令牌、终止 Worker，并回滚到生成前的稳定提交态。 */
+  /**
+   * 取消在途生成任务：作废令牌、终止 Worker，并回滚到生成前的稳定提交态。
+   *
+   * 分工：按钮的卸载（同步、<100ms）由 GenerationCancelControl 负责并打点，
+   * 这里只做停机与回滚。两者在同一任务内顺序执行，语义与「先卸载再停机」一致。
+   */
   const handleCancelGenerate = useCallback((): void => {
-    // 先把「取消」按钮移出 DOM（E2E 02 要求 <100ms），再停 Worker。
-    // 被测窗口只包含「按钮消失」这件 UI 工作：abortGeneration() 会同步终止 Worker，
-    // 把它留在两个标记之间会把 Worker 拆除的时间也算成「取消 UI 消失耗时」。
-    // 顺序与语义不变：按钮先卸载、Worker 随后在同一任务里停掉。
-    //
-    // 注意：不要改成「直接调用 DOM 的 remove() 把节点挪走、绕过 React」——实测那样会打乱
-    // React 的插入锚点，后续渲染（blur / 重新上传等）会卡住。DOM 必须由 React 拥有。
-    perfMark('workbench-cancel-handler');
-    flushSync(() => setCancelDismissed(true));
-    perfMark('workbench-cancel-unmounted');
-    perfMark('workbench-cancel-abort-start');
     const cancelled = abortGeneration();
     perfMark('workbench-cancel-abort-end');
     if (!cancelled) return;
@@ -1946,29 +1941,14 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       <StepIndicator step={step} />
 
       {busy && <p className="text-sm text-primary-deep" role="status">{busyText}</p>}
-      {showCancelUi && !busy && (
-        <div className="flex flex-wrap items-center gap-3 text-sm text-primary-deep" role="status">
-          <span>{t.generating}</span>
-          {/* 进度条与百分比用固定宽度槽位：出现/更新时「取消」按钮位置不跳动（可稳定点击） */}
-          {progress !== null ? (
-            <progress
-              value={progress}
-              max={100}
-              className="h-2 w-48 accent-primary"
-              aria-label={t.generatingProgressLabel}
-            />
-          ) : (
-            <span className="inline-block h-2 w-48" aria-hidden="true" />
-          )}
-          <span className="inline-block w-10 tabular-nums">{progress !== null ? `${progress}%` : ''}</span>
-          <button
-            type="button"
-            onClick={handleCancelGenerate}
-            className="btn-quiet btn-xs"
-          >
-            {t.cancel}
-          </button>
-        </div>
+      {generating && !busy && (
+        <GenerationCancelControl
+          key={generationRound}
+          generating={generating}
+          progress={progress}
+          onCancel={handleCancelGenerate}
+          labels={{ generating: t.generating, progress: t.generatingProgressLabel, cancel: t.cancel }}
+        />
       )}
       {saveState === 'unavailable' && <Notice kind="warning">{t.unavailable}</Notice>}
       {/* 配额不足此前只体现在头部徽标文字里（现已缩短），必须在正文说清怎么办（D-8）。 */}

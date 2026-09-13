@@ -10,6 +10,13 @@ import { fillField, typeSpin, uploadFile, selectChoice } from './helpers';
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
 test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复', async ({ page }) => {
+  // 应用侧的 perfMark 只在 window.__doupuPerfMarks 已存在时才记录（生产零开销）。
+  // 必须在导航前就建好数组：取消点击发生在本用例靠前的位置，晚于此的初始化会让
+  // 「同步成本细分」拿不到任何标记（CI 上就出现过 flushSync=null abort=null，
+  // 白白浪费一轮排查）。
+  await page.addInitScript(() => {
+    (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks = [];
+  });
   await page.goto('/app');
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
   await uploadFile(page, PHOTO);
