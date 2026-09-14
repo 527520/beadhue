@@ -101,8 +101,14 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     environment:
-      # Caddyfile 的 {$SITE_DOMAIN} 占位符来源；仅注入这一项（与 backup 同风格的最小面）
+      # Caddyfile 的 {$SITE_DOMAIN} 占位符来源；仅注入这三项（与 backup 同风格的最小面）
       SITE_DOMAIN: ${SITE_DOMAIN:?请在 .env 中设置 SITE_DOMAIN}
+      # 迟迟（chi）：同机第二个应用的站点域名与上游地址（见 Caddyfile 末尾的站点块）。
+      # 迟迟是独立 compose 项目，通过 external network doupu_default 接入本网络，
+      # 因此这里只需要域名与上游，不需要在本文件里声明 chi 服务。
+      # CHI_UPSTREAM 有默认值：Caddyfile 里写的是 {$CHI_UPSTREAM}，不依赖 Caddy 自身的默认值语法。
+      CHI_SITE_DOMAIN: ${CHI_SITE_DOMAIN:?请在 .env 中设置 CHI_SITE_DOMAIN}
+      CHI_UPSTREAM: ${CHI_UPSTREAM:-chi:3200}
     ports:
       - "80:80"
       - "443:443"

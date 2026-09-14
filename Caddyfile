@@ -24,3 +24,33 @@ www.{$SITE_DOMAIN} {
 
 	reverse_proxy app:3000
 }
+
+# ============================================================================
+# 迟迟（chi）：同机第二个应用，与豆谱共用这个 Caddy 实例，因此共用 80/443 与
+# 自动签发的 TLS 证书 —— 不需要第二套 ACME 客户端，也不需要第二个反向代理。
+#
+# 为什么迟迟不跑在 app 的同一端口：两者都在 doupu_default 网络上，
+# 若都监听 3000，容器名 app:3000 与 chi:3000 会产生 DNS 别名歧义。
+#
+# WebSocket：Caddy 原生透传 Upgrade 头，无需任何额外指令，也不需要
+# nginx 那样的 proxy_read_timeout 调参。
+# ============================================================================
+{$CHI_SITE_DOMAIN} {
+	encode zstd gzip
+
+	# 与主站一致的取值：迟迟的限流键只信任这个头，客户端伪造无效。
+	request_header X-Real-IP {remote_host}
+
+	header {
+		# 迟迟的 CSP 由应用自己下发（前端是单文件内联脚本，策略与应用强耦合），
+		# 这里刻意不覆盖 Content-Security-Policy，避免两处策略互相打脸。
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	reverse_proxy {$CHI_UPSTREAM}
+}

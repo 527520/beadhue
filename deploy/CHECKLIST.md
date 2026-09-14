@@ -77,7 +77,33 @@
 - 注意：同步编排文件时**不要覆盖**服务器 `.env`（SES/COS/SMTP/TMS 等配置保留）；数据库迁移随 deploy.sh 幂等执行。
 - 本轮（迁移 0013–0015）起原图默认写入备份桶 `COS_BUCKET` 的 `originals/` 前缀，`.env` 无需新增变量；升级前到控制台把该桶已有的「30 天自动删除」生命周期规则删掉（备份改为人工定期清理），确认桶上不再有任何过期规则。若 `COS_*` 不齐全，新镜像启动校验失败并自动回滚到旧入口。
 
-## 第 8 步：上线验收（对照 spec §10）
+## 第 8 步：迟迟（chi）接入 —— 同机第二个应用
+
+迟迟是与本仓库并行的独立部署单元，放在 `/opt/chi`，自带 compose 文件与部署脚本；
+它通过 external network `doupu_default` 加入本网络，**不发布任何宿主机端口**，
+由本仓库的 Caddy 一并反代（Caddyfile 末尾的 `{$CHI_SITE_DOMAIN}` 站点块）。
+两者共用同一台 Postgres 实例，但使用独立 database `chi` + 独立 role `chi`。
+
+- [ ] DNS：为迟迟域名（如 `chi.doupu.fun`）添加 A 记录指向本机公网 IP；**先确认解析生效再改 Caddy 配置**——Caddy 启动时若该域名 ACME 挑战失败会拖慢整体证书加载。
+- [ ] 防火墙/安全组无需新增端口：沿用已放行的 `80`/`443`；迟迟在本网络内以 `chi:3200` 被访问。
+- [ ] 引导数据库（幂等，可重复执行）：
+  ```
+  cd /opt/doupu
+  docker compose -f docker-compose.prod.yml exec -T postgres \
+    psql -U doupu -d postgres -v chi_password='<强随机密码>' \
+    -f - < /opt/chi/deploy/postgres/bootstrap-chi.sql
+  ```
+  该脚本创建 role `chi` 与 database `chi`，并**收回 chi 对 `doupu` 库的一切权限**（防止误连写脏数据）。输出末行的 `role_chi`/`database_chi` 应为 `1`/`1`。
+- [ ] `.env` 新增两项：`CHI_SITE_DOMAIN=chi.doupu.fun` 与（可留默认）`CHI_UPSTREAM=chi:3200`。
+- [ ] 部署迟迟：`cd /opt/chi && cp deploy/.env.example deploy/.env`（填 `DATABASE_URL=postgres://chi:<密码>@postgres:5432/chi` 与 `ADMIN_TOKEN`）→ `bash deploy/scripts/deploy.sh`。
+- [ ] 让新站点生效：`cd /opt/doupu && docker compose -f docker-compose.prod.yml up -d caddy`。
+- [ ] 验收：`curl -I https://chi.doupu.fun` 返回 200 且证书有效；`curl -I https://<豆谱域名>` 仍返回 200；迟迟页面能建房、两个浏览器可实时同步。
+- [ ] 隔离性验收：`docker compose -f docker-compose.prod.yml exec -T postgres psql -U chi -d doupu -c 'select 1'` 必须报 `permission denied for database "doupu"`（而不是返回结果）。这正是隔离生效的证据；迟迟日志里出现同样的错误说明它的 `DATABASE_URL` 配错了库。
+- [ ] 隔离性验收 2（可选）：`psql -U chi -d chi -c 'create database x'` 与 `-c 'create role x'` 都应被拒绝，确认 chi 只是普通角色。
+- [ ] 冒烟验收：迟迟镜像内置了 `scripts/smoke.js`，`deploy/scripts/deploy.sh` 会自动跑（36 项）。手动重跑：`cd /opt/chi && docker compose -f deploy/docker-compose.yml exec -T chi node scripts/smoke.js http://127.0.0.1:3200`。
+- [ ] 回滚方式：`cd /opt/chi && docker compose -f deploy/docker-compose.yml down`；如需一并撤销入口，从 Caddyfile 删除迟迟站点块后 `docker compose -f docker-compose.prod.yml up -d caddy`。迟迟的 `chi` 库与豆谱的 `doupu` 库互不影响。
+
+## 第 9 步：上线验收（对照 spec §10）
 
 - [ ] HTTPS 正常、无证书告警；HTTP 自动跳转 HTTPS。
 - [ ] 注册 → 收到验证邮件 → 验证 → 登录 全流程可用（若收不到：检查 SES 控制台发信状态与 SPF/DKIM 验证）。
