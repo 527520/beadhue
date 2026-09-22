@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F5F8FA">
+  <title>豆色绘 BeadHue · 交互原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="gallery">
+  <a class="skip" href="#main">跳到内容</a>
+  <div class="review-bar" aria-label="原型评审工具">
+    <span><i></i><b>设计提案</b><span class="review-note">交互原型 · 全部为示例数据</span></span>
+    <div class="theme-switch" role="group" aria-label="视觉方向">
+      <button data-theme-choice="gallery" aria-pressed="true">A <span>蓝绿作品馆</span></button>
+      <button data-theme-choice="candy" aria-pressed="false">B <span>糖果拼豆盒</span></button>
+    </div>
+    <button class="review-help" id="review-open">评审导航 <span>↗</span></button>
+  </div>
+  <header class="site-header">
+    <a class="brand" href="#discover" aria-label="豆色绘 BeadHue 首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">豆色绘<small>BeadHue</small></span></a>
+    <nav class="main-nav" aria-label="主导航"><a href="#discover" data-nav="discover">发现</a><a href="#create" data-nav="create">创作</a><a href="#mine" data-nav="mine">我的</a></nav>
+    <div class="header-extras"><a href="#palettes">色板</a><a href="#help">帮助</a><a class="avatar" href="#account" aria-label="我的账号">小</a></div>
+  </header>
+  <main id="main" tabindex="-1"></main>
+  <nav class="mobile-nav" aria-label="手机导航"><a href="#discover" data-nav="discover"><span data-icon="compass"></span>发现</a><a href="#create" data-nav="create"><span data-icon="plus"></span>创作</a><a href="#mine" data-nav="mine"><span data-icon="folder"></span>我的</a></nav>
+  <div id="toast" role="status" class="toast" hidden></div>
+  <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
