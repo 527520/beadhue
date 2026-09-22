@@ -10,12 +10,12 @@ import { fillField, typeSpin, uploadFile, selectChoice } from './helpers';
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
 test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复', async ({ page }) => {
-  // 应用侧的 perfMark 只在 window.__doupuPerfMarks 已存在时才记录（生产零开销）。
+  // 应用侧的 perfMark 只在 window.__beadhuePerfMarks 已存在时才记录（生产零开销）。
   // 必须在导航前就建好数组：取消点击发生在本用例靠前的位置，晚于此的初始化会让
   // 「同步成本细分」拿不到任何标记（CI 上就出现过 flushSync=null abort=null，
   // 白白浪费一轮排查）。
   await page.addInitScript(() => {
-    (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks = [];
+    (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks = [];
   });
   await page.goto('/app');
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
@@ -104,7 +104,7 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       const handlerMs = performance.now() - startedAt;
       const goneSynchronously = !document.body.contains(cancel);
       // 细分同步成本：flushSync（卸载按钮需重渲染的那部分）与 abortGeneration（拆 Worker）。
-      const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
+      const marks = (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks ?? [];
       const at = (name: string): number | null => {
         const hit = [...marks].reverse().find((mark) => mark.name === name);
         return hit ? hit.at : null;
@@ -163,13 +163,13 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   // 旧写法是 Date.now() 包住「Playwright 逐字符输入 + blur + 轮询可见」，CI 上
   // webkit 跑到 2390ms 撞线——量到的是测试驱动的开销，不是应用重生成有多慢。
   await page.evaluate(() => {
-    (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks = [];
+    (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks = [];
   });
   await typeSpin(page, '目标颜色数', '2');
   await colorsInput.blur();
   await expect(page.getByText(/共 400 粒 · 2 种颜色/).first()).toBeVisible({ timeout: 20_000 });
   const restartLatency = await page.evaluate(() => {
-    const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
+    const marks = (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks ?? [];
     const start = marks.filter((mark) => mark.name === 'workbench-generation-start').at(-1);
     const commit = marks.filter((mark) => mark.name === 'workbench-generation-commit').at(-1);
     return start && commit ? Math.round(commit.at - start.at) : null;
@@ -265,7 +265,7 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 PNG', exact: true }).click(),
   ]);
-  expect(pngDownload.suggestedFilename()).toMatch(/^豆谱-.*\.png$/);
+  expect(pngDownload.suggestedFilename()).toMatch(/^豆色绘-.*\.png$/);
   const pngPath = await pngDownload.path();
   expect(readFileSync(pngPath!).length).toBeGreaterThan(1000);
 
@@ -287,7 +287,7 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   expect(projectDownload.suggestedFilename()).toMatch(/\.json$/);
   const projectPath = await projectDownload.path();
   const project = JSON.parse(readFileSync(projectPath!, 'utf8'));
-  expect(project.format).toBe('doupu-project');
+  expect(project.format).toBe('beadhue-project');
   expect(project.boardProfile).toBe('2.6mm-52');
   expect(project.paletteSelection).toEqual({
     palette: { kind: 'builtin', brand: miniPaletteId!.replace(/^builtin:/, '') },

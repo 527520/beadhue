@@ -8,7 +8,7 @@ import RecentDesigns from './RecentDesigns';
 
 it('最近设计来自本机记录，继续跟拼使用该设计的真实进度', async () => {
   const project: ProjectFile = {
-    format: 'doupu-project', version: 3, engineVersion: '2.0.0', name: '我的樱桃',
+    format: 'beadhue-project', version: 3, engineVersion: '2.0.0', name: '我的樱桃',
     createdAt: '2026-09-01T00:00:00Z', updatedAt: '2026-09-01T00:00:00Z',
     boardProfile: '5mm-29', paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
     params: DEFAULT_GENERATION_PARAMS,

@@ -1,3 +1,5 @@
+import { lockOriginalReferences } from '@/lib/originals/lock';
+import { config } from '@/lib/config';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -8,6 +10,8 @@ import {
   communityComments,
   communityLikes,
   communityOriginals,
+  originalAssets,
+  originalGarbage,
   communityReports,
   communityReuses,
   communityRevisions,
@@ -116,8 +120,25 @@ export async function reuseCommunityWork(db: AnyDatabase, input: { actor: Actor;
     const snapshot = parseCommunitySnapshot(revision?.snapshot);
     if (!revision || revision.status !== 'published' || !snapshot) throw new AppError('STATE_CONFLICT', '公开修订已变化');
     const designId = randomUUID();
+    await lockOriginalReferences(tx);
+    const [sourceOriginal] = await tx.select().from(communityOriginals).where(and(eq(communityOriginals.revisionId, revision.id), isNull(communityOriginals.deletedAt), isNull(communityOriginals.blockedAt)));
+    let privateOriginal: ProjectFile['original'];
+    const sourceGeometry = snapshot.original?.sha256 === sourceOriginal?.sha256 ? snapshot.original : undefined;
+    const originalWidth = sourceOriginal?.width ?? sourceGeometry?.width;
+    const originalHeight = sourceOriginal?.height ?? sourceGeometry?.height;
+    if (sourceOriginal) {
+      let [asset] = await tx.select().from(originalAssets).where(and(eq(originalAssets.userId, input.actor.userId), eq(originalAssets.sha256, sourceOriginal.sha256)));
+      if (!asset || asset.deletedAt) {
+        const [usage] = await tx.select({ bytes: sql<string>`coalesce(sum(${originalAssets.byteSize}),0)` }).from(originalAssets).where(and(eq(originalAssets.userId,input.actor.userId),isNull(originalAssets.deletedAt)));
+        if (Number(usage.bytes) + sourceOriginal.byteSize > config.security.originalQuotaBytes) throw new AppError('CONFLICT','原图空间不足，请清理后再引用','originalQuota');
+        if(asset && asset.cosKey !== sourceOriginal.cosKey) await tx.insert(originalGarbage).values({cosKey:asset.cosKey}).onConflictDoNothing();
+        [asset] = await tx.insert(originalAssets).values({userId:input.actor.userId,sha256:sourceOriginal.sha256,cosKey:sourceOriginal.cosKey,mimeType:sourceOriginal.mimeType,byteSize:sourceOriginal.byteSize,width:sourceOriginal.width,height:sourceOriginal.height}).onConflictDoUpdate({target:[originalAssets.userId,originalAssets.sha256],set:{cosKey:sourceOriginal.cosKey,deletedAt:null,createdAt:now}}).returning();
+      }
+      privateOriginal = { assetId: asset.id, sha256: asset.sha256, width: originalWidth, height: originalHeight, geometry: snapshot.original?.sha256 === asset.sha256 ? snapshot.original.geometry : undefined };
+    }
     const project: ProjectFile = {
-      format: 'doupu-project', version: 3,
+      ...(privateOriginal ? {original:privateOriginal} : {}),
+      format: 'beadhue-project', version: 3,
       communityOrigin: true,
       engineVersion: snapshot.engineVersion,
       boardProfile: snapshot.boardProfile,

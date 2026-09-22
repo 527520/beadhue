@@ -31,7 +31,7 @@ function safeValue(value: unknown, lowercase = false): string | undefined {
 export function normalizePath(value: string | undefined): string {
   if (!value) return '/';
   try {
-    const url = new URL(value, 'https://doupu.invalid');
+    const url = new URL(value, 'https://beadhue.invalid');
     const rawPath = url.pathname.replace(/\/{2,}/gu, '/');
     const path = (/^\/s\/[^/]+\/?$/u.test(rawPath) ? '/s/[token]' : rawPath).slice(0, 300);
     return path.startsWith('/') ? path : '/';

@@ -1,3 +1,5 @@
+> 本文是原型阶段记录。正式实现与最终验证见 [implementation.md](implementation.md)。
+
 # 原型阶段验证记录
 
 日期：2026-09-22。环境：Codex 内置浏览器，本机静态 HTTP 服务，未连接生产 API。

@@ -7,13 +7,13 @@ import AboutPage from '../about/page';
 describe('帮助页', () => {
   it('包含全部规定内容章节与 FAQ', () => {
     render(<HelpPage />);
-    expect(screen.getByRole('heading', { name: '帮助' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '从第一颗豆开始' })).toBeTruthy();
     expect(screen.getByText('上传要求')).toBeTruthy();
     expect(screen.getByText('参数说明')).toBeTruthy();
     expect(screen.getByText('色板资料与制作规格')).toBeTruthy();
     expect(screen.getByText('板缝线')).toBeTruthy();
     expect(screen.getByText('导出说明')).toBeTruthy();
-    expect(screen.getByText('常见问题')).toBeTruthy();
+    expect(screen.getByText('怎样对照原图修补？')).toBeTruthy();
     expect(screen.getAllByText(/HEIC/).length).toBeGreaterThan(0);
     expect(screen.getByText(/透明底的像素画/)).toBeTruthy();
     expect(screen.getAllByText(/8000×8000/).length).toBeGreaterThan(0);
@@ -23,17 +23,17 @@ describe('帮助页', () => {
     expect(screen.getByText(/50 与 52 的 Mini 底板钉距不兼容/)).toBeTruthy();
     expect(screen.getByText('为什么“收录数”和“可生成数”不一样？')).toBeTruthy();
     expect(screen.getByText('项目文件会保存原图吗？')).toBeTruthy();
-    expect(screen.getByText(/v3 项目文件只保存图纸、生成参数、制作规格、色板与套装档位/)).toBeTruthy();
+    expect(screen.getByText(/v3 项目文件保存图纸、参数、色板和原图对应关系/)).toBeTruthy();
     expect(screen.getByText('图纸宽度选多少合适？')).toBeTruthy();
     expect(screen.getByText(/熨烫时有什么技巧/)).toBeTruthy();
-    expect(screen.getByText(/豆谱会收费吗/)).toBeTruthy();
+    expect(screen.getByText(/豆色绘会收费吗/)).toBeTruthy();
   });
 });
 
 describe('关于页', () => {
   it('包含开源声明、源码链接与隐私政策', () => {
     render(<AboutPage />);
-    expect(screen.getByRole('heading', { name: '关于豆谱' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '豆色绘 BeadHue' })).toBeTruthy();
     expect(screen.getByText(/AGPL-3.0/)).toBeTruthy();
     expect(screen.getByText(/Zippland\/perler-beads/)).toBeTruthy();
     expect(screen.getByText(/HansBug\/pindou-color-data/)).toBeTruthy();
@@ -41,10 +41,10 @@ describe('关于页', () => {
     expect(screen.getByText(/内置 13 套版本化色板/)).toBeTruthy();
     expect(screen.getByText(/2.6mm \/ 50×50、52×52/)).toBeTruthy();
     const sourceLink = screen.getByText('源码仓库');
-    expect(sourceLink.getAttribute('href')).toBe('https://github.com/527520/doupu');
+    expect(sourceLink.getAttribute('href')).toBe('https://github.com/527520/beadhue');
     expect(screen.getByRole('heading', { name: '隐私政策' })).toBeTruthy();
-    expect(screen.getByText(/私人设计的原图仅在浏览器内处理/)).toBeTruthy();
-    expect(screen.getByText(/公开作品的原图在取得您同意后存入私有对象存储/)).toBeTruthy();
+    expect(screen.getByText(/完整原图随设计自动存入私人对象存储/)).toBeTruthy();
+    expect(screen.getByText(/公开时冻结原图版本，撤回公开不删除私人原图/)).toBeTruthy();
     expect(screen.getByText(/公开作品、引用事实及必要治理记录以去除身份信息的形式保留/)).toBeTruthy();
   });
 
@@ -62,6 +62,6 @@ describe('关于页', () => {
     render(<AboutPage />);
     expect(screen.getByRole('heading', { name: '问题与建议' })).toBeTruthy();
     const issuesLink = screen.getByRole('link', { name: 'GitHub Issues 反馈' });
-    expect(issuesLink.getAttribute('href')).toBe('https://github.com/527520/doupu/issues');
+    expect(issuesLink.getAttribute('href')).toBe('https://github.com/527520/beadhue/issues');
   });
 });

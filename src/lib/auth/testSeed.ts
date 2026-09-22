@@ -15,7 +15,7 @@ const SEED_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADU
 
 /** Non-production startup fixture. It is deliberately not reachable over HTTP. */
 export async function seedE2eGovernance(db: AnyDatabase): Promise<void> {
-  if (process.env.NODE_ENV === 'production' || process.env.DOUPU_E2E_SEED !== '1') return;
+  if (process.env.NODE_ENV === 'production' || process.env.BEADHUE_E2E_SEED !== '1') return;
   const [existing] = await db.select({ value: count() }).from(users).where(eq(users.email, 'e2e-admin@example.com'));
   if (existing.value > 0) return;
   const passwordHash = await hashPassword('E2e-pass-123!');
@@ -45,7 +45,7 @@ export async function seedE2eGovernance(db: AnyDatabase): Promise<void> {
     return {...seedColors[color],transparent:false};
   });
   const project: ProjectFile = {
-    format: 'doupu-project', version: 3, engineVersion: 'e2e', boardProfile: '5mm-29', name: 'E2E 私人设计',
+    format: 'beadhue-project', version: 3, engineVersion: 'e2e', boardProfile: '5mm-29', name: 'E2E 私人设计',
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     paletteSelection: { palette: { kind: 'custom', colors: seedColors }, kitTier: 0 },
     params: { ...DEFAULT_GENERATION_PARAMS, targetWidth: 29, targetColorCount: seedColors.length },
@@ -59,7 +59,7 @@ export async function seedE2eGovernance(db: AnyDatabase): Promise<void> {
   await reviewCommunityRevision(db, { actor: admin, revisionId: pending.id, expectedVersion: pending.version, decision: 'published', reason: 'E2E 启动期公开样本', requestId: 'e2e-seed-publish' });
   const replacement = await createCommunityRevision(db, { actor: user, workId: created.work.id, designId, expectedDesignRevision: 1, title: 'E2E 待审修改版', licenseVersion: COMMUNITY_LICENSE_VERSION });
   await submitCommunityRevision(db, { actor: user, revisionId: replacement.id, expectedVersion: replacement.version });
-  // D50：E2E 不访问腾讯云。假服务由 DOUPU_E2E_SEED 在 interactions 模块内自行启用（见 e2eFake.ts）；
+  // D50：E2E 不访问腾讯云。假服务由 BEADHUE_E2E_SEED 在 interactions 模块内自行启用（见 e2eFake.ts）；
   // 这里显式设置只是让种子进程自身的模块实例也走同一套判定。
   setCommentModerationDeps(E2E_MODERATION_DEPS);
   await createCommunityComment(db, { actor: user, workId: created.work.id, body: '包含 E2E风险词 的评论' });

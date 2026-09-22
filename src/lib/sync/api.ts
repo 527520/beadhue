@@ -21,7 +21,7 @@ export interface AuthApi {
   logout(): Promise<void>;
 }
 
-export type DoupuApi = AuthApi & CloudApi & { listDesigns(): Promise<CloudDesignMeta[]> };
+export type BeadhueApi = AuthApi & CloudApi & { listDesigns(): Promise<CloudDesignMeta[]> };
 
 interface ErrorBody {
   error?: { code?: string; message?: string; field?: string };
@@ -80,7 +80,7 @@ async function throwFor(response: Response): Promise<never> {
   );
 }
 
-export function createDoupuApi(fetchImpl: typeof fetch = fetch) {
+export function createBeadhueApi(fetchImpl: typeof fetch = fetch) {
   async function request(path: string, init?: RequestInit): Promise<Response> {
     const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
     // 所有 mutating 方法都带 JSON 声明（含无 body 的 DELETE）：

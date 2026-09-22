@@ -153,7 +153,7 @@ describe('PngExportButton（优化票 10：选项面板）', () => {
     fireEvent.click(screen.getByRole('button', { name: 'PNG 选项' }));
     fireEvent.click(screen.getByRole('button', { name: '导出' }));
     await waitFor(() => {
-      expect(downloadName).toBe('豆谱-a-b-2x2.png');
+      expect(downloadName).toBe('豆色绘-a-b-2x2.png');
     });
     await waitFor(() => expect(screen.queryByRole('region', { name: 'PNG 导出选项' })).toBeNull());
     HTMLAnchorElement.prototype.click = origClick;
@@ -188,7 +188,7 @@ describe('PngExportButton（优化票 10：选项面板）', () => {
     expect(screen.getByRole('status').textContent).toContain('打包为两张 PNG');
     fireEvent.click(screen.getByRole('button', { name: '导出' }));
 
-    await waitFor(() => expect(downloadName).toBe('豆谱-极限-170x170-PNG.zip'));
+    await waitFor(() => expect(downloadName).toBe('豆色绘-极限-170x170-PNG.zip'));
     expect(URL.createObjectURL).toHaveBeenCalledWith(expect.objectContaining({ type: 'application/zip' }));
     await waitFor(() => expect(screen.queryByRole('region', { name: 'PNG 导出选项' })).toBeNull());
     HTMLAnchorElement.prototype.click = origClick;

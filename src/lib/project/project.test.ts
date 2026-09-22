@@ -54,7 +54,7 @@ describe('serializeProject / importProjectFile round-trip', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const project = result.project;
-    expect(project.format).toBe('doupu-project');
+    expect(project.format).toBe('beadhue-project');
     expect(project.version).toBe(3);
     expect(project.engineVersion).toBe(ENGINE_VERSION);
     expect(project.boardProfile).toBe('2.6mm-50');
@@ -69,7 +69,7 @@ describe('serializeProject / importProjectFile round-trip', () => {
 
   it('输出为 2 空格缩进的格式化 JSON', () => {
     const text = serializeProject(source, new Date('2026-08-14T12:00:00.000Z'));
-    expect(text).toContain('\n  "format": "doupu-project"');
+    expect(text).toContain('\n  "format": "beadhue-project"');
   });
 
   it('导出文件不包含仅供站内分析使用的社区来源标记', () => {
@@ -106,6 +106,14 @@ describe('serializeProject / importProjectFile round-trip', () => {
 
 describe('importProjectFile 坏文件矩阵（§5.3 / E38）', () => {
   const valid = () => serializeProject(source, new Date('2026-08-14T12:00:00.000Z'));
+
+  it('imports legacy v3 as BeadHue while still rejecting legacy v1/v2', () => {
+    const legacy = {...JSON.parse(valid()),format:'doupu-project'};
+    const imported=importProjectFile(JSON.stringify(legacy));
+    expect(imported.ok).toBe(true);
+    if(imported.ok) { expect(imported.project.format).toBe('beadhue-project'); expect(imported.project.pattern).toEqual(legacy.pattern); }
+    for(const version of [1,2]) expect(importProjectFile(JSON.stringify({...legacy,version})).ok).toBe(false);
+  });
 
   it('非 JSON 与数组拒绝', () => {
     expect(importProjectFile('不是 json').ok).toBe(false);
@@ -252,14 +260,14 @@ describe('importProjectFile 坏文件矩阵（§5.3 / E38）', () => {
 
 describe('conflictName', () => {
   it('无冲突返回原名', () => {
-    expect(conflictName('豆谱', [])).toBe('豆谱');
-    expect(conflictName('豆谱', ['其他'])).toBe('豆谱');
+    expect(conflictName('豆色绘', [])).toBe('豆色绘');
+    expect(conflictName('豆色绘', ['其他'])).toBe('豆色绘');
   });
 
   it('冲突 → (2)；已有 (2) → (3)', () => {
-    expect(conflictName('豆谱', ['豆谱'])).toBe('豆谱 (2)');
-    expect(conflictName('豆谱', ['豆谱', '豆谱 (2)'])).toBe('豆谱 (3)');
-    expect(conflictName('豆谱', ['豆谱 (2)'])).toBe('豆谱');
+    expect(conflictName('豆色绘', ['豆色绘'])).toBe('豆色绘 (2)');
+    expect(conflictName('豆色绘', ['豆色绘', '豆色绘 (2)'])).toBe('豆色绘 (3)');
+    expect(conflictName('豆色绘', ['豆色绘 (2)'])).toBe('豆色绘');
   });
 
   it('100 字符名称冲突时截断基础名（总长 ≤100）', () => {
@@ -276,19 +284,19 @@ describe('conflictName', () => {
   });
 
   it('后缀序列唯一：连续冲突跳到下一个空位', () => {
-    const existing = ['豆谱', '豆谱 (2)', '豆谱 (3)', '豆谱 (4)'];
-    expect(conflictName('豆谱', existing)).toBe('豆谱 (5)');
+    const existing = ['豆色绘', '豆色绘 (2)', '豆色绘 (3)', '豆色绘 (4)'];
+    expect(conflictName('豆色绘', existing)).toBe('豆色绘 (5)');
   });
 });
 
 describe('projectFileName', () => {
   it('常规名称', () => {
-    expect(projectFileName('我的设计')).toBe('豆谱-我的设计.json');
+    expect(projectFileName('我的设计')).toBe('豆色绘-我的设计.json');
   });
   it('非法文件名字符替换', () => {
-    expect(projectFileName('a/b\\c:d*e?f"g<h>i|j')).toBe('豆谱-a-b-c-d-e-f-g-h-i-j.json');
+    expect(projectFileName('a/b\\c:d*e?f"g<h>i|j')).toBe('豆色绘-a-b-c-d-e-f-g-h-i-j.json');
   });
   it('空白名回退', () => {
-    expect(projectFileName('   ')).toBe('豆谱-未命名设计.json');
+    expect(projectFileName('   ')).toBe('豆色绘-未命名设计.json');
   });
 });

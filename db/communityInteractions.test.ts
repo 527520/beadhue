@@ -47,7 +47,7 @@ import { listCommunityReviewQueue } from '@/lib/community/queries';
 
 function project(): ProjectFile {
   return {
-    format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: 'private',
+    format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: 'private',
     createdAt: '2026-09-05T00:00:00.000Z', updatedAt: '2026-09-05T00:00:00.000Z',
     paletteSelection: { palette: { kind: 'custom', colors: [{ hex: '#FF0000', code: 'C1' }] }, kitTier: 0 },
     params: { ...DEFAULT_GENERATION_PARAMS, targetWidth: 20, targetColorCount: 2 },

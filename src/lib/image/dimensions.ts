@@ -1,4 +1,5 @@
 /** 图片自然尺寸预检：只读文件头，不解码像素。 */
+import { readJpegOrientation } from './exifOrientation';
 import type { ImageType } from './sniff';
 
 export interface ImageDimensions {
@@ -121,4 +122,14 @@ export function readImageDimensions(bytes: Uint8Array, type: ImageType): ImageDi
     return width > 0 && height > 0 ? { width, height } : null;
   }
   return null;
+}
+
+/** Asset coordinates use the browser's EXIF-corrected display orientation. */
+export function readDisplayDimensions(bytes: Uint8Array, type: ImageType): ImageDimensions | null {
+  if (type === 'heic') return null; // ispe can describe tiles or auxiliary images, not the oriented primary.
+  const dimensions = readImageDimensions(bytes, type);
+  if (!dimensions || type !== 'jpeg') return dimensions;
+  const orientation = readJpegOrientation(bytes);
+  if (orientation === null) return null;
+  return orientation >= 5 ? { width: dimensions.height, height: dimensions.width } : dimensions;
 }

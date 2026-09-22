@@ -12,7 +12,7 @@ describe('界面字体交付合同', () => {
     expect(result.stdout).toContain('UI fonts verified');
   });
   it('缺失字体资源会阻止交付，而不是静默回退通过', () => {
-    const directory = mkdtempSync(resolve(tmpdir(), 'doupu-missing-fonts-'));
+    const directory = mkdtempSync(resolve(tmpdir(), 'beadhue-missing-fonts-'));
     try {
       const result = spawnSync(process.execPath, ['scripts/check-ui-fonts.cjs', directory], { cwd: resolve(import.meta.dirname, '../..'), encoding: 'utf8' });
       expect(result.status).toBe(1);
@@ -20,7 +20,7 @@ describe('界面字体交付合同', () => {
     } finally { rmSync(directory, { recursive: true }); }
   });
   it('字节损坏不能通过清单校验',()=>{
-    const directory=mkdtempSync(resolve(tmpdir(),'doupu-tampered-fonts-'));
+    const directory=mkdtempSync(resolve(tmpdir(),'beadhue-tampered-fonts-'));
     try {
       cpSync(resolve(import.meta.dirname,'../../public/fonts/ui'),directory,{recursive:true});
       appendFileSync(resolve(directory,'text-core.woff2'),'corrupted');

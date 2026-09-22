@@ -27,7 +27,7 @@ function transparentCell() {
 
 function validProject(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const project = {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',
@@ -199,7 +199,7 @@ describe('项目文件（§5.3）', () => {
     expect(excluded).toBeDefined();
 
     const candidate = {
-      format: 'doupu-project',
+      format: 'beadhue-project',
       version: 3,
       engineVersion: '2.0.0',
       boardProfile: '5mm-29',
@@ -275,8 +275,8 @@ describe('项目文件（§5.3）', () => {
     expect(projectFileSchema.safeParse(p100).success).toBe(true);
     const p101 = validProject({ name: '豆'.repeat(101) });
     expect(projectFileSchema.safeParse(p101).success).toBe(false);
-    const trimmed = projectFileSchema.parse(validProject({ name: '  豆谱  ' }));
-    expect(trimmed.name).toBe('豆谱');
+    const trimmed = projectFileSchema.parse(validProject({ name: '  豆色绘  ' }));
+    expect(trimmed.name).toBe('豆色绘');
   });
 });
 
@@ -402,7 +402,7 @@ describe('账号 DTO（E31）', () => {
 
 describe('designNameSchema', () => {
   it('裁剪首尾空白；空串与纯空白拒绝', () => {
-    expect(designNameSchema.parse('  豆谱  ')).toBe('豆谱');
+    expect(designNameSchema.parse('  豆色绘  ')).toBe('豆色绘');
     expect(designNameSchema.safeParse('').success).toBe(false);
     expect(designNameSchema.safeParse('   ').success).toBe(false);
   });

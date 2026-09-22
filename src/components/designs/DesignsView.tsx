@@ -1,11 +1,12 @@
 'use client';
 
 /** 我的设计列表页（ticket 17）：本地 + 云端设计网格、同步角标、重命名/删除、账号菜单。 */
+import OriginalStorageUsage from '@/components/beadhue/OriginalStorageUsage';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { zhCN } from '@/messages/zh-CN';
-import { createDoupuApi, type DoupuApi, type MeInfo } from '@/lib/sync/api';
+import { createBeadhueApi, type BeadhueApi, type MeInfo } from '@/lib/sync/api';
 import { createSyncClient, type CloudDesignMeta, type SyncClient } from '@/lib/sync/clientAdapter';
 import { enqueueDesignSync, withDesignStorageLock } from '@/lib/sync/queue';
 import { openIndexedDb, parseStoredProject, type DesignRecord, type StorageAdapter } from '@/lib/storage';
@@ -41,7 +42,7 @@ export interface DisplayDesign {
 
 interface Props {
   storageOverride?: StorageAdapter | null;
-  apiOverride?: DoupuApi;
+  apiOverride?: BeadhueApi;
 }
 
 const t = zhCN.designs;
@@ -102,7 +103,7 @@ function buildDisplay(
 
 export default function DesignsView({ storageOverride, apiOverride }: Props) {
   const router = useRouter();
-  const [api] = useState<DoupuApi>(() => apiOverride ?? createDoupuApi());
+  const [api] = useState<BeadhueApi>(() => apiOverride ?? createBeadhueApi());
   const [storage, setStorage] = useState<StorageAdapter | null | undefined>(undefined);
   const [syncClient, setSyncClient] = useState<SyncClient | null>(null);
   const [me, setMe] = useState<MeInfo | 'loading'>('loading');
@@ -312,7 +313,9 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
         }
       />
 
-      <div className="designs-intro"><h2>{t.title}</h2><p>{t.collectionHint}</p></div>
+      <div className="container designs-container">
+      <OriginalStorageUsage />
+      <div className="library-tabs"><span className="active">{zhCN.beadhue.privateDesigns}</span><Link href="/community/mine">{zhCN.beadhue.publicDesigns}</Link></div>
 
       {/* 设计数已达上限时先说清楚，而不是等用户新建后在保存阶段才失败（D-4）。 */}
       {activeDesignCount >= LIMITS.designsPerUser && (
@@ -364,13 +367,13 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
         <EmptyState icon="folder" title={t.emptyTitle} description={t.emptyHint} action={<ButtonLink variant="primary" icon="plus" href="/app?new=1">{t.newDesign}</ButtonLink>} />
       )}
 
-      <ul className="designs-grid stagger">
+      <ul className="designs-grid work-grid">
         {designs.map((design, index) => (
-          <li key={design.id} className="design-card" style={{ '--i': index } as CSSProperties}>
+          <li key={design.id} className="design-card work-card" style={{ '--i': index } as CSSProperties}>
             <button type="button" className="design-card-open" aria-label={t.resumeLabel(design.name)}
               disabled={opening !== null || mutating || syncing} aria-busy={opening === design.id}
               onClick={() => void handleOpen(design)}>
-            <span className="design-card-canvas">
+            <span className="design-card-canvas work-image">
               {design.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -463,6 +466,7 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
           </div>
         </Modal>
       )}
+      </div>
     </main>
   );
 }

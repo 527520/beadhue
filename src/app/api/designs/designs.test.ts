@@ -40,7 +40,7 @@ function jsonRequest(method: string, path: string, body?: unknown, opts: { origi
 
 function projectFile(name: string, w = 2, h = 1): ProjectFile {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',

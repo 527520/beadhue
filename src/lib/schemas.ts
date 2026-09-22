@@ -204,8 +204,21 @@ export const paletteSelectionSchema = z
 
 // ---------- 项目文件（spec §5.3） ----------
 
+export const originalReferenceSchema = z.object({
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  width: z.number().int().positive().max(8000).optional(),
+  height: z.number().int().positive().max(8000).optional(),
+  assetId: z.uuid().optional(),
+  geometry: z.tuple([z.number(),z.number(),z.number(),z.number(),z.number(),z.number()]).refine(
+    ([a,b,c,d,e,f]) => Math.abs(a*d-b*c) > 1e-12 && [[0,0],[1,0],[0,1],[1,1]].every(([x,y]) => {
+      const sx=a*x+c*y+e, sy=b*x+d*y+f;
+      return sx >= -1e-8 && sx <= 1+1e-8 && sy >= -1e-8 && sy <= 1+1e-8;
+    }), '原图对应关系无效').optional(),
+}).strict();
+
 const projectFileObjectSchema = z.object({
-  format: z.literal('doupu-project'),
+  original: originalReferenceSchema.optional(),
+  format: z.enum(['beadhue-project', 'doupu-project']).transform(() => 'beadhue-project' as const),
   version: z.literal(3),
   communityOrigin: z.literal(true).optional(),
   engineVersion: z.string().min(1).max(50),

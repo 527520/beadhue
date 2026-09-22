@@ -82,8 +82,8 @@ export function apiError(error: unknown, requestId: string = crypto.randomUUID()
     const body: ApiErrorBody = { error: { code: error.code, message: error.message }, requestId };
     if (error.field) body.error.field = error.field;
     const headers: Record<string, string> = { 'x-request-id': requestId };
-    // 限流一律小时窗口：告诉客户端窗口何时重置，而不是让它盲目重试。
-    if (error.code === 'RATE_LIMITED') headers['Retry-After'] = String(retryAfterSeconds());
+    // 专用限流可提供其实际窗口恢复时间；历史小时限流保留默认值。
+    if (error.code === 'RATE_LIMITED') headers['Retry-After'] = String(error.retryAfter ?? retryAfterSeconds());
     return NextResponse.json(body, { status: error.status, headers });
   }
   if (error instanceof ZodError) {

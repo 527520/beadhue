@@ -113,6 +113,27 @@
       "when": 1788682032323,
       "tag": "0015_comment_moderation_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790068034554,
+      "tag": "0016_private_originals",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790070474052,
+      "tag": "0017_original_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790072202758,
+      "tag": "0018_original_object_cleanup",
+      "breakpoints": true
     }
   ]
 }

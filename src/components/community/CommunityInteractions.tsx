@@ -9,7 +9,7 @@ import { randomId } from '@/lib/ids';
 import { fetchRevisionOriginal } from '@/lib/community/originalsClient';
 import { openIndexedDb, parseStoredProject } from '@/lib/storage';
 import { putPendingOriginal, rememberOriginalSource } from '@/lib/storage/pendingOriginals';
-import { createDoupuApi } from '@/lib/sync/api';
+import { createBeadhueApi } from '@/lib/sync/api';
 import { ApiError, createSyncClient } from '@/lib/sync/clientAdapter';
 import { withDesignStorageLock } from '@/lib/sync/queue';
 import ActionOverflow from '@/components/layout/ActionOverflow';
@@ -160,7 +160,7 @@ export function WorkActions({ workId, initialLikes, initialReuses, canInteract =
     const id = createdCopy.current;
     if (!id) throw new Error('copy id unavailable');
     const storage = await openIndexedDb();
-    const client = createSyncClient(storage, createDoupuApi());
+    const client = createSyncClient(storage, createBeadhueApi());
     await withDesignStorageLock(async () => {
       if (!(await storage.getAll()).some((record) => record.id === id)) await client.pullDesign(id);
       const copy = (await storage.getAll()).find((record) => record.id === id);

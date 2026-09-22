@@ -44,7 +44,7 @@ describe('official browser-local batch persistence', () => {
     expect(result.batch).toMatchObject({ status: 'completed', successCount: 2, failureCount: 0 });
     const revisions = await db.select().from(communityRevisions);
     expect(revisions.find((item) => item.id === first.revisionId)?.status).toBe('draft');
-    expect(revisions.find((item) => item.id === second.revisionId)).toMatchObject({ status: 'published', authorType: 'official', publicAuthorId: 'doupu-official', sourceDesignId: null });
+    expect(revisions.find((item) => item.id === second.revisionId)).toMatchObject({ status: 'published', authorType: 'official', publicAuthorId: 'beadhue-official', sourceDesignId: null });
     expect((await db.select().from(communityWorks)).find((work) => work.id === second.workId)?.currentPublishedRevisionId).toBe(second.revisionId);
     expect(await db.select().from(adminAuditLogs)).toHaveLength(5);
     const remaining = await publishOfficialBatch(db, { actor: admin, batchId: batch.id, revisionIds: [first.revisionId],

@@ -75,9 +75,9 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
           })));
       });
       Object.assign(window, {
-        __doupuLongTasks: entries,
-        __doupuPerfMarks: marks,
-        __doupuLongTaskObserver: observer,
+        __beadhueLongTasks: entries,
+        __beadhuePerfMarks: marks,
+        __beadhueLongTaskObserver: observer,
       });
       observer.observe({ type: 'longtask' });
     });
@@ -85,15 +85,15 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   const mark = async (name: string): Promise<void> => {
     if (testInfo.project.name !== 'chromium') return;
     await page.evaluate((label) => {
-      (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> })
-        .__doupuPerfMarks?.push({ name: label, at: performance.now() });
+      (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> })
+        .__beadhuePerfMarks?.push({ name: label, at: performance.now() });
     }, name);
   };
   await mark('square-upload-start');
   // 长任务口径：只考核「上传 → 预览 → 生成」这段流程。
   //
   // 做法是段末按时间过滤（task.startTime >= 流程起点），而不是中途清空缓冲区：
-  // `__doupuLongTasks = []` 只是给 window 换了个新数组，PerformanceObserver 的回调
+  // `__beadhueLongTasks = []` 只是给 window 换了个新数组，PerformanceObserver 的回调
   // 仍往它闭包里的旧数组 push，能生效全靠 takeRecords() 的微任务时序，不可靠。
   // 用同一个时钟（marks 里的 at 与任务的 startTime 都是 performance.now()）比较即可。
   await uploadFile(page, fixture('max-8000-square.png'));
@@ -108,7 +108,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   // 那就从应用真正开始处理文件那一刻起算；预算仍是 100ms，没有放宽。
   const longTaskFloor = testInfo.project.name === 'chromium'
     ? await page.evaluate(() => {
-      const marks = (window as Window & { __doupuPerfMarks?: Array<{ name: string; at: number }> }).__doupuPerfMarks ?? [];
+      const marks = (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks ?? [];
       return marks.filter((entry) => entry.name === 'upload-read-start').at(-1)?.at ?? 0;
     })
     : 0;
@@ -148,12 +148,12 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   if (testInfo.project.name === 'chromium') {
     const performanceLog = await page.evaluate(() => {
       const measuredWindow = window as Window & {
-        __doupuLongTasks?: Array<{ startTime: number; duration: number; name: string; attribution: string }>;
-        __doupuPerfMarks?: Array<{ name: string; at: number }>;
-        __doupuLongTaskObserver?: PerformanceObserver;
+        __beadhueLongTasks?: Array<{ startTime: number; duration: number; name: string; attribution: string }>;
+        __beadhuePerfMarks?: Array<{ name: string; at: number }>;
+        __beadhueLongTaskObserver?: PerformanceObserver;
       };
-      const observer = measuredWindow.__doupuLongTaskObserver;
-      measuredWindow.__doupuLongTasks?.push(...(observer?.takeRecords() ?? []).map((entry) => ({
+      const observer = measuredWindow.__beadhueLongTaskObserver;
+      measuredWindow.__beadhueLongTasks?.push(...(observer?.takeRecords() ?? []).map((entry) => ({
         startTime: entry.startTime,
         duration: entry.duration,
         // 归因：长任务可能来自窗口自身 / 某个 iframe / 浏览器内部，不看这个只能猜。
@@ -164,8 +164,8 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
       })));
       observer?.disconnect();
       return {
-        longTasks: measuredWindow.__doupuLongTasks ?? [],
-        marks: measuredWindow.__doupuPerfMarks ?? [],
+        longTasks: measuredWindow.__beadhueLongTasks ?? [],
+        marks: measuredWindow.__beadhuePerfMarks ?? [],
       };
     });
     // 门禁口径：**本次流程内**不允许出现 ≥100ms 的主线程阻塞（此前是「>50ms 一个都不许有」）。

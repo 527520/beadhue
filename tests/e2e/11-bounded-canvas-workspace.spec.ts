@@ -19,7 +19,7 @@ function project(width: number, height: number) {
     { code: 'ZG6', hex: '#6752A3' },
   ];
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',
@@ -52,7 +52,7 @@ async function importProject(page: Page, width: number, height: number, testInfo
   const value = project(width, height);
   // 大图纸 JSON 通过真实文件路径交给浏览器，避免 WebKit 偶发卡在把数 MB
   // 内存 payload 复制进子进程的协议步骤；这也更接近用户实际导入文件的路径。
-  const projectPath = testInfo.outputPath(`bounded-canvas-${width}x${height}.doupu.json`);
+  const projectPath = testInfo.outputPath(`bounded-canvas-${width}x${height}.beadhue.json`);
   await writeFile(projectPath, JSON.stringify(value), 'utf8');
   await page.getByLabel('项目文件选择器').setInputFiles(projectPath);
   await expect(page.getByRole('textbox', { name: '设计名称' }).last()).toHaveValue(value.name);

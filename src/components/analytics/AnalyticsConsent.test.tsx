@@ -12,7 +12,7 @@ vi.mock('@/lib/analytics/client', () => ({ track, clearAnalyticsQueue, setAnalyt
 
 describe('analytics consent banner', () => {
   beforeEach(() => {
-    document.cookie = 'doupu_analytics_consent=; Max-Age=0; Path=/';
+    document.cookie = 'beadhue_analytics_consent=; Max-Age=0; Path=/';
     track.mockReset();
     clearAnalyticsQueue.mockReset();
     Object.defineProperty(navigator, 'locks', { configurable: true, value: { request: async (_name: string, run: () => unknown) => run() } });
@@ -61,13 +61,13 @@ describe('analytics consent banner', () => {
   });
 
   it('stops immediately on withdrawal, persists the intent on failure, and allows only deletion retry', async () => {
-    document.cookie = 'doupu_analytics_consent=granted; Path=/';
+    document.cookie = 'beadhue_analytics_consent=granted; Path=/';
     let finish!: (response: Response) => void;
     vi.mocked(fetch).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
     const view = render(<AnalyticsConsentSettings />);
     fireEvent.click(await screen.findByRole('button', { name: '撤回并清除原始数据' }));
     expect(clearAnalyticsQueue).toHaveBeenCalledOnce();
-    expect(document.cookie).not.toContain('doupu_analytics_consent=granted');
+    expect(document.cookie).not.toContain('beadhue_analytics_consent=granted');
     finish(new Response('{}', { status: 503 }));
     expect(await screen.findByRole('alert')).toHaveTextContent('已停止采集');
     expect(screen.getByRole('button', { name: '同意' })).toBeDisabled();
@@ -100,10 +100,10 @@ describe('analytics consent banner', () => {
     render(<AnalyticsConsentSettings />);
     await waitFor(() => expect(screen.getByRole('button', { name: '同意' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: '同意' }));
-    document.cookie = 'doupu_analytics_consent=withdrawn; Path=/';
+    document.cookie = 'beadhue_analytics_consent=withdrawn; Path=/';
     finish(new Response('{}', { status: 200 }));
     await screen.findByRole('button', { name: '重试清除原始数据' });
-    expect(document.cookie).toContain('doupu_analytics_consent=withdrawn');
+    expect(document.cookie).toContain('beadhue_analytics_consent=withdrawn');
     expect(track).not.toHaveBeenCalled();
   });
 
@@ -114,6 +114,6 @@ describe('analytics consent banner', () => {
     fireEvent.click(screen.getByRole('button', { name: '同意' }));
     await screen.findByRole('alert');
     expect(fetch).not.toHaveBeenCalled();
-    expect(document.cookie).not.toContain('doupu_analytics_consent=granted');
+    expect(document.cookie).not.toContain('beadhue_analytics_consent=granted');
   });
 });

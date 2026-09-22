@@ -109,6 +109,7 @@ function generationSourceMatches(local: ProjectFile, remote: ProjectFile): boole
 
 function canonicalProject(project: ProjectFile): unknown {
   return {
+    original: project.original,
     format: project.format,
     version: project.version,
     engineVersion: project.engineVersion,

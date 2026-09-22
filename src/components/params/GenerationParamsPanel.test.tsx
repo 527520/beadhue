@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 
 const builtinOptions = [
   {
-    value: 'builtin:mard-classic', brand: 'MARD', series: '豆谱经典 291 色', colors: ['#fff000'],
+    value: 'builtin:mard-classic', brand: 'MARD', series: '豆色绘经典 291 色', colors: ['#fff000'],
     collectedCount: 291, usableCount: 291, sourceQuality: '固定数据', boardProfiles: ['5mm / 29×29'], defaultForBrand: true,
   },
   {
@@ -15,7 +15,7 @@ const builtinOptions = [
     collectedCount: 291, usableCount: 291, sourceQuality: '公开资料', boardProfiles: ['5mm / 29×29'], defaultForBrand: false,
   },
   {
-    value: 'builtin:coco-classic', brand: 'COCO', series: '豆谱经典 291 色', colors: ['#0000ff'],
+    value: 'builtin:coco-classic', brand: 'COCO', series: '豆色绘经典 291 色', colors: ['#0000ff'],
     collectedCount: 291, usableCount: 291, sourceQuality: '固定数据', boardProfiles: ['5mm / 29×29'], defaultForBrand: true,
   },
 ];
@@ -133,7 +133,7 @@ describe('GenerationParamsPanel', () => {
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button',{name:/色板系列/}));
     expect(screen.getAllByRole('option').map(option=>option.querySelector('[slot=label]')?.textContent)).toEqual([
-      '豆谱经典 291 色',
+      '豆色绘经典 291 色',
       '291 色公开资料版',
     ]);
     await user.keyboard('{Escape}');

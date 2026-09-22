@@ -84,7 +84,7 @@ function publicAuthor(row: {
   accountStatus: 'active' | 'suspended' | 'anonymized' | null;
 }): PublicAuthorDto {
   if (row.authorType === 'official') {
-    return { authorType: 'official', publicAuthorId: 'doupu-official', displayName: '豆谱官方' };
+    return { authorType: 'official', publicAuthorId: 'beadhue-official', displayName: '豆色绘官方' };
   }
   return {
     authorType: 'user',
@@ -193,7 +193,7 @@ export async function listPublicCommunityWorks(db: AnyDatabase, queryInput: Comm
   }
   if (query.author) conditions.push(or(
     ilike(sql`case
-      when ${communityRevisions.authorType} = 'official' then '豆谱官方'
+      when ${communityRevisions.authorType} = 'official' then '豆色绘官方'
       when ${users.accountStatus} = 'anonymized' then ${ANONYMIZED_DISPLAY_NAME}
       else ${communityRevisions.frozenDisplayName}
     end`, `%${query.author}%`),
@@ -364,7 +364,7 @@ export async function listCommunityReviewQueue(db: AnyDatabase) {
     return preview.success ? [{
       ...safeRow,
       author: authorType === 'official'
-        ? { authorType: 'official' as const, publicAuthorId: 'doupu-official', displayName: '豆谱官方' }
+        ? { authorType: 'official' as const, publicAuthorId: 'beadhue-official', displayName: '豆色绘官方' }
         : { authorType: 'user' as const, publicAuthorId, displayName: accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : frozenDisplayName },
       preview: preview.data,
       submittedAt: row.submittedAt?.toISOString() ?? null,

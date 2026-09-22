@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import AccountMenu from './AccountMenu';
 import { ApiError } from '@/lib/sync/clientAdapter';
-import type { DoupuApi, MeInfo } from '@/lib/sync/api';
+import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-class FakeAuthApi implements DoupuApi {
+class FakeAuthApi implements BeadhueApi {
   resendCalls: string[] = [];
   changeCalls: Array<{ current: string; next: string }> = [];
   profileCalls: string[] = [];

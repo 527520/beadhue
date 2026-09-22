@@ -1,7 +1,7 @@
 'use client';
 
 /** 色板管理页（spec §F6）：内置资料库只读展示 + 自定义色板 CRUD。 */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { zhCN } from '@/messages/zh-CN';
@@ -92,6 +92,7 @@ export default function PalettesPage() {
   const [editorLoginRequired, setEditorLoginRequired] = useState(false);
   const [targetDesignId, setTargetDesignId] = useState('');
   const [catalogQuery, setCatalogQuery] = useState('');
+  const [selectedPaletteId, setSelectedPaletteId] = useState('MARD');
 
   const filteredCatalogGroups = useMemo(() => {
     const groups = new Map<string, BuiltinPaletteSummary[]>();
@@ -208,11 +209,11 @@ export default function PalettesPage() {
   const renderPaletteLink = (value: string) => targetDesignId ? <Link className="btn-outline btn-sm" href={`/app?${new URLSearchParams({ id: targetDesignId, palette: value })}`}>{t.useForDesign}</Link> : null;
 
   return (
-    <main id="main" className="workspace-page flex flex-col gap-6">
+    <main id="main" className="workspace-page">
       <SiteHeader
         title={t.title}
         currentPath="/palettes"
-        subtitle={zhCN.workspace.palettesSubtitle}
+        subtitle={zhCN.beadhue.paletteSubtitle}
         primaryActions={
           <button
             type="button"
@@ -224,6 +225,7 @@ export default function PalettesPage() {
         }
       />
 
+      <div className="container palette-page-content">
       <section className="palette-hero">
         <div><h2>{t.heroTitle}</h2><p>{t.heroHint}</p><p>{targetDesignId ? t.targetHelp : t.noTargetHelp}</p></div>
         {targetDesignId && <Link href={`/app?id=${targetDesignId}`} className="btn-outline">{t.backToDesign}</Link>}
@@ -268,62 +270,21 @@ export default function PalettesPage() {
         {filteredCatalogGroups.length === 0 ? (
           <p className="palette-empty">{t.noSearchResults}</p>
         ) : (
-          <div className="palette-brand-groups">
-            {filteredCatalogGroups.map(([brandLabel, summaries], brandIndex) => {
-              const headingId = `palette-brand-${brandIndex}`;
-              return (
-                <section key={brandLabel} aria-labelledby={headingId} className="palette-brand-group">
-                  <div className="palette-brand-heading">
-                    <h3 id={headingId}>{brandLabel}</h3>
-                    <span>{t.paletteCount(summaries.length)}</span>
-                  </div>
-                  <ul className="palette-series-grid">
-                    {summaries.map((summary) => {
-                      const palette = getBuiltinPalette(summary.id);
-                      return (
-                        <li key={palette.id} className="palette-brand-card palette-series-card">
-                          <div className="palette-series-heading">
-                            <p className="palette-card-brand">{palette.brand}</p>
-                            <h4>{palette.series}</h4>
-                            <p>{palette.description}</p>
-                          </div>
-                          <dl className="palette-card-meta">
-                            <div>
-                              <dt>{t.collectedColors}</dt>
-                              <dd>{t.colorCount(palette.colorCount)}</dd>
-                            </div>
-                            <div>
-                              <dt>{t.engineColors}</dt>
-                              <dd>{t.colorCount(palette.engineColorCount)}</dd>
-                            </div>
-                            <div>
-                              <dt>{t.specification}</dt>
-                              <dd>{describeCompatibleSpecifications(palette)}</dd>
-                            </div>
-                          </dl>
-                          <PaletteSwatches name={palette.label} colors={palette.colors} />
-                          {renderPaletteLink(`builtin:${palette.id}`)}
-                          <Disclosure className="palette-source-details" compact icon="info" summary={t.sources}><dl className="palette-card-meta">
-                            <div>
-                              <dt>{t.sourceQuality}</dt>
-                              <dd>
-                                <strong>{palette.source.qualityLabel}</strong>
-                                <span>{palette.source.qualitySummary}</span>
-                                <span>{palette.source.repository} · {palette.source.license}</span>
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>{t.exclusions}</dt>
-                              <dd>{describeExclusions(palette.exclusions)}</dd>
-                            </div>
-                          </dl></Disclosure>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              );
-            })}
+          <div className="palette-catalog">
+            <label className="row wrap">{t.builtinTitle}<select aria-label={zhCN.beadhue.selectPalette} value={filteredCatalogGroups.flatMap(([,items])=>items).some(item=>item.id===selectedPaletteId) ? selectedPaletteId : filteredCatalogGroups[0]?.[1][0]?.id ?? ''} onChange={event=>setSelectedPaletteId(event.target.value)}>
+              {filteredCatalogGroups.map(([brandLabel,summaries])=><optgroup key={brandLabel} label={brandLabel}>{summaries.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</optgroup>)}
+            </select></label>
+            {(() => {
+              const summary = filteredCatalogGroups.flatMap(([,items])=>items).find(item=>item.id===selectedPaletteId) ?? filteredCatalogGroups[0]?.[1][0];
+              if(!summary) return null;
+              const palette = getBuiltinPalette(summary.id);
+              return <section aria-label={palette.label}>
+                <div className="row between wrap palette-catalog-heading"><div><h2>{palette.label}</h2><p className="muted">{palette.description} · {describeCompatibleSpecifications(palette)}</p></div><span className="pill">{zhCN.beadhue.screenColorHint}</span></div>
+                {renderPaletteLink(`builtin:${palette.id}`)}
+                <div className="palette-sheet" aria-label={t.codeListAria(palette.label)}>{palette.colors.map((color,index)=><div className="palette-item" key={`${color.code}-${index}`} title={`${color.code ?? t.unidentifiedCode} ${color.hex}${color.excludedReason ? ' · '+t.displayOnly : ''}`}><i style={{'--swatch':color.hex} as CSSProperties}/><span className="mono">{color.code ?? t.unidentifiedCode}</span><small>{color.hex}</small>{color.excludedReason && <small>{t.displayOnly}</small>}</div>)}</div>
+                <Disclosure className="palette-source-details" compact icon="info" summary={t.sources}><dl className="palette-card-meta"><div><dt>{t.collectedColors}</dt><dd>{t.colorCount(palette.colorCount)}</dd></div><div><dt>{t.engineColors}</dt><dd>{t.colorCount(palette.engineColorCount)}</dd></div><div><dt>{t.sourceQuality}</dt><dd>{palette.source.qualityLabel} · {palette.source.qualitySummary}<br/>{palette.source.repository} · {palette.source.license}</dd></div><div><dt>{t.exclusions}</dt><dd>{describeExclusions(palette.exclusions)}</dd></div></dl></Disclosure>
+              </section>;
+            })()}
           </div>
         )}
       </section>
@@ -361,6 +322,7 @@ export default function PalettesPage() {
         )}
       </section>
 
+      </div>
       {editing && (
         <Modal label={t.edit} onClose={() => { if (!savingRef.current) setEditing(null); }} panelClassName="w-full max-w-xl max-h-[85vh] overflow-auto">
           {editorError && <div role="alert" className="notice notice-danger">{editorError}{editorLoginRequired && <Link href="/login?next=/palettes" target="_blank" rel="noopener noreferrer" className="link-soft">{t.loginWindow}</Link>}</div>}

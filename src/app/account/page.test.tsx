@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import AccountPage from './page';
 const state = vi.hoisted(() => ({ me: vi.fn() }));
-vi.mock('@/lib/sync/api', () => ({ createDoupuApi: () => ({ me: state.me }) }));
+vi.mock('@/lib/sync/api', () => ({ createBeadhueApi: () => ({ me: state.me }) }));
 vi.mock('@/components/layout/SiteHeader', () => ({ default: () => <h1>账号</h1> }));
 vi.mock('@/components/account/AccountMenu', () => ({ default: ({ me }: { me: { state?: string } | string }) => <p>{typeof me === 'string' ? me : me.state}</p> }));
 beforeEach(() => state.me.mockReset());

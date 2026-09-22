@@ -63,6 +63,11 @@ export interface PublicConfig {
 
 export interface SiteConfig extends PublicConfig {
   security: {
+    originalUserMinute: number;
+    originalUserHour: number;
+    originalIpMinute: number;
+    originalIpHour: number;
+    originalQuotaBytes: number;
     loginRateLimit: number;
     registerRateLimit: number;
     tokenRateLimit: number;
@@ -117,6 +122,11 @@ const DEFAULTS: SiteConfig = {
   exportPng: { cellPx: 24, cropToContent: true, includeLegend: false },
   exportPdf: { cellMm: 6, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
   security: {
+    originalUserMinute: 10,
+    originalUserHour: 60,
+    originalIpMinute: 30,
+    originalIpHour: 180,
+    originalQuotaBytes: 2147483648,
     loginRateLimit: 10,
     registerRateLimit: 10,
     tokenRateLimit: 60,
@@ -192,6 +202,11 @@ function compute(): SiteConfig {
     },
     exportPdf,
     security: {
+      originalUserMinute: readInt('RATE_ORIGINAL_USER_MINUTE', DEFAULTS.security.originalUserMinute, 1),
+      originalUserHour: readInt('RATE_ORIGINAL_USER_HOUR', DEFAULTS.security.originalUserHour, 1),
+      originalIpMinute: readInt('RATE_ORIGINAL_IP_MINUTE', DEFAULTS.security.originalIpMinute, 1),
+      originalIpHour: readInt('RATE_ORIGINAL_IP_HOUR', DEFAULTS.security.originalIpHour, 1),
+      originalQuotaBytes: readInt('ORIGINAL_QUOTA_BYTES', DEFAULTS.security.originalQuotaBytes, 1),
       loginRateLimit: readInt('RATE_LOGIN', DEFAULTS.security.loginRateLimit, 1),
       registerRateLimit: readInt('RATE_REGISTER', DEFAULTS.security.registerRateLimit, 1),
       tokenRateLimit: readInt('RATE_TOKEN', DEFAULTS.security.tokenRateLimit, 1),

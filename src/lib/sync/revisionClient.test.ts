@@ -13,7 +13,7 @@ const at = (second: number) => `2026-08-17T00:00:${String(second).padStart(2, '0
 
 function project(name: string, updatedAt: string): ProjectFile {
   return {
-    format: 'doupu-project', version: 3, engineVersion: '2.0.0', name,
+    format: 'beadhue-project', version: 3, engineVersion: '2.0.0', name,
     boardProfile: '5mm-29',
     createdAt: at(0), updatedAt,
     paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },

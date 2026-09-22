@@ -60,3 +60,5 @@ describe('reset-password 页', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(zhCN.auth.linkInvalid));
   });
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

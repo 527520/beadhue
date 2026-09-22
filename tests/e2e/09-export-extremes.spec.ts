@@ -10,7 +10,7 @@ const at = '2026-08-17T00:00:00.000Z';
 
 function project(width: number, height: number, colors: Array<{ code: string; hex: string }>) {
   return {
-    format: 'doupu-project', version: 3, engineVersion: '2.0.0', boardProfile: '5mm-29', name: `极限-${width}x${height}`,
+    format: 'beadhue-project', version: 3, engineVersion: '2.0.0', boardProfile: '5mm-29', name: `极限-${width}x${height}`,
     createdAt: at, updatedAt: at,
     paletteSelection: { palette: { kind: 'custom', colors }, kitTier: 0 },
     params: { targetWidth: Math.max(20, width), targetColorCount: 128, dithering: false, mode: 'dominant', brightness: 0, contrast: 0, backgroundRemoval: false, bgTolerance: 8 },
@@ -28,7 +28,7 @@ function project(width: number, height: number, colors: Array<{ code: string; he
 async function importProject(page: Page, value: ReturnType<typeof project>): Promise<void> {
   await page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true }).click();
   await page.getByLabel('项目文件选择器').setInputFiles({
-    name: 'extreme.doupu.json',
+    name: 'extreme.beadhue.json',
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(value)),
   });
@@ -210,15 +210,15 @@ test('合并超限时 ZIP 恰好包含两张可解码且不透明的 PNG', async
     page.waitForEvent('download'),
     page.getByRole('region', { name: 'PNG 导出选项' }).getByRole('button', { name: '导出', exact: true }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe('豆谱-ZIP极限-170x170-PNG.zip');
+  expect(download.suggestedFilename()).toBe('豆色绘-ZIP极限-170x170-PNG.zip');
   const entries = extractZipEntries(readFileSync((await download.path())!));
   expect([...entries.keys()].sort()).toEqual([
-    '豆谱-ZIP极限-170x170-图例.png',
-    '豆谱-ZIP极限-170x170-图纸.png',
+    '豆色绘-ZIP极限-170x170-图例.png',
+    '豆色绘-ZIP极限-170x170-图纸.png',
   ]);
 
-  const patternPng = entries.get('豆谱-ZIP极限-170x170-图纸.png')!;
-  const legendPng = entries.get('豆谱-ZIP极限-170x170-图例.png')!;
+  const patternPng = entries.get('豆色绘-ZIP极限-170x170-图纸.png')!;
+  const legendPng = entries.get('豆色绘-ZIP极限-170x170-图例.png')!;
   expect(patternPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   expect(legendPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   const [patternSummary, legendSummary] = await Promise.all([

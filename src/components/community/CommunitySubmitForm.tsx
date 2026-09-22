@@ -1,4 +1,5 @@
 'use client';
+import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
 import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
 import Button, { ButtonLink, buttonClassName } from '@/components/ui/Button';
 import Icon from '@/components/ui/Icon';
@@ -13,7 +14,7 @@ import { OriginalUploadError, uploadRevisionOriginal } from '@/lib/community/ori
 import { convertHeicWithWasm } from '@/lib/image/decode';
 import type { ImageType } from '@/lib/image/sniff';
 import { validateImageFile } from '@/lib/image/validation';
-import { createDoupuApi } from '@/lib/sync/api';
+import { createBeadhueApi } from '@/lib/sync/api';
 import { ApiError, type CloudDesignFull, type CloudDesignMeta } from '@/lib/sync/clientAdapter';
 import { discardPendingOriginal, takePendingOriginal } from '@/lib/storage/pendingOriginals';
 import CommunityPreviewCanvas from './CommunityPreviewCanvas';
@@ -90,7 +91,7 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
     if (!id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const value = await createDoupuApi().getDesign(id);
+      const value = await createBeadhueApi().getDesign(id);
       if (!mounted.current || generation.current !== seq) return;
       if (!value || value.deleted || !communitySnapshotFromProject(value.project)) throw new ApiError(400, 'VALIDATION', t.sourceInvalid);
       setSource(value); setTitle(value.name.slice(0, 80));
@@ -104,7 +105,7 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
   useEffect(() => {
     mounted.current = true;
     let active = true;
-    void createDoupuApi().listDesigns().then(async (items) => {
+    void createBeadhueApi().listDesigns().then(async (items) => {
       if (!active) return;
       const available = items.filter((item) => !item.deleted);
       setDesigns(available);
@@ -206,6 +207,7 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
   const originalLocked = busy || (locked && originalUploaded);
   return (
     <form className="community-submit-form" onSubmit={(event) => void submit(event)}>
+      <OriginalUploadStatus />
       <p>{workId ? t.editHelp : t.previewHelp}</p>
       <ResponsiveSelect label={t.chooseSource} value={designId} disabled={loading || locked} onValueChange={(value)=>void selectSource(value)} options={[{value:'',label:t.choosePlaceholder},...designs.map(design=>({value:design.id,label:design.name}))]} />
       {loading && <p role="status">{t.loadingSources}</p>}

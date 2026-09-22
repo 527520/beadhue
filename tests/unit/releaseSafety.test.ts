@@ -97,7 +97,7 @@ describe('backup and release safety gates', () => {
 
   it('release protocol preflight rejects legacy active designs/shares without mutating data', () => {
     const v3Project = {
-      format: 'doupu-project', version: 3, boardProfile: '5mm-29',
+      format: 'beadhue-project', version: 3, boardProfile: '5mm-29',
       engineVersion: '2.0.0', name: '发布前检查',
       createdAt: '2026-08-30T00:00:00.000Z', updatedAt: '2026-08-30T00:01:00.000Z',
       params: {
@@ -153,7 +153,7 @@ describe('backup and release safety gates', () => {
 
   it('rejects bad builtin pairs and unavailable placeholder codes in both project and share rows', () => {
     const baseProject = {
-      format: 'doupu-project', version: 3, boardProfile: '5mm-29',
+      format: 'beadhue-project', version: 3, boardProfile: '5mm-29',
       engineVersion: '2.0.0', name: '发布前检查',
       createdAt: '2026-08-30T00:00:00.000Z', updatedAt: '2026-08-30T00:01:00.000Z',
       params: {
@@ -215,7 +215,7 @@ describe('backup and release safety gates', () => {
   });
 
   shellIt('executes the complete verified backup happy path with isolated adapters', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-backup-test-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-backup-test-'));
     const bin = join(root, 'bin');
     const remote = join(root, 'remote');
     const makeExecutable = (name: string, body: string): void => {
@@ -266,7 +266,7 @@ describe('backup and release safety gates', () => {
     ['compress', 'compression failed'],
     ['upload', 'pending upload failed'],
   ] as const)('%s failure exits non-zero and delivers the backup alert', (stage, expectedMessage) => {
-    const root = mkdtempSync(join(tmpdir(), `doupu-backup-${stage}-`));
+    const root = mkdtempSync(join(tmpdir(), `beadhue-backup-${stage}-`));
     const bin = join(root, 'bin');
     const scripts = join(root, 'scripts');
     const remote = join(root, 'remote');
@@ -316,7 +316,7 @@ describe('backup and release safety gates', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain(expectedMessage);
-    expect(readFileSync(alertLog, 'utf8')).toContain(`豆谱备份失败：${expectedMessage}`);
+    expect(readFileSync(alertLog, 'utf8')).toContain(`豆色绘备份失败：${expectedMessage}`);
     expect(result.stderr).not.toContain('backup alert delivery also failed');
   });
 
@@ -348,7 +348,7 @@ describe('backup and release safety gates', () => {
   });
 
   shellIt('迁移失败时保持入口停止，禁止把旧应用重新暴露到单向迁移后的数据库', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-deploy-migration-failure-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-deploy-migration-failure-'));
     const scripts = join(root, 'deploy', 'scripts');
     const bin = join(root, 'bin');
     const deployLog = join(root, 'docker.log');
@@ -356,7 +356,7 @@ describe('backup and release safety gates', () => {
     const deployScript = join(scripts, 'deploy.sh');
     copyFileSync('deploy/scripts/deploy.sh', deployScript);
     chmodSync(deployScript, 0o755);
-    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/doupu:v0.2.0\n');
+    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/beadhue:v0.2.0\n');
     const fakeDocker = join(bin, 'docker');
     writeFileSync(fakeDocker, `#!/bin/sh
 set -eu
@@ -384,7 +384,7 @@ esac
   });
 
   shellIt('keeps the serving containers untouched when the read-only v3 preflight fails', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-deploy-protocol-failure-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-deploy-protocol-failure-'));
     const scripts = join(root, 'deploy', 'scripts');
     const bin = join(root, 'bin');
     const deployLog = join(root, 'docker.log');
@@ -392,7 +392,7 @@ esac
     const deployScript = join(scripts, 'deploy.sh');
     copyFileSync('deploy/scripts/deploy.sh', deployScript);
     chmodSync(deployScript, 0o755);
-    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/doupu:v0.2.0\n');
+    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/beadhue:v0.2.0\n');
     const fakeDocker = join(bin, 'docker');
     writeFileSync(fakeDocker, `#!/bin/sh
 set -eu
@@ -419,7 +419,7 @@ esac
   });
 
   shellIt('停流后的 v3 终检失败会恢复 Caddy，且不迁移、不替换应用', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-deploy-final-protocol-failure-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-deploy-final-protocol-failure-'));
     const scripts = join(root, 'deploy', 'scripts');
     const bin = join(root, 'bin');
     const deployLog = join(root, 'docker.log');
@@ -428,7 +428,7 @@ esac
     const deployScript = join(scripts, 'deploy.sh');
     copyFileSync('deploy/scripts/deploy.sh', deployScript);
     chmodSync(deployScript, 0o755);
-    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/doupu:v0.2.0\n');
+    writeFileSync(join(root, '.env'), 'APP_IMAGE=ghcr.io/527520/beadhue:v0.2.0\n');
     const fakeDocker = join(bin, 'docker');
     writeFileSync(fakeDocker, `#!/bin/sh
 set -eu
@@ -477,7 +477,7 @@ exit 0
     expect(script).toContain('pull app');
     expect(script).toContain('--no-build app');
     expect(script).not.toContain('"${COMPOSE[@]}" build app');
-    expect(script).toContain("^ghcr\\.io/527520/doupu");
+    expect(script).toContain("^ghcr\\.io/527520/(beadhue|doupu)");
     expect(script).toContain(':v[0-9]+');
     expect(read('docs/adr/0005-deployment-tencent-docker.md')).toContain('stable GHCR tag or immutable digest');
     const checklist = read('deploy/CHECKLIST.md');
@@ -496,7 +496,7 @@ exit 0
   });
 
   shellIt('waits for PostgreSQL and app readiness before the first backup and records success', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-backup-loop-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-backup-loop-'));
     const scripts = join(root, 'scripts');
     const bin = join(root, 'bin');
     const pgAttempts = join(root, 'pg-attempts');
@@ -536,7 +536,7 @@ exit 0
   });
 
   shellIt('exits non-zero and alerts when backup prerequisites never become ready', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-backup-wait-failure-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-backup-wait-failure-'));
     const scripts = join(root, 'scripts');
     const bin = join(root, 'bin');
     const alertLog = join(root, 'alert.log');
@@ -560,7 +560,7 @@ exit 0
   });
 
   shellIt('reports backup health only while the last verified success is fresh', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-backup-health-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-backup-health-'));
     const statusFile = join(root, 'last-success');
     const now = Math.floor(Date.now() / 1000);
     writeFileSync(statusFile, `${now}\n`);
@@ -594,7 +594,7 @@ exit 0
       ci.indexOf('- name: Native Argon2 smoke'),
     );
     expect(composeBuildStep).toContain('ADMIN_EMAIL: ops@example.test');
-    expect(composeBuildStep).toContain('docker build -t doupu-app:local .');
+    expect(composeBuildStep).toContain('docker build -t beadhue-app:local .');
     expect(composeBuildStep).toContain('docker compose -f docker-compose.prod.yml build backup');
     const protocolContract = read('tests/postgres/protocol-preflight-contract.cjs');
     expect(protocolContract).toContain('deploy/scripts/check-protocol-v3.cjs');
@@ -614,7 +614,7 @@ exit 0
   });
 
   shellIt('accepts a constructible evidence-only attestation commit and rejects unrelated changes', () => {
-    const root = mkdtempSync(join(tmpdir(), 'doupu-release-attestation-'));
+    const root = mkdtempSync(join(tmpdir(), 'beadhue-release-attestation-'));
     ensureDirs(join(root, 'deploy', 'scripts'), join(root, 'deploy', 'evidence', 'mobile'), join(root, 'deploy', 'evidence', 'algorithm'), join(root, 'src', 'lib'));
     copyFileSync('deploy/scripts/verify-release.sh', join(root, 'deploy', 'scripts', 'verify-release.sh'));
     writeFileSync(join(root, 'package.json'), '{"version":"0.2.0"}\n');
@@ -671,7 +671,7 @@ exit 0
     const ci = read('.github/workflows/ci.yml');
     const contract = read('tests/postgres/route-contract.cjs');
     expect(ci).toContain('node tests/postgres/route-contract.cjs');
-    const standaloneStart = ci.indexOf('docker run -d --name doupu-standalone-ci');
+    const standaloneStart = ci.indexOf('docker run -d --name beadhue-standalone-ci');
     const routeContract = ci.indexOf('node tests/postgres/route-contract.cjs');
     const browserContract = ci.indexOf('npm run test:e2e:production');
     expect(routeContract).toBeGreaterThan(standaloneStart);
@@ -731,7 +731,7 @@ exit 0
   it('restores the latest promoted production COS backup on a monthly schedule', () => {
     const workflow = read('.github/workflows/production-backup-restore.yml');
     expect(workflow).toContain('cron: "23 4 1 * *"');
-    expect(workflow).toContain('doupucos:${COS_BUCKET}/doupu-backup');
+    expect(workflow).toContain('beadhuecos:${COS_BUCKET}/beadhue-backup');
     expect(workflow).toContain('rclone copyto');
     expect(workflow).toContain('--max-age 36h');
     expect(workflow).toContain('/scripts/restore-drill.sh');

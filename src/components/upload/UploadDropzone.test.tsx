@@ -25,7 +25,7 @@ function selectFiles(files: File[]) {
 describe('UploadDropzone', () => {
   it('渲染落点与隐藏 input（含 accept 列表）', () => {
     render(<UploadDropzone onValid={vi.fn()} />);
-    expect(screen.getByText(zhCN.upload.hint)).toBeTruthy();
+    expect(screen.getByText(zhCN.beadhue.uploadTitle)).toBeTruthy();
     const input = screen.getByLabelText(zhCN.upload.inputLabel) as HTMLInputElement;
     expect(input.accept).toBe('image/jpeg,image/png,image/webp,image/heic');
     expect(input).not.toHaveAttribute('capture');

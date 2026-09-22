@@ -102,3 +102,5 @@ describe('login 页', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/designs'));
   });
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

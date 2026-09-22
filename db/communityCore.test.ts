@@ -14,6 +14,7 @@ import {
 import { attachTestOriginal, TEST_PNG } from './testOriginals';
 import { createMemoryOriginalStore } from '@/lib/community/originalStore';
 import { expireBlockedOriginals, purgeDeletedOriginals, readRevisionOriginal, resolveOriginalAccess } from '@/lib/community/originals';
+import { readPrivateOriginal } from '@/lib/originals/server';
 import { reuseCommunityWork } from '@/lib/community/interactions';
 import type { Actor } from '@/lib/auth/authorization';
 import { DEFAULT_GENERATION_PARAMS, type ProjectFile } from '@/lib/types';
@@ -36,7 +37,7 @@ import {
 
 function project(name: string, hex = '#FF0000'): ProjectFile {
   return {
-    format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29',
+    format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29',
     name, createdAt: '2026-09-05T00:00:00.000Z', updatedAt: '2026-09-05T00:00:00.000Z',
     paletteSelection: { palette: { kind: 'custom', colors: [{ hex, code: 'C1' }] }, kitTier: 0 },
     params: { ...DEFAULT_GENERATION_PARAMS, targetWidth: 20, targetColorCount: 2 },
@@ -139,7 +140,25 @@ describe('community work and frozen revision state machine', () => {
     expect(withdrawn.purgeKeys).toHaveLength(1);
     await expect(resolveOriginalAccess(db, user, created.revision.id)).resolves.toBeNull();
     await purgeDeletedOriginals(db, store, { keys: withdrawn.purgeKeys });
-    expect(store.objects.size).toBe(0);
+    expect(store.objects.size).toBe(1); // Private asset and independent reuse retain the object.
+  });
+
+  it('independently retains a reused original when legacy dimensions and geometry are unknown',async()=>{
+    const created=await createCommunityWork(db,{actor:user,designId,expectedDesignRevision:1,title:'历史原图',licenseVersion:COMMUNITY_LICENSE_VERSION});
+    const store=createMemoryOriginalStore();
+    await attachTestOriginal(db,user,created.revision.id,store);
+    await db.update(communityOriginals).set({width:null,height:null}).where(eq(communityOriginals.revisionId,created.revision.id));
+    const pending=await submitCommunityRevision(db,{actor:user,revisionId:created.revision.id,expectedVersion:1});
+    await reviewCommunityRevision(db,{actor:moderator,revisionId:pending.id,expectedVersion:pending.version,decision:'published',reason:'历史版本',requestId:'legacy-publish'});
+    const [copyUser]=await db.insert(users).values({email:'legacy-copy@example.test',emailVerifiedAt:new Date()}).returning();
+    const copyActor:Actor={userId:copyUser.id,role:'user',accountStatus:'active',emailVerified:true};
+    const copy=await reuseCommunityWork(db,{actor:copyActor,workId:created.work.id});
+    await db.update(communityOriginals).set({deletedAt:new Date()}).where(eq(communityOriginals.revisionId,created.revision.id));
+    const restored=await readPrivateOriginal(db,store,copyUser.id,copy.designId);
+    expect(Buffer.from(restored.body).equals(TEST_PNG)).toBe(true);
+    const [row]=await db.select().from(designs).where(eq(designs.id,copy.designId));
+    expect((row.project as ProjectFile).original?.assetId).toBeTruthy();
+    expect((row.project as ProjectFile).original?.geometry).toBeUndefined();
   });
 
   it('grants original access to author, moderators and reusers only, and blocks it while removed', async () => {
@@ -176,7 +195,7 @@ describe('community work and frozen revision state machine', () => {
     [work] = await db.select().from(communityWorks).where(eq(communityWorks.id, created.work.id));
     await moderateCommunityWork(db, { actor: moderator, workId: work.id, action: 'remove', expectedVersion: work.version, reason: '再次下架验证逾期删除', requestId: 'remove-original-2', now: new Date('2026-01-01T00:00:00Z') });
     expect(await expireBlockedOriginals(db, store, new Date('2026-02-15T00:00:00Z'))).toEqual({ expired: 1, purged: 1, failed: 0 });
-    expect(store.objects.size).toBe(0);
+    expect(store.objects.size).toBe(1); // Private asset and independent reuse retain the object.
     expect(await resolveOriginalAccess(db, moderator, created.revision.id)).toBeNull();
   });
 

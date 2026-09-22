@@ -1,4 +1,5 @@
 /** 浏览器侧原图接口封装（D49）：上传、取回、探测。 */
+import { cacheOriginal, enqueueOriginalUpload } from '@/lib/originals/client';
 import { LIMITS } from '@/lib/appInfo';
 import { sniffImageType, type ImageType } from '@/lib/image/sniff';
 
@@ -24,6 +25,14 @@ export interface UploadedOriginal { revisionId: string; mimeType: string; byteSi
 export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Array, fetcher: typeof fetch = fetch): Promise<UploadedOriginal> {
   if (bytes.byteLength === 0) throw new OriginalUploadError(400, 'VALIDATION', '原图为空');
   if (bytes.byteLength > LIMITS.maxFileBytes) throw new OriginalUploadError(413, 'PAYLOAD_TOO_LARGE', '原图超过 20 MB 上限');
+  if (fetcher === fetch && typeof indexedDB !== 'undefined') {
+    const type = sniffImageType(bytes);
+    if (type === 'unknown') throw new OriginalUploadError(400, 'VALIDATION', '原图类型不支持');
+    const cached = await cacheOriginal(bytes, type, 'original');
+    const account = await fetcher('/api/auth/me').then(r => r.ok ? r.json() : null) as {email?:string}|null;
+    if (!account?.email) throw new OriginalUploadError(401, 'UNAUTHORIZED', '请登录已验证的账号');
+    return await enqueueOriginalUpload({url:`/api/community/revisions/${revisionId}/original`,sha256:cached.sha256,email:account.email}) as unknown as UploadedOriginal;
+  }
   const response = await fetcher(`/api/community/revisions/${revisionId}/original`, {
     method: 'PUT',
     headers: { 'content-type': 'application/octet-stream' },

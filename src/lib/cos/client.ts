@@ -142,7 +142,7 @@ export function createCosClient(config: CosConfig): CosClient {
 
 /**
  * 从环境变量读取原图桶配置；未配置返回 null（由调用方决定是否允许降级）。
- * 默认与备份共用同一个私有桶（原图固定在 `originals/` 前缀下，备份在 `doupu-backup/`），
+ * 默认与备份共用同一个私有桶（原图固定在 `originals/` 前缀下，备份在 `beadhue-backup/`），
  * `COS_ORIGINALS_*` 只在需要单独的桶 / 子账号 / 地域时覆盖。
  */
 export function resolveOriginalsCosConfig(env: Record<string, string | undefined> = process.env): Omit<CosConfig, 'fetcher' | 'now'> | null {

@@ -1,12 +1,12 @@
 /** 应用级常量：名称、版本、外部链接。 */
-export const APP_NAME = '豆谱';
+export const APP_NAME = '豆色绘';
 export const APP_VERSION = '0.5.0';
-export const SOURCE_REPO_URL = 'https://github.com/527520/doupu';
-export const ISSUES_URL = 'https://github.com/527520/doupu/issues';
+export const SOURCE_REPO_URL = 'https://github.com/527520/beadhue';
+export const ISSUES_URL = 'https://github.com/527520/beadhue/issues';
 export const AUTHOR_NAME = 'wuqian';
 export const AUTHOR_GITHUB_URL = 'https://github.com/527520';
 export const CONTACT_EMAIL = 'wqa527520@qq.com';
-export const PROJECT_FILE_FORMAT = 'doupu-project' as const;
+export const PROJECT_FILE_FORMAT = 'beadhue-project' as const;
 export const PROJECT_FILE_VERSION = 3 as const;
 /** Changes whenever generation semantics can produce a materially different pattern. */
 export const ENGINE_VERSION = '2.0.0' as const;

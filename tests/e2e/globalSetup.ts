@@ -11,7 +11,7 @@ import { assertPlaywrightBrowsersInstalled } from './checkBrowsers.cjs';
 import { E2E_PORT, stopProcessTree } from './serverProcess';
 
 // 日志放系统临时目录：dev 服务器监听项目内文件，日志写入会触发 Fast Refresh 全量重载
-const LOG_PATH = join(tmpdir(), 'doupu-e2e-dev.log');
+const LOG_PATH = join(tmpdir(), 'beadhue-e2e-dev.log');
 const READY_URL = `http://127.0.0.1:${E2E_PORT}/api/auth/me`;
 
 let server: ChildProcess | null = null;
@@ -54,8 +54,8 @@ export default async function globalSetup(): Promise<void> {
         DATABASE_URL: '',
         // 回退库退回内存（不落盘）：每轮 E2E 全新库，且不与本地 dev 的 .pglite-dev 竞争
         PGLITE_DATA_DIR: '',
-        DOUPU_E2E_SEED: '1',
-        DOUPU_E2E_BUILD: '1',
+        BEADHUE_E2E_SEED: '1',
+        BEADHUE_E2E_BUILD: '1',
         // Three browser projects intentionally share one disposable PGlite
         // process. Keep production defaults intact while preventing valid
         // cross-browser logins from exhausting the shared IP bucket.

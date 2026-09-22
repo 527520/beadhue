@@ -25,7 +25,7 @@ const {
   enqueueDesignSyncFacadeMock,
   defaultEnqueueDesignSyncMock,
   withDesignStorageLockMock,
-  createDoupuApiMock,
+  createBeadhueApiMock,
   cloudApiStub,
 } = vi.hoisted(() => {
   const innerSync = vi.fn(async (): Promise<unknown> => undefined);
@@ -49,7 +49,7 @@ const {
     enqueueDesignSyncFacadeMock: vi.fn(defaultFacade),
     defaultEnqueueDesignSyncMock: defaultFacade,
     withDesignStorageLockMock: vi.fn((run: () => Promise<unknown>) => run()),
-    createDoupuApiMock: vi.fn(),
+    createBeadhueApiMock: vi.fn(),
     cloudApiStub: {},
   };
 });
@@ -57,7 +57,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 vi.mock('@/lib/sync/api', () => ({
-  createDoupuApi: createDoupuApiMock.mockReturnValue(cloudApiStub),
+  createBeadhueApi: createBeadhueApiMock.mockReturnValue(cloudApiStub),
 }));
 vi.mock('@/lib/sync/queue', () => ({
   enqueueDesignSync: (...args: unknown[]) => enqueueDesignSyncFacadeMock(...args),
@@ -196,7 +196,7 @@ const instantGenerate: typeof runGenerate = (request, onProgress): GenerateTask 
 
 function savedProject(name: string, updatedAt: string): ProjectFile {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',
@@ -234,10 +234,19 @@ function record(id: string, project: ProjectFile): DesignRecord {
 
 const selectUploadInput = (): HTMLInputElement => screen.getByLabelText(zhCN.upload.inputLabel) as HTMLInputElement;
 // 只读取表单桥接值；所有修改经过用户可见的按钮与选项。
-const selectField = (label: string): HTMLSelectElement => screen.getByLabelText(label).parentElement!.querySelector('select')!;
+function openBlank() { const button=screen.queryByRole('button',{name:'从空白画布开始'}); if(button?.getAttribute('aria-expanded')==='false') fireEvent.click(button); }
+const selectField = (label: string): HTMLSelectElement => { openBlank(); return screen.getByLabelText(label).parentElement!.querySelector('select')!; };
 const selectPaletteBrand = () => selectField(zhCN.params.brand);
 const selectPaletteSeries = () => selectField(zhCN.params.series);
+function showControl(label: string): HTMLElement {
+  openBlank();
+  const element=screen.getByLabelText(label);
+  let ancestor=element.parentElement;
+  while(ancestor) { if(ancestor.tagName==='DETAILS' && !(ancestor as HTMLDetailsElement).open) fireEvent.click(ancestor.querySelector('summary')!); ancestor=ancestor.parentElement; }
+  return element;
+}
 async function chooseValue(label: string, value: string) {
+  showControl(label);
   const text=[...selectField(label).options].find(option=>option.value===value)?.textContent;
   if(!text)throw new Error(`Missing option ${label}: ${value}`);
   const user=userEvent.setup();await user.click(screen.getByLabelText(label));
@@ -317,7 +326,7 @@ describe('Workbench 全流程', () => {
     expect(crop).toBeEnabled();
     fireEvent.click(crop);
     expect(screen.getByText(zhCN.workbench.cropSourceMissing)).toBeVisible();
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
     fireEvent.click(crop);
     expect(screen.queryByText(zhCN.workbench.cropSourceMissing)).not.toBeInTheDocument();
   });
@@ -331,7 +340,7 @@ describe('Workbench 全流程', () => {
       fireEvent.change(name, { target: { value: '尚未写入' } });
       fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
       await screen.findByText(zhCN.workbench.quotaError);
-      const header = document.querySelector('.mobile-canvas-shell > header')!;
+      const header = document.querySelector('.workspace-project-bar')!;
       expect(header).toHaveTextContent(zhCN.workbench.saveFailed);
       expect(header).not.toHaveTextContent(zhCN.workbench.saved);
     } finally { restoreViewport(); }
@@ -369,7 +378,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={storage} />);
     const name = await screen.findByDisplayValue('可以继续编辑');
     expect(screen.getByRole('tab', { name: zhCN.workbench.editTab })).toBeEnabled();
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
     fireEvent.change(name, { target: { value: '已编辑' } });
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await waitFor(() => expect(put).toHaveBeenCalled());
@@ -400,9 +409,11 @@ describe('Workbench 全流程', () => {
     };
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(/共 10000 粒/);
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await screen.findByText(zhCN.workbench.saved);
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     const id = [...storage.designs.keys()][0];
     const original = storage.sources.get(id)!;
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
@@ -416,6 +427,7 @@ describe('Workbench 全流程', () => {
       await act(async () => finish(cropOutput));
       fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
       await waitFor(() => expect(storage.sources.get(id)?.width).toBe(7));
+      fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
       fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.undoRegeneration }));
       fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
       expect(screen.getByText(zhCN.crop.sizeLabel(8, 8))).toBeInTheDocument();
@@ -436,6 +448,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} imageDecoder={decoder} generateFn={() => ({ promise: Promise.reject(new Error('worker failed')), cancel: vi.fn() })} />);
     const cleared = vi.mocked(decoder.clear).mock.calls.length;
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(zhCN.workbench.generateFailed);
     expect(selectUploadInput()).toBeInTheDocument();
     expect(vi.mocked(decoder.clear).mock.calls.length).toBeGreaterThan(cleared);
@@ -469,6 +482,7 @@ describe('Workbench 全流程', () => {
     const generate = vi.fn(instantGenerate);
     render(<Workbench storage={new FakeStorage()} imageDecoder={decoder} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(/共 10000 粒/);
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
     const apply = screen.getByRole('button', { name: zhCN.crop.confirm });
@@ -486,8 +500,10 @@ describe('Workbench 全流程', () => {
     const generate = vi.fn(instantGenerate);
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(/共 10000 粒/);
     fireEvent.click(screen.getByRole('tab', { name: zhCN.workbench.editTab }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.editor.brush }));
     const canvas = screen.getByLabelText(zhCN.editor.canvasAria);
     fireEvent.pointerDown(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 1 });
     fireEvent.pointerUp(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 1 });
@@ -518,6 +534,7 @@ describe('Workbench 全流程', () => {
       <Workbench storage={new FakeStorage()} imageDecoder={decoder} generateFn={instantGenerate} />,
     );
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(/共 10000 粒/);
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
     expect(screen.getByLabelText(zhCN.crop.ariaCropCanvas)).toBeInTheDocument();
@@ -537,22 +554,23 @@ describe('Workbench 全流程', () => {
     expect(decoder.dispose).not.toHaveBeenCalled();
   });
 
-  it('上传后整图自动生成首版，无需确认裁剪；参数面板仍可重生成', async () => {
+  it('选图后确认整图生成首版；参数面板仍可重生成', async () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
 
     // 工作台：默认 targetWidth=100 → 8×8 图 → 100×100 = 10000 粒
     await screen.findByText(/共 10000 粒/);
     expect(screen.queryByLabelText(zhCN.crop.ariaCropCanvas)).not.toBeInTheDocument();
     expect(screen.getByText(zhCN.workbench.previewTab)).toBeTruthy();
     expect(screen.getByText(zhCN.workbench.editTab)).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '导出' }));
+    fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
     expect(screen.getByRole('button', { name: '下载 PNG' })).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: '参数' }));
+    fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '参数' }));
 
     // 参数面板接线：宽度输入 20 → blur 提交 → 300ms 防抖 → 重生成 20×20 = 400 粒
-    const widthInput = screen.getByRole('spinbutton', { name: zhCN.params.targetWidth }) as HTMLInputElement;
+    const widthInput = showControl(zhCN.params.targetWidth) as HTMLInputElement;
     fireEvent.change(widthInput, { target: { value: '20' } });
     fireEvent.blur(widthInput);
     await waitFor(() => expect(screen.getByText(/共 400 粒/)).toBeTruthy(), { timeout: 5000 });
@@ -564,6 +582,7 @@ describe('Workbench 全流程', () => {
     expect(screen.getByText(zhCN.workbench.stepUpload).closest('[aria-current="step"]')).toBeTruthy();
 
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     expect(screen.queryByText(zhCN.workbench.stepCrop)).not.toBeInTheDocument();
     await screen.findByText(/共 10000 粒/);
 
@@ -585,17 +604,19 @@ describe('Workbench 全流程', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
     fireEvent.click(screen.getByText(zhCN.workbench.editTab));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.editor.brush }));
     const canvas = screen.getByLabelText(zhCN.editor.canvasAria);
     // 有界视窗把整图居中；使用视窗中心命中图纸，而不是假定左上角从 (0,0) 开始。
     fireEvent.pointerDown(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 1 });
     fireEvent.pointerUp(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 1 });
 
     // C-7：破坏性确认改用品牌弹窗（不再是 window.confirm）
-    const widthInput = screen.getByRole('spinbutton', { name: zhCN.params.targetWidth }) as HTMLInputElement;
+    const widthInput = showControl(zhCN.params.targetWidth) as HTMLInputElement;
     fireEvent.change(widthInput, { target: { value: '20' } });
     fireEvent.blur(widthInput);
     // CI（覆盖率插桩 + 单 worker）下防抖→脏状态→弹窗的级联可能超过默认 1s，放宽到 5s。
@@ -617,10 +638,12 @@ describe('Workbench 全流程', () => {
     const generateFn = vi.fn(instantGenerate);
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
     fireEvent.click(screen.getByText(zhCN.workbench.editTab));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.editor.brush }));
     const canvas = screen.getByLabelText(zhCN.editor.canvasAria);
     fireEvent.pointerDown(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 91 });
     fireEvent.pointerUp(canvas, { clientX: 320, clientY: 260, pointerType: 'mouse', pointerId: 91 });
@@ -646,6 +669,7 @@ describe('Workbench 全流程', () => {
     };
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
@@ -666,6 +690,7 @@ describe('Workbench 全流程', () => {
     };
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
@@ -677,7 +702,7 @@ describe('Workbench 全流程', () => {
     ).toBe('0'));
   });
 
-  it('纯参数重生成失败释放完整原图，但回滚参数并保留图纸和本地生成源', async () => {
+  it('纯参数重生成失败保留完整原图，回滚参数并保留图纸和本地生成源', async () => {
     let calls = 0;
     const generateFn: typeof runGenerate = (request, onProgress): GenerateTask => {
       calls += 1;
@@ -695,14 +720,16 @@ describe('Workbench 全流程', () => {
     };
     render(<Workbench storage={storage} imageDecoder={decoder} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
     const clears = vi.mocked(decoder.clear).mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await screen.findByText(zhCN.workbench.saved);
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     const originalSource = [...storage.sources.values()][0];
 
-    const widthInput = screen.getByRole('spinbutton', { name: zhCN.params.targetWidth }) as HTMLInputElement;
+    const widthInput = showControl(zhCN.params.targetWidth) as HTMLInputElement;
     // Drive the documented 300 ms debounce explicitly; full coverage under
     // concurrent browser/build load must not race Testing Library's 1 s clock.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -714,17 +741,19 @@ describe('Workbench 全流程', () => {
 
     await screen.findByText(zhCN.workbench.generateFailed);
     await waitFor(() => expect(
-      (screen.getByRole('spinbutton', { name: zhCN.params.targetWidth }) as HTMLInputElement).value,
+      (showControl(zhCN.params.targetWidth) as HTMLInputElement).value,
     ).toBe('100'));
     expect(screen.getByText(/共 10000 粒/)).toBeTruthy();
     expect(screen.queryByText(/共 400 粒/)).toBeNull();
-    expect(vi.mocked(decoder.clear).mock.calls.length).toBeGreaterThan(clears);
+    expect(vi.mocked(decoder.clear).mock.calls.length).toBe(clears);
     expect(screen.getByRole('button', { name: zhCN.crop.title })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
-    expect(screen.getByText(zhCN.workbench.cropSourceMissing)).toBeInTheDocument();
+    expect(screen.getByLabelText(zhCN.crop.ariaCropCanvas)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:zhCN.crop.cancel}));
     expect(widthInput).not.toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await screen.findByText(zhCN.workbench.saved);
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     expect([...storage.sources.values()][0]).toEqual(originalSource);
   });
 
@@ -736,6 +765,7 @@ describe('Workbench 全流程', () => {
     });
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
 
@@ -766,16 +796,17 @@ describe('Workbench 全流程', () => {
     try {
       render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
       fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
       await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
       await screen.findByText(/共 10000 粒/);
-      fireEvent.click(screen.getByRole('button', { name: '导出' }));
+      fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
       await waitFor(() => expect(screen.getByRole('button', { name: zhCN.share.button })).not.toBeDisabled());
-      fireEvent.click(screen.getByRole('button', { name: '参数' }));
-      const widthInput = screen.getByRole('spinbutton', { name: zhCN.params.targetWidth });
+      fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '参数' }));
+      const widthInput = showControl(zhCN.params.targetWidth);
       fireEvent.change(widthInput, { target: { value: '20' } });
       fireEvent.blur(widthInput);
       await screen.findByRole('button', { name: zhCN.workbench.cancel });
-      fireEvent.click(screen.getByRole('button', { name: '导出' }));
+      fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
       const share = screen.getByRole('button', { name: zhCN.share.button });
       expect(share).toBeDisabled();
       expect(share).toHaveAttribute('title', zhCN.share.generationInProgress);
@@ -835,9 +866,10 @@ describe('Workbench 项目操作栏', () => {
         return element as HTMLElement;
       });
       expect(within(actions).getByRole('button', { name: zhCN.workbench.save })).toBeTruthy();
-      expect(within(actions).getByRole('button', { name: zhCN.workbench.restart })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button',{name:zhCN.nav.more}));
+      expect(screen.getByRole('button', { name: zhCN.workbench.restart })).toBeTruthy();
       expect(screen.queryByText('a@b.com')).toBeNull();
-      expect(screen.queryByRole('button', { name: zhCN.nav.more })).toBeNull();
+      expect(screen.queryByRole('link', { name: zhCN.nav.login })).toBeNull();
     } finally {
       vi.unstubAllGlobals();
       resetAuthStatusCache();
@@ -851,6 +883,7 @@ describe('Workbench 本地保存', () => {
     const storage = new FakeStorage();
     const first = render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
@@ -865,6 +898,7 @@ describe('Workbench 本地保存', () => {
     expect(storedProject.projectJson).not.toContain('rgba');
     expect(storage.sourceReplaceCount).toBe(1);
 
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     fireEvent.change(screen.getByLabelText(zhCN.workbench.designName), { target: { value: '只改名称' } });
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await waitFor(() => expect(storage.designs.get(savedId)?.name).toBe('只改名称'));
@@ -877,7 +911,7 @@ describe('Workbench 本地保存', () => {
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.title }));
     expect(screen.getByText(zhCN.workbench.cropSourceMissing)).toBeInTheDocument();
     expect(screen.queryByText(zhCN.workbench.sourceRequired)).toBeNull();
-    const widthInput = screen.getByRole('spinbutton', { name: zhCN.params.targetWidth }) as HTMLInputElement;
+    const widthInput = showControl(zhCN.params.targetWidth) as HTMLInputElement;
     expect(widthInput.disabled).toBe(false);
     fireEvent.change(widthInput, { target: { value: '20' } });
     fireEvent.blur(widthInput);
@@ -888,6 +922,7 @@ describe('Workbench 本地保存', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
     storage.quotaExceeded = true;
@@ -1020,7 +1055,7 @@ describe('Workbench 本地保存', () => {
     const nameInput = await renderRestored(storage);
     pushMock.mockClear();
     fireEvent.change(nameInput, { target: { value: '离开前保存' } });
-    fireEvent.click(screen.getAllByRole('link', { name: zhCN.nav.designs })[0]);
+    fireEvent.click(screen.getAllByRole('link', { name: '我的' })[0]);
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/designs'));
     expect([...storage.designs.values()][0].name).toBe('离开前保存');
@@ -1051,14 +1086,15 @@ describe('Workbench 本地保存', () => {
     storage.designs.set('id-last', record('id-last', original));
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     await screen.findByDisplayValue('保留身份');
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
 
     clickGuestRestart();
     fireEvent.change(await screen.findByLabelText(zhCN.upload.inputLabel), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.useWholeImage}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
 
-    await waitFor(() => expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).not.toBeDisabled());
+    await waitFor(() => expect(showControl(zhCN.params.targetWidth)).not.toBeDisabled());
     expect(screen.getByDisplayValue('保留身份')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await waitFor(() => expect(storage.designs.get('id-last')?.name).toBe('保留身份'));
@@ -1082,6 +1118,7 @@ describe('Workbench 本地保存', () => {
     clickGuestRestart();
     fireEvent.change(await screen.findByLabelText(zhCN.upload.inputLabel), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.useWholeImage}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
 
@@ -1094,7 +1131,7 @@ describe('Workbench 本地保存', () => {
     render(<Workbench storage={storage} generateFn={instantGenerate} />);
     await screen.findByDisplayValue('取消重绑生成');
     expect(screen.getByText(zhCN.workbench.sourceRequired)).toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
   });
 
   it('跟拼进度存本机并在重新打开后恢复（G-1）', async () => {
@@ -1216,6 +1253,7 @@ describe('Workbench 本地保存', () => {
 describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   it('把 13 套内置色板按品牌与系列完整展示，主文案不泄露稳定 ID', async () => {
     render(<Workbench storage={new FakeStorage()} />);
+    openBlank();
     await screen.findByLabelText(zhCN.params.brand);
 
     const brandSelect = selectPaletteBrand();
@@ -1241,6 +1279,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   it('不上传图片也能进入工作台：空白图纸落在修补页签，参数锁定但可导出', async () => {
     render(<Workbench storage={new FakeStorage()} />);
     // 上传页同时给出空白起稿入口：默认 1 板，摘要说清尺寸，唯一主按钮「创建空白图纸」
+    openBlank();
     const blank = await screen.findByRole('button', { name: zhCN.workbench.blankCreate });
     expect(screen.getByRole('radio', { name: zhCN.workbench.blankBoardsOption(1) })).toBeChecked();
     expect(screen.getByText(/将创建 29 × 29 格/)).toBeTruthy();
@@ -1249,9 +1288,9 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     // 进入工作台，且直接在「修补」页签（空白图纸的第一步一定是画）
     await waitFor(() => expect(screen.getByRole('tab', { name: zhCN.workbench.editTab })).toHaveAttribute('aria-selected', 'true'));
     // 没有生成源 → 参数锁定
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
     // 但导出可用（空图纸导出按钮会自行判空）
-    fireEvent.click(screen.getByRole('button', { name: '导出' }));
+    fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
     expect(screen.getByRole('button', { name: '下载 PNG' })).toBeVisible();
   });
 
@@ -1259,6 +1298,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} />);
 
+    openBlank();
     await screen.findByLabelText(zhCN.params.brand);
     await chooseValue(zhCN.params.brand, '优肯 Artkal');
     expect(selectPaletteSeries().value).toBe('builtin:pcd:artkal-c-197-official@178dafbc9e77d3de556550dbd058270200129186');
@@ -1267,6 +1307,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     expect(profileSelect.value).toBe('2.6mm-50');
     await chooseValue(zhCN.params.boardProfile, '2.6mm-52');
     expect(screen.getByText(/将创建 52 × 52 格/)).toBeTruthy();
+    openBlank();
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.blankCreate }));
     await screen.findByRole('tab', { name: zhCN.workbench.editTab });
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
@@ -1285,6 +1326,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const generateFn = vi.fn(instantGenerate);
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
@@ -1370,12 +1412,12 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     await waitFor(() => expect(kit.value).toBe('24'));
 
     const imported = savedProject('导入设计', '2026-08-15T12:00:00.000Z');
-    const file = new File([JSON.stringify(imported)], 'import.doupu.json', { type: 'application/json' });
-    fireEvent.click(screen.getByRole('button', { name: '导出' }));
+    const file = new File([JSON.stringify(imported)], 'import.beadhue.json', { type: 'application/json' });
+    fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
     fireEvent.change(screen.getByLabelText(zhCN.project.importInputLabel), { target: { files: [file] } });
 
     await screen.findByDisplayValue('导入设计');
-    fireEvent.click(screen.getByRole('button', { name: '参数' }));
+    fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '参数' }));
     expect((selectField(zhCN.params.kitTier)).value).toBe('0');
   });
 
@@ -1383,6 +1425,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     await screen.findByText(/共 10000 粒/);
 
@@ -1390,9 +1433,11 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     await waitFor(() => expect((selectField(zhCN.params.kitTier)).value).toBe('24'));
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
     await waitFor(() => expect(storage.designs.size).toBe(1));
+    const summary=screen.queryByRole('button',{name:'继续编辑'}); if(summary) fireEvent.click(summary);
     clickGuestRestart();
 
     await screen.findByLabelText(zhCN.upload.inputLabel);
+    openBlank();
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.blankCreate }));
     await screen.findByRole('tab', { name: zhCN.workbench.editTab });
     expect((selectField(zhCN.params.kitTier)).value).toBe('0');
@@ -1422,6 +1467,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       });
 
       fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
       await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
       await screen.findByText(/共 7744 粒/);
       expect(selectPaletteBrand().value).toBe('优肯 Artkal');
@@ -1455,6 +1501,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       expect((JSON.parse(saved!.projectJson) as ProjectFile).boardProfile).toBe('2.6mm-50');
     });
 
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.undoRegeneration }));
     expect(profile.value).toBe('5mm-29');
     expect(screen.getByText(zhCN.workbench.sourceRequired)).toBeTruthy();
@@ -1487,6 +1534,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       });
     });
 
+    fireEvent.click(await screen.findByRole('button',{name:'继续编辑'}));
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.undoRegeneration }));
     expect(profile.value).toBe('5mm-29');
     expect(selectPaletteBrand().value).toBe('MARD');
@@ -1494,73 +1542,26 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   });
 });
 
-describe('Workbench 移动沉浸工作区', () => {
-  it('跟拼进入后自动聚焦并隔离背景，退出恢复背景和页面滚动', async () => {
-    const restoreViewport = mockMobileViewport();
-    window.history.replaceState(null, '', '/app');
-    const previousOverflow = document.body.style.overflow;
+describe('Workbench B 移动工作区', () => {
+  it('跟拼和编辑共用内联工作台，系统返回恢复预览并保持路由', async () => {
+    const restoreViewport=mockMobileViewport();
+    window.history.replaceState(null,'','/app');
     try {
-      const storage = new FakeStorage();
-      await renderRestored(storage);
-      const trigger = await screen.findByRole('tab', { name: zhCN.stitch.tab });
-      trigger.focus(); fireEvent.click(trigger);
-      const workspace = await screen.findByTestId('mobile-immersive-workspace');
-      const back = within(workspace).getByRole('button', { name: /返回预览/ });
-      expect(workspace.contains(document.activeElement)).toBe(true);
-      expect(trigger.closest('[inert]')).not.toBeNull();
-      back.focus(); fireEvent.keyDown(back, { key: 'Tab', shiftKey: true });
-      expect(workspace.contains(document.activeElement)).toBe(true);
-      expect(document.activeElement).not.toBe(back);
-      fireEvent.click(back);
-      await waitFor(() => expect(screen.queryByTestId('mobile-immersive-workspace')).toBeNull());
-      expect(trigger.closest('[inert]')).toBeNull();
-      expect(document.body.style.overflow).toBe(previousOverflow);
-    } finally { restoreViewport(); cleanup(); }
-  });
-  it('进入编辑时压入同路由界面状态，顶部返回只退出到普通预览', async () => {
-    const restoreViewport = mockMobileViewport();
-    window.history.replaceState(null, '', '/app');
-    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
-    try {
-      const storage = new FakeStorage();
-      await renderRestored(storage);
-      const editTab = await screen.findByRole('tab', { name: zhCN.workbench.editTab });
-      fireEvent.click(editTab);
-
-      const workspace = await screen.findByTestId('mobile-immersive-workspace');
-      expect(workspace).toBeTruthy();
-      expect(window.location.pathname).toBe('/app');
+      await renderRestored(new FakeStorage());
+      expect(screen.getByRole('tab',{name:zhCN.workbench.editTab})).toHaveAttribute('aria-selected','true');
+      expect(screen.queryByRole('dialog')).toBeNull();
+      fireEvent.click(screen.getByRole('tab',{name:zhCN.stitch.tab}));
+      await screen.findByRole('button',{name:zhCN.stitch.markRowDone});
       expect(window.history.state).toBeTruthy();
-
-      fireEvent.click(within(workspace).getByRole('button', { name: /返回预览/ }));
-      await waitFor(() => expect(screen.queryByTestId('mobile-immersive-workspace')).toBeNull());
-      expect(back).toHaveBeenCalledOnce();
-      expect(screen.getByRole('tab', { name: zhCN.workbench.previewTab })).toHaveAttribute('aria-selected', 'true');
-    } finally {
-      back.mockRestore();
-      restoreViewport();
-      cleanup();
-    }
-  });
-
-  it('系统返回事件先退出沉浸跟拼，不离开 /app', async () => {
-    const restoreViewport = mockMobileViewport();
-    window.history.replaceState(null, '', '/app');
-    try {
-      const storage = new FakeStorage();
-      await renderRestored(storage);
-      fireEvent.click(await screen.findByRole('tab', { name: zhCN.stitch.tab }));
-      await screen.findByTestId('mobile-immersive-workspace');
-
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
-
-      await waitFor(() => expect(screen.queryByTestId('mobile-immersive-workspace')).toBeNull());
+      act(()=>window.dispatchEvent(new PopStateEvent('popstate',{state:null})));
+      await waitFor(()=>expect(screen.getByRole('tab',{name:zhCN.workbench.previewTab})).toHaveAttribute('aria-selected','true'));
       expect(window.location.pathname).toBe('/app');
-      expect(screen.getByRole('tab', { name: zhCN.workbench.previewTab })).toHaveAttribute('aria-selected', 'true');
-    } finally {
-      restoreViewport();
-      cleanup();
-    }
+      fireEvent.click(screen.getByRole('tab',{name:zhCN.workbench.editTab}));
+      const back=vi.spyOn(window.history,'back').mockImplementation(()=>undefined);
+      fireEvent.click(screen.getByRole('button',{name:'返回预览'}));
+      expect(back).toHaveBeenCalledOnce(); back.mockRestore();
+      expect(screen.getByRole('tab',{name:zhCN.workbench.previewTab})).toHaveAttribute('aria-selected','true');
+    } finally {restoreViewport();cleanup();}
   });
 });
 
@@ -1568,6 +1569,7 @@ describe('Workbench 编辑与导出接缝', () => {  it('编辑模式落笔后 o
     const storage = new FakeStorage();
     await renderRestored(storage);
     fireEvent.click(screen.getByText(zhCN.workbench.editTab));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.editor.brush }));
     const canvas = screen.getByLabelText(zhCN.editor.canvasAria);
 
     vi.useFakeTimers();
@@ -1650,7 +1652,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
 
     // 项目文件不含原图：参数控件锁定（改参数要重新采样原图），
     // 但色板可以换——走图纸级重映射，保留手工修补（H-1）。
-    expect(screen.getByRole('spinbutton', { name: zhCN.params.targetWidth })).toBeDisabled();
+    expect(showControl(zhCN.params.targetWidth)).toBeDisabled();
     expect(screen.getByText(zhCN.workbench.sourceRequired)).toBeTruthy();
     expect(brandSelect).not.toBeDisabled();
     await chooseValue(zhCN.params.series, 'custom:pal-same-colors');
@@ -2014,8 +2016,8 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
       await act(async () => { await conflictWriteStarted; });
 
       const imported = savedProject('新会话项目', '2026-08-15T12:00:00.000Z');
-      const file = new File([JSON.stringify(imported)], 'new-session.doupu.json', { type: 'application/json' });
-      fireEvent.click(screen.getByRole('button', { name: '导出' }));
+      const file = new File([JSON.stringify(imported)], 'new-session.beadhue.json', { type: 'application/json' });
+      fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
       fireEvent.change(screen.getByLabelText(zhCN.project.importInputLabel), { target: { files: [file] } });
       await screen.findByDisplayValue('新会话项目');
 
@@ -2274,8 +2276,8 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
       await act(async () => { await recordsReadStarted; });
 
       const imported = savedProject('新会话项目', '2026-08-15T12:00:00.000Z');
-      const file = new File([JSON.stringify(imported)], 'new-session.doupu.json', { type: 'application/json' });
-      fireEvent.click(screen.getByRole('button', { name: '导出' }));
+      const file = new File([JSON.stringify(imported)], 'new-session.beadhue.json', { type: 'application/json' });
+      fireEvent.click(within(document.querySelector('.beadhue-settings') as HTMLElement).getByRole('button', { name: '导出' }));
       fireEvent.change(screen.getByLabelText(zhCN.project.importInputLabel), { target: { files: [file] } });
       await screen.findByDisplayValue('新会话项目');
 

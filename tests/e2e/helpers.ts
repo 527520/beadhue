@@ -58,7 +58,7 @@ export async function waitForMailLink(kind: 'verify' | 'reset', email: string): 
 export async function waitHydrated(page: Page): Promise<void> {
   await page.waitForFunction(() => document.readyState === 'complete');
   if (page.url().startsWith(BASE_URL)) {
-    await page.waitForFunction(() => document.documentElement.dataset.doupuHydrated === 'true', undefined, { timeout: 15_000 });
+    await page.waitForFunction(() => document.documentElement.dataset.beadhueHydrated === 'true', undefined, { timeout: 15_000 });
   }
 }
 
@@ -104,7 +104,7 @@ export async function attachSubmissionOriginal(page: Page, filePath: string): Pr
   await waitHydrated(page);
   await page.locator('.submission-original input[type="file"]').setInputFiles(filePath);
   await expect(page.locator('.submission-original-card')).toBeVisible();
-  await page.getByRole('checkbox', { name: /同意将上述原图上传/ }).check();
+  await page.getByRole('checkbox', { name: /本人同意按《隐私政策》/ }).check();
 }
 
 /**

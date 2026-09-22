@@ -5,12 +5,12 @@ import ClientReadyMarker from './ClientReadyMarker';
 
 afterEach(() => {
   cleanup();
-  delete document.documentElement.dataset.doupuHydrated;
+  delete document.documentElement.dataset.beadhueHydrated;
 });
 
 describe('ClientReadyMarker', () => {
   it('marks the document only after the client effect has run', async () => {
     render(<ClientReadyMarker />);
-    await waitFor(() => expect(document.documentElement.dataset.doupuHydrated).toBe('true'));
+    await waitFor(() => expect(document.documentElement.dataset.beadhueHydrated).toBe('true'));
   });
 });

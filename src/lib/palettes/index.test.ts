@@ -314,7 +314,7 @@ describe('内置色板目录', () => {
 
   it('漫漫经典版来源摘要披露 S7 本地纠错', () => {
     expect(getBuiltinPalette('漫漫').source.qualitySummary).toContain(
-      '上游记为 S4，豆谱按确认修正为 S7',
+      '上游记为 S4，豆色绘按确认修正为 S7',
     );
   });
 });

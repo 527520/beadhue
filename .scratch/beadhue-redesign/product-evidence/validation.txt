@@ -1,0 +1,56 @@
+2026-09-22 BeadHue local validation
+
+Full-suite first attempt: 205 passed files, 1 failed file; 1601 passed, 4 timed out at 5000ms, 13 skipped. Build/browser work overlapped. No assertion failures.
+
+Final npm test (unchanged command and timeouts):
+
+> beadhue@0.5.0 test
+> vitest run --no-file-parallelism --maxWorkers=1 --project unit --project serial --project integration
+
+
+ RUN  v4.1.10 /Users/wuqian/.codex/worktrees/beadhue-redesign/doupu
+
+
+ Test Files  206 passed (206)
+      Tests  1606 passed | 13 skipped (1619)
+   Start at  19:14:29
+   Duration  329.59s (transform 4.00s, setup 24.01s, import 33.81s, tests 215.08s, environment 39.52s)
+
+Three-browser key flow final result:
+
+  ✓   9 [webkit] › tests/e2e/17-beadhue-redesign.spec.ts:41:5 › B: discover → crop → neutral editor/reference → save/export → restore, at four widths (7.3s)
+  ✓  10 [webkit] › tests/e2e/17-beadhue-redesign.spec.ts:147:5 › B: user pages retain the approved palette and fit phone/tablet/desktop (12.9s)
+  ✓  11 [webkit] › tests/e2e/17-beadhue-redesign.spec.ts:198:5 › B: private full original sync restores in a separate browser context without regenerating (7.5s)
+  ✓  12 [webkit] › tests/e2e/17-beadhue-redesign.spec.ts:268:5 › B: shared pattern uses the approved detail layout; admin buttons stay flat (8.2s)
+
+  12 passed (2.3m)
+
+Additional originals regression:
+
+ Test Files  3 passed (3)
+      Tests  19 passed (19)
+   Start at  18:59:03
+   Duration  27.80s (transform 713ms, setup 839ms, import 2.19s, tests 22.97s, environment 1.30s)
+
+
+Additional v3/Cookie compatibility:
+
+ Test Files  2 passed (2)
+      Tests  36 passed (36)
+   Start at  19:10:20
+   Duration  21.93s (transform 731ms, setup 814ms, import 1.97s, tests 18.65s, environment 1ms)
+
+
+npm run lint: exit 0
+
+npm run typecheck: exit 0
+
+npm run fonts:check: 63 files verified
+
+npm run brand:check: passed
+
+git diff --check: passed
+
+Not verified: real PostgreSQL upgrade/concurrency, real devices, live COS, deployment.
+
+BEADHUE_E2E_BUILD=1 npm run build: exit 0 (final flat-button source).

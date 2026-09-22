@@ -138,7 +138,7 @@ describe('public community query boundary', () => {
   });
 
   it('parses filters, resolves merged tags, and never exposes internal user ids', async () => {
-    expect(parseCommunityListUrl('https://doupu.test/community?q=%E6%9F%A5%E8%AF%A2&author=Alice&tag=old-pets&boardProfile=5mm-29&palette=MARD&from=2026-09-04&to=2026-09-06&sort=popular'))
+    expect(parseCommunityListUrl('https://beadhue.test/community?q=%E6%9F%A5%E8%AF%A2&author=Alice&tag=old-pets&boardProfile=5mm-29&palette=MARD&from=2026-09-04&to=2026-09-06&sort=popular'))
       .toMatchObject({ q: '查询', author: 'Alice', tag: 'old-pets', boardProfile: '5mm-29', palette: 'MARD', sort: 'popular' });
 
     const filtered = await listPublicCommunityWorks(db, {

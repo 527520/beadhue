@@ -32,6 +32,7 @@ export interface ImageCropperProps {
   onCancel: () => void;
   disabled?: boolean;
   fitViewport?: boolean;
+  presentation?: 'default' | 'beadhue';
 }
 
 type RatioMode = 'free' | 'square' | 'original';
@@ -151,7 +152,7 @@ async function blitDecodedPreview(
   return canvas;
 }
 
-export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled = false, fitViewport = false }: ImageCropperProps) {
+export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled = false, fitViewport = false, presentation = 'default' }: ImageCropperProps) {
   const naturalWidth = image.naturalWidth ?? image.width;
   const naturalHeight = image.naturalHeight ?? image.height;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -202,7 +203,7 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
   }, []);
 
   const previewWidthLimit = Math.max(1, Math.min(MAX_DISPLAY_WIDTH, containerWidth ?? MAX_DISPLAY_WIDTH));
-  const previewHeightLimit = fitViewport ? Math.max(1, Math.min(MAX_DISPLAY_HEIGHT, containerHeight ?? MAX_DISPLAY_HEIGHT)) : MAX_DISPLAY_HEIGHT;
+  const previewHeightLimit = presentation === 'beadhue' ? 370 : fitViewport ? Math.max(1, Math.min(MAX_DISPLAY_HEIGHT, containerHeight ?? MAX_DISPLAY_HEIGHT)) : MAX_DISPLAY_HEIGHT;
   // 解码器已经给出有界预览（最长边 512）。展示尺寸只做 CSS 缩放，
   // 不要再走 JS 逐像素重采样——打开裁剪弹层时那次循环会超过 50ms。
   const fitted = fitCropPreviewSize(image.width, image.height, previewWidthLimit, previewHeightLimit);
@@ -534,10 +535,10 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
   const current = clampCropRect(rect, naturalWidth, naturalHeight);
 
   return (
-    <div className="studio-panel crop-studio">
+    <div className={presentation === 'beadhue' ? "form-card crop-studio beadhue-crop" : "studio-panel crop-studio"}>
       <div className="crop-studio-heading">
-        <div><span className="studio-eyebrow">{crop.settingsKicker}</span><h2>{crop.title}</h2></div>
-        <div role="group" aria-label={crop.ariaRatioMode} className="crop-ratio-control">
+        <div><span className="studio-eyebrow">{presentation === 'beadhue' ? zhCN.beadhue.cropEyebrow : crop.settingsKicker}</span><h2>{presentation === 'beadhue' ? zhCN.beadhue.cropTitle : crop.title}</h2></div>
+        {presentation === 'beadhue' ? <span className="pill">{zhCN.beadhue.optionalCrop}</span> : <div role="group" aria-label={crop.ariaRatioMode} className="crop-ratio-control">
           {(
             [
               ['free', crop.modeFree],
@@ -556,9 +557,10 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
               {label}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
+      {presentation === 'beadhue' && <p className="muted beadhue-crop-intro">{zhCN.beadhue.cropIntro}</p>}
       <div ref={containerRef} className="crop-canvas-wrap">
         <canvas
           ref={canvasRef}
@@ -585,7 +587,12 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
         />
       </div>
 
-      <div className="crop-meta">
+      {presentation === 'beadhue' && <><label className="row between" htmlFor="crop-scale"><span>{zhCN.beadhue.cropSize}</span><span className="mono">{Math.round(current.width/naturalWidth*100)}%</span></label><input id="crop-scale" type="range" min="10" max="100" value={Math.round(current.width/naturalWidth*100)} disabled={disabled} onChange={event=>{
+        const ratio=Number(event.target.value)/100;
+        const width=naturalWidth*ratio,height=naturalHeight*ratio;
+        setRect(clampCropRect({x:current.x+(current.width-width)/2,y:current.y+(current.height-height)/2,width,height},naturalWidth,naturalHeight));
+      }}/><p className="note">{zhCN.beadhue.cropHint}</p></>}
+      <div className={presentation === 'beadhue' ? "sr-only" : "crop-meta"}>
         <p role="status">
           <span>{crop.positionLabel(Math.round(current.x), Math.round(current.y))}</span>
           <span>{crop.sizeLabel(current.width, current.height)}</span>
@@ -596,7 +603,7 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
       </div>
 
       <div className="crop-actions">
-        <button
+        {presentation !== 'beadhue' && <><button
           type="button"
           onClick={onCancel}
           className="btn-outline"
@@ -610,9 +617,9 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
           className="btn-outline"
         >
           {crop.useWholeImage}
-        </button>
+        </button></>}
         <button type="button" disabled={disabled} onClick={confirm} className="btn-primary">
-          {crop.confirm}
+          {presentation === 'beadhue' ? zhCN.beadhue.generate : crop.confirm}
         </button>
       </div>
     </div>

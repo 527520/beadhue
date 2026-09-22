@@ -2,14 +2,14 @@
 
 /**
  * 首页三步引导（spec §F10）：无会话且未手动关闭时显示。
- * 关闭状态存 localStorage（doupu_onboarding_dismissed）；登录态由 useAuthStatus 提供（J-1）。
+ * 关闭状态存 localStorage（beadhue_onboarding_dismissed）；登录态由 useAuthStatus 提供（J-1）。
  */
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { zhCN } from '@/messages/zh-CN';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
 
-const DISMISS_KEY = 'doupu_onboarding_dismissed';
+const DISMISS_KEY = 'beadhue_onboarding_dismissed';
 
 export default function OnboardingGuide() {
   const t = zhCN.onboarding;

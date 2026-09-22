@@ -17,18 +17,20 @@ async function post(request: Request, { params }: { params: Promise<{ id: string
   const body = await readJson(request, 4 * 1024);
   if (!body.ok) return body.response;
   const { expectedVersion } = z.object({ expectedVersion: z.number().int().positive() }).strict().parse(body.data);
+  let purgeKeys: string[] = [];
   const withdraw = async (db: AnyDatabase) => {
     const revision = await withdrawCommunitySubmission(db, { actor, revisionId, expectedVersion });
-    return { revisionId: revision.id, status: revision.status, version: revision.version, purgeKeys: revision.purgeKeys };
+    purgeKeys = revision.purgeKeys;
+    return { revisionId: revision.id, status: revision.status, version: revision.version };
   };
   const key = request.headers.get('idempotency-key');
   const result = key === null ? await withdraw(getDb()) : (await executeIdempotently(getDb(), {
     actorUserId: actor.userId, scope: `community:withdraw-revision:${revisionId}`, key,
     request: { expectedVersion }, capability: 'community:interact',
   }, withdraw)).value;
-  const { purgeKeys, ...response } = result;
+
   purgeOriginalsSoon(getDb(), getOriginalStore(), purgeKeys);
-  return okJson(response);
+  return okJson(result);
 }
 
 export const POST = withApiErrors(post);

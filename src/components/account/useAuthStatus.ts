@@ -24,7 +24,7 @@ type Settled = Exclude<AuthStatus, { kind: 'loading' }>;
 
 /** 页面级共享：同一次加载里多个组件只发一次请求。 */
 let inflight: Promise<Settled> | null = null;
-const AUTH_STATUS_CHANGED = 'doupu:auth-status-changed';
+const AUTH_STATUS_CHANGED = 'beadhue:auth-status-changed';
 
 async function probe(): Promise<Settled> {
   try {

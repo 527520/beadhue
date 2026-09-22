@@ -56,7 +56,7 @@ describe('db models（PGlite）', () => {
       tokenHash: 'token-b',
       expiresAt: new Date(Date.now() + 3600_000),
     });
-    await db.insert(designs).values({ id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', userId, name: 'd', project: { format: 'doupu-project' } });
+    await db.insert(designs).values({ id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', userId, name: 'd', project: { format: 'beadhue-project' } });
     await db.insert(palettes).values({ id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', userId, name: 'p', colors: [] });
 
     await db.delete(users).where(eq(users.id, userId));
@@ -75,7 +75,7 @@ describe('db models（PGlite）', () => {
     const userId = await insertUser('json@example.com');
     const id = 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13';
     const project = {
-      format: 'doupu-project',
+      format: 'beadhue-project',
       version: 1,
       name: '测试',
       pattern: { width: 2, height: 2, cells: [{ hex: '#FF0000', code: 'A', transparent: false }] },

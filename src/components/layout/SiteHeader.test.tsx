@@ -1,59 +1,24 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { expect, it, vi } from 'vitest';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import type { MouseEvent } from 'react';
 import SiteHeader from './SiteHeader';
-
-describe('SiteHeader', () => {
-  it('所有页面的更多入口提供色板、帮助和隐私，并使用离开保护', async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn((event: MouseEvent<HTMLAnchorElement>, _href: string) => event.preventDefault());
-    render(<SiteHeader title="工作台" currentPath="/app" onNavigate={onNavigate} />);
-    await user.click(screen.getByRole('button', { name: '更多入口' }));
-    const panel = within(screen.getByTestId('site-overflow-panel'));
-    expect(panel.getByRole('link', { name: '色板管理' })).toHaveAttribute('href', '/palettes');
-    expect(panel.getByRole('link', { name: '帮助与教程' })).toHaveAttribute('href', '/help');
-    await user.click(panel.getByRole('link', { name: '隐私与分析偏好' }));
-    expect(onNavigate.mock.calls.at(-1)?.[1]).toBe('/privacy');
-  });
-  it('提供唯一页面标题、主导航和移动端可展开的操作入口', async () => {
-    const user = userEvent.setup();
-    render(
-      <SiteHeader
-        title="我的设计"
-        currentPath="/designs"
-        primaryActions={<button type="button">新建设计</button>}
-        overflowActions={<button type="button">退出登录</button>}
-      />,
-    );
-
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('我的设计');
-    expect(screen.getByRole('button', { name: '新建设计' })).toBeTruthy();
-    const more = screen.getByRole('button', { name: '更多入口' });
-    expect(more).toHaveAttribute('aria-expanded', 'false');
-    await user.click(more);
-    expect(more).toHaveAttribute('aria-expanded', 'true');
-    expect(within(screen.getByTestId('site-overflow-panel')).getByRole('button', { name: '退出登录' })).toBeTruthy();
-    expect(screen.getAllByRole('link', { name: '我的设计' }).some((link) => link.getAttribute('aria-current') === 'page')).toBe(true);
-  });
-
-  it('所有外壳导航都经过离开保护回调', async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn((event: MouseEvent<HTMLAnchorElement>, _href: string) => event.preventDefault());
-    const { container } = render(<SiteHeader title="工作台" currentPath="/app" onNavigate={onNavigate} />);
-
-    for (const selector of [
-      '.workspace-sidebar .brand-lockup',
-      '.workspace-privacy-note',
-      '.workspace-profile',
-      '.workspace-mobile-brand .brand-lockup',
-    ]) {
-      await user.click(container.querySelector(selector) as HTMLAnchorElement);
-    }
-
-    expect(onNavigate.mock.calls.map((call) => call[1])).toEqual(['/', '/privacy', '/account', '/']);
-  });
-
+vi.mock('@/components/account/useAuthStatus',()=>({useAuthStatus:()=>({kind:'guest'})}));
+it('B primary and secondary navigation all respect the editor leave guard',()=>{
+ const guard=vi.fn((event:MouseEvent<HTMLAnchorElement>,_href:string)=>event.preventDefault());
+ const {container}=render(<SiteHeader title="工作台" currentPath="/app" onNavigate={guard}/>);
+ const links=Array.from(container.querySelectorAll<HTMLAnchorElement>('a'));
+ for(const link of links)fireEvent.click(link);
+ expect(guard.mock.calls.map(call=>call[1])).toEqual(links.map(link=>link.getAttribute('href')));
+ const nav=within(container.querySelector('.main-nav') as HTMLElement);
+ expect(nav.getByRole('link',{name:'创作'})).toHaveAttribute('aria-current','page');
+ expect(screen.getByRole('link',{name:'色板'})).toHaveAttribute('href','/palettes');
+ expect(screen.getByRole('link',{name:'帮助'})).toHaveAttribute('href','/help');
+});
+it('retains a single heading and exposes secondary actions through the B overflow',()=>{
+ render(<SiteHeader title="我的设计" currentPath="/designs" primaryActions={<button>新建设计</button>} overflowActions={<button>退出登录</button>}/>);
+ expect(screen.getAllByRole('heading',{level:1})).toHaveLength(1);
+ expect(screen.getByRole('button',{name:'新建设计'})).toBeVisible();
+ fireEvent.click(screen.getByRole('button',{name:'更多操作'}));
+ expect(screen.getByRole('button',{name:'退出登录'})).toBeVisible();
 });

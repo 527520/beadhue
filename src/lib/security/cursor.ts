@@ -6,9 +6,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * 密钥由生产必填的 ANALYTICS_IP_HMAC_KEY 派生一个专用子密钥，不与其他用途混用原始密钥。
  */
 function signingKey(env: NodeJS.ProcessEnv = process.env): Buffer {
-  const root = env.ANALYTICS_IP_HMAC_KEY ?? (env.NODE_ENV === 'production' ? '' : 'doupu-local-analytics-hmac-key-not-for-production');
+  const root = env.ANALYTICS_IP_HMAC_KEY ?? (env.NODE_ENV === 'production' ? '' : 'beadhue-local-analytics-hmac-key-not-for-production');
   if (root.length < 32) throw new Error('ANALYTICS_IP_HMAC_KEY is not configured');
-  return createHmac('sha256', root).update('doupu-community-cursor-v1').digest();
+  return createHmac('sha256', root).update('beadhue-community-cursor-v1').digest();
 }
 
 function signature(payload: string, env?: NodeJS.ProcessEnv): string {

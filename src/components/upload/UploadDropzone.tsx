@@ -142,7 +142,7 @@ export function UploadDropzone({ onValid, disabled = false, prominent = false }:
         ) : (
           <>
             <span className="upload-dropzone-icon"><Icon name="upload" size={24} /></span>
-            <p><strong>{dragging ? upload.dragActive : upload.hint}</strong><small>{upload.formatHint}</small></p>
+            <h2>{dragging ? upload.dragActive : zhCN.beadhue.uploadTitle}</h2><p>{zhCN.beadhue.uploadHint}<br/><small>{upload.formatHint}</small></p><span className="button primary">{zhCN.beadhue.chooseImage}</span>
           </>
         )}
       </div>

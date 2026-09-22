@@ -180,7 +180,7 @@ describe('PostgreSQL 16 community and governance concurrency', () => {
     sessionToken = (await createSession(db, actor.userId)).token;
     const designId = randomUUID();
     await db.insert(designs).values({ id: designId, userId: actor.userId, name: '并发投稿来源', payloadBytes: 1, project: {
-      format: 'doupu-project', version: 3, name: '并发投稿来源', engineVersion: snapshot.engineVersion,
+      format: 'beadhue-project', version: 3, name: '并发投稿来源', engineVersion: snapshot.engineVersion,
       boardProfile: snapshot.boardProfile, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       paletteSelection: snapshot.paletteSelection, params: snapshot.params, pattern,
     } });
@@ -235,7 +235,7 @@ describe('PostgreSQL 16 community and governance concurrency', () => {
     const { work } = await createPublishedWork(actor);
     sessionToken = (await createSession(db, actor.userId)).token;
     const project: ProjectFile = {
-      format: 'doupu-project', version: 3, name: 'stale candidate',
+      format: 'beadhue-project', version: 3, name: 'stale candidate',
       engineVersion: snapshot.engineVersion, boardProfile: snapshot.boardProfile,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       paletteSelection: snapshot.paletteSelection, params: snapshot.params, pattern,
@@ -289,7 +289,7 @@ describe('PostgreSQL 16 community and governance concurrency', () => {
     const { work } = await createPublishedWork(actor);
     sessionToken = (await createSession(db, actor.userId)).token;
     const project: ProjectFile = {
-      format: 'doupu-project', version: 3, name: 'candidate',
+      format: 'beadhue-project', version: 3, name: 'candidate',
       engineVersion: snapshot.engineVersion, boardProfile: snapshot.boardProfile,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       paletteSelection: snapshot.paletteSelection, params: snapshot.params, pattern,

@@ -1,4 +1,8 @@
 'use client';
+import OriginalReferenceWindow from './OriginalReferenceWindow';
+import { transformOriginal, type OriginalReference } from '@/lib/originals/geometry';
+import { createPortal } from 'react-dom';
+import Icon from '@/components/ui/Icon';
 import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
 
 /* eslint-disable react-hooks/refs -- pointer/camera state must stay synchronous during gestures. */
@@ -46,6 +50,10 @@ const MIN_EDIT_CELL_PX = 20;
 const MAX_DPR = 2;
 
 interface Props {
+  paletteTarget?: HTMLElement | null;
+  original?: OriginalReference;
+  originalImage?: CanvasImageSource | null;
+  onOriginalChange?: (original: OriginalReference) => void;
   pattern: Pattern;
   palette: PaletteColor[];
   boardSize?: number;
@@ -106,7 +114,11 @@ function sameGridCell(a: Cell | null, b: Cell | null): boolean {
 }
 
 export default function PixelEditorCanvas({
+  paletteTarget,
   pattern,
+  original,
+  originalImage = null,
+  onOriginalChange,
   palette,
   boardSize = BOARD_SIZE,
   autoFocus = false,
@@ -117,6 +129,8 @@ export default function PixelEditorCanvas({
   onPatternChange,
 }: Props) {
   const t = zhCN.editor;
+  const originalRef = useRef(original);
+  useEffect(() => { originalRef.current = original; }, [original]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(createEditorState(pattern));
   const historyRef = useRef(new EditHistory());
@@ -132,7 +146,7 @@ export default function PixelEditorCanvas({
   );
 
   const [tool, setToolState] = useState<ToolId>('brush');
-  const [interactionMode, setInteractionMode] = useState<InteractionMode>(layout === 'mobile' ? 'pan' : 'edit');
+  const [interactionMode, setInteractionMode] = useState<InteractionMode>('pan');
   const [mobileStrokeMode, setMobileStrokeMode] = useState<MobileStrokeMode>('precision');
   const [brushSize, setBrushSizeState] = useState<BrushSize>(1);
   const [currentColor, setCurrentColorState] = useState<PaletteColor | null>(availablePalette[0] ?? null);
@@ -157,7 +171,7 @@ export default function PixelEditorCanvas({
   const interactionModeRef = useRef(interactionMode);
   const mobileStrokeModeRef = useRef(mobileStrokeMode);
   const { width: W, height: H } = stateRef.current;
-  const viewport = useGridViewport({ patternWidth: W, patternHeight: H, boardSize, testCellPx: defaultCellPx });
+  const viewport = useGridViewport({ preserveCameraOnResize: true, patternWidth: W, patternHeight: H, boardSize, testCellPx: defaultCellPx });
   const readCamera = viewport.readCamera;
 
   useEffect(() => {
@@ -621,6 +635,7 @@ export default function PixelEditorCanvas({
     if (cancelGesture()) return;
     const entry = historyRef.current.undo(stateRef.current.cells);
     if (!entry) return;
+    if (entry.original) { originalRef.current = entry.original.before; onOriginalChange?.(entry.original.before); }
     if (entry.dims) {
       stateRef.current.width = entry.dims.before.width;
       stateRef.current.height = entry.dims.before.height;
@@ -634,6 +649,7 @@ export default function PixelEditorCanvas({
     if (cancelGesture()) return;
     const entry = historyRef.current.redo(stateRef.current.cells);
     if (!entry) return;
+    if (entry.original) { originalRef.current = entry.original.after; onOriginalChange?.(entry.original.after); }
     if (entry.dims) {
       stateRef.current.width = entry.dims.after.width;
       stateRef.current.height = entry.dims.after.height;
@@ -652,7 +668,11 @@ export default function PixelEditorCanvas({
     state.cells = transformed.cells;
     state.width = transformed.width;
     state.height = transformed.height;
+    const beforeOriginal = originalRef.current;
+    const afterOriginal = beforeOriginal?.geometry ? { ...beforeOriginal, geometry: transformOriginal(beforeOriginal.geometry, op) } : undefined;
+    if (afterOriginal) { originalRef.current = afterOriginal; onOriginalChange?.(afterOriginal); }
     historyRef.current.push({
+      ...(beforeOriginal && afterOriginal ? { original: { before: beforeOriginal, after: afterOriginal } } : {}),
       label: 'transform',
       snapshots: beforeCells.map((cell, index) => ({ index, before: cell, after: state.cells[index] })),
       dims: { before: beforeDims, after: { width: transformed.width, height: transformed.height } },
@@ -760,9 +780,45 @@ export default function PixelEditorCanvas({
     return `${color.code ?? ''} ${color.hex}`.toLowerCase().includes(query);
   });
 
+  const [referenceOpen,setReferenceOpen] = useState(true);
+
   const currentBoard = cursor
     ? { boardRow: Math.floor(cursor.row / boardSize), boardCol: Math.floor(cursor.col / boardSize) }
     : { boardRow: 0, boardCol: 0 };
+
+  const paletteTray = (
+      <section
+        aria-label={t.paletteTray}
+        className={`editor-palette-tray rounded-xl border border-lilac/40 bg-white p-2${!paletteTarget && !moreOpen ? ' is-collapsed' : ''}`}
+      >
+        <h3>{zhCN.beadhue.brushColor}</h3>
+        <input
+          type="search"
+          value={paletteQuery}
+          onChange={(event) => setPaletteQuery(event.target.value)}
+          aria-label={t.paletteSearch}
+          placeholder={t.paletteSearch}
+          className="w-full input-compact"
+        />
+        <div className="mt-2 flex max-h-28 flex-wrap gap-1 overflow-auto">
+          {filteredPalette.map((color, index) => (
+            <button
+              type="button"
+              key={`${color.hex}-${color.code ?? index}`}
+              onClick={() => setColor(color)}
+              aria-pressed={currentColor?.hex === color.hex && currentColor?.code === color.code}
+              aria-label={`${color.code ?? color.hex} ${color.hex}`}
+              className="flex items-center gap-1 rounded-lg border border-lilac/40 px-2 py-1 text-xs text-ink-soft hover:bg-lilac-soft aria-pressed:border-primary aria-pressed:bg-primary-soft"
+            >
+              <span className="h-3 w-3 rounded-sm border border-lilac/50" style={{ backgroundColor: color.hex }} />
+              <span className="font-mono">{color.code ?? color.hex}</span>
+            </button>
+          ))}
+          {filteredPalette.length === 0 && <p className="text-xs text-ink-soft">{t.paletteEmpty}</p>}
+        </div>
+        <p className="color-selected mono">{currentColor?.code} · {currentColor?.hex ?? t.noColor}</p>
+      </section>
+  );
 
   return (
     <div
@@ -816,35 +872,8 @@ export default function PixelEditorCanvas({
 
       {editNotice && <p role="status" className="text-xs text-ink-soft">{editNotice}</p>}
 
-      <section
-        aria-label={t.paletteTray}
-        className={`editor-palette-tray rounded-xl border border-lilac/40 bg-white p-2${layout === 'mobile' && !moreOpen ? ' is-collapsed' : ''}`}
-      >
-        <input
-          type="search"
-          value={paletteQuery}
-          onChange={(event) => setPaletteQuery(event.target.value)}
-          aria-label={t.paletteSearch}
-          placeholder={t.paletteSearch}
-          className="w-full input-compact"
-        />
-        <div className="mt-2 flex max-h-28 flex-wrap gap-1 overflow-auto">
-          {filteredPalette.map((color, index) => (
-            <button
-              type="button"
-              key={`${color.hex}-${color.code ?? index}`}
-              onClick={() => setColor(color)}
-              aria-pressed={currentColor?.hex === color.hex && currentColor?.code === color.code}
-              aria-label={`${color.code ?? color.hex} ${color.hex}`}
-              className="flex items-center gap-1 rounded-lg border border-lilac/40 px-2 py-1 text-xs text-ink-soft hover:bg-lilac-soft aria-pressed:border-primary aria-pressed:bg-primary-soft"
-            >
-              <span className="h-3 w-3 rounded-sm border border-lilac/50" style={{ backgroundColor: color.hex }} />
-              <span className="font-mono">{color.code ?? color.hex}</span>
-            </button>
-          ))}
-          {filteredPalette.length === 0 && <p className="text-xs text-ink-soft">{t.paletteEmpty}</p>}
-        </div>
-      </section>
+      {paletteTarget ? createPortal(paletteTray, paletteTarget) : paletteTray}
+
 
       {replaceOpen && (
         <form onSubmit={onReplaceSubmit} className="editor-more-drawer flex flex-wrap items-center gap-2 rounded-xl border border-lilac/40 p-2 text-sm">
@@ -856,9 +885,12 @@ export default function PixelEditorCanvas({
         </form>
       )}
 
+      <div className="beadhue-canvas-header"><span className="mono">{pattern.width} × {pattern.height} {zhCN.beadhue.beadUnit}</span><button type="button" aria-pressed={referenceOpen} onClick={() => setReferenceOpen(v=>!v)}><Icon name="image" size={15} />{zhCN.beadhue.referenceTitle}</button></div>
       <div
         ref={viewport.viewportRef}
         tabIndex={0}
+        data-camera={JSON.stringify(viewport.camera)}
+        data-viewport={JSON.stringify(viewport.size)}
         aria-label={t.editorRegion}
         aria-describedby="editor-keyboard-status"
         onKeyDown={onKeyDown}
@@ -876,6 +908,7 @@ export default function PixelEditorCanvas({
           onPointerCancel={onPointerCancel}
           style={{ touchAction: 'none', cursor: interactionMode === 'pan' ? 'grab' : tool === 'pick' ? 'copy' : 'crosshair' }}
         />
+        {referenceOpen && <OriginalReferenceWindow image={originalImage} original={original} camera={viewport.camera} viewport={viewport.size} width={W} height={H} />}
         <GridViewportControls
           cellPx={viewport.camera.cellPx}
           onZoomOut={() => viewport.zoomAt(readCamera().cellPx / 1.25, viewport.size.width / 2, viewport.size.height / 2)}

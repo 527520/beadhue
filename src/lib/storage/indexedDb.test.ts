@@ -135,12 +135,14 @@ class FakeStore {
   }
 }
 
+vi.mock('./brandMigration', () => ({ migrateLegacyDatabase: vi.fn(async () => {}) }));
+
 class FakeDB {
   readonly stores = new Map<string, FakeStore>();
   readonly objectStoreNames = { contains: (name: string) => this.stores.has(name) };
   /** 测试注入：下一个事务以该错误收尾。 */
   nextTxError: string | null = null;
-  createObjectStore(name: string, opts: { keyPath: string }): FakeStore {
+  createObjectStore(name: string, opts: { keyPath: string } = { keyPath: 'key' }): FakeStore {
     const store = new FakeStore(opts.keyPath);
     this.stores.set(name, store);
     return store;

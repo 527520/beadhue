@@ -1,5 +1,5 @@
 /**
- * 豆谱领域核心类型（spec §4.1）。
+ * 豆色绘领域核心类型（spec §4.1）。
  * 客户端与服务端共享的唯一事实来源。
  */
 import type { BoardProfileId } from './boardProfiles';
@@ -125,7 +125,9 @@ export interface PaletteSelection {
 
 /** 项目文件（spec §5.3）。 */
 export interface ProjectFile {
-  format: 'doupu-project';
+  /** Full original bytes are held separately; geometry survives exports and device changes. */
+  original?: import('@/lib/originals/geometry').OriginalReference;
+  format: 'beadhue-project';
   version: 3;
   /** Internal lineage marker for analytics; omitted from exported project files. */
   communityOrigin?: true;

@@ -156,11 +156,11 @@ test('字体实际加载，首屏选择图片完整可见，五宽度无溢出',
   const button=page.getByRole('button',{name:'选择图片文件',exact:true});
   const box=await button.boundingBox(); expect(box).not.toBeNull(); expect(box!.y+box!.height).toBeLessThan(770);
   const loaded=await page.evaluate(async()=>{
-    const text=await document.fonts.load('400 16px "DouPu Text"','豆谱龘');
-    const display=await document.fonts.load('400 30px "DouPu Round"','把喜欢，一颗颗拼出来。');
+    const text=await document.fonts.load('400 16px "BeadHue Text"','豆色绘龘');
+    const display=await document.fonts.load('400 30px "BeadHue Round"','把喜欢，一颗颗拼出来。');
     return {text:text.length,display:display.length,ready:[...text,...display].every(font=>font.status==='loaded'),body:getComputedStyle(document.body).fontFamily};
   });
-  expect(loaded.text).toBeGreaterThan(0);expect(loaded.display).toBeGreaterThan(0);expect(loaded.ready).toBe(true);expect(loaded.body).toContain('DouPu Text');expect(failures).toEqual([]);
+  expect(loaded.text).toBeGreaterThan(0);expect(loaded.display).toBeGreaterThan(0);expect(loaded.ready).toBe(true);expect(loaded.body).toContain('BeadHue Text');expect(failures).toEqual([]);
   for(const width of widths){
     await page.setViewportSize({width,height:844});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

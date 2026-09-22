@@ -58,3 +58,5 @@ describe('verify-email 页', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
   });
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

@@ -112,7 +112,7 @@ describe('FakeStorage + 记录 CRUD（storage 层验收）', () => {
     await storage.put(c);
     const all = await storage.getAll();
     expect(all.map((r) => r.name)).toEqual(['乙', '丙', '甲']);
-    expect(all[0].projectJson).toContain('doupu-project');
+    expect(all[0].projectJson).toContain('beadhue-project');
   });
 
   it('同 id 覆盖（upsert）不产生重复', async () => {

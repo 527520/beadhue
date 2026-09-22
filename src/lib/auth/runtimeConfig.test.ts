@@ -19,7 +19,7 @@ describe('production auth adapters', () => {
     })).toThrow(/SMTP_USER/);
   });
 
-  const originals = { COS_SECRET_ID: 'cos', COS_SECRET_KEY: 'cos-secret', COS_REGION: 'ap-guangzhou', COS_BUCKET: 'doupu-backup-1250000000' };
+  const originals = { COS_SECRET_ID: 'cos', COS_SECRET_KEY: 'cos-secret', COS_REGION: 'ap-guangzhou', COS_BUCKET: 'beadhue-backup-1250000000' };
 
   it('accepts a complete SMTP adapter and alert channel', () => {
     expect(validateProductionAuthAdapters({

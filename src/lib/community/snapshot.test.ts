@@ -13,7 +13,7 @@ function project(width = 2, height = 2): ProjectFile {
     { hex: '#00FF00', code: 'G1' },
   ];
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: 'test',
     boardProfile: '5mm-29',

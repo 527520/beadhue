@@ -4,7 +4,7 @@ import { resetPasswordTemplate, verifyEmailTemplate } from './mailTemplate';
 describe('mailTemplate', () => {
   it('验证模板包含链接、主题与有效期说明', () => {
     const t = verifyEmailTemplate('http://localhost:3000/verify-email?token=abc');
-    expect(t.subject).toContain('豆谱');
+    expect(t.subject).toContain('豆色绘');
     expect(t.html).toContain('href="http://localhost:3000/verify-email?token=abc"');
     expect(t.text).toContain('http://localhost:3000/verify-email?token=abc');
     expect(t.text).toContain('24 小时');

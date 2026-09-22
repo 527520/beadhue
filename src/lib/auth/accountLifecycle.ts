@@ -7,6 +7,7 @@ import {
   communityComments,
   communityLikes,
   communityOriginals,
+  originalAssets,
   communityReports,
   communityRevisions,
   communityReuses,
@@ -70,7 +71,7 @@ export async function anonymizeAccount(
       eq(communityWorks.authorUserId, account.id), eq(communityWorks.authorType, 'user'),
       isNull(communityWorks.currentPublishedRevisionId), eq(communityWorks.lifecycleStatus, 'active'),
     ));
-    // 注销即删原图（D49）：公开图纸以去身份形式保留，作者照片不再保留在服务器；
+    // 注销释放原图关联；有效引用副本独立保留，不随作者账号清理。
     // 对象由维护任务按 deleted_at 清除。
     await tx.update(communityOriginals).set({ deletedAt: now, uploadedByUserId: null })
       .where(and(inArray(communityOriginals.workId, ownWorks), isNull(communityOriginals.deletedAt)));
@@ -128,6 +129,7 @@ export async function anonymizeAccount(
     ));
     await tx.delete(designShares).where(eq(designShares.userId, account.id));
     await tx.delete(designs).where(eq(designs.userId, account.id));
+    await tx.update(originalAssets).set({deletedAt:now}).where(eq(originalAssets.userId,account.id));
     await tx.delete(palettes).where(eq(palettes.userId, account.id));
 
     // Audit facts remain append-only, but the retired account must no longer be

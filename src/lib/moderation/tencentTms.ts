@@ -57,7 +57,7 @@ interface TmsResponseBody {
 
 /** 对外用户标识：公开作者 ID 的 SHA-256 前缀，稳定但不可反查。 */
 export function tmsUserToken(publicAuthorId: string): string {
-  return createHash('sha256').update(`doupu:tms:${publicAuthorId}`, 'utf8').digest('hex').slice(0, 32);
+  return createHash('sha256').update(`beadhue:tms:${publicAuthorId}`, 'utf8').digest('hex').slice(0, 32);
 }
 
 export function buildTmsRequest(creds: TmsCredentials, input: { content: string; dataId: string; userToken?: string }, now: Date = new Date()) {

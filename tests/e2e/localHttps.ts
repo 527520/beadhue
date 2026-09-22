@@ -12,7 +12,7 @@ import type { Duplex } from 'node:stream';
 export async function localHttps(upstreamOrigin: string) {
   const target = new URL(upstreamOrigin);
   if (target.hostname !== '127.0.0.1' || target.protocol !== 'http:') throw new Error('Loopback HTTP upstream required');
-  const directory = mkdtempSync(join(tmpdir(), 'doupu-e2e-tls-'));
+  const directory = mkdtempSync(join(tmpdir(), 'beadhue-e2e-tls-'));
   const key = join(directory, 'key.pem'); const cert = join(directory, 'cert.pem');
   try {
     execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert, '-days', '1', '-subj', '/CN=localhost'], { stdio: 'ignore', timeout: 15000 });

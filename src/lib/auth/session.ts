@@ -9,7 +9,7 @@ import { sessions, users } from '@/../db/schema';
 import type { AnyDatabase } from '@/../db/client';
 import { getDb } from './db';
 import { generateToken, hashToken } from './tokens';
-import { readSessionToken, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, sessionCookieOptions } from './cookies';
+import { readSessionToken, LEGACY_SESSION_COOKIE_NAME, SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, sessionCookieOptions } from './cookies';
 import type { AccountStatus, Actor, UserRole } from './authorization';
 import { lockActiveAccount } from './writeAccess';
 
@@ -85,7 +85,7 @@ export async function resolveSession(
   if (rows.length === 0) return null;
   if (rows[0].accountStatus !== 'active') return null;
   if (opts.requireVerified && !rows[0].verified) return null;
-  let renewedExpiresAt: Date | null = null;
+  let renewedExpiresAt: Date | null = opts.renew && cookieHeader?.includes(`${LEGACY_SESSION_COOKIE_NAME}=`) ? rows[0].expiresAt : null;
   // 半程阈值滚动续期：仅当剩余有效期不足 15 天时把过期时间前移 30 天
   if (opts.renew && rows[0].expiresAt.getTime() - now.getTime() < RENEW_THRESHOLD_MS) {
     renewedExpiresAt = new Date(Math.min(now.getTime() + TTL_MS, rows[0].absoluteExpiresAt.getTime()));
@@ -113,9 +113,9 @@ export async function resolveSessionUserId(
 /** Route Handler 入口：解析并同步续期数据库与响应 Cookie。 */
 export async function getSessionUserId(): Promise<string | null> {
   const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
-  const result = await resolveSession(getDb(), buildHeader(token), now, { renew: true });
+  const result = await resolveSession(getDb(), buildHeader(token, !jar.get(SESSION_COOKIE_NAME) && !!jar.get(LEGACY_SESSION_COOKIE_NAME)), now, { renew: true });
   renewCookie(jar, result, now);
   return result?.userId ?? null;
 }
@@ -123,9 +123,9 @@ export async function getSessionUserId(): Promise<string | null> {
 /** 读取当前请求的已验证登录用户 id（数据类 API 统一入口，未验证视为未授权）。 */
 export async function getVerifiedSessionUserId(): Promise<string | null> {
   const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
-  const result = await resolveSession(getDb(), buildHeader(token), now, { requireVerified: true, renew: true });
+  const result = await resolveSession(getDb(), buildHeader(token, !jar.get(SESSION_COOKIE_NAME) && !!jar.get(LEGACY_SESSION_COOKIE_NAME)), now, { requireVerified: true, renew: true });
   renewCookie(jar, result, now);
   return result?.userId ?? null;
 }
@@ -133,7 +133,7 @@ export async function getVerifiedSessionUserId(): Promise<string | null> {
 /** 页面默认只读；仅 Route Handler / Server Action 可显式启用续期。 */
 export async function getSessionActor(opts: { requireVerified?: boolean; renew?: boolean } = {}): Promise<Actor | null> {
   const jar = await cookies();
-  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
   const result = await resolveSession(getDb(), buildHeader(token), now, opts);
   renewCookie(jar, result, now);
@@ -156,6 +156,6 @@ function renewCookie(
   jar.set(SESSION_COOKIE_NAME, result.token, sessionCookieOptions(maxAge));
 }
 
-function buildHeader(token: string | null): string | null {
-  return token === null ? null : `${SESSION_COOKIE_NAME}=${token}`;
+function buildHeader(token: string | null, legacy = false): string | null {
+  return token === null ? null : `${legacy ? LEGACY_SESSION_COOKIE_NAME : SESSION_COOKIE_NAME}=${token}`;
 }

@@ -28,6 +28,7 @@ export interface BoardProfileOption {
 }
 
 interface Props {
+  compact?: boolean;
   params: GenerationParams;
   paletteOptions: readonly PalettePickerOption[];
   selectedPalette: string;
@@ -67,6 +68,7 @@ function paramsEqual(a: GenerationParams, b: GenerationParams): boolean {
 }
 
 export default function GenerationParamsPanel({
+  compact = false,
   params,
   paletteOptions,
   selectedPalette,
@@ -194,9 +196,7 @@ export default function GenerationParamsPanel({
     patch({ backgroundPrototype: hex });
   };
 
-  return (
-    <section aria-label={t.title} className="card-surface generation-params-panel params-panel">
-      <fieldset disabled={disabled} className="contents">
+  const widthControl = (<>
       <div>
         <label htmlFor="param-width" className="field-label">
           {t.targetWidth}（{LIMITS.targetWidth.min}–{LIMITS.targetWidth.max}）
@@ -257,7 +257,9 @@ export default function GenerationParamsPanel({
             {t.heightClamped(rows.exactRows, rows.maxWidthKeepingRatio)}
           </Notice>
         )}
-      </div>
+      </div></>);
+  const colorControl = (<>
+
 
       <div>
         <label htmlFor="param-colors" className="field-label">
@@ -300,6 +302,8 @@ export default function GenerationParamsPanel({
         <p className="params-hint">{t.colorCountHint}</p>
       </div>
 
+</>);
+  const effectControls = (<>
       {/*
         高级选项是标准折叠（带 chevron 与展开动效），面板是下沉井；里面全是 36 档工具行。
         折叠时不挂载内容：解码完成后的首次提交有 50ms 主线程预算（E2E 03），
@@ -394,7 +398,18 @@ export default function GenerationParamsPanel({
           )}
         </div>}
       </Disclosure>
-      </fieldset>
+</>);
+  const boardControl = (<>
+      <div>
+        <ResponsiveSelect label={t.boardProfile}
+          id="param-board-profile"
+          value={selectedBoardProfile}
+          disabled={paletteLocked}
+          onValueChange={(value) => onBoardProfileSelect(value as BoardProfileId)} options={boardProfileOptions}
+        />
+        <p className="params-hint">{t.boardProfileHint}</p>
+      </div></>);
+  const paletteControl = (<>
       <div>
         {/*
           色板选择独立于 fieldset 的禁用（H-1）：换色板走图纸级重映射，不需要原图，
@@ -409,15 +424,7 @@ export default function GenerationParamsPanel({
           className="generation-palette-picker"
         />
       </div>
-      <div>
-        <ResponsiveSelect label={t.boardProfile}
-          id="param-board-profile"
-          value={selectedBoardProfile}
-          disabled={paletteLocked}
-          onValueChange={(value) => onBoardProfileSelect(value as BoardProfileId)} options={boardProfileOptions}
-        />
-        <p className="params-hint">{t.boardProfileHint}</p>
-      </div>
+
       <div>
         {/*
           套装档位（H-3）：内置色板是「品牌一共有多少色」，但用户手里常常只有
@@ -433,6 +440,17 @@ export default function GenerationParamsPanel({
         />
         <p className="params-hint">{t.kitTierHint}</p>
       </div>
+</>);
+  return (
+    <section aria-label={t.title} className={`card-surface generation-params-panel params-panel${compact ? ' is-compact' : ''}`}>
+      {compact && boardControl}
+      <fieldset disabled={disabled} className="contents">
+        {!compact && widthControl}
+        {colorControl}
+        {compact ? <details className="beadhue-advanced"><summary>{zhCN.beadhue.generationSettings}</summary>{widthControl}{effectControls}</details> : effectControls}
+      </fieldset>
+      {!compact && boardControl}
+      {compact ? <details className="beadhue-advanced"><summary>{zhCN.beadhue.paletteSettings}</summary>{paletteControl}</details> : paletteControl}
     </section>
   );
 }

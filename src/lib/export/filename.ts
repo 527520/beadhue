@@ -11,7 +11,7 @@
  * 2. 非法字符（\/:*?"<>| 与控制字符）→ `-`；
  * 3. 连续 `-` 折叠为一个；4. 去掉首尾 `-`；
  * 5. 截断到 60 字符——设计名上限 100 个字符，中文在 UTF-8 下是 3 字节，
- *    连上「豆谱-」前缀与「-100x200.pdf」后缀会接近 320 字节，超过部分文件系统
+ *    连上「豆色绘-」前缀与「-100x200.pdf」后缀会接近 320 字节，超过部分文件系统
  *    与网盘的 255 字节上限（spec §E26 允许「完整显示或截断」）；
  * 6. 结果为空 → 未命名设计。
  */
@@ -35,7 +35,7 @@ export function sanitizeFilename(name: string): string {
   return cleaned.length === 0 ? DEFAULT_DESIGN_NAME : cleaned;
 }
 
-/** 导出文件名：豆谱-<设计名>-<W>x<H>.<ext>（PNG/PDF/项目文件共用）。 */
+/** 导出文件名：豆色绘-<设计名>-<W>x<H>.<ext>（PNG/PDF/项目文件共用）。 */
 export function buildExportFilename(name: string, width: number, height: number, ext = 'pdf'): string {
-  return `豆谱-${sanitizeFilename(name)}-${width}x${height}.${ext}`;
+  return `豆色绘-${sanitizeFilename(name)}-${width}x${height}.${ext}`;
 }

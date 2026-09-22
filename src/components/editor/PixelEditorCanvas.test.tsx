@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as baseRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import PixelEditorCanvas from './PixelEditorCanvas';
 import { makeSolid } from '@/lib/editor/ops';
 import { zhCN } from '@/messages/zh-CN';
 import type { PaletteColor, Pattern } from '@/lib/types';
+
+function render(ui: ReactElement<Parameters<typeof PixelEditorCanvas>[0]>) {
+  const result=baseRender(ui);
+  if(ui.props.layout !== 'mobile') fireEvent.click(screen.getByRole('button', { name: zhCN.editor.brush }));
+  return result;
+}
 
 const RED: PaletteColor = { hex: '#FF0000', code: 'A' };
 const BLUE: PaletteColor = { hex: '#0000FF', code: 'B' };
@@ -39,6 +46,15 @@ const pointer = (canvas: Element, type: string, props: Record<string, unknown> =
   fireEvent[type as 'pointerDown'](canvas, { pointerType: 'mouse', ...props });
 
 describe('PixelEditorCanvas', () => {
+  it('桌面默认手形浏览，拖动不会落笔', () => {
+    const changed=vi.fn();
+    baseRender(<PixelEditorCanvas pattern={patternOf(3,2)} palette={[BLUE,RED]} onPatternChange={changed}/>);
+    const canvas=screen.getByLabelText('图纸编辑画布');
+    pointer(canvas,'pointerDown',{clientX:1,clientY:1});
+    pointer(canvas,'pointerMove',{clientX:40,clientY:20});
+    pointer(canvas,'pointerUp',{clientX:40,clientY:20});
+    expect(changed).not.toHaveBeenCalled();
+  });
   it('移动端默认手形浏览，单指拖动画布不会修改图纸', () => {
     const onPatternChange = vi.fn();
     const { canvas } = setup(4, 1, { layout: 'mobile', onPatternChange });

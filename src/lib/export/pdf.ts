@@ -191,7 +191,7 @@ export async function generatePatternPdf(
   }
 
   const doc = await PDFDocument.create();
-  doc.setTitle(name.trim() || '豆谱图纸');
+  doc.setTitle(name.trim() || '豆色绘图纸');
 
   let font: PDFFont;
   let cjk = false;

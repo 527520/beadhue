@@ -88,7 +88,7 @@ describe('PdfExportButton', () => {
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalled());
     const anchor = clickSpy.mock.instances[0] as unknown as HTMLAnchorElement;
-    expect(anchor.download).toBe('豆谱-我的设计-2x2.pdf');
+    expect(anchor.download).toBe('豆色绘-我的设计-2x2.pdf');
     expect(anchor.href).toBe('blob:mock');
     // 生成内容为真实 PDF（%PDF 头）
     const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];

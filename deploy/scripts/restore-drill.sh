@@ -2,8 +2,8 @@
 # Restore a custom-format backup into an explicitly disposable drill database.
 set -eu
 
-ARCHIVE=${1:?usage: restore-drill.sh /path/to/doupu-*.dump.gz}
-RESTORE_DATABASE=${RESTORE_DATABASE:-doupu_restore_test}
+ARCHIVE=${1:?usage: restore-drill.sh /path/to/beadhue-*.dump.gz}
+RESTORE_DATABASE=${RESTORE_DATABASE:-beadhue_restore_test}
 case "${RESTORE_DATABASE}" in
   *_restore_test) ;;
   *)

@@ -1,4 +1,4 @@
-# 豆谱反向代理与 TLS（Caddy 自动签发 Let's Encrypt 证书）
+# 豆色绘反向代理与 TLS（Caddy 自动签发 Let's Encrypt 证书）
 # www 子域重定向到主域（避免重复内容，www 证书同样自动签发）
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
@@ -26,7 +26,7 @@ www.{$SITE_DOMAIN} {
 }
 
 # ============================================================================
-# 迟迟（chi）：同机第二个应用，与豆谱共用这个 Caddy 实例，因此共用 80/443 与
+# 迟迟（chi）：同机第二个应用，与豆色绘共用这个 Caddy 实例，因此共用 80/443 与
 # 自动签发的 TLS 证书 —— 不需要第二套 ACME 客户端，也不需要第二个反向代理。
 #
 # 为什么迟迟不跑在 app 的同一端口：两者都在 doupu_default 网络上，

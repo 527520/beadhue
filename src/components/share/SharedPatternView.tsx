@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * 只读分享页的图纸展示（批次 K）。
@@ -6,37 +6,79 @@
  * 复用工作台的预览组件（缩放/网格/板缝/色号标注这些「照着拼」真正需要的能力都在里面），
  * 但不提供任何编辑入口。用色清单直接列全，因为看分享链接的人下一步就是照着买豆子。
  */
-import PatternPreview from '@/components/preview/PatternPreview';
-import ColorBand from '@/components/palettes/ColorBand';
-import { zhCN } from '@/messages/zh-CN';
-import type { BoardProfileId, Pattern, PatternStatsItem, ProjectPalette } from '@/lib/types';
-import { getBoardProfile } from '@/lib/boardProfiles';
-import { getBuiltinPalette } from '@/lib/palettes';
+import Link from "next/link";
+import Icon from "@/components/ui/Icon";
+import PatternPreview from "@/components/preview/PatternPreview";
+import ColorBand from "@/components/palettes/ColorBand";
+import { zhCN } from "@/messages/zh-CN";
+import type {
+  BoardProfileId,
+  Pattern,
+  PatternStatsItem,
+  ProjectPalette,
+} from "@/lib/types";
+import { getBoardProfile } from "@/lib/boardProfiles";
+import { getBuiltinPalette } from "@/lib/palettes";
 
 interface Props {
   pattern: Pattern;
   stats: readonly PatternStatsItem[];
   boardProfile: BoardProfileId;
   palette: ProjectPalette;
+  summary?: string;
 }
 
-export default function SharedPatternView({ pattern, stats, boardProfile, palette }: Props) {
+export default function SharedPatternView({
+  pattern,
+  stats,
+  boardProfile,
+  palette,
+  summary,
+}: Props) {
   const t = zhCN.share;
   const board = getBoardProfile(boardProfile);
-  const paletteLabel = palette.kind === 'builtin'
-    ? getBuiltinPalette(palette.brand).label
-    : t.customPalette(palette.colors.length);
+  const paletteLabel =
+    palette.kind === "builtin"
+      ? getBuiltinPalette(palette.brand).label
+      : t.customPalette(palette.colors.length);
   return (
-    <>
-      <section aria-label={t.materialDetails}><dl className="shared-pattern-meta">
-        <div><dt>{t.boardProfile}</dt><dd>{board.displayName}</dd></div>
-        <div><dt>{t.palette}</dt><dd>{paletteLabel}</dd></div>
-      </dl></section>
-      <div className="shared-pattern-layout">
-        <section className="shared-pattern-canvas"><PatternPreview pattern={pattern} boardSize={board.boardCols} /></section>
+    <div className="detail-grid">
+      <section className="detail-art shared-pattern-canvas">
+        <PatternPreview pattern={pattern} boardSize={board.boardCols} />
+      </section>
+      <div className="detail-info">
+        <h2>{zhCN.beadhue.shareMotto}</h2>
+        <p className="description">{summary}</p>
+        <section aria-label={t.materialDetails}>
+          <dl className="shared-pattern-meta">
+            <div>
+              <dt>{t.boardProfile}</dt>
+              <dd>{board.displayName}</dd>
+            </div>
+            <div>
+              <dt>{t.palette}</dt>
+              <dd>{paletteLabel}</dd>
+            </div>
+          </dl>
+        </section>
+        <p className="note">
+          <Icon name="lock" size={16} />
+          {zhCN.beadhue.sharePrivacy}
+        </p>
+        <Link href="/" className="button primary">
+          {zhCN.beadhue.discoverMore}
+          <Icon name="arrow" size={16} />
+        </Link>
         <aside className="shared-color-list">
-          <header><span>{t.colorsTitle}</span><strong>{t.colorCount(stats.length)}</strong></header>
-          <ColorBand colors={stats.map((item) => item.hex)} max={20} label={t.bandAria(stats.length)} />
+          <header>
+            <span>{t.colorsTitle}</span>
+            <strong>{t.colorCount(stats.length)}</strong>
+          </header>
+          <ColorBand
+            colors={stats.map((item) => item.hex)}
+            max={20}
+            label={t.bandAria(stats.length)}
+          />
           <ul tabIndex={0} aria-label={t.colorsTitle}>
             {stats.map((item) => (
               <li key={item.hex}>
@@ -53,6 +95,6 @@ export default function SharedPatternView({ pattern, stats, boardProfile, palett
           </ul>
         </aside>
       </div>
-    </>
+    </div>
   );
 }

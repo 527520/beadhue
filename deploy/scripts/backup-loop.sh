@@ -12,7 +12,7 @@ APP_HEALTH_ENDPOINT=${APP_HEALTH_ENDPOINT:-http://app:3000/}
 abort_wait() {
   message=$1
   echo "backup prerequisite FAILED: ${message}" >&2
-  "${SCRIPT_DIR}/notify.sh" "豆谱备份失败：${message}" \
+  "${SCRIPT_DIR}/notify.sh" "豆色绘备份失败：${message}" \
     || echo "backup prerequisite alert delivery also failed" >&2
   exit 1
 }
@@ -20,7 +20,7 @@ abort_wait() {
 wait_for_postgres() {
   attempt=1
   while [ "${attempt}" -le "${WAIT_ATTEMPTS}" ]; do
-    if pg_isready -h "${PGHOST:-postgres}" -U "${PGUSER:-doupu}" -d "${PGDATABASE:-doupu}" >/dev/null 2>&1; then
+    if pg_isready -h "${PGHOST:-postgres}" -U "${PGUSER:-beadhue}" -d "${PGDATABASE:-beadhue}" >/dev/null 2>&1; then
       return 0
     fi
     sleep "${WAIT_SECONDS}"

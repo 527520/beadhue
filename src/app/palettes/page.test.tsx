@@ -73,10 +73,10 @@ describe('PalettesPage', () => {
     render(<PalettesPage />);
     await waitFor(() => expect(screen.getByText('我的色板')).toBeTruthy());
     const library = screen.getByRole('region', { name: t.builtinTitle });
-    expect(within(library).getAllByRole('listitem')).toHaveLength(13);
-    expect(library.querySelectorAll('.palette-brand-group')).toHaveLength(6);
-    expect(within(library).getAllByText(t.collectedColors)).toHaveLength(13);
-    expect(within(library).getAllByText(t.engineColors)).toHaveLength(13);
+    expect(within(library).getAllByRole('option')).toHaveLength(13);
+    expect(library.querySelectorAll('optgroup')).toHaveLength(6);
+    expect(within(library).getAllByText(t.collectedColors)).toHaveLength(1);
+    expect(within(library).getAllByText(t.engineColors)).toHaveLength(1);
     // 自定义卡片文案为「1 色 · 日期」；用带分隔符的正则避免误匹配「291 色」
     expect(screen.getByText(/1 色 · /)).toBeTruthy();
   });
@@ -88,15 +88,15 @@ describe('PalettesPage', () => {
     const search = screen.getByRole('searchbox', { name: t.searchLabel });
     fireEvent.change(search, { target: { value: 'Mini C' } });
     const library = screen.getByRole('region', { name: t.builtinTitle });
-    expect(within(library).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(library).getAllByRole('option')).toHaveLength(1);
     expect(screen.getByRole('status')).toHaveTextContent(t.searchResults(1, 13));
 
     fireEvent.change(search, { target: { value: '2.6mm / 52×52' } });
-    expect(within(library).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(library).getAllByRole('option')).toHaveLength(3);
     expect(screen.getByRole('status')).toHaveTextContent(t.searchResults(3, 13));
 
     fireEvent.change(search, { target: { value: '不存在的品牌' } });
-    expect(within(library).queryAllByRole('listitem')).toHaveLength(0);
+    expect(within(library).queryAllByRole('option')).toHaveLength(0);
     expect(within(library).getByText(t.noSearchResults)).toBeTruthy();
   });
 
@@ -107,8 +107,9 @@ describe('PalettesPage', () => {
     const palette = getBuiltinPalette(summary!.id);
     render(<PalettesPage />);
     await waitFor(() => expect(screen.getByText(t.empty)).toBeTruthy());
-    const heading = screen.getByRole('heading', { name: palette.series });
-    const card = heading.closest('li');
+    fireEvent.change(screen.getByLabelText('选择色板'),{target:{value:palette.id}});
+    const heading = screen.getByRole('heading', { name: palette.label });
+    const card = heading.closest('section');
     expect(card).toHaveTextContent(t.colorCount(palette.colorCount));
     expect(card).toHaveTextContent(t.colorCount(palette.engineColorCount));
     for (const profile of compatibleBoardProfilesForPalette({ kind: 'builtin', brand: palette.id })) {
@@ -124,7 +125,8 @@ describe('PalettesPage', () => {
     expect(summary).toBeTruthy();
     render(<PalettesPage />);
     await waitFor(() => expect(screen.getByText(t.empty)).toBeTruthy());
-    const card = screen.getByRole('heading', { name: summary!.series }).closest('li');
+    fireEvent.change(screen.getByLabelText('选择色板'),{target:{value:summary!.id}});
+    const card = screen.getByRole('heading', { name: summary!.label }).closest('section');
     expect(card).toHaveTextContent('5mm / 29×29');
     expect(card).toHaveTextContent('2.6mm / 50×50');
     expect(card).toHaveTextContent('2.6mm / 52×52');

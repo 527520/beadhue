@@ -5,6 +5,7 @@ import type { ProjectFile } from '@/lib/types';
 
 /** 序列化所需的设计数据（不含 format/version，由本模块补全）。 */
 export interface ProjectSource {
+  original?: ProjectFile['original'];
   name: string;
   createdAt: string;
   engineVersion: string;
@@ -16,6 +17,7 @@ export interface ProjectSource {
 
 export function serializeProject(source: ProjectSource, now: Date = new Date()): string {
   const project: ProjectFile = {
+    ...(source.original ? { original: { ...source.original, assetId: undefined } } : {}),
     format: PROJECT_FILE_FORMAT,
     version: PROJECT_FILE_VERSION,
     engineVersion: source.engineVersion,
@@ -32,12 +34,12 @@ export function serializeProject(source: ProjectSource, now: Date = new Date()):
   return JSON.stringify(projectFileSchema.parse(project), null, 2);
 }
 
-/** 生成下载文件名：豆谱-<设计名>.json；非法文件名字符替换，空名回退。 */
+/** 生成下载文件名：豆色绘-<设计名>.json；非法文件名字符替换，空名回退。 */
 export function projectFileName(name: string): string {
   const sanitized = name
     .trim()
     .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '-')
     .replace(/\s+/g, ' ')
     .trim();
-  return `豆谱-${sanitized || '未命名设计'}.json`;
+  return `豆色绘-${sanitized || '未命名设计'}.json`;
 }

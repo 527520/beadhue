@@ -37,7 +37,7 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     .where(and(
       query.status === 'all' ? undefined : eq(communityWorks.lifecycleStatus, query.status),
       query.q ? or(ilike(communityRevisions.title, `%${query.q}%`), ilike(sql`case
-        when ${communityRevisions.authorType} = 'official' then '豆谱官方'
+        when ${communityRevisions.authorType} = 'official' then '豆色绘官方'
         when ${users.accountStatus} = 'anonymized' then ${ANONYMIZED_DISPLAY_NAME}
         else ${communityRevisions.frozenDisplayName} end`, `%${query.q}%`), sql`${communityWorks.id}::text = ${query.q}`) : undefined,
       cursor ? or(lt(communityWorks.createdAt, new Date(cursor.createdAt)), and(eq(communityWorks.createdAt, new Date(cursor.createdAt)), lt(communityWorks.id, cursor.id))) : undefined,
@@ -48,7 +48,7 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
       id: row.id, version: row.version, lifecycleStatus: row.lifecycleStatus, commentsLocked: row.commentsLocked,
       isPublic: row.lifecycleStatus === 'active' && row.currentPublishedRevisionId !== null,
       featured: row.featuredAt !== null, title: row.title, revisionNumber: row.revisionNumber,
-      displayName: row.authorType === 'official' ? '豆谱官方' : row.accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : row.displayName,
+      displayName: row.authorType === 'official' ? '豆色绘官方' : row.accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : row.displayName,
       preview: preview.success ? preview.data : null,
       thumbnail: row.displayRevisionId && row.width && row.height ? { revisionId: row.displayRevisionId, width: row.width, height: row.height } : null,
     };

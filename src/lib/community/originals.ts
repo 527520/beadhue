@@ -1,3 +1,4 @@
+import { lockOriginalReferences } from '@/lib/originals/lock';
 /**
  * 作品原图（D49）业务规则。
  *
@@ -7,28 +8,25 @@
  *   被新版替代的修订若仍有引用记录则保留（引用者需要它继续调参）。
  * - 对象删除是外部 I/O：事务内只标记 deleted_at，提交后再尽力清除对象；未清除的由维护任务补扫。
  */
+import { persistOriginalAsset } from '@/lib/originals/assets';
 import { createHash } from 'node:crypto';
 import { and, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import type { AnyDatabase } from '@/../db/client';
 import {
   communityOriginals,
+  originalAssets,
+  originalGarbage,
   communityReuses,
   communityRevisions,
   communityWorks,
 } from '@/../db/schema';
+import { lockActiveAccount } from '@/lib/auth/writeAccess';
 import { authorize, type Actor } from '@/lib/auth/authorization';
 import { AppError } from '@/lib/errors';
 import { validateImageFile } from '@/lib/image/validation';
-import { readImageDimensions } from '@/lib/image/dimensions';
-import type { ImageType } from '@/lib/image/sniff';
 import type { OriginalObjectStore } from './originalStore';
 
 export const ORIGINAL_BLOCK_RETENTION_DAYS = 30;
-
-const MIME_BY_TYPE: Record<ImageType, string> = {
-  jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic',
-};
-const EXTENSION_BY_TYPE: Record<ImageType, string> = { jpeg: 'jpg', png: 'png', webp: 'webp', gif: 'gif', heic: 'heic' };
 
 export interface OriginalSummary {
   revisionId: string;
@@ -45,11 +43,24 @@ function summarize(row: typeof communityOriginals.$inferSelect): OriginalSummary
 
 async function loadRevisionForUpload(tx: AnyDatabase, revisionId: string) {
   const [row] = await tx.select({
-    id: communityRevisions.id, workId: communityRevisions.workId, status: communityRevisions.status,
+    snapshot: communityRevisions.snapshot, id: communityRevisions.id, workId: communityRevisions.workId, status: communityRevisions.status,
     authorType: communityRevisions.authorType, authorUserId: communityWorks.authorUserId, lifecycleStatus: communityWorks.lifecycleStatus,
   }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
     .where(eq(communityRevisions.id, revisionId)).for('update');
   return row ?? null;
+}
+
+/** Resource eligibility must be checked before consuming an upload body, and again at commit. */
+export async function assertRevisionOriginalUpload(db: AnyDatabase, actor: Actor, revisionId: string) {
+    const account = await lockActiveAccount(db, actor.userId);
+    actor = { userId: account.id, role: account.role, accountStatus: account.accountStatus, emailVerified: account.emailVerifiedAt !== null };
+    const row = await loadRevisionForUpload(db, revisionId);
+    if (!row) throw new AppError('NOT_FOUND', '修订不存在');
+    const isAuthor = row.authorType === 'user' && row.authorUserId === actor.userId;
+    const isOfficialManager = row.authorType === 'official' && authorize(actor, 'official:manage');
+    if (!isAuthor && !isOfficialManager) throw new AppError('FORBIDDEN', '只有作品作者可以上传原图');
+    if (row.status !== 'draft' || row.lifecycleStatus !== 'active') throw new AppError('STATE_CONFLICT', '只能为草稿修订上传原图');
+    return row;
 }
 
 /** 上传（或替换）某草稿修订的原图。校验文件后写对象、再写行；旧对象在无其它引用时清除。 */
@@ -58,46 +69,47 @@ export async function storeRevisionOriginal(db: AnyDatabase, store: OriginalObje
 }): Promise<OriginalSummary> {
   const validation = validateImageFile({ bytes: input.bytes, name: 'original' });
   if (!validation.ok) throw new AppError('VALIDATION', `原图不可用：${validation.code}`, 'original');
-  const dimensions = readImageDimensions(input.bytes, validation.type);
   const now = input.now ?? new Date();
   const sha256 = createHash('sha256').update(input.bytes).digest('hex');
-  const cosKey = `originals/${input.revisionId}/${sha256}.${EXTENSION_BY_TYPE[validation.type]}`;
-  const mimeType = MIME_BY_TYPE[validation.type];
 
   // 先校验权限与状态（不占用长事务做上传），再写对象，最后在短事务里落行。
   const revision = await db.transaction(async (tx) => {
-    const row = await loadRevisionForUpload(tx, input.revisionId);
-    if (!row) throw new AppError('NOT_FOUND', '修订不存在');
-    const isAuthor = row.authorType === 'user' && row.authorUserId === input.actor.userId;
-    const isOfficialManager = row.authorType === 'official' && authorize(input.actor, 'official:manage');
-    if (!isAuthor && !isOfficialManager) throw new AppError('FORBIDDEN', '只有作品作者可以上传原图');
-    if (row.status !== 'draft' || row.lifecycleStatus !== 'active') throw new AppError('STATE_CONFLICT', '只能为草稿修订上传原图');
-    return row;
+    return assertRevisionOriginalUpload(tx, input.actor, input.revisionId);
   });
-  await store.put(cosKey, input.bytes, mimeType);
   const replaced = await db.transaction(async (tx) => {
+    const current = await assertRevisionOriginalUpload(tx, input.actor, input.revisionId);
+    const expected=(current.snapshot as {original?:{sha256:string}}|null)?.original?.sha256;
+    if(expected && expected!==sha256)throw new AppError('VALIDATION','原图与当前公开修订不匹配，请先更新图纸','original');
+    await lockOriginalReferences(tx);
+    const asset = await persistOriginalAsset(tx,store,input.actor.userId,input.bytes,validation.type);
+    const { cosKey,mimeType,width,height } = asset;
     const [existing] = await tx.select().from(communityOriginals).where(eq(communityOriginals.revisionId, revision.id)).for('update');
     const values = {
       workId: revision.workId, cosKey, mimeType, byteSize: input.bytes.byteLength, sha256,
-      width: dimensions?.width ?? null, height: dimensions?.height ?? null,
+      width, height,
       uploadedByUserId: input.actor.userId, createdAt: now, blockedAt: null, deletedAt: null, purgedAt: null,
     };
     if (existing) {
+      if(existing.cosKey !== cosKey) await tx.insert(originalGarbage).values({cosKey:existing.cosKey}).onConflictDoNothing();
       const [updated] = await tx.update(communityOriginals).set(values).where(eq(communityOriginals.id, existing.id)).returning();
       return { row: updated, previousKey: existing.cosKey !== cosKey ? existing.cosKey : null };
     }
     const [created] = await tx.insert(communityOriginals).values({ revisionId: revision.id, ...values }).returning();
     return { row: created, previousKey: null };
   });
-  if (replaced.previousKey) await deleteObjectIfUnreferenced(db, store, replaced.previousKey);
+  if (replaced.previousKey) { try { await deleteObjectIfUnreferenced(db, store, replaced.previousKey); await db.delete(originalGarbage).where(eq(originalGarbage.cosKey,replaced.previousKey)); } catch { /* Deferred cleanup retains the replaced key. */ } }
   return summarize(replaced.row);
 }
 
 /** 新修订沿用上一版原图：复制行、共享对象键。没有可沿用的原图时返回 null。 */
 export async function inheritRevisionOriginal(tx: AnyDatabase, input: { fromRevisionId: string; toRevisionId: string; workId: string; actorUserId: string; now?: Date }): Promise<OriginalSummary | null> {
+  await lockOriginalReferences(tx);
   const [source] = await tx.select().from(communityOriginals)
     .where(and(eq(communityOriginals.revisionId, input.fromRevisionId), isNull(communityOriginals.deletedAt)));
   if (!source) return null;
+  const [target] = await tx.select({ snapshot: communityRevisions.snapshot }).from(communityRevisions).where(eq(communityRevisions.id,input.toRevisionId));
+  const expected = (target?.snapshot as { original?: {sha256:string} } | null)?.original?.sha256;
+  if (expected && expected !== source.sha256) return null;
   const [created] = await tx.insert(communityOriginals).values({
     revisionId: input.toRevisionId, workId: input.workId, cosKey: source.cosKey, mimeType: source.mimeType,
     byteSize: source.byteSize, sha256: source.sha256, width: source.width, height: source.height,
@@ -116,6 +128,9 @@ export async function findRevisionOriginal(db: AnyDatabase, revisionId: string) 
 export async function assertRevisionHasOriginal(tx: AnyDatabase, revisionId: string): Promise<void> {
   const row = await findRevisionOriginal(tx, revisionId);
   if (!row) throw new AppError('ORIGINAL_REQUIRED', '公开作品必须附带原图，请先上传原图');
+  const [revision] = await tx.select({ snapshot: communityRevisions.snapshot }).from(communityRevisions).where(eq(communityRevisions.id, revisionId));
+  const expected = (revision?.snapshot as {original?:{sha256:string}} | null)?.original?.sha256;
+  if (expected && row.sha256 !== expected) throw new AppError('ORIGINAL_REQUIRED', '当前原图与图纸不匹配，请更新原图后再公开');
 }
 
 export type OriginalAccess = 'author' | 'moderator' | 'reuser';
@@ -176,11 +191,16 @@ export async function unblockWorkOriginals(tx: AnyDatabase, workId: string): Pro
 
 /** 仅当没有任何未删除行仍引用该对象键时才真正删除对象。 */
 export async function deleteObjectIfUnreferenced(db: AnyDatabase, store: OriginalObjectStore, cosKey: string): Promise<boolean> {
-  const [live] = await db.select({ count: sql<number>`count(*)::int` }).from(communityOriginals)
+  return db.transaction(async tx => {
+    await lockOriginalReferences(tx);
+  const [live] = await tx.select({ count: sql<number>`count(*)::int` }).from(communityOriginals)
     .where(and(eq(communityOriginals.cosKey, cosKey), isNull(communityOriginals.deletedAt)));
   if (Number(live?.count ?? 0) > 0) return false;
+  const [privateUse] = await tx.select({id: originalAssets.id}).from(originalAssets).where(eq(originalAssets.cosKey, cosKey)).limit(1);
+  if (privateUse) return false;
   await store.delete(cosKey);
   return true;
+  });
 }
 
 /**

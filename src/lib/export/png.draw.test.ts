@@ -117,8 +117,8 @@ describe('exportPngBlob 真实布局路径', () => {
     expect(result).toMatchObject({
       ok: true,
       kind: 'split',
-      pattern: { fileName: '豆谱-超限拆分-200x200-图纸.png' },
-      legend: { fileName: '豆谱-超限拆分-200x200-图例.png' },
+      pattern: { fileName: '豆色绘-超限拆分-200x200-图纸.png' },
+      legend: { fileName: '豆色绘-超限拆分-200x200-图例.png' },
     });
   });
 
@@ -159,7 +159,7 @@ describe('exportPngBlob 真实布局路径', () => {
       ok: true,
       kind: 'single',
       artifact: {
-        fileName: `豆谱-mini-${width}x1.png`,
+        fileName: `豆色绘-mini-${width}x1.png`,
         blob: expect.objectContaining({ type: 'image/png' }),
       },
     });

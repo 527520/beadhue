@@ -1,7 +1,7 @@
 # 豆色绘 / BeadHue：已确认范围与原型交付
 
 Status: ready-for-agent
-Completion: in-progress
+Completion: implemented; external-environment-validation-pending
 
 ## 当前关卡
 
@@ -9,7 +9,7 @@ Completion: in-progress
 
 - 基线：2026-09-22 拉取的 `origin/main`，`5c1bf387d53d0cad7ca03f5e4f02969efc35c8fc`。
 - 分支：`feat/beadhue-redesign`；独立工作树，原工作区的截图修改保留。
-- 已交付两套原型；当前进入 B 方案正式实现阶段。
+- 已交付两套原型并完成 B 方案正式实现；本地验证结果见 [implementation.md](implementation.md)。
 - 不自动合并、推送或部署，不实际迁移线上资源。
 
 ## 已确认的产品与视觉方向
@@ -17,6 +17,7 @@ Completion: in-progress
 - 品牌：中文「豆色绘」，英文 `BeadHue`，工程/仓库名 `beadhue`。
 - 用户端全面重构，作品发现优先。主导航「发现 / 创作 / 我的」，色板、帮助和账号为次级入口。
 - 后台仅改品牌，不改变现有视觉或操作方式。共享样式须隔离。
+- 用户追加确认：全系统按钮取消立体底边、渐变投影和上浮；后台按钮也应用平面样式。此项覆盖 B 原型的厚底边按钮，冻结原型仍保留原样。
 - 两套原型使用相同内容、页面与流程，先比较再深化。
 - A 清透蓝绿作品馆：`#F5F8FA #FFFFFF #20343C #126B63 #DAEEEA #E5B85C`。黑体标题、作品陈列与中性编辑环境。
 - B 明快糖果拼豆盒：`#F7F9FC #FFFFFF #23324D #295BCB #FFD36B #DC6559`。圆体标题、豆盒分格和克制彩色面积。
@@ -85,4 +86,4 @@ Completion: in-progress
 
 ## 下一步
 
-严格按 B 原型实施业务与更名。不得把原型交付或本地浏览器验证记录为生产验收。
+正式实现与本地验证已完成，后续在独立环境执行真实 PostgreSQL、设备与 COS 验收，再按发布文档另行安排上线。不得把原型交付或本地浏览器验证记录为生产验收。

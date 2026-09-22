@@ -411,7 +411,7 @@ function main() {
 
   const licenseBytes = readPinnedSourceFile(sourceDirectory, 'LICENSE');
   const generated = {
-    schema: 'doupu-vendored-pindou-color-data-v1',
+    schema: 'beadhue-vendored-pindou-color-data-v1',
     source: {
       repository: SOURCE_REPOSITORY,
       revision: SOURCE_REVISION,

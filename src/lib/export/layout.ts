@@ -63,7 +63,7 @@ export function clampCellPx(value: number): number {
  */
 export { DEFAULT_DESIGN_NAME, sanitizeFilename } from './filename';
 
-/** 导出文件名：豆谱-<名称>-<W>x<H>.png（规则见 export/filename.ts，PNG/PDF 共用）。 */
+/** 导出文件名：豆色绘-<名称>-<W>x<H>.png（规则见 export/filename.ts，PNG/PDF 共用）。 */
 export function pngFileName(designName: string, W: number, H: number): string {
   return buildExportFilename(designName, W, H, 'png');
 }

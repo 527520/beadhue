@@ -34,7 +34,7 @@ describe('background sync queue', () => {
       return 'done';
     })).resolves.toBe('done');
 
-    expect(request).toHaveBeenCalledWith('doupu-design-sync-v2', expect.any(Function));
+    expect(request).toHaveBeenCalledWith('beadhue-design-sync-v2', expect.any(Function));
   });
 
   it('keeps the storage lock until the active-session outcome callback has finished', async () => {
@@ -123,7 +123,7 @@ describe('background sync queue', () => {
   it('replays an active no-callback pass outcome before a Workbench tail can hide its conflict', async () => {
     const updatedAt = '2026-08-17T00:00:00.000Z';
     const localProject: ProjectFile = {
-      format: 'doupu-project', version: 3, engineVersion: '2.0.0', name: '本地',
+      format: 'beadhue-project', version: 3, engineVersion: '2.0.0', name: '本地',
       boardProfile: '5mm-29',
       createdAt: updatedAt, updatedAt,
       paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
@@ -206,7 +206,7 @@ describe('background sync queue', () => {
   it('replays a conflict created by a partially failed pass before a later retry', async () => {
     const updatedAt = '2026-08-17T00:00:00.000Z';
     const localProject: ProjectFile = {
-      format: 'doupu-project', version: 3, engineVersion: '2.0.0', name: '本地',
+      format: 'beadhue-project', version: 3, engineVersion: '2.0.0', name: '本地',
       boardProfile: '5mm-29',
       createdAt: updatedAt, updatedAt,
       paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },

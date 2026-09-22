@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import './globals.css';
+import './beadhue.css';
 import '../../public/fonts/ui/fonts.css';
 import { zhCN } from '@/messages/zh-CN';
 import { APP_NAME } from '@/lib/appInfo';
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#FAF8F4',
+  themeColor: '#F7F9FC',
   width: 'device-width',
   initialScale: 1,
 };

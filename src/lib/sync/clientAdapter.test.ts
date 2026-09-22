@@ -11,7 +11,7 @@ import type { ProjectFile } from '@/lib/types';
 
 function makeProject(name: string, updatedAt: string): ProjectFile {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',

@@ -5,8 +5,9 @@ import CommunitySubmitForm from './CommunitySubmitForm';
 import { DEFAULT_GENERATION_PARAMS } from '@/lib/types';
 
 const state = vi.hoisted(() => ({ push: vi.fn(), list: vi.fn(), get: vi.fn(), fetch: vi.fn(), pending: null as null | { bytes: ArrayBuffer; type: string; name: string; sourceRevisionId?: string } }));
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: state.push }) }));
-vi.mock('@/lib/sync/api', () => ({ createDoupuApi: () => ({ listDesigns: state.list, getDesign: state.get }) }));
+vi.mock('@/lib/sync/api', () => ({ createBeadhueApi: () => ({ listDesigns: state.list, getDesign: state.get }) }));
 vi.mock('@/lib/analytics/client', () => ({ track: vi.fn() }));
 vi.mock('@/lib/storage/pendingOriginals', () => ({
   takePendingOriginal: async () => { const value = state.pending; state.pending = null; return value ? { ...value, designId: id, createdAt: Date.now() } : null; },
@@ -16,7 +17,7 @@ const id = '00000000-0000-4000-a000-000000000001';
 const revisionId = '00000000-0000-4000-a000-000000000002';
 // 1×1 PNG：通过魔数、尺寸与动图校验
 const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAgAB/wdYqHkAAAAASUVORK5CYII='), (char) => char.charCodeAt(0));
-const project = { format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '红色花朵',
+const project = { format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '红色花朵',
   createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z', params: DEFAULT_GENERATION_PARAMS,
   paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
   pattern: { width: 1, height: 1, cells: [{ hex: '#FC3D46', code: 'F02', transparent: false }] } };
@@ -39,7 +40,7 @@ const pickOriginal = async () => {
   Object.defineProperty(file, 'arrayBuffer', { value: async () => PNG.buffer.slice(PNG.byteOffset, PNG.byteOffset + PNG.byteLength) });
   fireEvent.change(input, { target: { files: [file] } });
   await screen.findByText('photo.png');
-  fireEvent.click(screen.getByRole('checkbox', { name: /同意将上述原图上传/ }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /本人同意按《隐私政策》/ }));
 };
 const confirm = async () => {
   await waitFor(() => expect(screen.getByLabelText('公开作品标题')).toHaveValue('红色花朵'));

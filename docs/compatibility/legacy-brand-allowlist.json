@@ -1,0 +1,38 @@
+{
+  "historicalPrefixes": [
+    ".scratch/",
+    "db/migrations/",
+    "third_party/"
+  ],
+  "files": {
+    "CONTEXT.md": "Historical release facts and existing production resources",
+    "README.md": "Legacy v3 import contract and existing production domain",
+    "CHANGELOG.md": "Historical release record",
+    "Caddyfile": "Existing shared network with Chi",
+    ".env.example": "Existing shared network with Chi",
+    "docker-compose.prod.yml": "Keep existing network and connected Chi site",
+    "deploy/CHECKLIST.md": "Existing domain and shared network",
+    "deploy/beadhue-migration.md": "Explicit old-to-new migration mapping",
+    "deploy/scripts/deploy.sh": "Allow existing immutable images for documented recovery",
+    "docs/marketing/douyin/promo.html": "Existing domain is not renamed in this release",
+    "docs/adr/0005-deployment-tencent-docker.md": "Existing database advisory lock",
+    "docs/adr/0016-anonymized-account-public-author.md": "Existing governance lock shared with CLI",
+    "docs/adr/0023-beadhue-private-originals-and-candy-ui.md": "Migration compatibility decision",
+    "docs/compatibility/legacy-brand-allowlist.json": "Scanner rules document the legacy boundary",
+    "db/migrate.cjs": "Existing migration lock",
+    "db/admin-role.cjs": "Existing governance lock",
+    "src/lib/auth/db.ts": "Existing migration journal table",
+    "src/lib/auth/writeAccess.ts": "Existing governance lock",
+    "src/lib/auth/cookies.ts": "Legacy session cookie read and removal",
+    "src/lib/analytics/cookies.ts": "Legacy consent and visitor cookies",
+    "src/components/analytics/AnalyticsConsent.tsx": "Legacy consent migration",
+    "src/lib/schemas.ts": "Accept legacy v3 projects only",
+    "src/lib/storage/brandMigration.ts": "Copy and verify legacy browser storage",
+    "src/lib/storage/brandMigration.test.ts": "Legacy migration fixtures",
+    "src/lib/auth/tencentSes.test.ts": "Existing production sender domain fixture",
+    "tests/postgres/community-upgrade-contract.cjs": "Migration lock compatibility assertion",
+    "scripts/check-brand.cjs": "Scanner recognizes legacy spellings",
+    "tests/unit/releaseSafety.test.ts": "Historical image recovery assertion",
+    "src/lib/project/project.test.ts": "Legacy v3 import and v1/v2 rejection fixtures"
+  }
+}

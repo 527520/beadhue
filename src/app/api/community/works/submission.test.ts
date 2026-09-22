@@ -33,7 +33,7 @@ beforeEach(async () => {
   const [user] = await db.insert(users).values({ email: 'private@example.test', username: '小豆', emailVerifiedAt: new Date() }).returning();
   userId = user.id; token = (await createSession(db, userId)).token; designId = crypto.randomUUID();
   await db.insert(designs).values({ id: designId, userId, name: '私人内容', payloadBytes: 1, project: {
-    format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '私人内容',
+    format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '私人内容',
     createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z', params: DEFAULT_GENERATION_PARAMS,
     paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
     pattern: { width: 1, height: 1, cells: [{ hex: '#FC3D46', code: 'F02', transparent: false }] },
@@ -77,8 +77,8 @@ it('创建、提交及撤回重复请求只执行一次，幂等响应不保存�
   expect(hidden).not.toHaveProperty('purgeKeys');
   const responses = JSON.stringify((await db.select().from(idempotencyRecords)).map((item) => item.response));
   for (const secret of [userId, designId, 'private@example.test', '私人内容', '#FC3D46', 'snapshot']) expect(responses).not.toContain(secret);
-  // 撤回后原图不可取回；对象由提交后的尽力清理移除
-  await vi.waitFor(() => expect(store.objects.size).toBe(0));
+  // 撤回公开不删除私人资产；授权代理不再开放该修订。
+  expect(store.objects.size).toBe(1);
   expect((await readOriginal(new Request(`http://localhost/api/community/revisions/${created.revisionId}/original`), params(created.revisionId))).status).toBe(404);
 });
 it('版本过期、非本人设计和缺少许可都不创建作品', async () => {
@@ -103,4 +103,29 @@ it('幂等重放仍检查账号权限，不能让注销、暂停或未验证账�
   expect((await create(request(input()))).status).toBe(403);
   await db.update(users).set({ accountStatus: 'suspended' }).where(eq(users.id, userId));
   expect((await create(request(input()))).status).toBe(401);
+});
+
+it('私人保存与投稿共用原图计数，失败计次；拒绝前不读取图片或写入对象存储', async () => {
+  const { PUT: savePrivateOriginal } = await import('../../designs/[id]/original/route');
+  const created = await (await create(request(input(), 'rate-limit-draft'))).json();
+  const put = vi.spyOn(store, 'put');
+  const privateRequest = () => new Request(`http://localhost/api/designs/${designId}/original`, {
+    method: 'PUT', headers: {origin:'http://localhost',host:'localhost','content-type':'application/octet-stream','if-match':'1'},
+    body: new Uint8Array([0,1,2]),
+  });
+  for (let attempt=0;attempt<10;attempt++) expect((await savePrivateOriginal(privateRequest(),params(designId))).status).toBe(400);
+  const rejected=privateRequest();const body=vi.spyOn(rejected,'body','get');
+  const limited=await savePrivateOriginal(rejected,params(designId));
+  expect(limited.status).toBe(429);expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
+  expect(Number(limited.headers.get('retry-after'))).toBeLessThanOrEqual(60);
+  expect(body).not.toHaveBeenCalled();
+  const communityRequest=new Request(`http://localhost/api/community/revisions/${created.revisionId}/original`, {
+    method:'PUT',headers:{origin:'http://localhost',host:'localhost','content-type':'application/octet-stream'},body:new Uint8Array(TEST_PNG),
+  });
+  const publicBody=vi.spyOn(communityRequest,'body','get');
+  expect((await uploadOriginal(communityRequest,params(created.revisionId))).status).toBe(429);
+  expect(publicBody).not.toHaveBeenCalled();expect(put).not.toHaveBeenCalled();
+  token=undefined;
+  const guest=privateRequest();const guestBody=vi.spyOn(guest,'body','get');
+  expect((await savePrivateOriginal(guest,params(designId))).status).toBe(401);expect(guestBody).not.toHaveBeenCalled();
 });

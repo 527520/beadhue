@@ -26,7 +26,7 @@ export async function withDesignStorageLock<T>(run: () => Promise<T>): Promise<T
   const locks = typeof navigator === 'undefined'
     ? undefined
     : (navigator as Navigator & { locks?: BrowserLockManager }).locks;
-  if (locks?.request) return locks.request('doupu-design-sync-v2', run);
+  if (locks?.request) return locks.request('beadhue-design-sync-v2', run);
   // Web Locks is available in supported browsers. This fallback also keeps
   // jsdom/older engines safe within one runtime instead of silently racing.
   const previous = inProcessLockTail;

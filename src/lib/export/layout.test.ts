@@ -89,7 +89,7 @@ describe('sanitizeFilename（规则锁定）', () => {
   });
 
   it('首尾空白去除', () => {
-    expect(sanitizeFilename('  豆谱  ')).toBe('豆谱');
+    expect(sanitizeFilename('  豆色绘  ')).toBe('豆色绘');
   });
 
   it('非法字符替换为 -（\\/:*?"<>| 与控制字符）', () => {
@@ -110,7 +110,7 @@ describe('sanitizeFilename（规则锁定）', () => {
   });
 
   it('超长名称截断到 60 字符（J-3 统一规则；spec §E26 允许「完整显示或截断」）', () => {
-    // 100 个中文在 UTF-8 下是 300 字节，加上「豆谱-」前缀与「-100x200.pdf」后缀
+    // 100 个中文在 UTF-8 下是 300 字节，加上「豆色绘-」前缀与「-100x200.pdf」后缀
     // 会接近部分文件系统/网盘的 255 字节上限，因此统一截断。
     const name = '豆'.repeat(100);
     expect(sanitizeFilename(name)).toBe('豆'.repeat(60));
@@ -125,16 +125,16 @@ describe('sanitizeFilename（规则锁定）', () => {
 
 describe('pngFileName', () => {
   it('常规名称', () => {
-    expect(pngFileName('我的设计', 100, 80)).toBe('豆谱-我的设计-100x80.png');
+    expect(pngFileName('我的设计', 100, 80)).toBe('豆色绘-我的设计-100x80.png');
   });
 
   it('空名称 → 未命名设计（E26）', () => {
-    expect(pngFileName('', 20, 20)).toBe('豆谱-未命名设计-20x20.png');
-    expect(pngFileName('   ', 1, 1)).toBe('豆谱-未命名设计-1x1.png');
+    expect(pngFileName('', 20, 20)).toBe('豆色绘-未命名设计-20x20.png');
+    expect(pngFileName('   ', 1, 1)).toBe('豆色绘-未命名设计-1x1.png');
   });
 
   it('非法字符名被清洗', () => {
-    expect(pngFileName('a/b', 30, 30)).toBe('豆谱-a-b-30x30.png');
+    expect(pngFileName('a/b', 30, 30)).toBe('豆色绘-a-b-30x30.png');
   });
 });
 

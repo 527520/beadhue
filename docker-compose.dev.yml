@@ -2,20 +2,20 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: doupu-postgres
+    container_name: beadhue-postgres
     environment:
-      POSTGRES_DB: doupu
-      POSTGRES_USER: doupu
-      POSTGRES_PASSWORD: doupu
+      POSTGRES_DB: beadhue
+      POSTGRES_USER: beadhue
+      POSTGRES_PASSWORD: beadhue
     ports:
       - '5432:5432'
     volumes:
-      - doupu-pgdata:/var/lib/postgresql/data
+      - beadhue-pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U doupu -d doupu']
+      test: ['CMD-SHELL', 'pg_isready -U beadhue -d beadhue']
       interval: 5s
       timeout: 3s
       retries: 10
 
 volumes:
-  doupu-pgdata:
+  beadhue-pgdata:

@@ -1,7 +1,20 @@
-'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import SegmentedControl from '@/components/ui/SegmentedControl';
-import Button from '@/components/ui/Button';
+"use client";
+import OriginalUploadStatus from "@/components/beadhue/OriginalUploadStatus";
+import {
+  cacheOriginal,
+  getCachedOriginal,
+  enqueueOriginalUpload,
+} from "@/lib/originals/client";
+import {
+  cropMatrix,
+  originalRegion,
+  orientOriginalRegion,
+  type OriginalReference,
+} from "@/lib/originals/geometry";
+import { sniffImageType } from "@/lib/image/sniff";
+import ResponsiveSelect from "@/components/ui/ResponsiveSelect";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import Button from "@/components/ui/Button";
 
 /**
  * 工作台（T12）：选图→整图首版→可选裁剪 + 生成管线 + 编辑器/预览 + 导出 + 本地保存。
@@ -9,75 +22,120 @@ import Button from '@/components/ui/Button';
  * 刷新恢复最后设计；配额满/存储不可用降级提示（E39）。
  * 云端同步接缝（T16/T17）：storage 注入 + onSavedStatus 回调，本票仅本地实现。
  */
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { perfMark } from '@/lib/perf/mark';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { UploadDropzone, type ValidImageFile } from '@/components/upload/UploadDropzone';
-import { takePendingUpload } from '@/lib/upload/pendingUpload';
-import Notice from '@/components/ui/Notice';
-import Modal from '@/components/ui/Modal';
-import Icon from '@/components/ui/Icon';
-import ShoppingListPanel from '@/components/export/ShoppingListPanel';
-import StitchView from '@/components/stitch/StitchView';
-import ShareButton from '@/components/share/ShareButton';
-import PublishToCommunityButton from '@/components/community/PublishToCommunityButton';
-import { canFetchRevisionOriginal, fetchRevisionOriginal } from '@/lib/community/originalsClient';
-import { lookupOriginalSource, takePendingOriginal, type PendingOriginal } from '@/lib/storage/pendingOriginals';
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
+import { perfMark } from "@/lib/perf/mark";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  UploadDropzone,
+  type ValidImageFile,
+} from "@/components/upload/UploadDropzone";
+import { takePendingUpload } from "@/lib/upload/pendingUpload";
+import Notice from "@/components/ui/Notice";
+import Icon from "@/components/ui/Icon";
+import ShoppingListPanel from "@/components/export/ShoppingListPanel";
+import StitchView from "@/components/stitch/StitchView";
+import ShareButton from "@/components/share/ShareButton";
+import PublishToCommunityButton from "@/components/community/PublishToCommunityButton";
+import {
+  canFetchRevisionOriginal,
+  fetchRevisionOriginal,
+} from "@/lib/community/originalsClient";
+import {
+  lookupOriginalSource,
+  takePendingOriginal,
+  type PendingOriginal,
+} from "@/lib/storage/pendingOriginals";
 import {
   createStitchProgress,
   isProgressCompatible,
   type StitchProgress,
-} from '@/lib/progress/stitchProgress';
-import StepIndicator from '@/components/workbench/StepIndicator';
-import GenerationCancelControl from '@/components/workbench/GenerationCancelControl';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
-import { useAuthStatus } from '@/components/account/useAuthStatus';
-import CropDialog from '@/components/crop/CropDialog';
-import GenerationParamsPanel from '@/components/params/GenerationParamsPanel';
-import PalettePicker, { type PalettePickerOption } from '@/components/palettes/PalettePicker';
-import PatternPreview from '@/components/preview/PatternPreview';
-import PixelEditorCanvas from '@/components/editor/PixelEditorCanvas';
-import PngExportButton from '@/components/export/PngExportButton';
-import PdfExportButton from '@/components/export/PdfExportButton';
-import ProjectFileButtons from '@/components/export/ProjectFileButtons';
-import SiteHeader from '@/components/layout/SiteHeader';
-import { useMobileLayout } from '@/components/layout/useMobileLayout';
-import DesignNameEditor from './DesignNameEditor';
-import WorkbenchProjectBar from './WorkbenchProjectBar';
-import SaveStatus, { LocalSaveBadge, type CloudSaveState, type SaveState } from './SaveStatus';
-import { zhCN } from '@/messages/zh-CN';
-import { DEFAULT_GENERATION_PARAMS, type GenerationParams, type PaletteColor, type PaletteSelection, type Pattern, type ProjectFile, type ProjectPalette } from '@/lib/types';
+} from "@/lib/progress/stitchProgress";
+import StepIndicator from "@/components/workbench/StepIndicator";
+import GenerationCancelControl from "@/components/workbench/GenerationCancelControl";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useAuthStatus } from "@/components/account/useAuthStatus";
+import { ImageCropper } from "@/components/crop/ImageCropper";
+import Modal from "@/components/ui/Modal";
+import CropDialog from "@/components/crop/CropDialog";
+import GenerationParamsPanel from "@/components/params/GenerationParamsPanel";
+import PalettePicker, {
+  type PalettePickerOption,
+} from "@/components/palettes/PalettePicker";
+import PatternPreview from "@/components/preview/PatternPreview";
+import PixelEditorCanvas from "@/components/editor/PixelEditorCanvas";
+import PngExportButton from "@/components/export/PngExportButton";
+import PdfExportButton from "@/components/export/PdfExportButton";
+import ProjectFileButtons from "@/components/export/ProjectFileButtons";
+import SiteHeader from "@/components/layout/SiteHeader";
+import SiteFooter from "@/components/layout/SiteFooter";
+import { useMobileLayout } from "@/components/layout/useMobileLayout";
+import DesignNameEditor from "./DesignNameEditor";
+import WorkbenchProjectBar from "./WorkbenchProjectBar";
+import SaveStatus, { type CloudSaveState, type SaveState } from "./SaveStatus";
+import { zhCN } from "@/messages/zh-CN";
+import {
+  DEFAULT_GENERATION_PARAMS,
+  type GenerationParams,
+  type PaletteColor,
+  type PaletteSelection,
+  type Pattern,
+  type ProjectFile,
+  type ProjectPalette,
+} from "@/lib/types";
 import {
   getBuiltinPalette,
   isBuiltinPaletteId,
   listBuiltinPalettes,
   type BuiltinPaletteId,
-} from '@/lib/palettes';
-import { cropImageData, type Rect } from '@/lib/crop/layout';
-import { computeStats, totalBeadCount, MAX_GENERATION_SOURCE_DIMENSION } from '@/lib/engine/generate';
-import { remapPattern } from '@/lib/engine/remap';
-import { createBlankPattern, paletteColorsForSelection } from '@/lib/engine/kit';
-import { isKitTierAvailableForPalette, projectPaletteEngineColors } from '@/lib/kitTiers';
+} from "@/lib/palettes";
+import { cropImageData, type Rect } from "@/lib/crop/layout";
+import {
+  computeStats,
+  totalBeadCount,
+  MAX_GENERATION_SOURCE_DIMENSION,
+} from "@/lib/engine/generate";
+import { remapPattern } from "@/lib/engine/remap";
+import {
+  createBlankPattern,
+  paletteColorsForSelection,
+} from "@/lib/engine/kit";
+import {
+  isKitTierAvailableForPalette,
+  projectPaletteEngineColors,
+} from "@/lib/kitTiers";
 import {
   DEFAULT_BOARD_PROFILE_ID,
   compatibleBoardProfilesForPalette,
   defaultBoardProfileForPalette,
   getBoardProfile,
   isBoardProfileId,
-} from '@/lib/boardProfiles';
+} from "@/lib/boardProfiles";
 
 /** 空白起稿的尺寸档（H-2）：按当前制作规格的整板倍数提供。 */
 const BLANK_PRESETS = [1, 2, 3] as const;
-type BlankBoards = typeof BLANK_PRESETS[number];
-import { disposeGenerateWorker, prepareGenerationSource, runGenerate } from '@/lib/engine/runGenerate';
+type BlankBoards = (typeof BLANK_PRESETS)[number];
+import {
+  disposeGenerateWorker,
+  prepareGenerationSource,
+  runGenerate,
+} from "@/lib/engine/runGenerate";
 import {
   selectCommittedSnapshot,
   type GenerationCommit,
   type GenerationDraft,
-} from '@/lib/engine/session';
-import { useGenerationSession } from '@/lib/engine/useGenerationSession';
-import type { EngineOutput, ImageDataLike } from '@/lib/engine/types';
+} from "@/lib/engine/session";
+import { useGenerationSession } from "@/lib/engine/useGenerationSession";
+import type { EngineOutput, ImageDataLike } from "@/lib/engine/types";
 import {
   createImageDecoder,
   decodeImageFile,
@@ -85,9 +143,9 @@ import {
   type DecodeResult,
   type DecodedImage,
   type ImageDecoder,
-} from '@/lib/image/decode';
-import { validatePixelCount } from '@/lib/image/validation';
-import type { ImageType } from '@/lib/image/sniff';
+} from "@/lib/image/decode";
+import { validatePixelCount } from "@/lib/image/validation";
+import type { ImageType } from "@/lib/image/sniff";
 import {
   createLocalGenerationSource,
   createDesignRecord,
@@ -101,22 +159,27 @@ import {
   renderThumbnail,
   type LocalGenerationSourceV1,
   type StorageAdapter,
-} from '@/lib/storage';
-import { conflictName } from '@/lib/project/parse';
-import { ENGINE_VERSION, PROJECT_FILE_FORMAT, PROJECT_FILE_VERSION } from '@/lib/appInfo';
-import { usePublicConfig } from '@/components/config/usePublicConfig';
-import { createDoupuApi } from '@/lib/sync/api';
-import { enqueueDesignSync, withDesignStorageLock } from '@/lib/sync/queue';
-import type { SyncOutcome } from '@/lib/sync/clientAdapter';
-import { getPaletteColors, listPalettes } from '@/components/palettes/api';
-import { track } from '@/lib/analytics/client';
-import { colorBucket, widthBucket } from '@/lib/analytics/buckets';
+} from "@/lib/storage";
+import { conflictName } from "@/lib/project/parse";
+import {
+  ENGINE_VERSION,
+  PROJECT_FILE_FORMAT,
+  PROJECT_FILE_VERSION,
+} from "@/lib/appInfo";
+import { usePublicConfig } from "@/components/config/usePublicConfig";
+import { createBeadhueApi } from "@/lib/sync/api";
+import { enqueueDesignSync, withDesignStorageLock } from "@/lib/sync/queue";
+import type { SyncOutcome } from "@/lib/sync/clientAdapter";
+import { getPaletteColors, listPalettes } from "@/components/palettes/api";
+import { track } from "@/lib/analytics/client";
+import { colorBucket, widthBucket } from "@/lib/analytics/buckets";
 
-type Step = 'upload' | 'crop' | 'workspace';
-type Tab = 'preview' | 'edit' | 'stitch';
-type PaletteKind = { kind: 'builtin'; brand: BuiltinPaletteId } | { kind: 'custom' };
+type Step = "upload" | "crop" | "workspace";
+type Tab = "preview" | "edit" | "stitch";
+type PaletteKind =
+  { kind: "builtin"; brand: BuiltinPaletteId } | { kind: "custom" };
 
-const MOBILE_WORKSPACE_HISTORY_KEY = '__doupuMobileWorkspace';
+const MOBILE_WORKSPACE_HISTORY_KEY = "__beadhueMobileWorkspace";
 
 interface PendingStitchWrite {
   adapter: StorageAdapter;
@@ -124,17 +187,22 @@ interface PendingStitchWrite {
   progress: StitchProgress;
 }
 
-function mobileWorkspaceFromHistory(state: unknown): Exclude<Tab, 'preview'> | null {
-  if (!state || typeof state !== 'object') return null;
+function mobileWorkspaceFromHistory(
+  state: unknown,
+): Exclude<Tab, "preview"> | null {
+  if (!state || typeof state !== "object") return null;
   const mode = (state as Record<string, unknown>)[MOBILE_WORKSPACE_HISTORY_KEY];
-  return mode === 'edit' || mode === 'stitch' ? mode : null;
+  return mode === "edit" || mode === "stitch" ? mode : null;
 }
 
-function historyStateWithMobileWorkspace(mode: Exclude<Tab, 'preview'>): Record<string, unknown> {
+function historyStateWithMobileWorkspace(
+  mode: Exclude<Tab, "preview">,
+): Record<string, unknown> {
   const current = window.history.state;
-  const base = current && typeof current === 'object'
-    ? current as Record<string, unknown>
-    : {};
+  const base =
+    current && typeof current === "object"
+      ? (current as Record<string, unknown>)
+      : {};
   return { ...base, [MOBILE_WORKSPACE_HISTORY_KEY]: mode };
 }
 
@@ -142,19 +210,25 @@ function paletteColorsMatch(
   projectPalette: ProjectPalette,
   colors: readonly PaletteColor[],
 ): boolean {
-  if (projectPalette.kind !== 'custom' || projectPalette.colors.length !== colors.length) return false;
+  if (
+    projectPalette.kind !== "custom" ||
+    projectPalette.colors.length !== colors.length
+  )
+    return false;
   return projectPalette.colors.every((color, index) => {
     const candidate = colors[index];
-    return candidate.code !== null
-      && color.code.trim().toUpperCase() === candidate.code.trim().toUpperCase()
-      && color.hex.toUpperCase() === candidate.hex.toUpperCase();
+    return (
+      candidate.code !== null &&
+      color.code.trim().toUpperCase() === candidate.code.trim().toUpperCase() &&
+      color.hex.toUpperCase() === candidate.hex.toUpperCase()
+    );
   });
 }
 
 /** 清除 URL 上的 ?id= 参数（开始新设计后，刷新不应再恢复旧设计）。 */
 function clearDesignQuery(): void {
-  if (typeof window !== 'undefined') {
-    window.history.replaceState(null, '', '/app');
+  if (typeof window !== "undefined") {
+    window.history.replaceState(null, "", "/app");
   }
 }
 
@@ -173,12 +247,21 @@ interface WorkbenchProps {
   generateFn?: typeof runGenerate;
 }
 
-export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDecoder, onSavedStatus, generateFn }: WorkbenchProps) {
+export default function Workbench({
+  storage,
+  decodeFn,
+  decodeRegionFn,
+  imageDecoder,
+  onSavedStatus,
+  generateFn,
+}: WorkbenchProps) {
   const t = zhCN.workbench;
   const router = useRouter();
   // 破坏性操作统一走品牌确认弹窗（C-7），不再用 window.confirm。
   const { confirm, confirmDialog } = useConfirm();
-  const [ownedImageDecoder] = useState<ImageDecoder>(() => createImageDecoder());
+  const [ownedImageDecoder] = useState<ImageDecoder>(() =>
+    createImageDecoder(),
+  );
   const activeImageDecoder = imageDecoder ?? ownedImageDecoder;
   // 站点公开配置（票 02）：生成默认参数可被服务端环境变量覆盖，改配置即生效
   const pubCfg = usePublicConfig();
@@ -191,24 +274,54 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     [pubCfg],
   );
 
-  const [step, setStep] = useState<Step>('upload');
+  const [step, setStep] = useState<Step>("upload");
   const [decoded, setDecoded] = useState<DecodedImage | null>(null);
   const [lastCropRect, setLastCropRect] = useState<Rect | undefined>();
-  const encodedSourceRef = useRef<{ bytes: Uint8Array; type: ImageType } | null>(null);
+  const encodedSourceRef = useRef<{
+    bytes: Uint8Array;
+    type: ImageType;
+  } | null>(null);
   /**
    * 当前会话原图的编码字节副本（D49）。解码器会接管并转移原字节，这里保留一份
-   * 只为「公开到豆社」时交给投稿页上传；随 clearOriginalSource 一同释放，永不入库。
+   * 完整原图单独缓存和上传，图纸 JSON 仅保存资产引用与几何关系。
    */
-  const retainedOriginalRef = useRef<{ bytes: Uint8Array; type: ImageType; name: string } | null>(null);
+  const [original, setOriginal] = useState<OriginalReference | undefined>();
+  const originalRef = useRef<OriginalReference | undefined>(undefined);
+  const candidateOriginalRef = useRef<OriginalReference | undefined>(undefined);
+  const originalByPatternRef = useRef(
+    new WeakMap<Pattern, OriginalReference | undefined>(),
+  );
+  const originalBySourceRef = useRef(
+    new WeakMap<ImageDataLike, OriginalReference>(),
+  );
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
+    null,
+  );
+  const updateOriginal = useCallback((next: OriginalReference | undefined) => {
+    originalRef.current = next;
+    setOriginal(next);
+  }, []);
+  const retainedOriginalRef = useRef<{
+    bytes: Uint8Array;
+    type: ImageType;
+    name: string;
+  } | null>(null);
   /** 豆社引用来源：可从服务器取回原图时，restored-locked 提示多一个「从豆社取回原图」入口。 */
-  const [communitySourceProbe, setCommunitySource] = useState<{ revisionId: string; designId: string } | null>(null);
+  const [communitySourceProbe, setCommunitySource] = useState<{
+    revisionId: string;
+    designId: string;
+  } | null>(null);
   const imageOperationRef = useRef(0);
   const imageBusyRef = useRef(false);
   /** Restored projects rebind an original image without becoming a new design. */
   const rebindRestoredSourceRef = useRef(false);
   /** undefined 保留、null 清除，其余与图纸原子写入；仅成功生成可进入此处。 */
-  const pendingGenerationSourceRef = useRef<ImageDataLike | null | undefined>(undefined);
-  const pendingCropRef = useRef<{ source: ImageDataLike; rect: Rect } | null>(null);
+  const pendingGenerationSourceRef = useRef<ImageDataLike | null | undefined>(
+    undefined,
+  );
+  const pendingCropRef = useRef<{ source: ImageDataLike; rect: Rect } | null>(
+    null,
+  );
   const cropRectsRef = useRef(new WeakMap<ImageDataLike, Rect>());
   /** 当前选中的云端自定义色板 id（null = 导入项目自带的色板或内置品牌）。 */
   const [customPaletteId, setCustomPaletteId] = useState<string | null>(null);
@@ -221,7 +334,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     customPaletteId: string | null;
   } | null>(null);
   /** 云端自定义色板列表（优化票 06：登录后从 /api/palettes 加载，工作台可选）。 */
-  const [cloudPalettes, setCloudPalettes] = useState<Array<{ id: string; name: string; colors: PaletteColor[] }>>([]);
+  const [cloudPalettes, setCloudPalettes] = useState<
+    Array<{ id: string; name: string; colors: PaletteColor[] }>
+  >([]);
   /** 云端自定义色板加载失败（D-4）：内置色板仍可用，因此只是提示而非阻断。 */
   const [paletteLoadFailed, setPaletteLoadFailed] = useState(false);
   const initialGenerationDraft = useMemo<GenerationDraft>(() => {
@@ -229,7 +344,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       boardProfile: DEFAULT_BOARD_PROFILE_ID,
       params: defaultParams,
       paletteSelection: {
-        palette: { kind: 'builtin', brand: 'MARD' },
+        palette: { kind: "builtin", brand: "MARD" },
         kitTier: 0,
       },
     };
@@ -240,14 +355,54 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     designIdRef.current = id;
     setDesignId(id);
   }, []);
-  const [name, setName] = useState('');
-  const [createdAt, setCreatedAt] = useState('');
+  const [name, setName] = useState("");
+  const [createdAt, setCreatedAt] = useState("");
   const [communityOrigin, setCommunityOrigin] = useState(false);
   const [savedNames, setSavedNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [busyText, setBusyText] = useState<string>(zhCN.workbench.decoding);
   const [cropRecoveryOpen, setCropRecoveryOpen] = useState(false);
+  const replacementBackupRef = useRef<{
+    decoded: DecodedImage | null;
+    rect: Rect | undefined;
+    retained: typeof retainedOriginalRef.current;
+    encoded: typeof encodedSourceRef.current;
+    candidate: OriginalReference | undefined;
+  } | null>(null);
+  const restoreReplacement = useCallback((): void => {
+    const backup = replacementBackupRef.current;
+    if (!backup) return;
+    replacementBackupRef.current = null;
+    retainedOriginalRef.current = backup.retained;
+    encodedSourceRef.current = backup.encoded;
+    candidateOriginalRef.current = backup.candidate;
+    setDecoded(backup.decoded);
+    setLastCropRect(backup.rect);
+    // The worker decoder may now hold the rejected image. Reload the retained
+    // original before allowing another crop; the committed pattern stays intact.
+    if (backup.retained && !decodeFn && !decodeRegionFn) {
+      imageBusyRef.current = true;
+      setBusy(true);
+      const operation = ++imageOperationRef.current;
+      void activeImageDecoder
+        .load(backup.retained.bytes.slice(), backup.retained.type)
+        .then((result) => {
+          if (operation === imageOperationRef.current && !result.ok)
+            setDecoded(null);
+        })
+        .catch(() => {
+          if (operation === imageOperationRef.current) setDecoded(null);
+        })
+        .finally(() => {
+          if (operation === imageOperationRef.current) {
+            imageBusyRef.current = false;
+            setBusy(false);
+          }
+        });
+    }
+  }, [activeImageDecoder, decodeFn, decodeRegionFn]);
   const clearOriginalSource = useCallback((): void => {
+    replacementBackupRef.current = null;
     imageOperationRef.current += 1;
     imageBusyRef.current = false;
     setBusy(false);
@@ -256,9 +411,11 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     setLastCropRect(undefined);
     encodedSourceRef.current = null;
     retainedOriginalRef.current = null;
+    updateOriginal(undefined);
+    candidateOriginalRef.current = undefined;
     pendingCropRef.current = null;
     activeImageDecoder.clear();
-  }, [activeImageDecoder]);
+  }, [activeImageDecoder, updateOriginal]);
   const {
     state: generationSession,
     generate: startGeneration,
@@ -279,7 +436,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   useEffect(() => {
     sourceRef.current = generationSession.committedSource;
   }, [generationSession.committedSource]);
-  const generating = generationSession.status === 'generating';
+  const generating = generationSession.status === "generating";
   /**
    * 生成轮次：每次 onStart +1，作为取消控件的 key。
    * 「本次生成是否已点过取消」这个状态由 GenerationCancelControl 自己持有；
@@ -301,7 +458,6 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const [doneToken, setDoneToken] = useState(0);
   const patternRegionRef = useRef<HTMLDivElement>(null);
-  const mobilePatternRegionRef = useRef<HTMLDivElement>(null);
   const firstDoneHandledRef = useRef(false);
   const generationDraft = generationSession.draft ?? initialGenerationDraft;
   const paletteSelection = generationDraft.paletteSelection;
@@ -315,9 +471,10 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   const boardProfile = generationDraft.boardProfile;
   const boardSpec = getBoardProfile(boardProfile);
   const paletteKind: PaletteKind = useMemo(
-    () => (projectPalette.kind === 'builtin'
-      ? { kind: 'builtin', brand: projectPalette.brand }
-      : { kind: 'custom' }),
+    () =>
+      projectPalette.kind === "builtin"
+        ? { kind: "builtin", brand: projectPalette.brand }
+        : { kind: "custom" },
     [projectPalette],
   );
   /** 快速任务 <300ms 不显示进度槽；实际进度由 generationSession 独占。 */
@@ -337,15 +494,16 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const auth = useAuthStatus();
   const authStatus = useMemo(
-    () => (auth.kind === 'user'
-      ? { kind: 'user' as const, email: auth.email }
-      : { kind: 'guest' as const, email: '' }),
+    () =>
+      auth.kind === "user"
+        ? { kind: "user" as const, email: auth.email }
+        : { kind: "guest" as const, email: "" },
     [auth],
   );
 
   // 优化票 06：登录后加载云端自定义色板进「色板品牌」下拉；失败静默（内置色板照常可用）
   useEffect(() => {
-    if (authStatus.kind !== 'user') {
+    if (authStatus.kind !== "user") {
       return;
     }
     let cancelled = false;
@@ -372,20 +530,31 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       cancelled = true;
     };
   }, [authStatus.kind]);
-  const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [cloudSaveState, setCloudSaveState] = useState<CloudSaveState>('pending');
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [cloudSaveState, setCloudSaveState] =
+    useState<CloudSaveState>("pending");
   const [storageReady, setStorageReady] = useState(false);
-  const [tab, setTab] = useState<Tab>('preview');
+  const [tab, setTab] = useState<Tab>("edit");
+  const [blankOpen, setBlankOpen] = useState(false);
   const [blankBoards, setBlankBoards] = useState<BlankBoards>(1);
-  const [mobilePanel, setMobilePanel] = useState<'params' | 'colors' | 'export'>('params');
-  const mobileToolSheetRef = useRef<HTMLElement>(null);
-  const [paletteIntent, setPaletteIntent] = useState<{ designId: string; value: string } | null>(null);
+  const [mobilePanel, setMobilePanel] = useState<
+    "params" | "colors" | "export"
+  >("params");
+  const [saveSummaryOpen, setSaveSummaryOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteHost, setPaletteHost] = useState<HTMLDivElement | null>(null);
+  const [paletteIntent, setPaletteIntent] = useState<{
+    designId: string;
+    value: string;
+  } | null>(null);
   const mobileLayout = useMobileLayout();
   /**
    * 跟拼进度（G-1）：按设计 id 存在本机 IndexedDB，与图纸尺寸绑定。
    * null 表示本地存储不可用（隐私模式）；尺寸不匹配时重建，避免把「已拼」错位。
    */
-  const [stitchProgress, setStitchProgress] = useState<StitchProgress | null>(null);
+  const [stitchProgress, setStitchProgress] = useState<StitchProgress | null>(
+    null,
+  );
   const [stitchSaveError, setStitchSaveError] = useState(false);
   /**
    * 跟拼写入只允许一个在途请求；pending 始终被最新快照覆盖。
@@ -420,36 +589,40 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   const markDirty = useCallback((): void => {
     dirtyRef.current = true;
     editGenRef.current += 1;
-    setSaveState('dirty');
-    setCloudSaveState('pending');
+    setSaveState("dirty");
+    setCloudSaveState("pending");
     scheduleAutosave();
   }, [scheduleAutosave]);
 
   const previewTabRef = useRef<HTMLButtonElement>(null);
   const editTabRef = useRef<HTMLButtonElement>(null);
   const stitchTabRef = useRef<HTMLButtonElement>(null);
-  const TAB_ORDER: Tab[] = useMemo(() => ['preview', 'edit', 'stitch'], []);
+  const TAB_ORDER: Tab[] = useMemo(() => ["preview", "edit", "stitch"], []);
 
   /** 页签键盘导航：←/→ 在预览/修补/跟拼之间循环，焦点跟随（ARIA tabs pattern） */
-  const handleTabKey = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    const current = TAB_ORDER.indexOf(tab);
-    const delta = event.key === 'ArrowRight' ? 1 : -1;
-    const next = TAB_ORDER[(current + delta + TAB_ORDER.length) % TAB_ORDER.length];
-    setTab(next);
-    const refs: Record<Tab, React.RefObject<HTMLButtonElement | null>> = {
-      preview: previewTabRef,
-      edit: editTabRef,
-      stitch: stitchTabRef,
-    };
-    refs[next].current?.focus();
-  }, [TAB_ORDER, tab]);
+  const handleTabKey = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const current = TAB_ORDER.indexOf(tab);
+      const delta = event.key === "ArrowRight" ? 1 : -1;
+      const next =
+        TAB_ORDER[(current + delta + TAB_ORDER.length) % TAB_ORDER.length];
+      setTab(next);
+      const refs: Record<Tab, React.RefObject<HTMLButtonElement | null>> = {
+        preview: previewTabRef,
+        edit: editTabRef,
+        stitch: stitchTabRef,
+      };
+      refs[next].current?.focus();
+    },
+    [TAB_ORDER, tab],
+  );
 
   const paletteOptions = useMemo<PalettePickerOption[]>(() => {
     const builtin = listBuiltinPalettes().map((summary) => {
       const palette = getBuiltinPalette(summary.id);
-      const selection: ProjectPalette = { kind: 'builtin', brand: summary.id };
+      const selection: ProjectPalette = { kind: "builtin", brand: summary.id };
       return {
         value: `builtin:${summary.id}`,
         brand: summary.brand,
@@ -458,7 +631,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         collectedCount: summary.colorCount,
         usableCount: summary.engineColorCount,
         sourceQuality: summary.source.qualityLabel,
-        boardProfiles: compatibleBoardProfilesForPalette(selection).map((profile) => profile.displayName),
+        boardProfiles: compatibleBoardProfilesForPalette(selection).map(
+          (profile) => profile.displayName,
+        ),
         technicalVersion: summary.source.versionId,
         defaultForBrand: summary.defaultForBrand,
       };
@@ -471,44 +646,69 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       collectedCount: p.colors.length,
       usableCount: p.colors.length,
       sourceQuality: zhCN.params.customPaletteQuality,
-      boardProfiles: compatibleBoardProfilesForPalette({ kind: 'custom', colors: [] })
-        .map((profile) => profile.displayName),
+      boardProfiles: compatibleBoardProfilesForPalette({
+        kind: "custom",
+        colors: [],
+      }).map((profile) => profile.displayName),
       defaultForBrand: false,
     }));
-    if (paletteKind.kind === 'custom' && customPaletteId
-      && !cloudPalettes.some((candidate) => candidate.id === customPaletteId)) {
+    if (
+      paletteKind.kind === "custom" &&
+      customPaletteId &&
+      !cloudPalettes.some((candidate) => candidate.id === customPaletteId)
+    ) {
       customEntries.push({
         value: `custom:${customPaletteId}`,
         brand: zhCN.params.customPaletteGroup,
         series: zhCN.params.currentProjectPalette,
-        colors: projectPalette.kind === 'custom' ? projectPalette.colors.map((color) => color.hex) : [],
-        collectedCount: projectPalette.kind === 'custom' ? projectPalette.colors.length : 0,
-        usableCount: projectPalette.kind === 'custom' ? projectPalette.colors.length : 0,
+        colors:
+          projectPalette.kind === "custom"
+            ? projectPalette.colors.map((color) => color.hex)
+            : [],
+        collectedCount:
+          projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
+        usableCount:
+          projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
         sourceQuality: zhCN.params.customPaletteQuality,
-        boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map((profile) => profile.displayName),
+        boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map(
+          (profile) => profile.displayName,
+        ),
         defaultForBrand: false,
       });
     }
     // 导入项目自带的自定义色板（无云端 id）保留 '__custom' 占位，不可再切换
-    if (paletteKind.kind === 'custom' && !customPaletteId) {
-      return [...builtin, ...customEntries, {
-        value: '__custom',
-        brand: zhCN.params.customPaletteGroup,
-        series: zhCN.workbench.customPaletteLabel,
-        colors: projectPalette.kind === 'custom' ? projectPalette.colors.map((color) => color.hex) : [],
-        collectedCount: projectPalette.kind === 'custom' ? projectPalette.colors.length : 0,
-        usableCount: projectPalette.kind === 'custom' ? projectPalette.colors.length : 0,
-        sourceQuality: zhCN.params.customPaletteQuality,
-        boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map((profile) => profile.displayName),
-        defaultForBrand: false,
-      }];
+    if (paletteKind.kind === "custom" && !customPaletteId) {
+      return [
+        ...builtin,
+        ...customEntries,
+        {
+          value: "__custom",
+          brand: zhCN.params.customPaletteGroup,
+          series: zhCN.workbench.customPaletteLabel,
+          colors:
+            projectPalette.kind === "custom"
+              ? projectPalette.colors.map((color) => color.hex)
+              : [],
+          collectedCount:
+            projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
+          usableCount:
+            projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
+          sourceQuality: zhCN.params.customPaletteQuality,
+          boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map(
+            (profile) => profile.displayName,
+          ),
+          defaultForBrand: false,
+        },
+      ];
     }
     return [...builtin, ...customEntries];
   }, [paletteKind.kind, customPaletteId, cloudPalettes, projectPalette]);
 
   const selectedPalette =
-    paletteKind.kind === 'custom'
-      ? (customPaletteId ? `custom:${customPaletteId}` : '__custom')
+    paletteKind.kind === "custom"
+      ? customPaletteId
+        ? `custom:${customPaletteId}`
+        : "__custom"
       : `builtin:${paletteKind.brand}`;
 
   const fullPalette = useMemo<PaletteColor[]>(
@@ -517,117 +717,184 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   );
   const paletteColorCount = fullPalette.length;
   const boardProfileOptions = useMemo(
-    () => compatibleBoardProfilesForPalette(projectPalette).map((profile) => ({
-      value: profile.id,
-      label: profile.displayName,
-      boardSize: profile.boardCols,
-    })),
+    () =>
+      compatibleBoardProfilesForPalette(projectPalette).map((profile) => ({
+        value: profile.id,
+        label: profile.displayName,
+        boardSize: profile.boardCols,
+      })),
     [projectPalette],
   );
-  const paletteDisplayName = projectPalette.kind === 'builtin'
-    ? getBuiltinPalette(projectPalette.brand).label
-    : zhCN.workbench.customPaletteLabel;
+  const paletteDisplayName =
+    projectPalette.kind === "builtin"
+      ? getBuiltinPalette(projectPalette.brand).label
+      : zhCN.workbench.customPaletteLabel;
 
-  const resolveCustomPaletteId = useCallback((
-    draftPalette: ProjectPalette,
-    preferredId: string | null,
-  ): string | null => {
-    if (draftPalette.kind !== 'custom') return null;
-    const preferred = preferredId
-      ? cloudPalettes.find((entry) => entry.id === preferredId)
-      : undefined;
-    if (preferred && paletteColorsMatch(draftPalette, preferred.colors)) return preferred.id;
-    return cloudPalettes.find((entry) => paletteColorsMatch(draftPalette, entry.colors))?.id ?? null;
-  }, [cloudPalettes]);
+  const resolveCustomPaletteId = useCallback(
+    (
+      draftPalette: ProjectPalette,
+      preferredId: string | null,
+    ): string | null => {
+      if (draftPalette.kind !== "custom") return null;
+      const preferred = preferredId
+        ? cloudPalettes.find((entry) => entry.id === preferredId)
+        : undefined;
+      if (preferred && paletteColorsMatch(draftPalette, preferred.colors))
+        return preferred.id;
+      return (
+        cloudPalettes.find((entry) =>
+          paletteColorsMatch(draftPalette, entry.colors),
+        )?.id ?? null
+      );
+    },
+    [cloudPalettes],
+  );
 
-  const restoreDraftControls = useCallback((draft: GenerationDraft): void => {
-    // Force a fresh controlled value even when React batches the rejected
-    // draft and rollback into one render; otherwise the panel's local draft
-    // can remain visible while the parent state bails out by object identity.
-    updateGenerationDraft({
-      boardProfile: draft.boardProfile,
-      params: { ...draft.params },
-      paletteSelection: draft.paletteSelection,
-    });
-    setCustomPaletteId((current) => resolveCustomPaletteId(draft.paletteSelection.palette, current));
-  }, [resolveCustomPaletteId, updateGenerationDraft]);
+  const restoreDraftControls = useCallback(
+    (draft: GenerationDraft): void => {
+      // Force a fresh controlled value even when React batches the rejected
+      // draft and rollback into one render; otherwise the panel's local draft
+      // can remain visible while the parent state bails out by object identity.
+      updateGenerationDraft({
+        boardProfile: draft.boardProfile,
+        params: { ...draft.params },
+        paletteSelection: draft.paletteSelection,
+      });
+      setCustomPaletteId((current) =>
+        resolveCustomPaletteId(draft.paletteSelection.palette, current),
+      );
+    },
+    [resolveCustomPaletteId, updateGenerationDraft],
+  );
 
   /** 用当前参数在给定源图上重新生成；失败给出可重试提示。
    * 优化票 07：Worker 后台执行（页面不冻结），进度按阶段上报（>300ms 才显示），
    * 可取消（终止 Worker）；token 防旧结果覆盖新结果（取消语义）。 */
-  const regenerate = useCallback(
-    (): void => {
-      startGeneration({
-        create: (src, draft, onProgress) => (generateFn ?? runGenerate)({
-          src,
-          params: draft.params,
-          palette: paletteColorsForSelection(draft.paletteSelection),
-        }, onProgress),
-        commit: (output, draft) => ({
-          ...draft,
-          pattern: output.pattern,
-          stats: output.stats,
-          total: output.totalBeadCount,
-          engineVersion: ENGINE_VERSION,
-        }),
-        errorMessage: t.generateFailed,
-        onStart: () => {
-          cancelEpochRef.current += 1;
-          genStartedAtRef.current = performance.now();
-          perfMark('workbench-generation-start');
-          setShowProgress(false);
-          setErrorMsg(null);
-          // 新一轮生成开始：换 key 让取消控件重挂，「已点取消」随之复位、按钮重新出现。
-          setGenerationRound((round) => round + 1);
-          track({
-            name: 'generation_started',
-            properties: {
-              widthBucket: widthBucket(generationDraft.params.targetWidth),
-              colorBucket: colorBucket(palette.length),
-              boardProfile: generationDraft.boardProfile,
-              dithering: generationDraft.params.dithering,
-            },
-          });
-        },
-        onProgress: () => {
-          if (performance.now() - genStartedAtRef.current >= 300) setShowProgress(true);
-        },
-        onSuccess: () => {
-          const appliedCrop = pendingCropRef.current;
-          if (appliedCrop) {
-            pendingGenerationSourceRef.current = appliedCrop.source;
-            cropRectsRef.current.set(appliedCrop.source, appliedCrop.rect);
-            setLastCropRect(appliedCrop.rect);
-            pendingCropRef.current = null;
+  const regenerate = useCallback((): void => {
+    startGeneration({
+      create: (src, draft, onProgress) =>
+        (generateFn ?? runGenerate)(
+          {
+            src,
+            params: draft.params,
+            palette: paletteColorsForSelection(draft.paletteSelection),
+          },
+          onProgress,
+        ),
+      commit: (output, draft) => ({
+        ...draft,
+        pattern: output.pattern,
+        stats: output.stats,
+        total: output.totalBeadCount,
+        engineVersion: ENGINE_VERSION,
+      }),
+      errorMessage: t.generateFailed,
+      onStart: () => {
+        if (generationSession.committed)
+          originalByPatternRef.current.set(
+            generationSession.committed.pattern,
+            originalRef.current,
+          );
+        cancelEpochRef.current += 1;
+        genStartedAtRef.current = performance.now();
+        perfMark("workbench-generation-start");
+        setShowProgress(false);
+        setErrorMsg(null);
+        // 新一轮生成开始：换 key 让取消控件重挂，「已点取消」随之复位、按钮重新出现。
+        setGenerationRound((round) => round + 1);
+        track({
+          name: "generation_started",
+          properties: {
+            widthBucket: widthBucket(generationDraft.params.targetWidth),
+            colorBucket: colorBucket(palette.length),
+            boardProfile: generationDraft.boardProfile,
+            dithering: generationDraft.params.dithering,
+          },
+        });
+      },
+      onProgress: () => {
+        if (performance.now() - genStartedAtRef.current >= 300)
+          setShowProgress(true);
+      },
+      onSuccess: () => {
+        replacementBackupRef.current = null;
+        const appliedCrop = pendingCropRef.current;
+        if (appliedCrop) {
+          pendingGenerationSourceRef.current = appliedCrop.source;
+          cropRectsRef.current.set(appliedCrop.source, appliedCrop.rect);
+          setLastCropRect(appliedCrop.rect);
+          const full = candidateOriginalRef.current ?? originalRef.current;
+          if (full?.width && full.height) {
+            const aligned = {
+              ...full,
+              geometry: cropMatrix(appliedCrop.rect, full.width, full.height),
+            };
+            originalBySourceRef.current.set(appliedCrop.source, aligned);
+            updateOriginal(aligned);
           }
-          track({
-            name: 'generation_succeeded',
-            properties: {
-              widthBucket: widthBucket(generationDraft.params.targetWidth),
-              colorBucket: colorBucket(palette.length),
-            },
-          });
-          markDirty();
-          // D-1：生成完成的可感知反馈（播报 + 三段编排 + 数字滚动）
-          setDoneToken((token) => token + 1);
-          perfMark('workbench-generation-commit');
-        },
-        onFailure: (_error, stableDraft) => {
-          track({ name: 'generation_failed', properties: { errorCode: 'GENERATION_FAILED' } });
-          if (stableDraft) restoreDraftControls(stableDraft);
-          const failedCrop = pendingCropRef.current !== null;
-          clearOriginalSource();
-          if (failedCrop && !generationSession.committed) {
-            uploadGenerationSource(null, initialGenerationDraft);
-            setStep('upload');
-            setErrorMsg(t.generateFailed);
-          }
-        },
-        onSettled: () => { setShowProgress(false); perfMark('workbench-generation-settled'); },
-      });
-    },
-    [clearOriginalSource, generationSession.committed, initialGenerationDraft, uploadGenerationSource, t.generateFailed, markDirty, generateFn, startGeneration, restoreDraftControls, generationDraft, palette.length],
-  );
+          pendingCropRef.current = null;
+        } else if (source) {
+          const aligned = originalBySourceRef.current.get(source);
+          if (aligned)
+            updateOriginal({
+              ...aligned,
+              assetId:
+                originalRef.current?.sha256 === aligned.sha256
+                  ? originalRef.current.assetId
+                  : aligned.assetId,
+            });
+        }
+        track({
+          name: "generation_succeeded",
+          properties: {
+            widthBucket: widthBucket(generationDraft.params.targetWidth),
+            colorBucket: colorBucket(palette.length),
+          },
+        });
+        markDirty();
+        // D-1：生成完成的可感知反馈（播报 + 三段编排 + 数字滚动）
+        setDoneToken((token) => token + 1);
+        perfMark("workbench-generation-commit");
+      },
+      onFailure: (_error, stableDraft) => {
+        track({
+          name: "generation_failed",
+          properties: { errorCode: "GENERATION_FAILED" },
+        });
+        if (stableDraft) restoreDraftControls(stableDraft);
+        const failedCrop = pendingCropRef.current !== null;
+        if (!generationSession.committed) clearOriginalSource();
+        else {
+          pendingCropRef.current = null;
+          restoreReplacement();
+        }
+        if (failedCrop && !generationSession.committed) {
+          uploadGenerationSource(null, initialGenerationDraft);
+          setStep("upload");
+          setErrorMsg(t.generateFailed);
+        }
+      },
+      onSettled: () => {
+        setShowProgress(false);
+        perfMark("workbench-generation-settled");
+      },
+    });
+  }, [
+    clearOriginalSource,
+    restoreReplacement,
+    generationSession.committed,
+    initialGenerationDraft,
+    uploadGenerationSource,
+    t.generateFailed,
+    markDirty,
+    generateFn,
+    startGeneration,
+    restoreDraftControls,
+    generationDraft,
+    palette.length,
+    updateOriginal,
+    source,
+  ]);
 
   /**
    * 取消在途生成任务：作废令牌、终止 Worker，并回滚到生成前的稳定提交态。
@@ -637,24 +904,35 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const handleCancelGenerate = useCallback((): void => {
     const cancelled = abortGeneration();
-    perfMark('workbench-cancel-abort-end');
+    perfMark("workbench-cancel-abort-end");
     if (!cancelled) return;
     const epoch = cancelEpochRef.current;
     pendingCropRef.current = null;
-    track({ name: 'generation_cancelled', properties: {} });
+    track({ name: "generation_cancelled", properties: {} });
     window.setTimeout(() => {
       if (epoch !== cancelEpochRef.current) return;
       commitCancel(cancelled.taskId);
-      if (cancelled.stableDraft) restoreDraftControls(cancelled.stableDraft);
+      if (cancelled.stableDraft) {
+        restoreDraftControls(cancelled.stableDraft);
+        restoreReplacement();
+      }
       setShowProgress(false);
       if (!cancelled.hadCommit) {
         clearOriginalSource();
         pendingGenerationSourceRef.current = undefined;
         uploadGenerationSource(null, initialGenerationDraft);
-        setStep('upload');
+        setStep("upload");
       }
     }, 0);
-  }, [abortGeneration, commitCancel, clearOriginalSource, restoreDraftControls, uploadGenerationSource, initialGenerationDraft]);
+  }, [
+    abortGeneration,
+    commitCancel,
+    clearOriginalSource,
+    restoreReplacement,
+    restoreDraftControls,
+    uploadGenerationSource,
+    initialGenerationDraft,
+  ]);
 
   // ---------- 上传/裁剪 ----------
 
@@ -663,30 +941,45 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   useEffect(() => {
     if (doneToken === 0 || firstDoneHandledRef.current) return;
     firstDoneHandledRef.current = true;
-    (mobilePatternRegionRef.current ?? patternRegionRef.current)?.focus();
+    patternRegionRef.current?.focus();
   }, [doneToken]);
 
   const applyImageCrop = useCallback(
-    async (rect: Rect, image: DecodedImage, initial: boolean, operation: number): Promise<void> => {
+    async (
+      rect: Rect,
+      image: DecodedImage,
+      initial: boolean,
+      operation: number,
+    ): Promise<void> => {
       let cropped: ImageDataLike;
       const legacyDecoder = Boolean(decodeFn || decodeRegionFn);
       const encoded = encodedSourceRef.current;
       if (!legacyDecoder) {
-        const result = await activeImageDecoder.region(rect, MAX_GENERATION_SOURCE_DIMENSION);
+        const result = await activeImageDecoder.region(
+          rect,
+          MAX_GENERATION_SOURCE_DIMENSION,
+        );
         if (imageOperationRef.current !== operation) return;
         if (!result.ok) {
-          clearOriginalSource();
-          setStep(generationSession.committed ? 'workspace' : 'upload');
+          if (!generationSession.committed) clearOriginalSource();
+          else restoreReplacement();
+          setStep(generationSession.committed ? "workspace" : "upload");
           setErrorMsg(zhCN.errors[result.code]);
           return;
         }
         cropped = result.image;
       } else if (encoded && decodeRegionFn) {
-        const result = await decodeRegionFn(encoded.bytes, encoded.type, rect, MAX_GENERATION_SOURCE_DIMENSION);
+        const result = await decodeRegionFn(
+          encoded.bytes,
+          encoded.type,
+          rect,
+          MAX_GENERATION_SOURCE_DIMENSION,
+        );
         if (imageOperationRef.current !== operation) return;
         if (!result.ok) {
-          clearOriginalSource();
-          setStep(generationSession.committed ? 'workspace' : 'upload');
+          if (!generationSession.committed) clearOriginalSource();
+          else restoreReplacement();
+          setStep(generationSession.committed ? "workspace" : "upload");
           setErrorMsg(zhCN.errors[result.code]);
           return;
         }
@@ -696,22 +989,34 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         // back to the bounded RGBA buffer supplied by the injected decoder.
         const naturalWidth = image.naturalWidth ?? image.width;
         const naturalHeight = image.naturalHeight ?? image.height;
-        cropped = cropImageData(image, {
-          x: (rect.x * image.width) / naturalWidth,
-          y: (rect.y * image.height) / naturalHeight,
-          width: (rect.width * image.width) / naturalWidth,
-          height: (rect.height * image.height) / naturalHeight,
-        }, MAX_GENERATION_SOURCE_DIMENSION);
+        cropped = cropImageData(
+          image,
+          {
+            x: (rect.x * image.width) / naturalWidth,
+            y: (rect.y * image.height) / naturalHeight,
+            width: (rect.width * image.width) / naturalWidth,
+            height: (rect.height * image.height) / naturalHeight,
+          },
+          MAX_GENERATION_SOURCE_DIMENSION,
+        );
       }
       if (imageOperationRef.current !== operation) return;
       // Keep one immutable cross-thread RGBA allocation for the entire
       // generation session; subsequent parameter changes send only params.
       cropped = prepareGenerationSource(cropped);
       const ratio = rect.width / rect.height;
-      if (!initial) track({
-        name: 'crop_completed',
-        properties: { aspectBucket: Math.abs(ratio - 1) < 0.05 ? 'square' : ratio > 1 ? 'landscape' : 'portrait' },
-      });
+      if (!initial)
+        track({
+          name: "crop_completed",
+          properties: {
+            aspectBucket:
+              Math.abs(ratio - 1) < 0.05
+                ? "square"
+                : ratio > 1
+                  ? "landscape"
+                  : "portrait",
+          },
+        });
       pendingCropRef.current = { source: cropped, rect };
       // 原图压缩源仍只在当前解码会话中；整图/选区缩小后的缓冲才允许本地保存。
       const rebindRestoredSource = rebindRestoredSourceRef.current || !initial;
@@ -720,7 +1025,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       if (rebindRestoredSource) {
         replaceGenerationSourceForCrop(cropped, draft);
       } else uploadGenerationSource(cropped, draft);
-      setStep('workspace');
+      setStep("workspace");
       regenerate();
       rebindRestoredSourceRef.current = false;
       if (!rebindRestoredSource) {
@@ -728,7 +1033,20 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         clearDesignQuery(); // 普通上传生成新设计；恢复项目的原图重绑保留原 id。
       }
     },
-    [activeImageDecoder, boardProfile, clearOriginalSource, decodeFn, decodeRegionFn, generationSession.committed, paletteSelection, params, regenerate, replaceGenerationSourceForCrop, uploadGenerationSource],
+    [
+      activeImageDecoder,
+      boardProfile,
+      clearOriginalSource,
+      restoreReplacement,
+      decodeFn,
+      decodeRegionFn,
+      generationSession.committed,
+      paletteSelection,
+      params,
+      regenerate,
+      replaceGenerationSourceForCrop,
+      uploadGenerationSource,
+    ],
   );
 
   const handleUpload = useCallback(
@@ -741,25 +1059,42 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       setErrorMsg(null);
       try {
         if (rebindRestoredSourceRef.current && generationSession.committed) {
-          const allowed = await confirm({ title: t.replaceSourceTitle, message: t.replaceSourceMessage, confirmLabel: t.confirmRegenerateAction, danger: true });
+          const allowed = await confirm({
+            title: t.replaceSourceTitle,
+            message: t.replaceSourceMessage,
+            confirmLabel: t.confirmRegenerateAction,
+            danger: true,
+          });
           if (imageOperationRef.current !== operation) return;
           if (!allowed) {
             rebindRestoredSourceRef.current = false;
-            setStep('workspace');
+            setStep("workspace");
             return;
           }
         }
+        if (generationSession.committed && !replacementBackupRef.current)
+          replacementBackupRef.current = {
+            decoded,
+            rect: lastCropRect,
+            retained: retainedOriginalRef.current,
+            encoded: encodedSourceRef.current,
+            candidate: candidateOriginalRef.current,
+          };
         // 解码器会转移字节，先留一份副本供「公开到豆社」上传原图。
         retainedOriginalRef.current = { bytes: bytes.slice(), type, name };
-        perfMark('workbench-upload-handler-enter');
-        const legacyDecode = decodeFn ?? (decodeRegionFn ? decodeImageFile : null);
+        perfMark("workbench-upload-handler-enter");
+        const legacyDecode =
+          decodeFn ?? (decodeRegionFn ? decodeImageFile : null);
         const result = legacyDecode
           ? await legacyDecode(bytes, type)
-          : await activeImageDecoder.load(bytes, type, () => setBusyText(t.heicConverting));
-        perfMark('workbench-decode-done');
+          : await activeImageDecoder.load(bytes, type, () =>
+              setBusyText(t.heicConverting),
+            );
+        perfMark("workbench-decode-done");
         if (imageOperationRef.current !== operation) return;
         if (!result.ok) {
-          clearOriginalSource();
+          if (!generationSession.committed) clearOriginalSource();
+          else restoreReplacement();
           setErrorMsg(zhCN.errors[result.code]);
           return;
         }
@@ -767,18 +1102,37 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         const height = result.image.naturalHeight ?? result.image.height;
         const pixels = validatePixelCount(width, height);
         if (!pixels.ok) {
-          clearOriginalSource();
+          if (!generationSession.committed) clearOriginalSource();
+          else restoreReplacement();
           setErrorMsg(zhCN.errors[pixels.code]);
           return;
         }
         encodedSourceRef.current = legacyDecode ? { bytes, type } : null;
+        const cached = await cacheOriginal(
+          retainedOriginalRef.current!.bytes,
+          type,
+          name,
+        ).catch(() => null);
+        candidateOriginalRef.current = cached
+          ? {
+              sha256: cached.sha256,
+              width,
+              height,
+              geometry: cropMatrix(
+                { x: 0, y: 0, width, height },
+                width,
+                height,
+              ),
+            }
+          : undefined;
         setDecoded(result.image);
-        perfMark('workbench-set-decoded');
-        await applyImageCrop({ x: 0, y: 0, width, height }, result.image, true, operation);
-        perfMark('workbench-apply-crop-done');
+        perfMark("workbench-set-decoded");
+        setStep("crop");
+        perfMark("workbench-apply-crop-done");
       } catch {
         if (imageOperationRef.current !== operation) return;
-        clearOriginalSource();
+        if (!generationSession.committed) clearOriginalSource();
+        else restoreReplacement();
         setErrorMsg(zhCN.errors.DECODE_FAILED);
       } finally {
         if (imageOperationRef.current === operation) {
@@ -787,7 +1141,18 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         }
       }
     },
-    [activeImageDecoder, applyImageCrop, clearOriginalSource, confirm, decodeFn, decodeRegionFn, generationSession.committed, t],
+    [
+      activeImageDecoder,
+      clearOriginalSource,
+      restoreReplacement,
+      decoded,
+      lastCropRect,
+      confirm,
+      decodeFn,
+      decodeRegionFn,
+      generationSession.committed,
+      t,
+    ],
   );
 
   // StrictMode 双挂载保留交接；实际派发后立刻清除，回调更新不会重复上传。
@@ -803,41 +1168,73 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     return () => clearTimeout(timer);
   }, [handleUpload]);
 
-  const handleCropConfirm = useCallback(async (rect: Rect): Promise<void> => {
-    if (!decoded || imageBusyRef.current) return;
-    imageBusyRef.current = true;
-    const operation = ++imageOperationRef.current;
-    setBusy(true);
-    setBusyText(t.decoding);
-    setErrorMsg(null);
-    try {
-      if (generationSession.hasManualEdits && !(await confirm({
-        title: t.confirmRegenerateTitle,
-        message: t.confirmRegenerate,
-        confirmLabel: t.confirmRegenerateAction,
-        danger: true,
-      }))) return;
-      if (imageOperationRef.current === operation) await applyImageCrop(rect, decoded, false, operation);
-    } catch {
-      if (imageOperationRef.current !== operation) return;
-      clearOriginalSource();
-      setErrorMsg(zhCN.errors.DECODE_FAILED);
-      setStep('workspace');
-    } finally {
-      if (imageOperationRef.current === operation) {
-        imageBusyRef.current = false;
-        setBusy(false);
+  const handleCropConfirm = useCallback(
+    async (rect: Rect): Promise<void> => {
+      if (!decoded || imageBusyRef.current) return;
+      imageBusyRef.current = true;
+      const operation = ++imageOperationRef.current;
+      setBusy(true);
+      setBusyText(t.decoding);
+      setErrorMsg(null);
+      try {
+        if (
+          generationSession.hasManualEdits &&
+          !(await confirm({
+            title: t.confirmRegenerateTitle,
+            message: t.confirmRegenerate,
+            confirmLabel: t.confirmRegenerateAction,
+            danger: true,
+          }))
+        )
+          return;
+        if (imageOperationRef.current === operation)
+          await applyImageCrop(
+            rect,
+            decoded,
+            !generationSession.committed,
+            operation,
+          );
+      } catch {
+        if (imageOperationRef.current !== operation) return;
+        if (!generationSession.committed) clearOriginalSource();
+        else restoreReplacement();
+        setErrorMsg(zhCN.errors.DECODE_FAILED);
+        setStep("workspace");
+      } finally {
+        if (imageOperationRef.current === operation) {
+          imageBusyRef.current = false;
+          setBusy(false);
+        }
       }
-    }
-  }, [applyImageCrop, clearOriginalSource, confirm, decoded, generationSession.hasManualEdits, t.decoding, t.confirmRegenerate, t.confirmRegenerateAction, t.confirmRegenerateTitle]);
+    },
+    [
+      applyImageCrop,
+      clearOriginalSource,
+      restoreReplacement,
+      confirm,
+      decoded,
+      generationSession.hasManualEdits,
+      generationSession.committed,
+      t.decoding,
+      t.confirmRegenerate,
+      t.confirmRegenerateAction,
+      t.confirmRegenerateTitle,
+    ],
+  );
 
   const handleCropCancel = useCallback((): void => {
     imageOperationRef.current += 1;
     imageBusyRef.current = false;
     setBusy(false);
     setErrorMsg(null);
-    setStep('workspace');
-  }, []);
+    if (generationSession.committed) {
+      restoreReplacement();
+      setStep("workspace");
+    } else {
+      clearOriginalSource();
+      setStep("upload");
+    }
+  }, [clearOriginalSource, restoreReplacement, generationSession.committed]);
 
   // ---------- 参数/色板/编辑 ----------
 
@@ -849,7 +1246,13 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       confirmLabel: t.confirmRegenerateAction,
       danger: true,
     });
-  }, [confirm, generationSession.hasManualEdits, t.confirmRegenerate, t.confirmRegenerateAction, t.confirmRegenerateTitle]);
+  }, [
+    confirm,
+    generationSession.hasManualEdits,
+    t.confirmRegenerate,
+    t.confirmRegenerateAction,
+    t.confirmRegenerateTitle,
+  ]);
 
   const handleParamsChange = useCallback(
     (p: GenerationParams): void => {
@@ -865,7 +1268,14 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         regenerate();
       })();
     },
-    [source, generationDraft, regenerate, confirmRegeneration, restoreDraftControls, updateGenerationDraft],
+    [
+      source,
+      generationDraft,
+      regenerate,
+      confirmRegeneration,
+      restoreDraftControls,
+      updateGenerationDraft,
+    ],
   );
 
   /**
@@ -878,32 +1288,44 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const handlePaletteSelect = useCallback(
     (value: string): void => {
-      if (value === '__custom') return; // 导入的自定义色板不可再切换（T18 提供管理）
-      const resolved = ((): { palette: PaletteColor[]; projectPalette: ProjectPalette; customId: string | null } | null => {
-        if (value.startsWith('custom:')) {
-          const paletteId = value.slice('custom:'.length);
+      if (value === "__custom") return; // 导入的自定义色板不可再切换（T18 提供管理）
+      const resolved = ((): {
+        palette: PaletteColor[];
+        projectPalette: ProjectPalette;
+        customId: string | null;
+      } | null => {
+        if (value.startsWith("custom:")) {
+          const paletteId = value.slice("custom:".length);
           const found = cloudPalettes.find((p) => p.id === paletteId);
           if (!found) return null;
           return {
             palette: found.colors,
             projectPalette: {
-              kind: 'custom',
-              colors: found.colors.map((c) => ({ code: c.code ?? '', hex: c.hex })),
+              kind: "custom",
+              colors: found.colors.map((c) => ({
+                code: c.code ?? "",
+                hex: c.hex,
+              })),
             },
             customId: found.id,
           };
         }
-        const paletteId = value.startsWith('builtin:') ? value.slice('builtin:'.length) : value;
+        const paletteId = value.startsWith("builtin:")
+          ? value.slice("builtin:".length)
+          : value;
         if (!isBuiltinPaletteId(paletteId)) return null;
         return {
           palette: [...getBuiltinPalette(paletteId).engineColors],
-          projectPalette: { kind: 'builtin', brand: paletteId },
+          projectPalette: { kind: "builtin", brand: paletteId },
           customId: null,
         };
       })();
       if (!resolved) return;
 
-      const nextBoardProfile = defaultBoardProfileForPalette(resolved.projectPalette, boardProfile);
+      const nextBoardProfile = defaultBoardProfileForPalette(
+        resolved.projectPalette,
+        boardProfile,
+      );
       const nextKitTier = kitTier > resolved.palette.length ? 0 : kitTier;
       const nextPaletteSelection: PaletteSelection = {
         palette: resolved.projectPalette,
@@ -913,7 +1335,10 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
 
       const committed = generationSession.committed;
       if (committed) {
-        paletteIdentityUndoRef.current = { snapshot: committed, customPaletteId };
+        paletteIdentityUndoRef.current = {
+          snapshot: committed,
+          customPaletteId,
+        };
       }
       setCustomPaletteId(resolved.customId);
       if (!committed) {
@@ -933,9 +1358,11 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         paletteSelection: nextPaletteSelection,
         boardProfile: nextBoardProfile,
       });
-      setRemapNotice(nextBoardProfile === boardProfile
-        ? t.remapDone(result.changedCells)
-        : `${t.remapDone(result.changedCells)} ${t.boardProfileChanged(getBoardProfile(nextBoardProfile).displayName)}`);
+      setRemapNotice(
+        nextBoardProfile === boardProfile
+          ? t.remapDone(result.changedCells)
+          : `${t.remapDone(result.changedCells)} ${t.boardProfileChanged(getBoardProfile(nextBoardProfile).displayName)}`,
+      );
       markDirty();
     },
     [
@@ -952,33 +1379,52 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     ],
   );
 
-  const handleBoardProfileSelect = useCallback((value: string): void => {
-    if (!isBoardProfileId(value) || value === boardProfile) return;
-    const compatible = compatibleBoardProfilesForPalette(projectPalette).some((profile) => profile.id === value);
-    const committed = generationSession.committed;
-    if (!compatible || generating) return;
-    if (!committed) {
-      updateGenerationDraft({ ...generationDraft, boardProfile: value });
-      return;
-    }
-    remapPalette({
-      pattern: committed.pattern,
-      stats: committed.stats,
-      total: committed.total,
-      paletteSelection: committed.paletteSelection,
-      boardProfile: value,
-    });
-    setRemapNotice(t.boardProfileChanged(getBoardProfile(value).displayName));
-    markDirty();
-  }, [boardProfile, generating, generationDraft, generationSession.committed, markDirty, projectPalette, remapPalette, t, updateGenerationDraft]);
+  const handleBoardProfileSelect = useCallback(
+    (value: string): void => {
+      if (!isBoardProfileId(value) || value === boardProfile) return;
+      const compatible = compatibleBoardProfilesForPalette(projectPalette).some(
+        (profile) => profile.id === value,
+      );
+      const committed = generationSession.committed;
+      if (!compatible || generating) return;
+      if (!committed) {
+        updateGenerationDraft({ ...generationDraft, boardProfile: value });
+        return;
+      }
+      remapPalette({
+        pattern: committed.pattern,
+        stats: committed.stats,
+        total: committed.total,
+        paletteSelection: committed.paletteSelection,
+        boardProfile: value,
+      });
+      setRemapNotice(t.boardProfileChanged(getBoardProfile(value).displayName));
+      markDirty();
+    },
+    [
+      boardProfile,
+      generating,
+      generationDraft,
+      generationSession.committed,
+      markDirty,
+      projectPalette,
+      remapPalette,
+      t,
+      updateGenerationDraft,
+    ],
+  );
 
-  const handlePatternChange = useCallback((p: Pattern): void => {
-    if (generating) return;
-    const nextStats = computeStats(p.cells);
-    const nextTotal = totalBeadCount(nextStats);
-    commitManualEdit(p, nextStats, nextTotal);
-    markDirty();
-  }, [commitManualEdit, generating, markDirty]);
+  const handlePatternChange = useCallback(
+    (p: Pattern): void => {
+      if (generating) return;
+      const nextStats = computeStats(p.cells);
+      const nextTotal = totalBeadCount(nextStats);
+      originalByPatternRef.current.set(p, originalRef.current);
+      commitManualEdit(p, nextStats, nextTotal);
+      markDirty();
+    },
+    [commitManualEdit, generating, markDirty],
+  );
 
   /**
    * 空白起稿（H-2）：不经过上传与生成，直接把一张全透明图纸提交进会话。
@@ -986,91 +1432,151 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const blankSummary = useMemo(() => {
     const spec = getBoardProfile(boardProfile);
-    return t.blankSummary.replaceAll('{size}', String(blankBoards * spec.boardCols)).replace('{palette}', paletteDisplayName).replace('{spec}', spec.displayName);
+    return t.blankSummary
+      .replaceAll("{size}", String(blankBoards * spec.boardCols))
+      .replace("{palette}", paletteDisplayName)
+      .replace("{spec}", spec.displayName);
   }, [blankBoards, boardProfile, paletteDisplayName, t]);
-  const startBlank = useCallback((width: number, height: number): void => {
-    if (rebindRestoredSourceRef.current) return;
-    clearOriginalSource();
-    const blank = createBlankPattern(width, height);
-    restoreGeneration({
+  const startBlank = useCallback(
+    (width: number, height: number): void => {
+      if (rebindRestoredSourceRef.current) return;
+      clearOriginalSource();
+      const blank = createBlankPattern(width, height);
+      restoreGeneration({
+        boardProfile,
+        params: { ...params, targetWidth: width },
+        paletteSelection,
+        pattern: blank,
+        stats: [],
+        total: 0,
+        engineVersion: ENGINE_VERSION,
+      });
+      setStep("workspace");
+      setTab("edit"); // 空白图纸的第一步一定是画，直接落在修补页签
+      markDirty();
+    },
+    [
       boardProfile,
-      params: { ...params, targetWidth: width },
+      clearOriginalSource,
+      markDirty,
       paletteSelection,
-      pattern: blank,
-      stats: [],
-      total: 0,
-      engineVersion: ENGINE_VERSION,
-    });
-    setStep('workspace');
-    setTab('edit'); // 空白图纸的第一步一定是画，直接落在修补页签
-    markDirty();
-  }, [boardProfile, clearOriginalSource, markDirty, paletteSelection, params, restoreGeneration]);
+      params,
+      restoreGeneration,
+    ],
+  );
 
   /**
    * 换档位（H-3）：把当前色板按档位裁成可用色子集后应用。
    * 有生成源 → 用子集重新生成；没有源 → 对现有图纸重映射（保留修补）。
    */
-  const handleKitTierChange = useCallback((tier: number): void => {
-    void (async () => {
-      if (!isKitTierAvailableForPalette(tier, projectPalette)) return;
-      const normalizedTier = tier;
-      if (source && !(await confirmRegeneration())) return;
+  const handleKitTierChange = useCallback(
+    (tier: number): void => {
+      void (async () => {
+        if (!isKitTierAvailableForPalette(tier, projectPalette)) return;
+        const normalizedTier = tier;
+        if (source && !(await confirmRegeneration())) return;
 
-      const nextPaletteSelection: PaletteSelection = {
-        palette: projectPalette,
-        kitTier: normalizedTier,
-      };
-      const kit = paletteColorsForSelection(nextPaletteSelection);
-      const committed = generationSession.committed;
-      if (source) {
-        updateGenerationDraft({ boardProfile, params, paletteSelection: nextPaletteSelection });
-        regenerate();
-        return;
-      }
-      if (!committed) return;
-      const result = remapPattern(committed.pattern, kit);
-      remapPalette({
-        pattern: result.pattern,
-        stats: result.stats,
-        total: result.totalBeadCount,
-        paletteSelection: nextPaletteSelection,
-        boardProfile,
-      });
-      setRemapNotice(t.kitApplied(normalizedTier, result.changedCells));
-      markDirty();
-    })();
-  }, [
-    confirmRegeneration,
-    generationSession.committed,
-    markDirty,
-    boardProfile,
-    params,
-    projectPalette,
-    regenerate,
-    remapPalette,
-    source,
-    t,
-    updateGenerationDraft,
-  ]);
+        const nextPaletteSelection: PaletteSelection = {
+          palette: projectPalette,
+          kitTier: normalizedTier,
+        };
+        const kit = paletteColorsForSelection(nextPaletteSelection);
+        const committed = generationSession.committed;
+        if (source) {
+          updateGenerationDraft({
+            boardProfile,
+            params,
+            paletteSelection: nextPaletteSelection,
+          });
+          regenerate();
+          return;
+        }
+        if (!committed) return;
+        const result = remapPattern(committed.pattern, kit);
+        remapPalette({
+          pattern: result.pattern,
+          stats: result.stats,
+          total: result.totalBeadCount,
+          paletteSelection: nextPaletteSelection,
+          boardProfile,
+        });
+        setRemapNotice(t.kitApplied(normalizedTier, result.changedCells));
+        markDirty();
+      })();
+    },
+    [
+      confirmRegeneration,
+      generationSession.committed,
+      markDirty,
+      boardProfile,
+      params,
+      projectPalette,
+      regenerate,
+      remapPalette,
+      source,
+      t,
+      updateGenerationDraft,
+    ],
+  );
 
   const handleUndoRegeneration = useCallback((): void => {
     const snapshot = generationSession.regenerationUndo;
     if (!snapshot || generating) return;
     const paletteIdentity = paletteIdentityUndoRef.current;
-    if (generationSession.regenerationUndoSource !== generationSession.committedSource) {
-      pendingGenerationSourceRef.current = generationSession.regenerationUndoSource;
-      setLastCropRect(generationSession.regenerationUndoSource ? cropRectsRef.current.get(generationSession.regenerationUndoSource) : undefined);
+    if (originalByPatternRef.current.has(snapshot.pattern))
+      updateOriginal(originalByPatternRef.current.get(snapshot.pattern));
+    if (
+      generationSession.regenerationUndoSource !==
+      generationSession.committedSource
+    ) {
+      pendingGenerationSourceRef.current =
+        generationSession.regenerationUndoSource;
+      setLastCropRect(
+        generationSession.regenerationUndoSource
+          ? cropRectsRef.current.get(generationSession.regenerationUndoSource)
+          : undefined,
+      );
     }
     undoRegeneration();
     if (paletteIdentity?.snapshot === snapshot) {
       setCustomPaletteId(paletteIdentity.customPaletteId);
     } else {
-      setCustomPaletteId((current) => resolveCustomPaletteId(snapshot.paletteSelection.palette, current));
+      setCustomPaletteId((current) =>
+        resolveCustomPaletteId(snapshot.paletteSelection.palette, current),
+      );
     }
     paletteIdentityUndoRef.current = null;
     setRemapNotice(null);
     markDirty();
-  }, [generationSession.committedSource, generationSession.regenerationUndoSource, generationSession.regenerationUndo, generating, markDirty, resolveCustomPaletteId, undoRegeneration]);
+  }, [
+    generationSession.committedSource,
+    generationSession.regenerationUndoSource,
+    generationSession.regenerationUndo,
+    generating,
+    markDirty,
+    resolveCustomPaletteId,
+    undoRegeneration,
+    updateOriginal,
+  ]);
+
+  useEffect(() => {
+    const bound = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          designId: string;
+          sha256: string;
+          assetId: string;
+        }>
+      ).detail;
+      if (
+        detail.designId === designIdRef.current &&
+        originalRef.current?.sha256 === detail.sha256
+      )
+        updateOriginal({ ...originalRef.current, assetId: detail.assetId });
+    };
+    window.addEventListener("beadhue:original-bound", bound);
+    return () => window.removeEventListener("beadhue:original-bound", bound);
+  }, [updateOriginal]);
 
   // ---------- 保存 ----------
 
@@ -1078,6 +1584,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     const committed = selectCommittedSnapshot(generationSession);
     if (!committed) return null;
     return {
+      ...(originalRef.current ? { original: originalRef.current } : {}),
       format: PROJECT_FILE_FORMAT,
       version: PROJECT_FILE_VERSION,
       ...(communityOrigin ? { communityOrigin: true as const } : {}),
@@ -1096,132 +1603,313 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     buildProjectRef.current = buildProject;
   }, [buildProject]);
 
-  const loadCommittedProject = useCallback((project: ProjectFile, localSource: LocalGenerationSourceV1 | null = null): void => {
-    const computed = computeStats(project.pattern.cells);
-    const restoredTotal = totalBeadCount(computed);
-    const commit = {
-      boardProfile: project.boardProfile,
-      params: project.params,
-      paletteSelection: project.paletteSelection,
-      pattern: project.pattern,
-      stats: computed,
-      total: restoredTotal,
-      engineVersion: project.engineVersion,
-    };
-    setName(project.name);
-    setCreatedAt(project.createdAt);
-    setCommunityOrigin(project.communityOrigin === true);
-    clearOriginalSource();
-    setCustomPaletteId(null);
-    restoreGeneration(commit);
-    if (localSource) {
-      const restoredSource = prepareGenerationSource(imageDataFromLocalGenerationSource(localSource));
-      reuploadGenerationSource(restoredSource, commit);
-    }
-    pendingGenerationSourceRef.current = undefined;
-    dirtyRef.current = false;
-    setSaveState('saved');
-    setStep('workspace');
-  }, [clearOriginalSource, restoreGeneration, reuploadGenerationSource]);
+  const loadCommittedProject = useCallback(
+    (
+      project: ProjectFile,
+      localSource: LocalGenerationSourceV1 | null = null,
+    ): void => {
+      const computed = computeStats(project.pattern.cells);
+      const restoredTotal = totalBeadCount(computed);
+      const commit = {
+        boardProfile: project.boardProfile,
+        params: project.params,
+        paletteSelection: project.paletteSelection,
+        pattern: project.pattern,
+        stats: computed,
+        total: restoredTotal,
+        engineVersion: project.engineVersion,
+      };
+      setName(project.name);
+      setCreatedAt(project.createdAt);
+      setCommunityOrigin(project.communityOrigin === true);
+      clearOriginalSource();
+      updateOriginal(project.original);
+      originalByPatternRef.current.set(project.pattern, project.original);
+      setCustomPaletteId(null);
+      restoreGeneration(commit);
+      if (localSource && !project.original) {
+        const restoredSource = prepareGenerationSource(
+          imageDataFromLocalGenerationSource(localSource),
+        );
+        if (project.original)
+          originalBySourceRef.current.set(restoredSource, project.original);
+        reuploadGenerationSource(restoredSource, commit);
+      }
+      pendingGenerationSourceRef.current = undefined;
+      dirtyRef.current = false;
+      setSaveState("saved");
+      setStep("workspace");
+    },
+    [
+      clearOriginalSource,
+      restoreGeneration,
+      reuploadGenerationSource,
+      updateOriginal,
+    ],
+  );
 
   /**
    * 把交接过来的完整原图绑定到刚恢复的设计（D49：引用者取回作者原图）。
    * 只绑定、不重新生成：作者的手工修补保持原样，之后裁剪 / 改格数 / 改颜色数才会基于原图重算。
    * 成功后 800px 生成源随下一次保存落入本地库，刷新后仍可调参。
    */
-  const bindOriginalToDesign = useCallback(async (original: { bytes: Uint8Array; type: ImageType; name: string }, project: ProjectFile): Promise<boolean> => {
-    if (imageBusyRef.current) return false;
-    imageBusyRef.current = true;
-    const operation = ++imageOperationRef.current;
-    setBusy(true);
-    setBusyText(t.decoding);
-    try {
-      const retained = { bytes: original.bytes.slice(), type: original.type, name: original.name };
-      const legacyDecode = decodeFn ?? (decodeRegionFn ? decodeImageFile : null);
-      const result = legacyDecode
-        ? await legacyDecode(original.bytes, original.type)
-        : await activeImageDecoder.load(original.bytes, original.type, () => setBusyText(t.heicConverting));
-      if (imageOperationRef.current !== operation) return false;
-      if (!result.ok) { setErrorMsg(zhCN.errors[result.code]); return false; }
-      const width = result.image.naturalWidth ?? result.image.width;
-      const height = result.image.naturalHeight ?? result.image.height;
-      if (!validatePixelCount(width, height).ok) { setErrorMsg(zhCN.errors.TOO_MANY_PIXELS); return false; }
-      const rect: Rect = { x: 0, y: 0, width, height };
-      let bounded: ImageDataLike;
-      if (!legacyDecode) {
-        const region = await activeImageDecoder.region(rect, MAX_GENERATION_SOURCE_DIMENSION);
+  const bindOriginalToDesign = useCallback(
+    async (
+      original: { bytes: Uint8Array; type: ImageType; name: string },
+      project: ProjectFile,
+    ): Promise<boolean> => {
+      if (imageBusyRef.current) return false;
+      imageBusyRef.current = true;
+      const operation = ++imageOperationRef.current;
+      setBusy(true);
+      setBusyText(t.decoding);
+      try {
+        const retained = {
+          bytes: original.bytes.slice(),
+          type: original.type,
+          name: original.name,
+        };
+        const legacyDecode =
+          decodeFn ?? (decodeRegionFn ? decodeImageFile : null);
+        const result = legacyDecode
+          ? await legacyDecode(original.bytes, original.type)
+          : await activeImageDecoder.load(original.bytes, original.type, () =>
+              setBusyText(t.heicConverting),
+            );
         if (imageOperationRef.current !== operation) return false;
-        if (!region.ok) { setErrorMsg(zhCN.errors[region.code]); return false; }
-        bounded = region.image;
-      } else if (decodeRegionFn) {
-        const region = await decodeRegionFn(retained.bytes, retained.type, rect, MAX_GENERATION_SOURCE_DIMENSION);
-        if (imageOperationRef.current !== operation) return false;
-        if (!region.ok) { setErrorMsg(zhCN.errors[region.code]); return false; }
-        bounded = region.image;
-      } else {
-        bounded = cropImageData(result.image, { x: 0, y: 0, width: result.image.width, height: result.image.height }, MAX_GENERATION_SOURCE_DIMENSION);
+        if (!result.ok) {
+          setErrorMsg(zhCN.errors[result.code]);
+          return false;
+        }
+        const width = result.image.naturalWidth ?? result.image.width;
+        const height = result.image.naturalHeight ?? result.image.height;
+        if (!validatePixelCount(width, height).ok) {
+          setErrorMsg(zhCN.errors.TOO_MANY_PIXELS);
+          return false;
+        }
+        const cached = await cacheOriginal(
+          retained.bytes,
+          retained.type,
+          retained.name,
+        );
+        const aligned =
+          project.original?.sha256 === cached.sha256
+            ? { ...project.original, width, height }
+            : { sha256: cached.sha256, width, height };
+        retainedOriginalRef.current = retained;
+        updateOriginal(aligned);
+        setDecoded(result.image);
+        encodedSourceRef.current = legacyDecode
+          ? { bytes: retained.bytes, type: retained.type }
+          : null;
+        if (!aligned.geometry) {
+          markDirty();
+          return true;
+        }
+        const rect: Rect = originalRegion(aligned.geometry, width, height);
+        let bounded: ImageDataLike;
+        if (!legacyDecode) {
+          const region = await activeImageDecoder.region(
+            rect,
+            MAX_GENERATION_SOURCE_DIMENSION,
+          );
+          if (imageOperationRef.current !== operation) return false;
+          if (!region.ok) {
+            setErrorMsg(zhCN.errors[region.code]);
+            return false;
+          }
+          bounded = region.image;
+        } else if (decodeRegionFn) {
+          const region = await decodeRegionFn(
+            retained.bytes,
+            retained.type,
+            rect,
+            MAX_GENERATION_SOURCE_DIMENSION,
+          );
+          if (imageOperationRef.current !== operation) return false;
+          if (!region.ok) {
+            setErrorMsg(zhCN.errors[region.code]);
+            return false;
+          }
+          bounded = region.image;
+        } else {
+          bounded = cropImageData(
+            result.image,
+            {
+              x: (rect.x / width) * result.image.width,
+              y: (rect.y / height) * result.image.height,
+              width: (rect.width / width) * result.image.width,
+              height: (rect.height / height) * result.image.height,
+            },
+            MAX_GENERATION_SOURCE_DIMENSION,
+          );
+        }
+        const source = prepareGenerationSource(
+          orientOriginalRegion(bounded, aligned.geometry),
+        );
+        originalBySourceRef.current.set(source, aligned);
+        encodedSourceRef.current = legacyDecode
+          ? { bytes: retained.bytes, type: retained.type }
+          : null;
+        retainedOriginalRef.current = retained;
+        setDecoded(result.image);
+        cropRectsRef.current.set(source, rect);
+        setLastCropRect(rect);
+        reuploadGenerationSource(source, {
+          boardProfile: project.boardProfile,
+          params: project.params,
+          paletteSelection: project.paletteSelection,
+        });
+        pendingGenerationSourceRef.current = source;
+        setErrorMsg(null);
+        markDirty();
+        return true;
+      } catch {
+        if (imageOperationRef.current === operation)
+          setErrorMsg(zhCN.errors.DECODE_FAILED);
+        return false;
+      } finally {
+        if (imageOperationRef.current === operation) {
+          imageBusyRef.current = false;
+          setBusy(false);
+        }
       }
-      const source = prepareGenerationSource(bounded);
-      encodedSourceRef.current = legacyDecode ? { bytes: retained.bytes, type: retained.type } : null;
-      retainedOriginalRef.current = retained;
-      setDecoded(result.image);
-      cropRectsRef.current.set(source, rect);
-      setLastCropRect(rect);
-      reuploadGenerationSource(source, { boardProfile: project.boardProfile, params: project.params, paletteSelection: project.paletteSelection });
-      pendingGenerationSourceRef.current = source;
-      setErrorMsg(null);
-      markDirty();
-      return true;
-    } catch {
-      if (imageOperationRef.current === operation) setErrorMsg(zhCN.errors.DECODE_FAILED);
-      return false;
-    } finally {
-      if (imageOperationRef.current === operation) {
-        imageBusyRef.current = false;
-        setBusy(false);
-      }
-    }
-  }, [activeImageDecoder, decodeFn, decodeRegionFn, markDirty, reuploadGenerationSource, t.decoding, t.heicConverting]);
+    },
+    [
+      activeImageDecoder,
+      decodeFn,
+      decodeRegionFn,
+      markDirty,
+      reuploadGenerationSource,
+      t.decoding,
+      t.heicConverting,
+      updateOriginal,
+    ],
+  );
 
-  const consumeSyncOutcome = useCallback(async (adapter: StorageAdapter, outcome: SyncOutcome): Promise<void> => {
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | undefined;
+    const imageReset = requestAnimationFrame(() => setOriginalImage(null));
+    const reference = originalRef.current;
+    if (!reference) return () => cancelAnimationFrame(imageReset);
+    void (async () => {
+      let cached = await getCachedOriginal(reference.sha256).catch(() => null);
+      if (!cached && reference.assetId) {
+        const response = await fetch(`/api/designs/${designId}/original`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const type = sniffImageType(bytes);
+        if (type === "unknown") return;
+        cached = await cacheOriginal(bytes, type, "original");
+        if (cached.sha256 !== reference.sha256) return;
+      }
+      if (!cached || cancelled) return;
+      retainedOriginalRef.current = {
+        bytes: new Uint8Array(cached.bytes),
+        type: cached.type,
+        name: cached.name,
+      };
+      let bytes = new Uint8Array(cached.bytes);
+      if (cached.type === "heic") {
+        const { convertHeicWithWasm } = await import("@/lib/image/decode");
+        bytes = new Uint8Array(await convertHeicWithWasm(bytes));
+      }
+      if (cancelled) return;
+      objectUrl = URL.createObjectURL(new Blob([bytes]));
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+      if (!cancelled) {
+        setOriginalImage(image);
+        const project = buildProjectRef.current();
+        if (
+          !sourceRef.current &&
+          project?.original?.sha256 === reference.sha256 &&
+          project.original.geometry
+        ) {
+          await bindOriginalToDesign(
+            {
+              bytes: new Uint8Array(cached.bytes),
+              type: cached.type,
+              name: cached.name,
+            },
+            project,
+          );
+        }
+      }
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(imageReset);
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [original?.sha256, original?.assetId, designId, bindOriginalToDesign]);
+
+  const consumeSyncOutcome = useCallback(
+    async (adapter: StorageAdapter, outcome: SyncOutcome): Promise<void> => {
       const activeId = designIdRef.current;
       const scheduleConflictCopySave = (): void => {
         // 冲突副本是在本轮同步快照之后创建的，必须经过一次正常 save→sync 才能确认上云。
         // 即使用户没有继续编辑，也不能把本地 conflict 记录留到下一次刷新或 online 事件。
         dirtyRef.current = true;
-        setSaveState('dirty');
+        setSaveState("dirty");
         scheduleAutosave();
       };
-      const conflict = outcome.conflictCopies.find((item) => item.originalId === activeId);
+      const conflict = outcome.conflictCopies.find(
+        (item) => item.originalId === activeId,
+      );
       if (conflict) {
         const records = await adapter.getAll();
         if (designIdRef.current !== activeId) return;
-        const conflictRecord = records.find((item) => item.id === conflict.conflictId);
-        const conflictProject = conflictRecord ? parseStoredProject(conflictRecord.projectJson) : null;
+        const conflictRecord = records.find(
+          (item) => item.id === conflict.conflictId,
+        );
+        const conflictProject = conflictRecord
+          ? parseStoredProject(conflictRecord.projectJson)
+          : null;
         // 若存储快照之后界面又产生了未保存编辑，就把最新提交态并入已创建的冲突副本。
-        const currentProject = dirtyRef.current ? buildProjectRef.current() : null;
+        const currentProject = dirtyRef.current
+          ? buildProjectRef.current()
+          : null;
         if (currentProject && conflictProject) {
           const capturedEditGen = editGenRef.current;
           const latestName = conflictName(
             t.conflictCopyName(currentProject.name),
-            records.filter((item) => item.id !== conflict.conflictId).map((item) => item.name),
+            records
+              .filter((item) => item.id !== conflict.conflictId)
+              .map((item) => item.name),
           );
-          const latestProject = { ...currentProject, name: latestName, updatedAt: new Date().toISOString() };
-          const latestSource = pendingGenerationSourceRef.current === undefined ? sourceRef.current : pendingGenerationSourceRef.current;
-          await adapter.put({
-            ...createDesignRecord(
-              conflict.conflictId,
-              latestProject,
-              renderThumbnail(
-                latestProject.pattern,
-                256,
-                getBoardProfile(latestProject.boardProfile).boardCols,
+          const latestProject = {
+            ...currentProject,
+            name: latestName,
+            updatedAt: new Date().toISOString(),
+          };
+          const latestSource =
+            pendingGenerationSourceRef.current === undefined
+              ? sourceRef.current
+              : pendingGenerationSourceRef.current;
+          await adapter.put(
+            {
+              ...createDesignRecord(
+                conflict.conflictId,
+                latestProject,
+                renderThumbnail(
+                  latestProject.pattern,
+                  256,
+                  getBoardProfile(latestProject.boardProfile).boardCols,
+                ),
               ),
-            ),
-            syncState: 'conflict',
-          }, latestSource
-            ? replaceGenerationSource(createLocalGenerationSource(latestSource))
-            : CLEAR_GENERATION_SOURCE);
+              syncState: "conflict",
+            },
+            latestSource
+              ? replaceGenerationSource(
+                  createLocalGenerationSource(latestSource),
+                )
+              : CLEAR_GENERATION_SOURCE,
+          );
           if (designIdRef.current !== activeId) return;
           setActiveDesignId(conflict.conflictId);
           if (editGenRef.current === capturedEditGen) {
@@ -1235,13 +1923,19 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           if (conflictProject) setName(conflictProject.name);
         }
         scheduleConflictCopySave();
-        window.history.replaceState(null, '', `/app?id=${encodeURIComponent(conflict.conflictId)}`);
+        window.history.replaceState(
+          null,
+          "",
+          `/app?id=${encodeURIComponent(conflict.conflictId)}`,
+        );
         setSyncNotice(t.syncConflictCopy);
-        setCloudSaveState('pending');
+        setCloudSaveState("pending");
         return;
       }
       if (outcome.overwrittenByCloud.includes(activeId)) {
-        const preserveCurrentEditsAsConflict = async (records: Awaited<ReturnType<StorageAdapter['getAll']>>): Promise<boolean> => {
+        const preserveCurrentEditsAsConflict = async (
+          records: Awaited<ReturnType<StorageAdapter["getAll"]>>,
+        ): Promise<boolean> => {
           if (designIdRef.current !== activeId) return true;
           if (!dirtyRef.current) return false;
           const currentProject = buildProjectRef.current();
@@ -1250,7 +1944,10 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           // 从这一刻起 project/source/edit generation 属于 activeId 的同一快照。
           // put 在途时 UI 仍可继续编辑，所以写后必须用代际决定能否清脏。
           const capturedEditGen = editGenRef.current;
-          const capturedSource = pendingGenerationSourceRef.current === undefined ? sourceRef.current : pendingGenerationSourceRef.current;
+          const capturedSource =
+            pendingGenerationSourceRef.current === undefined
+              ? sourceRef.current
+              : pendingGenerationSourceRef.current;
           const conflictId = newDesignId();
           const conflictProjectName = conflictName(
             t.conflictCopyName(currentProject.name),
@@ -1261,24 +1958,33 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
             name: conflictProjectName,
             updatedAt: new Date().toISOString(),
           };
-          await adapter.put({
-            ...createDesignRecord(
-              conflictId,
-              conflictProject,
-              renderThumbnail(
-                conflictProject.pattern,
-                256,
-                getBoardProfile(conflictProject.boardProfile).boardCols,
+          await adapter.put(
+            {
+              ...createDesignRecord(
+                conflictId,
+                conflictProject,
+                renderThumbnail(
+                  conflictProject.pattern,
+                  256,
+                  getBoardProfile(conflictProject.boardProfile).boardCols,
+                ),
               ),
-            ),
-            syncState: 'conflict',
-          }, capturedSource
-            ? replaceGenerationSource(createLocalGenerationSource(capturedSource))
-            : CLEAR_GENERATION_SOURCE);
+              syncState: "conflict",
+            },
+            capturedSource
+              ? replaceGenerationSource(
+                  createLocalGenerationSource(capturedSource),
+                )
+              : CLEAR_GENERATION_SOURCE,
+          );
           if (designIdRef.current !== activeId) return true;
 
           setActiveDesignId(conflictId);
-          window.history.replaceState(null, '', `/app?id=${encodeURIComponent(conflictId)}`);
+          window.history.replaceState(
+            null,
+            "",
+            `/app?id=${encodeURIComponent(conflictId)}`,
+          );
           if (editGenRef.current === capturedEditGen) {
             if (pendingGenerationSourceRef.current === capturedSource) {
               pendingGenerationSourceRef.current = undefined;
@@ -1287,7 +1993,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           }
           scheduleConflictCopySave();
           setSyncNotice(t.syncConflictCopy);
-          setCloudSaveState('pending');
+          setCloudSaveState("pending");
           return true;
         };
 
@@ -1296,7 +2002,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         if (await preserveCurrentEditsAsConflict(records)) return;
         if (designIdRef.current !== activeId) return;
         const record = records.find((item) => item.id === activeId);
-        const remoteProject = record ? parseStoredProject(record.projectJson) : null;
+        const remoteProject = record
+          ? parseStoredProject(record.projectJson)
+          : null;
         if (remoteProject) {
           const loadEditGen = editGenRef.current;
           const localSource = await adapter.getGenerationSource(activeId);
@@ -1315,7 +2023,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           pendingGenerationSourceRef.current = undefined;
           setActiveDesignId(newDesignId());
           uploadGenerationSource(null, initialGenerationDraft);
-          setStep('upload');
+          setStep("upload");
           clearDesignQuery();
           setSyncNotice(t.syncCloudDeleted);
         }
@@ -1324,50 +2032,67 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       // 反之，本轮没有确认当前设计时也不能声称云端同步成功。
       setCloudSaveState(
         !dirtyRef.current && outcome.syncedIds.includes(designIdRef.current)
-          ? 'synced'
-          : 'pending',
+          ? "synced"
+          : "pending",
       );
-  }, [clearOriginalSource, initialGenerationDraft, loadCommittedProject, scheduleAutosave, setActiveDesignId, t, uploadGenerationSource]);
+    },
+    [
+      clearOriginalSource,
+      initialGenerationDraft,
+      loadCommittedProject,
+      scheduleAutosave,
+      setActiveDesignId,
+      t,
+      uploadGenerationSource,
+    ],
+  );
 
-  const syncCloud = useCallback(async (adapter: StorageAdapter): Promise<void> => {
-    if (authStatus.kind !== 'user') return;
-    setCloudSaveState('syncing');
-    const confirmedIds = new Set<string>();
-    try {
-      const outcome = await enqueueDesignSync(
-        adapter,
-        createDoupuApi(),
-        async (current) => {
-          for (const id of current.syncedIds) confirmedIds.add(id);
-          await consumeSyncOutcome(adapter, current);
-        },
-      );
-      if (!outcome) setCloudSaveState('pending');
-    } catch {
-      // 本地保存已经成功；durable marker 会留到 online 或下次启动重试。
-      // 其他设计的问题可以保留重试标记，但不能抹掉当前设计独立确认的云端状态。
-      const activeId = designIdRef.current;
-      let activeDesignSynced = confirmedIds.has(activeId);
-      if (!activeDesignSynced) {
-        try {
-          const activeRecord = (await adapter.getAll()).find((record) => record.id === activeId);
-          activeDesignSynced = activeRecord?.syncState === 'synced';
-        } catch {
-          // 状态读取失败时保持保守的待同步状态，durable marker 会继续负责重试。
+  const syncCloud = useCallback(
+    async (adapter: StorageAdapter): Promise<void> => {
+      if (authStatus.kind !== "user") return;
+      setCloudSaveState("syncing");
+      const confirmedIds = new Set<string>();
+      try {
+        const outcome = await enqueueDesignSync(
+          adapter,
+          createBeadhueApi(),
+          async (current) => {
+            for (const id of current.syncedIds) confirmedIds.add(id);
+            await consumeSyncOutcome(adapter, current);
+          },
+        );
+        if (!outcome) setCloudSaveState("pending");
+      } catch {
+        // 本地保存已经成功；durable marker 会留到 online 或下次启动重试。
+        // 其他设计的问题可以保留重试标记，但不能抹掉当前设计独立确认的云端状态。
+        const activeId = designIdRef.current;
+        let activeDesignSynced = confirmedIds.has(activeId);
+        if (!activeDesignSynced) {
+          try {
+            const activeRecord = (await adapter.getAll()).find(
+              (record) => record.id === activeId,
+            );
+            activeDesignSynced = activeRecord?.syncState === "synced";
+          } catch {
+            // 状态读取失败时保持保守的待同步状态，durable marker 会继续负责重试。
+          }
         }
+        setCloudSaveState(
+          designIdRef.current === activeId &&
+            !dirtyRef.current &&
+            activeDesignSynced
+            ? "synced"
+            : "pending",
+        );
       }
-      setCloudSaveState(
-        designIdRef.current === activeId && !dirtyRef.current && activeDesignSynced
-          ? 'synced'
-          : 'pending',
-      );
-    }
-  }, [authStatus.kind, consumeSyncOutcome]);
+    },
+    [authStatus.kind, consumeSyncOutcome],
+  );
 
   const doSave = useCallback(async (): Promise<boolean> => {
     const adapter = adapterRef.current;
     if (!adapter) {
-      setSaveState('unavailable');
+      setSaveState("unavailable");
       return false;
     }
     const project = buildProject();
@@ -1375,58 +2100,102 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     const saveDesignId = designIdRef.current;
     const pendingSource = pendingGenerationSourceRef.current;
     const genBefore = editGenRef.current;
-    setSaveState('saving');
+    setSaveState("saving");
     try {
       const thumbnail = renderThumbnail(
         project.pattern,
         256,
         getBoardProfile(project.boardProfile).boardCols,
       );
-      const writeResult = await withDesignStorageLock(async (): Promise<'saved' | 'stale'> => {
-        // 排队期间同步可能已经把活动设计切到了冲突副本，用户也可能继续编辑。
-        // 拿到锁后必须重新核对保存令牌，旧快照绝不能再写回原设计。
-        if (designIdRef.current !== saveDesignId || editGenRef.current !== genBefore) {
-          return 'stale';
-        }
-        const shouldWriteSource = pendingSource !== undefined
-          && pendingGenerationSourceRef.current === pendingSource
-          && designIdRef.current === saveDesignId;
-        await adapter.put(
-          createDesignRecord(saveDesignId, project, thumbnail),
-          shouldWriteSource
-            ? pendingSource ? replaceGenerationSource(createLocalGenerationSource(pendingSource)) : CLEAR_GENERATION_SOURCE
-            : undefined,
-        );
-        if (shouldWriteSource && pendingGenerationSourceRef.current === pendingSource) {
-          pendingGenerationSourceRef.current = undefined;
-        }
-        return 'saved';
-      });
-      if (writeResult === 'stale') {
+      const writeResult = await withDesignStorageLock(
+        async (): Promise<"saved" | "stale"> => {
+          // 排队期间同步可能已经把活动设计切到了冲突副本，用户也可能继续编辑。
+          // 拿到锁后必须重新核对保存令牌，旧快照绝不能再写回原设计。
+          if (
+            designIdRef.current !== saveDesignId ||
+            editGenRef.current !== genBefore
+          ) {
+            return "stale";
+          }
+          const shouldWriteSource =
+            pendingSource !== undefined &&
+            pendingGenerationSourceRef.current === pendingSource &&
+            designIdRef.current === saveDesignId;
+          await adapter.put(
+            createDesignRecord(saveDesignId, project, thumbnail),
+            shouldWriteSource
+              ? pendingSource
+                ? replaceGenerationSource(
+                    createLocalGenerationSource(pendingSource),
+                  )
+                : CLEAR_GENERATION_SOURCE
+              : undefined,
+          );
+          if (
+            shouldWriteSource &&
+            pendingGenerationSourceRef.current === pendingSource
+          ) {
+            pendingGenerationSourceRef.current = undefined;
+          }
+          return "saved";
+        },
+      );
+      if (writeResult === "stale") {
         // 旧保存令牌不得覆盖同步回调或新编辑已经设置的状态。
         if (dirtyRef.current) scheduleAutosave();
         return false;
       }
       // 本地持久化是保存成功的依据；云端同步可持久重试且会合并突发请求，
       // 离线云端不能反过来把已经成功的本地保存标成失败。
-      void syncCloud(adapter);
-      setSavedNames((prev) => (prev.includes(project.name) ? prev : [...prev, project.name]));
+      void syncCloud(adapter)
+        .then(async () => {
+          if (
+            authStatus.kind === "user" &&
+            project.original &&
+            !project.original.assetId
+          ) {
+            await enqueueOriginalUpload({
+              url: `/api/designs/${saveDesignId}/original`,
+              designId: saveDesignId,
+              sha256: project.original.sha256,
+              email: authStatus.email,
+            });
+          }
+        })
+        .catch(() => undefined);
+      setSavedNames((prev) =>
+        prev.includes(project.name) ? prev : [...prev, project.name],
+      );
       // 仅当保存期间没有新的编辑才清脏；否则保持脏标记（自动保存会再兜底一次）
       if (editGenRef.current === genBefore) {
         dirtyRef.current = false;
-        setSaveState('saved');
+        setSaveState("saved");
       } else {
-        setSaveState('dirty');
+        setSaveState("dirty");
       }
-      track({ name: 'design_saved', properties: {
-        source: communityOrigin ? 'community' : authStatus.kind === 'user' ? 'cloud' : 'local',
-      } });
+      track({
+        name: "design_saved",
+        properties: {
+          source: communityOrigin
+            ? "community"
+            : authStatus.kind === "user"
+              ? "cloud"
+              : "local",
+        },
+      });
       return true;
     } catch (error) {
-      setSaveState(isQuotaError(error) ? 'quota' : 'error');
+      setSaveState(isQuotaError(error) ? "quota" : "error");
       return false;
     }
-  }, [authStatus.kind, buildProject, communityOrigin, scheduleAutosave, syncCloud]);
+  }, [
+    authStatus.kind,
+    authStatus.email,
+    buildProject,
+    communityOrigin,
+    scheduleAutosave,
+    syncCloud,
+  ]);
 
   /**
    * 分享前的准备（批次 K）：把当前设计**确实**保存并推到云端。
@@ -1437,8 +2206,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    */
   const prepareShare = useCallback(async (): Promise<boolean> => {
     const adapter = adapterRef.current;
-    if (!adapter || authStatus.kind !== 'user') return false;
-    if (dirtyRef.current || saveState !== 'saved') {
+    if (!adapter || authStatus.kind !== "user") return false;
+    if (dirtyRef.current || saveState !== "saved") {
       const saved = await doSave();
       if (!saved) return false;
     }
@@ -1451,17 +2220,19 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   // 登录工作台启动时先恢复 durable pending；网络恢复后在当前页面自动重试。
   useEffect(() => {
     const adapter = adapterRef.current;
-    if (!storageReady || authStatus.kind !== 'user' || !adapter) return;
-    const retry = (): void => { void syncCloud(adapter); };
+    if (!storageReady || authStatus.kind !== "user" || !adapter) return;
+    const retry = (): void => {
+      void syncCloud(adapter);
+    };
     retry();
-    window.addEventListener('online', retry);
-    return () => window.removeEventListener('online', retry);
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
   }, [authStatus.kind, storageReady, syncCloud]);
 
   // 自动保存：置脏后 1s 防抖（spec §F8）。排程在 markDirty 里完成；
   // 这里只负责保持 doSave 引用最新，并在卸载时清掉未触发的定时器。
   useEffect(() => {
-    doSaveRef.current = step !== 'upload' ? doSave : null;
+    doSaveRef.current = step !== "upload" ? doSave : null;
   }, [doSave, step]);
 
   /**
@@ -1469,7 +2240,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
    * 尺寸不匹配（重新生成或旋转过）就从零开始——把旧标记套到新图纸上会错位。
    */
   useEffect(() => {
-    if (!storageReady || patternWidth === null || patternHeight === null) return;
+    if (!storageReady || patternWidth === null || patternHeight === null)
+      return;
     const adapter = adapterRef.current;
     if (!adapter) {
       setStitchProgress(null);
@@ -1481,7 +2253,10 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         const stored = await adapter.getStitchProgress(designId);
         if (cancelled) return;
         setStitchProgress(
-          isProgressCompatible(stored, { width: patternWidth, height: patternHeight })
+          isProgressCompatible(stored, {
+            width: patternWidth,
+            height: patternHeight,
+          })
             ? stored
             : createStitchProgress(patternWidth, patternHeight),
         );
@@ -1504,7 +2279,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       setStitchSaveError(false);
     }
     if (activeStitchWriteRef.current) return activeStitchWriteRef.current;
-    if (stitchWriteFailedRef.current || !pendingStitchWriteRef.current) return Promise.resolve();
+    if (stitchWriteFailedRef.current || !pendingStitchWriteRef.current)
+      return Promise.resolve();
 
     const run = async (): Promise<void> => {
       while (pendingStitchWriteRef.current && !stitchWriteFailedRef.current) {
@@ -1515,7 +2291,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
           setStitchSaveError(false);
         } catch {
           // 若等待期间已有更新，保留更新后的快照；否则把失败快照放回队列。
-          if (!pendingStitchWriteRef.current) pendingStitchWriteRef.current = write;
+          if (!pendingStitchWriteRef.current)
+            pendingStitchWriteRef.current = write;
           stitchWriteFailedRef.current = true;
           setStitchSaveError(true);
           break;
@@ -1524,26 +2301,30 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     };
 
     const active = run().finally(() => {
-      if (activeStitchWriteRef.current === active) activeStitchWriteRef.current = null;
+      if (activeStitchWriteRef.current === active)
+        activeStitchWriteRef.current = null;
     });
     activeStitchWriteRef.current = active;
     return active;
   }, []);
 
-  const updateStitchProgress = useCallback((next: StitchProgress): void => {
-    setStitchProgress(next);
-    const adapter = adapterRef.current;
-    if (!adapter) return;
-    pendingStitchWriteRef.current = {
-      adapter,
-      designId: designIdRef.current,
-      progress: { ...next, done: next.done.slice(0) },
-    };
-    // 新操作本身也是一次显式重试，并取代此前失败的旧快照。
-    stitchWriteFailedRef.current = false;
-    setStitchSaveError(false);
-    void drainStitchWrites();
-  }, [drainStitchWrites]);
+  const updateStitchProgress = useCallback(
+    (next: StitchProgress): void => {
+      setStitchProgress(next);
+      const adapter = adapterRef.current;
+      if (!adapter) return;
+      pendingStitchWriteRef.current = {
+        adapter,
+        designId: designIdRef.current,
+        progress: { ...next, done: next.done.slice(0) },
+      };
+      // 新操作本身也是一次显式重试，并取代此前失败的旧快照。
+      stitchWriteFailedRef.current = false;
+      setStitchSaveError(false);
+      void drainStitchWrites();
+    },
+    [drainStitchWrites],
+  );
 
   const retryStitchSave = useCallback((): void => {
     void drainStitchWrites(true);
@@ -1551,22 +2332,27 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
 
   /** 离开沉浸区、页面隐藏和卸载前都尽力启动最后一次写入。 */
   useEffect(() => {
-    const flush = (): void => { void drainStitchWrites(true); };
-    const handleVisibilityChange = (): void => {
-      if (document.visibilityState === 'hidden') flush();
+    const flush = (): void => {
+      void drainStitchWrites(true);
     };
-    window.addEventListener('pagehide', flush);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      window.removeEventListener('pagehide', flush);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       flush();
     };
   }, [drainStitchWrites]);
 
-  useEffect(() => () => {
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    },
+    [],
+  );
 
   // beforeunload 防丢失
   useEffect(() => {
@@ -1576,8 +2362,8 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       event.preventDefault();
       event.returnValue = t.confirmLeave;
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [drainStitchWrites, t.confirmLeave]);
 
   // 保存状态接缝（T17）
@@ -1588,11 +2374,12 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
   // 上传步骤时应用配置默认参数（站点配置加载完成后/每次回到上传步骤都同步）。
   // 只更新参数：用户可能已在空白起稿区选好了色板/制作规格，异步配置响应不得覆盖该选择。
   useEffect(() => {
-    if (step !== 'upload' || rebindRestoredSourceRef.current) return;
+    if (step !== "upload" || rebindRestoredSourceRef.current) return;
     if (
-      generationDraft.params.targetWidth === defaultParams.targetWidth
-      && generationDraft.params.targetColorCount === defaultParams.targetColorCount
-    ) return;
+      generationDraft.params.targetWidth === defaultParams.targetWidth &&
+      generationDraft.params.targetColorCount === defaultParams.targetColorCount
+    )
+      return;
     updateGenerationDraft({ ...generationDraft, params: defaultParams });
   }, [defaultParams, generationDraft, step, updateGenerationDraft]);
 
@@ -1624,7 +2411,7 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         adapterRef.current = adapter;
         setStorageReady(Boolean(adapter));
         if (!adapter) {
-          setSaveState('unavailable');
+          setSaveState("unavailable");
           return;
         }
         // 恢复策略：
@@ -1632,11 +2419,13 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         // - ?id=X：仅当本地存在该设计时恢复；不存在则保持上传页（绝不回落打开其他设计）；
         // - 无参数（刷新恢复）：恢复最近编辑的设计。
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('new') === '1') return;
-        const requestedId = urlParams.get('id');
+        if (urlParams.get("new") === "1") return;
+        const requestedId = urlParams.get("id");
         const records = await adapter.getAll();
         if (cancelled || imageOperationRef.current !== restoreOperation) return;
-        const last = requestedId ? records.find((r) => r.id === requestedId) : records[0];
+        const last = requestedId
+          ? records.find((r) => r.id === requestedId)
+          : records[0];
         if (!last) {
           if (requestedId) setErrorMsg(t.designNotLocal);
           return;
@@ -1648,40 +2437,61 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
         }
         // The derivative source is optional. A failed source read must not
         // make a complete design inaccessible or authorize clearing that source.
-        const localSource = await adapter.getGenerationSource(last.id).catch(() => null);
+        const localSource = await adapter
+          .getGenerationSource(last.id)
+          .catch(() => null);
         if (cancelled || imageOperationRef.current !== restoreOperation) return;
         setActiveDesignId(last.id);
         setSavedNames(records.map((r) => r.name));
         loadCommittedProject(project, localSource);
         // D49：豆社引用刚交接过来的作者原图 → 绑定到这份副本（不重新生成）。
-        const handedOriginal: PendingOriginal | null = await takePendingOriginal(last.id).catch(() => null);
+        const handedOriginal: PendingOriginal | null =
+          await takePendingOriginal(last.id).catch(() => null);
         if (cancelled) return;
         if (handedOriginal) {
-          await bindOriginalToDesign({ bytes: new Uint8Array(handedOriginal.bytes), type: handedOriginal.type, name: handedOriginal.name }, project);
+          await bindOriginalToDesign(
+            {
+              bytes: new Uint8Array(handedOriginal.bytes),
+              type: handedOriginal.type,
+              name: handedOriginal.name,
+            },
+            project,
+          );
           if (cancelled) return;
         }
-        const requestedPalette = urlParams.get('palette');
+        const requestedPalette = urlParams.get("palette");
         if (requestedId && requestedPalette && requestedPalette.length <= 200) {
           setPaletteIntent({ designId: requestedId, value: requestedPalette });
         }
-        const requestedMode = urlParams.get('mode');
-        if (requestedId && (requestedMode === 'edit' || requestedMode === 'stitch')) setTab(requestedMode);
+        const requestedMode = urlParams.get("mode");
+        if (
+          requestedId &&
+          (requestedMode === "edit" || requestedMode === "stitch")
+        )
+          setTab(requestedMode);
       } catch {
         adapterRef.current = null;
         setStorageReady(false);
-        setSaveState('unavailable');
+        setSaveState("unavailable");
       }
     };
     void restore();
     return () => {
       cancelled = true;
     };
-  }, [bindOriginalToDesign, loadCommittedProject, setActiveDesignId, storage, t.designNotLocal, t.designUnreadable]);
+  }, [
+    bindOriginalToDesign,
+    loadCommittedProject,
+    setActiveDesignId,
+    storage,
+    t.designNotLocal,
+    t.designUnreadable,
+  ]);
 
   // 豆社引用来源：设计切换时探测服务器是否仍保留原图（作者撤回 / 注销后即不可取回）。
   // 探测结果按设计 ID 记录，切换设计后旧结果自然失效，不需要在 effect 里同步清空。
   useEffect(() => {
-    if (!communityOrigin || authStatus.kind !== 'user') return;
+    if (!communityOrigin || authStatus.kind !== "user") return;
     let cancelled = false;
     void (async () => {
       const revisionId = await lookupOriginalSource(designId);
@@ -1689,9 +2499,14 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       const available = await canFetchRevisionOriginal(revisionId);
       if (!cancelled && available) setCommunitySource({ revisionId, designId });
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [authStatus.kind, communityOrigin, designId]);
-  const communitySource = communitySourceProbe?.designId === designId && communityOrigin ? communitySourceProbe : null;
+  const communitySource =
+    communitySourceProbe?.designId === designId && communityOrigin
+      ? communitySourceProbe
+      : null;
 
   const fetchCommunityOriginal = useCallback(async (): Promise<void> => {
     const project = buildProjectRef.current();
@@ -1701,14 +2516,31 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     setBusyText(t.fetchingCommunityOriginal);
     try {
       const original = await fetchRevisionOriginal(communitySource.revisionId);
-      if (!original) { setCommunitySource(null); setErrorMsg(t.communityOriginalGone); return; }
-      await bindOriginalToDesign({ bytes: original.bytes, type: original.type, name: `${communitySource.revisionId}.${original.type}` }, project);
+      if (!original) {
+        setCommunitySource(null);
+        setErrorMsg(t.communityOriginalGone);
+        return;
+      }
+      await bindOriginalToDesign(
+        {
+          bytes: original.bytes,
+          type: original.type,
+          name: `${communitySource.revisionId}.${original.type}`,
+        },
+        project,
+      );
     } catch {
       setErrorMsg(t.communityOriginalFailed);
     } finally {
       setBusy(false);
     }
-  }, [bindOriginalToDesign, communitySource, t.communityOriginalFailed, t.communityOriginalGone, t.fetchingCommunityOriginal]);
+  }, [
+    bindOriginalToDesign,
+    communitySource,
+    t.communityOriginalFailed,
+    t.communityOriginalGone,
+    t.fetchingCommunityOriginal,
+  ]);
 
   // ---------- 导入 ----------
 
@@ -1739,10 +2571,16 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
       restoreGeneration(importedCommit);
       setErrorMsg(null);
       markDirty();
-      setStep('workspace');
+      setStep("workspace");
       clearDesignQuery(); // 新设计不再对应 URL ?id= 的旧设计（否则刷新会恢复错对象）
     },
-    [clearOriginalSource, cancelGeneration, markDirty, restoreGeneration, setActiveDesignId],
+    [
+      clearOriginalSource,
+      cancelGeneration,
+      markDirty,
+      restoreGeneration,
+      setActiveDesignId,
+    ],
   );
 
   const resetWorkbench = useCallback((): void => {
@@ -1752,100 +2590,233 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     disposeGenerateWorker();
     setShowProgress(false);
     dirtyRef.current = false;
-    setStep('upload');
+    setStep("upload");
     clearOriginalSource();
     setErrorMsg(null);
     setActiveDesignId(newDesignId());
-    setName('');
-    setCreatedAt('');
+    setName("");
+    setCreatedAt("");
     setCommunityOrigin(false);
     setCustomPaletteId(null);
     uploadGenerationSource(null, initialGenerationDraft);
     clearDesignQuery();
-  }, [clearOriginalSource, cancelGeneration, initialGenerationDraft, setActiveDesignId, uploadGenerationSource]);
+  }, [
+    clearOriginalSource,
+    cancelGeneration,
+    initialGenerationDraft,
+    setActiveDesignId,
+    uploadGenerationSource,
+  ]);
 
   /** Flush dirty state before an in-app transition. Only a failed flush asks
    * the user whether to discard the unsaved work. */
-  const saveBeforeLeave = useCallback(async (leave: () => void): Promise<void> => {
-    await drainStitchWrites(true);
-    if (!dirtyRef.current) {
-      leave();
-      return;
-    }
-    const saved = await doSave();
-    if (saved && !dirtyRef.current) {
-      leave();
-      return;
-    }
-    if (await confirm({
-      title: t.confirmLeaveTitle,
-      message: t.confirmLeave,
-      confirmLabel: t.confirmLeaveAction,
-      danger: true,
-    })) leave();
-  }, [confirm, doSave, drainStitchWrites, t.confirmLeave, t.confirmLeaveAction, t.confirmLeaveTitle]);
+  const saveBeforeLeave = useCallback(
+    async (leave: () => void): Promise<void> => {
+      await drainStitchWrites(true);
+      if (!dirtyRef.current) {
+        leave();
+        return;
+      }
+      const saved = await doSave();
+      if (saved && !dirtyRef.current) {
+        leave();
+        return;
+      }
+      if (
+        await confirm({
+          title: t.confirmLeaveTitle,
+          message: t.confirmLeave,
+          confirmLabel: t.confirmLeaveAction,
+          danger: true,
+        })
+      )
+        leave();
+    },
+    [
+      confirm,
+      doSave,
+      drainStitchWrites,
+      t.confirmLeave,
+      t.confirmLeaveAction,
+      t.confirmLeaveTitle,
+    ],
+  );
 
-  const handleNavigationClick = useCallback((event: MouseEvent<HTMLAnchorElement>, href: string): void => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    void saveBeforeLeave(() => router.push(href));
-  }, [router, saveBeforeLeave]);
+  const handleNavigationClick = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string): void => {
+      if (
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      event.preventDefault();
+      void saveBeforeLeave(() => router.push(href));
+    },
+    [router, saveBeforeLeave],
+  );
 
   const handleRestart = useCallback((): void => {
-    const leave = generationSession.status === 'restored-locked'
-      ? () => {
-          rebindRestoredSourceRef.current = true;
-          clearOriginalSource();
-          setErrorMsg(null);
-          setStep('upload');
-        }
-      : resetWorkbench;
+    const leave =
+      generationSession.status === "restored-locked"
+        ? () => {
+            rebindRestoredSourceRef.current = true;
+            clearOriginalSource();
+            setErrorMsg(null);
+            setStep("upload");
+          }
+        : resetWorkbench;
     void saveBeforeLeave(leave);
-  }, [clearOriginalSource, generationSession.status, resetWorkbench, saveBeforeLeave]);
+  }, [
+    clearOriginalSource,
+    generationSession.status,
+    resetWorkbench,
+    saveBeforeLeave,
+  ]);
 
-  const mobileWorkspaceOpen = mobileLayout && step === 'workspace' && tab !== 'preview';
-  const requestOriginal = (): void => { void saveBeforeLeave(() => {
-    rebindRestoredSourceRef.current = true;
-    clearOriginalSource();
-    setStep('upload');
-  }); };
-  const sourceAdjustment = generationSession.status === 'restored-locked' && <div className="source-adjustment-note">
-    <p>{t.sourceRequired}</p>{!cropRecoveryOpen && <button type="button" className="btn-outline" onClick={requestOriginal}>{t.reselectOriginal}</button>}
-    {communitySource && !cropRecoveryOpen && <button type="button" className="btn-primary" disabled={busy} onClick={() => void fetchCommunityOriginal()}>{t.fetchCommunityOriginal}</button>}
-  </div>;
+  const mobileWorkspaceOpen =
+    mobileLayout && step === "workspace" && tab !== "preview";
+  const requestOriginal = (): void => {
+    void saveBeforeLeave(() => {
+      rebindRestoredSourceRef.current = true;
+      setStep("upload");
+    });
+  };
+  const sourceAdjustment = generationSession.status === "restored-locked" && (
+    <div className="source-adjustment-note">
+      <p>{t.sourceRequired}</p>
+      {!cropRecoveryOpen && (
+        <button type="button" className="btn-outline" onClick={requestOriginal}>
+          {t.reselectOriginal}
+        </button>
+      )}
+      {communitySource && !cropRecoveryOpen && (
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={busy}
+          onClick={() => void fetchCommunityOriginal()}
+        >
+          {t.fetchCommunityOriginal}
+        </button>
+      )}
+    </div>
+  );
   const paletteLibraryHref = `/palettes?designId=${encodeURIComponent(designId)}`;
-  const paletteLibraryLink = <Link href={paletteLibraryHref} className="link-soft text-sm" onClick={(event) => handleNavigationClick(event, paletteLibraryHref)}>{t.paletteLibrary}</Link>;
-  const intentOption = paletteIntent && paletteOptions.find((option) => option.value === paletteIntent.value
-    && (!option.value.startsWith('custom:') || cloudPalettes.some((item) => `custom:${item.id}` === option.value)));
+  const paletteLibraryLink = (
+    <Link
+      href={paletteLibraryHref}
+      className="link-soft text-sm"
+      onClick={(event) => handleNavigationClick(event, paletteLibraryHref)}
+    >
+      {t.paletteLibrary}
+    </Link>
+  );
+  const intentOption =
+    paletteIntent &&
+    paletteOptions.find(
+      (option) =>
+        option.value === paletteIntent.value &&
+        (!option.value.startsWith("custom:") ||
+          cloudPalettes.some((item) => `custom:${item.id}` === option.value)),
+    );
   const dismissPaletteIntent = () => {
     setPaletteIntent(null);
     const url = new URL(window.location.href);
-    url.searchParams.delete('palette');
-    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    url.searchParams.delete("palette");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
   };
-  const paletteIntentNotice = paletteIntent?.designId === designId && <section className="palette-intent" aria-label={t.paletteIntentAria}>
-    <p>{intentOption ? t.paletteIntentQuestion(intentOption.brand, intentOption.series, name) : t.paletteIntentMissing}</p>
-    <small>{t.paletteIntentHelp}</small>
-    <div className="community-form-actions"><button type="button" className="btn-primary btn-sm" disabled={!intentOption || busy || generating || !generationSession.committed} onClick={() => {
-      if (!paletteIntent || paletteIntent.designId !== designId || !intentOption) return;
-      handlePaletteSelect(paletteIntent.value); dismissPaletteIntent();
-    }}>{t.paletteIntentApply}</button><button type="button" className="btn-outline btn-sm" onClick={dismissPaletteIntent}>{t.paletteIntentCancel}</button></div>
-  </section>;
-  const cropAction = <div className="preview-crop-action">
-    <button type="button" className="btn-outline" disabled={busy || generating} aria-expanded={!decoded ? cropRecoveryOpen : undefined} onClick={(event) => {
-      event.currentTarget.focus();
-      // Opening the cropper re-renders the workspace and mounts a measured
-      // canvas. Let React yield between render work instead of extending the
-      // input event into a single main-thread task; image operations stay urgent.
-      if (decoded) startTransition(() => setStep('crop'));
-      else setCropRecoveryOpen((open) => !open);
-    }}>{zhCN.crop.title}</button>
-    {!decoded && cropRecoveryOpen && <>
-      <span>{t.cropSourceMissing}</span>
-      <button type="button" className="btn-outline" disabled={busy || generating} onClick={requestOriginal}>{t.reselectOriginal}</button>
-      {communitySource && <button type="button" className="btn-primary" disabled={busy || generating} onClick={() => void fetchCommunityOriginal()}>{t.fetchCommunityOriginal}</button>}
-    </>}
-  </div>;
+  const paletteIntentNotice = paletteIntent?.designId === designId && (
+    <section className="palette-intent" aria-label={t.paletteIntentAria}>
+      <p>
+        {intentOption
+          ? t.paletteIntentQuestion(
+              intentOption.brand,
+              intentOption.series,
+              name,
+            )
+          : t.paletteIntentMissing}
+      </p>
+      <small>{t.paletteIntentHelp}</small>
+      <div className="community-form-actions">
+        <button
+          type="button"
+          className="btn-primary btn-sm"
+          disabled={
+            !intentOption || busy || generating || !generationSession.committed
+          }
+          onClick={() => {
+            if (
+              !paletteIntent ||
+              paletteIntent.designId !== designId ||
+              !intentOption
+            )
+              return;
+            handlePaletteSelect(paletteIntent.value);
+            dismissPaletteIntent();
+          }}
+        >
+          {t.paletteIntentApply}
+        </button>
+        <button
+          type="button"
+          className="btn-outline btn-sm"
+          onClick={dismissPaletteIntent}
+        >
+          {t.paletteIntentCancel}
+        </button>
+      </div>
+    </section>
+  );
+  const cropAction = (
+    <div className="preview-crop-action">
+      <button
+        type="button"
+        className="btn-outline"
+        disabled={busy || generating}
+        aria-expanded={!decoded ? cropRecoveryOpen : undefined}
+        onClick={(event) => {
+          event.currentTarget.focus();
+          // Opening the cropper re-renders the workspace and mounts a measured
+          // canvas. Let React yield between render work instead of extending the
+          // input event into a single main-thread task; image operations stay urgent.
+          if (decoded) startTransition(() => setStep("crop"));
+          else setCropRecoveryOpen((open) => !open);
+        }}
+      >
+        {zhCN.crop.title}
+      </button>
+      {!decoded && cropRecoveryOpen && (
+        <>
+          <span>{t.cropSourceMissing}</span>
+          <button
+            type="button"
+            className="btn-outline"
+            disabled={busy || generating}
+            onClick={requestOriginal}
+          >
+            {t.reselectOriginal}
+          </button>
+          {communitySource && (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={busy || generating}
+              onClick={() => void fetchCommunityOriginal()}
+            >
+              {t.fetchCommunityOriginal}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   /**
    * 手机编辑/跟拼是 /app 内的一层界面状态：首次进入 push，一层内切换只 replace。
@@ -1855,9 +2826,9 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     if (!mobileWorkspaceOpen) return;
     const nextState = historyStateWithMobileWorkspace(tab);
     if (mobileWorkspaceFromHistory(window.history.state)) {
-      window.history.replaceState(nextState, '', window.location.href);
+      window.history.replaceState(nextState, "", window.location.href);
     } else {
-      window.history.pushState(nextState, '', window.location.href);
+      window.history.pushState(nextState, "", window.location.href);
     }
   }, [mobileWorkspaceOpen, tab]);
 
@@ -1865,16 +2836,16 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
     if (!mobileLayout) return;
     const handlePopState = (event: PopStateEvent): void => {
       const mode = mobileWorkspaceFromHistory(event.state);
-      setTab(mode ?? 'preview');
+      setTab(mode ?? "preview");
       if (!mode) void drainStitchWrites(true);
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [drainStitchWrites, mobileLayout]);
 
   const previousTabRef = useRef<Tab>(tab);
   useEffect(() => {
-    if (previousTabRef.current === 'stitch' && tab !== 'stitch') {
+    if (previousTabRef.current === "stitch" && tab !== "stitch") {
       void drainStitchWrites(true);
     }
     previousTabRef.current = tab;
@@ -1882,545 +2853,762 @@ export default function Workbench({ storage, decodeFn, decodeRegionFn, imageDeco
 
   const exitMobileWorkspace = useCallback((): void => {
     void drainStitchWrites(true);
-    setTab('preview');
+    setTab("preview");
     if (mobileWorkspaceFromHistory(window.history.state)) window.history.back();
   }, [drainStitchWrites]);
 
   return (
-    <div className="workspace-content flex w-full flex-col gap-4">
+    <>
+      {saveSummaryOpen && (
+        <Modal
+          label={zhCN.beadhue.saveTitle}
+          onClose={() => setSaveSummaryOpen(false)}
+          panelClassName="beadhue-save-dialog"
+        >
+          <h2>{zhCN.beadhue.saveTitle}</h2>
+          <div className="status-list">
+            <p>
+              <Icon name="check" />
+              {zhCN.beadhue.savedLocally}
+            </p>
+            <p>
+              <Icon name="cloud" />
+              {authStatus.kind !== "user"
+                ? zhCN.beadhue.signInSyncHint
+                : cloudSaveState === "synced"
+                  ? zhCN.beadhue.patternSynced
+                  : zhCN.beadhue.patternWaiting}
+            </p>
+            <p>
+              <Icon name="lock" />
+              {zhCN.beadhue.privateVisibility}
+            </p>
+          </div>
+          <OriginalUploadStatus designId={designId} sha256={original?.sha256} />
+          <div className="row wrap">
+            <button
+              className="button"
+              onClick={() => setSaveSummaryOpen(false)}
+            >
+              {zhCN.beadhue.continueEditing}
+            </button>
+            <PublishToCommunityButton
+              designId={designId}
+              onBeforePublish={prepareShare}
+              getOriginal={() => retainedOriginalRef.current}
+              disabled={
+                authStatus.kind !== "user" || generating || communityOrigin
+              }
+              disabledReason={
+                communityOrigin
+                  ? zhCN.publish.communityOriginBlocked
+                  : zhCN.share.requiresCloud
+              }
+            />
+          </div>
+        </Modal>
+      )}
       <SiteHeader
-        title={t.title}
+        hideHeading={step === "crop"}
+        title={step === "upload" ? zhCN.beadhue.createTitle : t.title}
         currentPath="/app"
-        subtitle={zhCN.workspace.workbenchSubtitle}
+        subtitle={
+          step === "upload"
+            ? zhCN.beadhue.createSubtitle
+            : zhCN.workspace.workbenchSubtitle
+        }
         onNavigate={handleNavigationClick}
       />
-      {step !== 'upload' && (
-        <WorkbenchProjectBar
-          context={(
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <DesignNameEditor name={name} onChange={(nextName) => { setName(nextName); markDirty(); }} />
-            <span className="workspace-palette-summary shrink-0 text-xs text-ink-soft/80">
-              {paletteDisplayName} · {boardSpec.displayName}
+      <div
+        className={`workspace-content beadhue-workbench flex w-full flex-col gap-4 ${step === "upload" || (step === "crop" && !pattern) ? "is-upload" : "is-working"}`}
+      >
+        {step !== "upload" && pattern && (
+          <WorkbenchProjectBar
+            context={
+              <div className="beadhue-editor-title">
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={zhCN.beadhue.backToPreview}
+                  onClick={exitMobileWorkspace}
+                >
+                  <Icon name="back" />
+                </button>
+                <div>
+                  <DesignNameEditor
+                    name={name}
+                    onChange={(nextName) => {
+                      setName(nextName);
+                      markDirty();
+                    }}
+                  />
+                  <span className="workspace-palette-summary shrink-0 text-xs text-ink-soft/80">
+                    {zhCN.beadhue.privateLabel}
+                    {paletteDisplayName}
+                  </span>
+                </div>
+              </div>
+            }
+            actions={
+              <div className="workbench-save-actions">
+                <button
+                  type="button"
+                  className="button mobile-settings-button"
+                  aria-expanded={settingsOpen}
+                  onClick={() => setSettingsOpen((v) => !v)}
+                >
+                  <Icon name="sliders" />
+                  {zhCN.beadhue.parameters}
+                </button>
+                <button
+                  type="button"
+                  className="button publish-desktop"
+                  onClick={() => {
+                    setMobilePanel("export");
+                    setSettingsOpen(true);
+                  }}
+                >
+                  {zhCN.beadhue.export}
+                </button>
+                <SaveStatus
+                  state={saveState}
+                  cloudState={cloudSaveState}
+                  loggedIn={authStatus.kind === "user"}
+                  onSave={() => {
+                    void doSave().then((saved) => {
+                      if (saved) setSaveSummaryOpen(true);
+                    });
+                  }}
+                  disabled={generating || !generationSession.committed}
+                />
+                <span className="publish-desktop">
+                  <PublishToCommunityButton
+                    designId={designId}
+                    onBeforePublish={prepareShare}
+                    getOriginal={() => retainedOriginalRef.current}
+                    disabled={
+                      authStatus.kind !== "user" ||
+                      generating ||
+                      communityOrigin
+                    }
+                    disabledReason={
+                      communityOrigin
+                        ? zhCN.publish.communityOriginBlocked
+                        : zhCN.share.requiresCloud
+                    }
+                  />
+                </span>
+              </div>
+            }
+            overflowActions={
+              <>
+                {authStatus.kind !== "user" && (
+                  <>
+                    <Link
+                      href="/login"
+                      onClick={(event) =>
+                        handleNavigationClick(event, "/login")
+                      }
+                    >
+                      <Icon name="user" size={16} />
+                      {zhCN.nav.login}
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={(event) =>
+                        handleNavigationClick(event, "/register")
+                      }
+                    >
+                      <Icon name="plus" size={16} />
+                      {zhCN.nav.registerAccount}
+                    </Link>
+                    <hr aria-hidden="true" />
+                  </>
+                )}
+                <button type="button" onClick={handleRestart}>
+                  <Icon name="refresh" size={16} />
+                  {t.restart}
+                </button>
+              </>
+            }
+          />
+        )}
+
+        {/* 选图与图纸两步；裁剪是图纸上的可选弹窗。 */}
+        <div className="sr-only">
+          <StepIndicator step={step} />
+        </div>
+
+        {busy && (
+          <p className="text-sm text-primary-deep" role="status">
+            {busyText}
+          </p>
+        )}
+        {generating && !busy && (
+          <GenerationCancelControl
+            key={generationRound}
+            generating={generating}
+            progress={progress}
+            onCancel={handleCancelGenerate}
+            labels={{
+              generating: t.generating,
+              progress: t.generatingProgressLabel,
+              cancel: t.cancel,
+            }}
+          />
+        )}
+        {saveState === "unavailable" && (
+          <Notice kind="warning">{t.unavailable}</Notice>
+        )}
+        {/* 配额不足此前只体现在头部徽标文字里（现已缩短），必须在正文说清怎么办（D-8）。 */}
+        {saveState === "quota" && <Notice kind="danger">{t.quotaError}</Notice>}
+        {visibleErrorMsg && (
+          <Notice kind="danger">
+            <span>
+              {visibleErrorMsg}
+              {(visibleErrorMsg === t.designNotLocal ||
+                visibleErrorMsg === t.designUnreadable) && (
+                <>
+                  {" "}
+                  <Link className="link-soft" href="/designs">
+                    {t.backToDesigns}
+                  </Link>
+                </>
+              )}
             </span>
-          </div>
-          )}
-          actions={(
-          <div className="workbench-save-actions">
-            <SaveStatus
-              state={saveState}
-              cloudState={cloudSaveState}
-              loggedIn={authStatus.kind === 'user'}
-              onSave={() => { void doSave(); }}
-              disabled={generating || !generationSession.committed}
+          </Notice>
+        )}
+        {syncNotice && <Notice kind="warning">{syncNotice}</Notice>}
+        {step === "workspace" && mobileLayout && (
+          <OriginalUploadStatus
+            designId={designId}
+            sha256={original?.sha256}
+            problemsOnly
+          />
+        )}
+
+        {step === "upload" && (
+          <div className="form-card beadhue-create-card">
+            {/* 不加 capture：移动端带 capture 只能开摄像头、选不了相册（真机验收回归）。 */}
+            <UploadDropzone
+              onValid={(file) => void handleUpload(file)}
+              disabled={busy}
             />
-            {authStatus.kind === 'user' && (
-              <button type="button" onClick={handleRestart} className="btn-outline workbench-restart-button">
-                {t.restart}
+            {pattern && (
+              <button
+                type="button"
+                className="btn-outline self-start"
+                onClick={() => {
+                  restoreReplacement();
+                  rebindRestoredSourceRef.current = false;
+                  setStep("workspace");
+                }}
+              >
+                {t.cancelSelectOriginal}
               </button>
             )}
-          </div>
-          )}
-          overflowActions={authStatus.kind !== 'user' ? (
-          <>
-            <Link href="/login" onClick={(event) => handleNavigationClick(event, '/login')}>
-              <Icon name="user" size={16} />{zhCN.nav.login}
-            </Link>
-            <Link href="/register" onClick={(event) => handleNavigationClick(event, '/register')}>
-              <Icon name="plus" size={16} />{zhCN.nav.registerAccount}
-            </Link>
-            <hr aria-hidden="true" />
-            <button type="button" onClick={handleRestart}>
-              <Icon name="refresh" size={16} />{t.restart}
-            </button>
-          </>
-        ) : undefined}
-        />
-      )}
-
-      {/* 选图与图纸两步；裁剪是图纸上的可选弹窗。 */}
-      <StepIndicator step={step} />
-
-      {busy && <p className="text-sm text-primary-deep" role="status">{busyText}</p>}
-      {generating && !busy && (
-        <GenerationCancelControl
-          key={generationRound}
-          generating={generating}
-          progress={progress}
-          onCancel={handleCancelGenerate}
-          labels={{ generating: t.generating, progress: t.generatingProgressLabel, cancel: t.cancel }}
-        />
-      )}
-      {saveState === 'unavailable' && <Notice kind="warning">{t.unavailable}</Notice>}
-      {/* 配额不足此前只体现在头部徽标文字里（现已缩短），必须在正文说清怎么办（D-8）。 */}
-      {saveState === 'quota' && <Notice kind="danger">{t.quotaError}</Notice>}
-      {visibleErrorMsg && <Notice kind="danger"><span>{visibleErrorMsg}
-        {(visibleErrorMsg === t.designNotLocal || visibleErrorMsg === t.designUnreadable) && <>{' '}<Link className="link-soft" href="/designs">{t.backToDesigns}</Link></>}
-      </span></Notice>}
-      {syncNotice && <Notice kind="warning">{syncNotice}</Notice>}
-
-      {step === 'upload' && (
-        <>
-          {/* 不加 capture：移动端带 capture 只能开摄像头、选不了相册（真机验收回归）。 */}
-          <UploadDropzone onValid={(file) => void handleUpload(file)} disabled={busy} />
-          {pattern && <button type="button" className="btn-outline self-start" onClick={() => {
-            clearOriginalSource();
-            rebindRestoredSourceRef.current = false;
-            setStep('workspace');
-          }}>{t.cancelSelectOriginal}</button>}
-          {/*
+            {/*
             空白起稿（H-2）：此前进工作台的唯一入口是「上传一张图」，
             想从零摆一个像素图案（照着别人的图纸摆、画图标或文字）没有任何入口。
           */}
-          {!pattern && <section id="blank-start" aria-label={t.blankTitle} className="studio-panel blank-start">
-            <header className="blank-start-heading"><span className="home-blank-icon" aria-hidden="true"><Icon name="blank" size={18} /></span><div><h2>{t.blankTitle}</h2><p>{t.blankHint}</p></div></header>
-            {/* 一行四个 44 高的字段：色板品牌 / 系列 / 制作规格 / 板数；色板信息卡在下一行整行展开。 */}
-            <div className="form-row blank-start-controls">
-              <PalettePicker
-                options={paletteOptions}
-                value={selectedPalette}
-                disabled={busy || generating}
-                onSelect={handlePaletteSelect}
-                className="blank-palette-picker"
-              />
-              <ResponsiveSelect label={zhCN.params.boardProfile}
-                id="blank-board-profile"
-                value={boardProfile}
-                disabled={busy || generating}
-                onValueChange={handleBoardProfileSelect} options={boardProfileOptions}
-              />
-              <SegmentedControl showLabel label={t.blankBoards} value={String(blankBoards)} disabled={busy} onValueChange={(value) => setBlankBoards(Number(value) as BlankBoards)}
-                options={BLANK_PRESETS.map((boards) => ({ value: String(boards), label: t.blankBoardsOption(boards) }))} />
-            </div>
-            {/* 摘要说清将要创建什么，主按钮只有一个：之前三个尺寸 chip 都是次级样式，没人知道点哪个才是「开始」。 */}
-            <div className="blank-start-foot">
-              <p className="blank-start-summary" role="status">{blankSummary}</p>
-              <Button variant="primary" icon="blank" disabled={busy} onClick={() => startBlank(blankBoards * boardSpec.boardCols, blankBoards * boardSpec.boardRows)}>{t.blankCreate}</Button>
-            </div>
-          </section>}
-        </>
-      )}
-
-      {step === 'crop' && decoded && (
-        <CropDialog image={decoded} initialRect={lastCropRect} disabled={busy} error={visibleErrorMsg} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
-      )}
-
-      {step !== 'upload' && pattern && (
-        // D-6：768–1023px（iPad 竖屏）此前只有 lg 断点，参数与导出全被挤到图纸下方，
-        // 需要滚很远才能改参数。md 起就并列两栏，侧栏在该区间收窄到 260px。
-        mobileLayout ? (
-        <div className="mobile-workbench">
-          <div className="mobile-workbench-overview" aria-hidden={mobileWorkspaceOpen || undefined}>
-          {doneToken > 0 && !generating && (
-            <p key={doneToken} role="status" className="mobile-workbench-feedback text-success">
-              {t.generateDone(pattern.width, pattern.height, total, stats.length)}
+            <p className="note">
+              <Icon name="lock" size={16} />
+              {zhCN.beadhue.uploadPrivacy}
             </p>
-          )}
-          {paletteLoadFailed && <Notice kind="warning" compact>{t.paletteLoadFailed}</Notice>}
-          {remapNotice && <Notice kind="success" compact>{remapNotice}</Notice>}
-          <div className="mobile-mode-switcher" role="tablist" aria-label={t.title} onKeyDown={handleTabKey}>
-            <button ref={previewTabRef} id="tab-preview" type="button" role="tab" aria-selected={tab === 'preview'} aria-controls="panel-preview" tabIndex={tab === 'preview' ? 0 : -1} onClick={() => setTab('preview')}>{t.previewTab}</button>
-            <button ref={editTabRef} id="tab-edit" type="button" role="tab" aria-selected={tab === 'edit'} aria-controls="panel-edit" tabIndex={tab === 'edit' ? 0 : -1} onClick={() => setTab('edit')}>{t.editTab}</button>
-            <button ref={stitchTabRef} id="tab-stitch" type="button" role="tab" aria-selected={tab === 'stitch'} aria-controls="panel-stitch" tabIndex={tab === 'stitch' ? 0 : -1} onClick={() => setTab('stitch')}>{zhCN.stitch.tab}</button>
-          </div>
-
-          <section className="mobile-canvas-shell">
-            <header><LocalSaveBadge state={saveState} /><strong>{pattern.width} × {pattern.height}</strong></header>
-            {cropAction}
-            <div className="mobile-canvas-stage">
-              <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" ref={mobilePatternRegionRef} tabIndex={-1}><PatternPreview pattern={pattern} boardSize={boardSpec.boardCols} paused={step === 'crop' || generating} onCellHover={(info) => setHoverInfo(info ? zhCN.preview.cellInfo(info.row, info.col, info.cell.code) : null)} /></div>
+            <div className="divider">{zhCN.beadhue.tryExamples}</div>
+            <div className="example-strip">
+              {[
+                { id: "rabbit", name: zhCN.beadhue.exampleRabbit },
+                { id: "tulips", name: zhCN.beadhue.exampleTulips },
+                { id: "cat", name: zhCN.beadhue.exampleCat },
+              ].map((example) => (
+                <button
+                  key={example.id}
+                  type="button"
+                  disabled={busy}
+                  aria-label={zhCN.beadhue.useExample(example.name)}
+                  onClick={() => {
+                    void fetch(`/examples/${example.id}.png`)
+                      .then((r) => r.arrayBuffer())
+                      .then((bytes) =>
+                        handleUpload({
+                          bytes: new Uint8Array(bytes),
+                          type: "png",
+                          name: example.name,
+                        }),
+                      )
+                      .catch(() => setErrorMsg(zhCN.beadhue.exampleError));
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/examples/${example.id}.png`}
+                    alt={example.name}
+                    width={88}
+                    height={88}
+                  />
+                </button>
+              ))}
             </div>
-            <footer>{t.statsTotal(total)} · {t.colorCount(stats.length)}<span>{t.editorHint}</span></footer>
-          </section>
-          {hoverInfo && tab === 'preview' && <p role="status" className="mobile-workbench-hover">{hoverInfo}</p>}
-          {generationSession.regenerationUndo && !generating && (
-            <button type="button" onClick={handleUndoRegeneration} className="btn-outline mobile-workbench-undo">
-              {t.undoRegeneration}
-            </button>
-          )}
-
-          <nav className="mobile-tool-dock" aria-label={t.mobileTools}>
-            {([
-              ['params', 'sliders', t.mobileParams],
-              ['colors', 'palette', t.mobileColors],
-              ['export', 'download', t.mobileExport],
-            ] as const).map(([panel, icon, label]) => (
-              <button key={panel} type="button" aria-pressed={mobilePanel === panel} onClick={() => {
-                setMobilePanel(panel);
-                requestAnimationFrame(() => mobileToolSheetRef.current?.scrollIntoView({ block: 'nearest' }));
-              }}><Icon name={icon} /><span>{label}</span></button>
-            ))}
-          </nav>
-
-          <section ref={mobileToolSheetRef} className="mobile-tool-sheet">
-            <span className="mobile-sheet-handle" aria-hidden="true" />
-            {mobilePanel === 'params' && (
-              <>
-              {paletteIntentNotice}
-              {sourceAdjustment}
-              <GenerationParamsPanel
-                params={params}
-                paletteOptions={paletteOptions}
-                selectedPalette={selectedPalette}
-                onParamsChange={handleParamsChange}
-                onPaletteSelect={handlePaletteSelect}
-                boardProfileOptions={boardProfileOptions}
-                selectedBoardProfile={boardProfile}
-                onBoardProfileSelect={handleBoardProfileSelect}
-                paletteColorCount={paletteColorCount}
-                backgroundSampleSource={source}
-                disabled={!source || generating}
-                paletteDisabled={generating || !generationSession.committed}
-                kitTier={kitTier}
-                onKitTierChange={handleKitTierChange}
-              />
-              {paletteLibraryLink}
-              </>
-            )}
-            {mobilePanel === 'colors' && (
-              <div className="mobile-color-summary">
-                {generationSession.committed && <ShoppingListPanel expanded stats={stats} designName={name.trim() || zhCN.project.unnamed} width={pattern.width} height={pattern.height} />}
-              </div>
-            )}
-            {mobilePanel === 'export' && generationSession.committed && (
-              <div className="mobile-export-stack">
-                <PngExportButton pattern={generationSession.committed.pattern} designName={name.trim() || zhCN.project.unnamed} boardSize={boardSpec.boardCols} disabled={generating} analyticsSource={communityOrigin ? 'community' : 'other'} />
-                <PdfExportButton name={name.trim() || zhCN.project.unnamed} pattern={generationSession.committed.pattern} stats={generationSession.committed.stats} boardSize={boardSpec.boardCols} cellMm={boardProfile === DEFAULT_BOARD_PROFILE_ID ? undefined : boardSpec.pdfCellMm} disabled={generating} analyticsSource={communityOrigin ? 'community' : 'other'} />
-                <ProjectFileButtons source={{ name: name.trim() || zhCN.project.unnamed, createdAt: createdAt || new Date().toISOString(), engineVersion: generationSession.committed.engineVersion, boardProfile: generationSession.committed.boardProfile, paletteSelection: generationSession.committed.paletteSelection, params: generationSession.committed.params, pattern: generationSession.committed.pattern }} existingNames={savedNames} onImport={handleImport} disabled={generating} analyticsSource={communityOrigin ? 'community' : 'other'} />
-                <ShareButton
-                  designId={designId}
-                  onBeforeShare={prepareShare}
-                  disabled={authStatus.kind !== 'user' || generating}
-                  disabledReason={generating ? zhCN.share.generationInProgress : zhCN.share.requiresCloud}
-                />
-                <PublishToCommunityButton
-                  designId={designId}
-                  onBeforePublish={prepareShare}
-                  getOriginal={() => retainedOriginalRef.current}
-                  disabled={authStatus.kind !== 'user' || generating || communityOrigin}
-                  disabledReason={communityOrigin ? zhCN.publish.communityOriginBlocked : generating ? zhCN.share.generationInProgress : zhCN.share.requiresCloud}
-                />
-              </div>
-            )}
-          </section>
-          </div>
-
-          {mobileWorkspaceOpen && (
-            <Modal
-              testId="mobile-immersive-workspace"
-              panelClassName="mobile-immersive-workspace"
-              label={tab === 'edit' ? t.editTab : zhCN.stitch.tab}
-              onClose={exitMobileWorkspace}
-            >
-              <header className="mobile-immersive-header">
-                <button type="button" className="mobile-immersive-back" onClick={exitMobileWorkspace}>
-                  <Icon name="back" />
-                  <span>{t.mobileWorkspaceBack}</span>
-                </button>
-                <strong>{name.trim() || zhCN.project.unnamed}</strong>
-                <span>{pattern.width} × {pattern.height}</span>
-              </header>
-              <div className="mobile-immersive-mode-switcher" role="tablist" aria-label={t.mobileWorkspaceModes}>
+            {!pattern && (
+              <div className="row blank-toggle">
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={tab === 'edit'}
-                  aria-controls="mobile-panel-edit"
-                  onClick={() => setTab('edit')}
+                  className="button quiet"
+                  aria-expanded={blankOpen}
+                  onClick={() => setBlankOpen((v) => !v)}
                 >
-                  {t.editTab}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'stitch'}
-                  aria-controls="mobile-panel-stitch"
-                  onClick={() => setTab('stitch')}
-                >
-                  {zhCN.stitch.tab}
+                  <Icon name="grid" />
+                  {zhCN.beadhue.startBlank}
                 </button>
               </div>
-              <div className="mobile-immersive-body">
-                {tab === 'edit' && (
-                  <div
-                    id="mobile-panel-edit"
-                    role="tabpanel"
-                    className={generating ? 'pointer-events-none opacity-60' : undefined}
-                    aria-busy={generating}
+            )}
+            {!pattern && blankOpen && (
+              <section
+                id="blank-start"
+                aria-label={t.blankTitle}
+                className="studio-panel blank-start"
+              >
+                <header className="blank-start-heading">
+                  <span className="home-blank-icon" aria-hidden="true">
+                    <Icon name="blank" size={18} />
+                  </span>
+                  <div>
+                    <h2>{t.blankTitle}</h2>
+                    <p>{t.blankHint}</p>
+                  </div>
+                </header>
+                {/* 一行四个 44 高的字段：色板品牌 / 系列 / 制作规格 / 板数；色板信息卡在下一行整行展开。 */}
+                <div className="form-row blank-start-controls">
+                  <PalettePicker
+                    options={paletteOptions}
+                    value={selectedPalette}
+                    disabled={busy || generating}
+                    onSelect={handlePaletteSelect}
+                    className="blank-palette-picker"
+                  />
+                  <ResponsiveSelect
+                    label={zhCN.params.boardProfile}
+                    id="blank-board-profile"
+                    value={boardProfile}
+                    disabled={busy || generating}
+                    onValueChange={handleBoardProfileSelect}
+                    options={boardProfileOptions}
+                  />
+                  <SegmentedControl
+                    showLabel
+                    label={t.blankBoards}
+                    value={String(blankBoards)}
+                    disabled={busy}
+                    onValueChange={(value) =>
+                      setBlankBoards(Number(value) as BlankBoards)
+                    }
+                    options={BLANK_PRESETS.map((boards) => ({
+                      value: String(boards),
+                      label: t.blankBoardsOption(boards),
+                    }))}
+                  />
+                </div>
+                {/* 摘要说清将要创建什么，主按钮只有一个：之前三个尺寸 chip 都是次级样式，没人知道点哪个才是「开始」。 */}
+                <div className="blank-start-foot">
+                  <p className="blank-start-summary" role="status">
+                    {blankSummary}
+                  </p>
+                  <Button
+                    variant="primary"
+                    icon="blank"
+                    disabled={busy}
+                    onClick={() =>
+                      startBlank(
+                        blankBoards * boardSpec.boardCols,
+                        blankBoards * boardSpec.boardRows,
+                      )
+                    }
                   >
-                    <PixelEditorCanvas
-                      pattern={pattern}
-                      palette={palette}
-                      boardSize={boardSpec.boardCols}
-                      layout="mobile"
-                      autoFocus
-                      onPatternChange={handlePatternChange}
-                    />
-                  </div>
-                )}
-                {tab === 'stitch' && (
-                  <div id="mobile-panel-stitch" role="tabpanel">
-                    {stitchSaveError && (
-                      <Notice kind="danger" compact as="div" className="stitch-save-notice">
-                        <span>{t.stitchSaveFailed}</span>
-                        <button type="button" className="btn-outline btn-sm" onClick={retryStitchSave}>
-                          {t.stitchSaveRetry}
-                        </button>
-                      </Notice>
-                    )}
-                    {stitchProgress ? (
-                      <StitchView
-                        pattern={pattern}
-                        progress={stitchProgress}
-                        boardSize={boardSpec.boardCols}
-                        layout="mobile"
-                        onChange={updateStitchProgress}
-                      />
-                    ) : (
-                      <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
-                    )}
-                  </div>
-                )}
-              </div>
-            </Modal>
-          )}
-        </div>
-        ) : (
-        <div className="desktop-workbench-layout grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_260px] lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="flex min-w-0 flex-col gap-3">
-            {/*
+                    {t.blankCreate}
+                  </Button>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+
+        {step === "upload" && <SiteFooter />}
+        {step === "crop" &&
+          decoded &&
+          (pattern ? (
+            <CropDialog
+              image={decoded}
+              initialRect={lastCropRect}
+              disabled={busy}
+              error={visibleErrorMsg}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+            />
+          ) : (
+            <>
+              <button
+                type="button"
+                className="back beadhue-crop-back"
+                onClick={handleCropCancel}
+              >
+                <Icon name="back" />
+                {zhCN.beadhue.reselectImage}
+              </button>
+              <ImageCropper
+                presentation="beadhue"
+                image={decoded}
+                disabled={busy}
+                onConfirm={handleCropConfirm}
+                onCancel={handleCropCancel}
+              />
+            </>
+          ))}
+
+        {step !== "upload" && pattern && (
+          <div
+            className={`beadhue-editor-layout${settingsOpen ? " settings-open" : ""}${mobileWorkspaceOpen ? " mobile-editing" : ""}`}
+          >
+            <section className="flex min-w-0 flex-col gap-3">
+              {/*
               生成完成的结果句：礼貌播报，保持文字对比度，不淡入。
               以前生成完成没有任何反馈——进度行消失、图纸静默替换，用户不确定是否已完成。
             */}
-            {doneToken > 0 && !generating && (
-              <p
-                key={doneToken}
-                role="status"
-                className="text-sm font-medium text-success"
-              >
-                {t.generateDone(pattern.width, pattern.height, total, stats.length)}
-              </p>
-            )}
-            <div
-              role="tablist"
-              aria-label={t.title}
-              onKeyDown={handleTabKey}
-              className="desktop-mode-switcher"
-            >
-              <button
-                ref={previewTabRef}
-                type="button"
-                id="tab-preview"
-                role="tab"
-                aria-selected={tab === 'preview'}
-                aria-controls="panel-preview"
-                tabIndex={tab === 'preview' ? 0 : -1}
-                onClick={() => setTab('preview')}
-                className={`desktop-mode-button${tab === 'preview' ? ' is-active' : ''}`}
-              >
-                {t.previewTab}
-              </button>
-              <button
-                ref={editTabRef}
-                type="button"
-                id="tab-edit"
-                role="tab"
-                aria-selected={tab === 'edit'}
-                aria-controls="panel-edit"
-                tabIndex={tab === 'edit' ? 0 : -1}
-                onClick={() => setTab('edit')}
-                className={`desktop-mode-button${tab === 'edit' ? ' is-active' : ''}`}
-              >
-                {t.editTab}
-              </button>
-              <button
-                ref={stitchTabRef}
-                type="button"
-                id="tab-stitch"
-                role="tab"
-                aria-selected={tab === 'stitch'}
-                aria-controls="panel-stitch"
-                tabIndex={tab === 'stitch' ? 0 : -1}
-                onClick={() => setTab('stitch')}
-                className={`desktop-mode-button${tab === 'stitch' ? ' is-active' : ''}`}
-              >
-                {zhCN.stitch.tab}
-              </button>
-            </div>
-            {tab === 'preview' && (
-              <div
-                id="panel-preview"
-                role="tabpanel"
-                aria-labelledby="tab-preview"
-                ref={patternRegionRef}
-                tabIndex={-1}
-              >
-                {cropAction}
-                {/*
+              {doneToken > 0 && !generating && (
+                <p key={doneToken} role="status" className="sr-only">
+                  {t.generateDone(
+                    pattern.width,
+                    pattern.height,
+                    total,
+                    stats.length,
+                  )}
+                </p>
+              )}
+              {tab === "preview" && (
+                <div
+                  id="panel-preview"
+                  role="tabpanel"
+                  aria-labelledby="tab-preview"
+                  ref={patternRegionRef}
+                  tabIndex={-1}
+                >
+                  {/*
                   这里刻意不做「图纸淡入」动效：淡入需要重挂载才能重播，而重挂载会
                   把用户的缩放、网格/板缝/色号开关全部重置——每次调参都丢一次视图状态，
                   代价远大于一个 400ms 的动效。完成状态由上方稳定的结果句播报。
                 */}
-                <PatternPreview
-                  pattern={pattern}
-                  boardSize={boardSpec.boardCols}
-                  paused={step === 'crop' || generating}
-                  onCellHover={(info) =>
-                    setHoverInfo(info ? zhCN.preview.cellInfo(info.row, info.col, info.cell.code) : null)
-                  }
-                />
-              </div>
-            )}
-            {tab === 'edit' && (
-              <div id="panel-edit" role="tabpanel" aria-labelledby="tab-edit">
-                <div className={generating ? 'pointer-events-none opacity-60' : undefined} aria-busy={generating}>
-                  <PixelEditorCanvas
+                  <PatternPreview
                     pattern={pattern}
-                    palette={palette}
                     boardSize={boardSpec.boardCols}
-                    layout="desktop"
-                    autoFocus
-                    onPatternChange={handlePatternChange}
+                    paused={step === "crop" || generating}
+                    onCellHover={(info) =>
+                      setHoverInfo(
+                        info
+                          ? zhCN.preview.cellInfo(
+                              info.row,
+                              info.col,
+                              info.cell.code,
+                            )
+                          : null,
+                      )
+                    }
                   />
                 </div>
-              </div>
-            )}
-            {tab === 'stitch' && (
-              <div id="panel-stitch" role="tabpanel" aria-labelledby="tab-stitch">
-                {stitchSaveError && (
-                  <Notice kind="danger" compact as="div" className="stitch-save-notice">
-                    <span>{t.stitchSaveFailed}</span>
-                    <button type="button" className="btn-outline btn-sm" onClick={retryStitchSave}>
-                      {t.stitchSaveRetry}
-                    </button>
-                  </Notice>
-                )}
-                {stitchProgress ? (
-                  <StitchView pattern={pattern} progress={stitchProgress} boardSize={boardSpec.boardCols} layout="desktop" onChange={updateStitchProgress} />
-                ) : (
-                  <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
-                )}
-              </div>
-            )}
-            {hoverInfo && tab === 'preview' && (
-              <p role="status" className="rounded-lg bg-ink px-2 py-1 text-xs text-white">
-                {hoverInfo}
+              )}
+              {tab === "edit" && (
+                <div id="panel-edit" role="tabpanel" aria-labelledby="tab-edit">
+                  <div
+                    className={
+                      generating ? "pointer-events-none opacity-60" : undefined
+                    }
+                    aria-busy={generating}
+                  >
+                    <PixelEditorCanvas
+                      paletteTarget={paletteHost}
+                      original={original}
+                      originalImage={originalImage}
+                      onOriginalChange={updateOriginal}
+                      pattern={pattern}
+                      palette={palette}
+                      boardSize={boardSpec.boardCols}
+                      layout={mobileLayout ? "mobile" : "desktop"}
+                      autoFocus
+                      onPatternChange={handlePatternChange}
+                    />
+                  </div>
+                </div>
+              )}
+              {tab === "stitch" && (
+                <div
+                  id="panel-stitch"
+                  role="tabpanel"
+                  aria-labelledby="tab-stitch"
+                >
+                  {stitchSaveError && (
+                    <Notice
+                      kind="danger"
+                      compact
+                      as="div"
+                      className="stitch-save-notice"
+                    >
+                      <span>{t.stitchSaveFailed}</span>
+                      <button
+                        type="button"
+                        className="btn-outline btn-sm"
+                        onClick={retryStitchSave}
+                      >
+                        {t.stitchSaveRetry}
+                      </button>
+                    </Notice>
+                  )}
+                  {stitchProgress ? (
+                    <StitchView
+                      pattern={pattern}
+                      progress={stitchProgress}
+                      boardSize={boardSpec.boardCols}
+                      layout={mobileLayout ? "mobile" : "desktop"}
+                      onChange={updateStitchProgress}
+                    />
+                  ) : (
+                    <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
+                  )}
+                </div>
+              )}
+              {hoverInfo && tab === "preview" && (
+                <p
+                  role="status"
+                  className="rounded-lg bg-ink px-2 py-1 text-xs text-white"
+                >
+                  {hoverInfo}
+                </p>
+              )}
+              <p className="beadhue-canvas-summary mono">
+                {t.statsTotal(total)} · {t.colorCount(stats.length)}
               </p>
-            )}
-            <p className="text-sm text-ink-soft">{t.statsTotal(total)} · {t.colorCount(stats.length)}</p>
-            <p className="text-xs text-ink-soft/80">{t.editorHint}</p>
-            {generationSession.regenerationUndo && !generating && (
-              <button
-                type="button"
-                onClick={handleUndoRegeneration}
-                className="self-start btn-outline btn-sm"
+
+              {generationSession.regenerationUndo && !generating && (
+                <button
+                  type="button"
+                  onClick={handleUndoRegeneration}
+                  className="self-start btn-outline btn-sm"
+                >
+                  {t.undoRegeneration}
+                </button>
+              )}
+            </section>
+
+            <aside
+              className="beadhue-settings settings-panel"
+              aria-label={zhCN.beadhue.patternSettings}
+            >
+              <div className="row between">
+                <h2>{zhCN.beadhue.patternSettings}</h2>
+                <button
+                  type="button"
+                  className="mobile-settings-button icon-button"
+                  aria-label={zhCN.beadhue.closeSettings}
+                  onClick={() => setSettingsOpen(false)}
+                >
+                  <Icon name="close" />
+                </button>
+              </div>
+              <div
+                role="tablist"
+                aria-label={t.title}
+                onKeyDown={handleTabKey}
+                className="desktop-mode-switcher"
               >
-                {t.undoRegeneration}
-              </button>
-            )}
-          </section>
+                <button
+                  ref={previewTabRef}
+                  type="button"
+                  id="tab-preview"
+                  role="tab"
+                  aria-selected={tab === "preview"}
+                  aria-controls="panel-preview"
+                  tabIndex={tab === "preview" ? 0 : -1}
+                  onClick={() => setTab("preview")}
+                  className={`desktop-mode-button${tab === "preview" ? " is-active" : ""}`}
+                >
+                  {t.previewTab}
+                </button>
+                <button
+                  ref={editTabRef}
+                  type="button"
+                  id="tab-edit"
+                  role="tab"
+                  aria-selected={tab === "edit"}
+                  aria-controls="panel-edit"
+                  tabIndex={tab === "edit" ? 0 : -1}
+                  onClick={() => setTab("edit")}
+                  className={`desktop-mode-button${tab === "edit" ? " is-active" : ""}`}
+                >
+                  {t.editTab}
+                </button>
+                <button
+                  ref={stitchTabRef}
+                  type="button"
+                  id="tab-stitch"
+                  role="tab"
+                  aria-selected={tab === "stitch"}
+                  aria-controls="panel-stitch"
+                  tabIndex={tab === "stitch" ? 0 : -1}
+                  onClick={() => setTab("stitch")}
+                  className={`desktop-mode-button${tab === "stitch" ? " is-active" : ""}`}
+                >
+                  {zhCN.stitch.tab}
+                </button>
+              </div>
 
-          <aside className="desktop-inspector-stack flex flex-col gap-4">
-            <nav className="desktop-tool-dock" aria-label={t.mobileTools}>
-              {(['params', 'colors', 'export'] as const).map((panel) => <button key={panel} type="button" aria-pressed={mobilePanel === panel} onClick={() => setMobilePanel(panel)}>{panel === 'params' ? t.mobileParams : panel === 'colors' ? t.mobileColors : t.mobileExport}</button>)}
-            </nav>
-            {mobilePanel === 'params' && <>
-            {paletteIntentNotice}
-            {sourceAdjustment}
-            {paletteLoadFailed && (
-              <Notice kind="warning" compact>{t.paletteLoadFailed}</Notice>
-            )}
-            {remapNotice && <Notice kind="success" compact>{remapNotice}</Notice>}
-            <GenerationParamsPanel
-              params={params}
-              paletteOptions={paletteOptions}
-              selectedPalette={selectedPalette}
-              onParamsChange={handleParamsChange}
-              onPaletteSelect={handlePaletteSelect}
-              boardProfileOptions={boardProfileOptions}
-              selectedBoardProfile={boardProfile}
-              onBoardProfileSelect={handleBoardProfileSelect}
-              paletteColorCount={paletteColorCount}
-              backgroundSampleSource={source}
-              disabled={!source || generating}
-              /* 换色板不需要原图（H-1）：只要有已提交的图纸就能重映射。 */
-              paletteDisabled={generating || !generationSession.committed}
-              kitTier={kitTier}
-              onKitTierChange={handleKitTierChange}
-            />
-            {paletteLibraryLink}
-            </>}
+              <nav className="desktop-tool-dock" aria-label={t.mobileTools}>
+                {(["params", "colors", "export"] as const).map((panel) => (
+                  <button
+                    key={panel}
+                    type="button"
+                    aria-pressed={mobilePanel === panel}
+                    onClick={() => setMobilePanel(panel)}
+                  >
+                    {panel === "params"
+                      ? t.mobileParams
+                      : panel === "colors"
+                        ? t.mobileColors
+                        : t.mobileExport}
+                  </button>
+                ))}
+              </nav>
+              {mobilePanel === "params" && (
+                <>
+                  {paletteIntentNotice}
+                  {cropAction}
+                  {sourceAdjustment}
+                  {paletteLoadFailed && (
+                    <Notice kind="warning" compact>
+                      {t.paletteLoadFailed}
+                    </Notice>
+                  )}
+                  {remapNotice && (
+                    <Notice kind="success" compact>
+                      {remapNotice}
+                    </Notice>
+                  )}
+                  <GenerationParamsPanel
+                    compact
+                    params={params}
+                    paletteOptions={paletteOptions}
+                    selectedPalette={selectedPalette}
+                    onParamsChange={handleParamsChange}
+                    onPaletteSelect={handlePaletteSelect}
+                    boardProfileOptions={boardProfileOptions}
+                    selectedBoardProfile={boardProfile}
+                    onBoardProfileSelect={handleBoardProfileSelect}
+                    paletteColorCount={paletteColorCount}
+                    backgroundSampleSource={source}
+                    disabled={!source || generating}
+                    /* 换色板不需要原图（H-1）：只要有已提交的图纸就能重映射。 */
+                    paletteDisabled={generating || !generationSession.committed}
+                    kitTier={kitTier}
+                    onKitTierChange={handleKitTierChange}
+                  />
+                  {paletteLibraryLink}
+                </>
+              )}
 
-            {mobilePanel === 'colors' && generationSession.committed && (
-              <ShoppingListPanel
-                expanded
-                stats={stats}
-                designName={name.trim() || zhCN.project.unnamed}
-                width={pattern.width}
-                height={pattern.height}
-              />
-            )}
+              {mobilePanel === "colors" && generationSession.committed && (
+                <ShoppingListPanel
+                  expanded
+                  stats={stats}
+                  designName={name.trim() || zhCN.project.unnamed}
+                  width={pattern.width}
+                  height={pattern.height}
+                />
+              )}
 
-            {/*
+              {/*
               导出按钮要留在 DOM 里：生成中的 disabled 是取消协议的一部分（E2E 02 查「下载 PNG」）。
               用 hidden 而不是卸掉；PNG 规划延后到打开选项，避免落地时扫 2 万格。
             */}
-            {generationSession.committed && (
-              <div hidden={mobilePanel !== 'export'}>
-                <div className="card-surface flex flex-col gap-3 p-3">
-                <PngExportButton
-                  pattern={generationSession.committed.pattern}
-                  designName={name.trim() || zhCN.project.unnamed}
-                  boardSize={boardSpec.boardCols}
-                  disabled={generating}
-                  analyticsSource={communityOrigin ? 'community' : 'other'}
-                />
-                <PdfExportButton
-                  name={name.trim() || zhCN.project.unnamed}
-                  pattern={generationSession.committed.pattern}
-                  stats={generationSession.committed.stats}
-                  boardSize={boardSpec.boardCols}
-                  cellMm={boardProfile === DEFAULT_BOARD_PROFILE_ID ? undefined : boardSpec.pdfCellMm}
-                  disabled={generating}
-                  analyticsSource={communityOrigin ? 'community' : 'other'}
-                />
-                <ProjectFileButtons
-                  source={{
-                    name: name.trim() || zhCN.project.unnamed,
-                    createdAt: createdAt || new Date().toISOString(),
-                    engineVersion: generationSession.committed.engineVersion,
-                    boardProfile: generationSession.committed.boardProfile,
-                    paletteSelection: generationSession.committed.paletteSelection,
-                    params: generationSession.committed.params,
-                    pattern: generationSession.committed.pattern,
-                  }}
-                  existingNames={savedNames}
-                  onImport={handleImport}
-                  disabled={generating}
-                  analyticsSource={communityOrigin ? 'community' : 'other'}
-                />
-                {/* 只读分享（K）：需要登录且已同步云端，否则链接打不开 */}
-                <ShareButton
-                  designId={designId}
-                  onBeforeShare={prepareShare}
-                  disabled={authStatus.kind !== 'user' || generating}
-                  disabledReason={generating ? zhCN.share.generationInProgress : zhCN.share.requiresCloud}
-                />
-                {/* 公开到豆社（D49）：带上当前会话原图去投稿页；引用来的副本不能再次公开 */}
-                <PublishToCommunityButton
-                  designId={designId}
-                  onBeforePublish={prepareShare}
-                  getOriginal={() => retainedOriginalRef.current}
-                  disabled={authStatus.kind !== 'user' || generating || communityOrigin}
-                  disabledReason={communityOrigin ? zhCN.publish.communityOriginBlocked : generating ? zhCN.share.generationInProgress : zhCN.share.requiresCloud}
-                />
+              {generationSession.committed && (
+                <div hidden={mobilePanel !== "export"}>
+                  <div className="card-surface flex flex-col gap-3 p-3">
+                    <PngExportButton
+                      pattern={generationSession.committed.pattern}
+                      designName={name.trim() || zhCN.project.unnamed}
+                      boardSize={boardSpec.boardCols}
+                      disabled={generating}
+                      analyticsSource={communityOrigin ? "community" : "other"}
+                    />
+                    <PdfExportButton
+                      name={name.trim() || zhCN.project.unnamed}
+                      pattern={generationSession.committed.pattern}
+                      stats={generationSession.committed.stats}
+                      boardSize={boardSpec.boardCols}
+                      cellMm={
+                        boardProfile === DEFAULT_BOARD_PROFILE_ID
+                          ? undefined
+                          : boardSpec.pdfCellMm
+                      }
+                      disabled={generating}
+                      analyticsSource={communityOrigin ? "community" : "other"}
+                    />
+                    <ProjectFileButtons
+                      source={{
+                        original,
+                        name: name.trim() || zhCN.project.unnamed,
+                        createdAt: createdAt || new Date().toISOString(),
+                        engineVersion:
+                          generationSession.committed.engineVersion,
+                        boardProfile: generationSession.committed.boardProfile,
+                        paletteSelection:
+                          generationSession.committed.paletteSelection,
+                        params: generationSession.committed.params,
+                        pattern: generationSession.committed.pattern,
+                      }}
+                      existingNames={savedNames}
+                      onImport={handleImport}
+                      disabled={generating}
+                      analyticsSource={communityOrigin ? "community" : "other"}
+                    />
+                    {/* 只读分享（K）：需要登录且已同步云端，否则链接打不开 */}
+                    <ShareButton
+                      designId={designId}
+                      onBeforeShare={prepareShare}
+                      disabled={authStatus.kind !== "user" || generating}
+                      disabledReason={
+                        generating
+                          ? zhCN.share.generationInProgress
+                          : zhCN.share.requiresCloud
+                      }
+                    />
+                    {/* 公开到豆社（D49）：带上当前会话原图去投稿页；引用来的副本不能再次公开 */}
+                    <PublishToCommunityButton
+                      designId={designId}
+                      onBeforePublish={prepareShare}
+                      getOriginal={() => retainedOriginalRef.current}
+                      disabled={
+                        authStatus.kind !== "user" ||
+                        generating ||
+                        communityOrigin
+                      }
+                      disabledReason={
+                        communityOrigin
+                          ? zhCN.publish.communityOriginBlocked
+                          : generating
+                            ? zhCN.share.generationInProgress
+                            : zhCN.share.requiresCloud
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-          </aside>
-        </div>
-        )
-      )}
-      {confirmDialog}
-    </div>
+              )}
+              <div ref={setPaletteHost} className="beadhue-palette-host" />
+              <OriginalUploadStatus
+                designId={designId}
+                sha256={original?.sha256}
+              />
+            </aside>
+          </div>
+        )}
+        {confirmDialog}
+      </div>
+    </>
   );
 }

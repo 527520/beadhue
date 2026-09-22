@@ -38,6 +38,8 @@ export async function register(): Promise<void> {
           // 作品原图（D49）：下架逾期删除 + 补扫已标记删除但对象尚未清除的行。
           const { expireBlockedOriginals, purgeDeletedOriginals } = await import('@/lib/community/originals');
           const { getOriginalStore } = await import('@/lib/community/originalStore');
+          const { cleanupPrivateOriginals } = await import('@/lib/originals/server');
+          await cleanupPrivateOriginals(getDb(), getOriginalStore());
           const expired = await expireBlockedOriginals(getDb(), getOriginalStore(), new Date());
           const swept = await purgeDeletedOriginals(getDb(), getOriginalStore());
           if (expired.expired + swept.purged + swept.failed > 0) {
@@ -52,7 +54,7 @@ export async function register(): Promise<void> {
     }
     const { ensureFallbackDb } = await import('@/lib/auth/db');
     await ensureFallbackDb();
-    if (process.env.NODE_ENV !== 'production' && process.env.DOUPU_E2E_SEED === '1') {
+    if (process.env.NODE_ENV !== 'production' && process.env.BEADHUE_E2E_SEED === '1') {
       const { seedE2eGovernance } = await import('@/lib/auth/testSeed');
       const { getDb } = await import('@/lib/auth/db');
       await seedE2eGovernance(getDb());

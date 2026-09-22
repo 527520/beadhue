@@ -8,7 +8,7 @@ const config = {
   schema: './db/schema.ts',
   out: './db/migrations',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://doupu:doupu@localhost:5432/doupu',
+    url: process.env.DATABASE_URL ?? 'postgres://beadhue:beadhue@localhost:5432/beadhue',
   },
   strict: true,
   verbose: true,

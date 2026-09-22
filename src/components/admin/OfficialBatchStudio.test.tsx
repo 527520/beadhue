@@ -60,3 +60,5 @@ it('locks the selected file set and rejects duplicate starts while batch creatio
   expect(start).toBeDisabled(); expect(fileInput).toBeDisabled();
   expect(screen.getByRole('button', { name: '重试确认' })).toBeEnabled();
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

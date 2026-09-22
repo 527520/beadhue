@@ -1,5 +1,8 @@
 # ADR-0018: Full-image preview and optional recropping
 
+> 2026-09-22：本文相关原图/选图流程决策已由 [ADR-0023](0023-beadhue-private-originals-and-candy-ui.md) 部分取代。下文保留历史原因，当前规则以新 ADR 为准。
+
+
 - Status: accepted
 - Date: 2026-09-05
 - Refines: D24, D37, ADR-0009 and ADR-0011

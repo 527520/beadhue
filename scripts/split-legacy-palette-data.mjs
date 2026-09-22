@@ -49,7 +49,7 @@ function main() {
     const unavailableCode = colors.filter((color) => color.code === null).length;
 
     const output = {
-      schema: 'doupu-legacy-builtin-palette-v1',
+      schema: 'beadhue-legacy-builtin-palette-v1',
       id: brand,
       source: {
         repository: 'https://github.com/Zippland/perler-beads',

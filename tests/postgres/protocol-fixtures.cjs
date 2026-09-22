@@ -1,7 +1,7 @@
 /** PostgreSQL/standalone 契约共用的最小严格 v3 测试夹具。 */
 function strictV3Project(name = 'protocol-v3') {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',

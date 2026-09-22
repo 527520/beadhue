@@ -1,5 +1,5 @@
 {
-  "schema": "doupu-vendored-pindou-color-data-v1",
+  "schema": "beadhue-vendored-pindou-color-data-v1",
   "source": {
     "repository": "https://github.com/HansBug/pindou-color-data",
     "revision": "178dafbc9e77d3de556550dbd058270200129186",

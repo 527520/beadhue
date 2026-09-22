@@ -61,3 +61,5 @@ describe('forgot-password 页', () => {
     });
   });
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

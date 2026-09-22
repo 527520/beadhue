@@ -4,7 +4,7 @@ import { proxy } from './proxy';
 
 describe('CSP proxy', () => {
   it('emits a different nonce policy for every document request', () => {
-    const request = new NextRequest('https://doupu.example/app');
+    const request = new NextRequest('https://beadhue.example/app');
     const first = proxy(request).headers.get('Content-Security-Policy');
     const second = proxy(request).headers.get('Content-Security-Policy');
 
@@ -17,7 +17,7 @@ describe('CSP proxy', () => {
   });
 
   it('enables cross-origin isolation required by cooperative SharedArrayBuffer cancellation', () => {
-    const response = proxy(new NextRequest('https://doupu.example/app'));
+    const response = proxy(new NextRequest('https://beadhue.example/app'));
     expect(response.headers.get('Cross-Origin-Opener-Policy')).toBe('same-origin');
     expect(response.headers.get('Cross-Origin-Embedder-Policy')).toBe('require-corp');
   });

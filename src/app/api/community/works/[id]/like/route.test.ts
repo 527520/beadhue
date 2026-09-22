@@ -24,7 +24,7 @@ beforeEach(async () => {
   const actor = { userId, role: 'admin' as const, emailVerified: true, accountStatus: 'active' as const };
   const designId = crypto.randomUUID();
   await db.insert(designs).values({ id: designId, userId, name: 'private', payloadBytes: 1, project: {
-    format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: 'private',
+    format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: 'private',
     createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z', params: DEFAULT_GENERATION_PARAMS,
     paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
     pattern: { width: 1, height: 1, cells: [{ hex: '#FC3D46', code: 'F02', transparent: false }] },

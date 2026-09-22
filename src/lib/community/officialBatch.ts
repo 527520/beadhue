@@ -59,7 +59,7 @@ export async function saveOfficialDraft(db: AnyDatabase, input: {
     const palette = snapshotPaletteIdentity(snapshot.data);
     const [revision] = await tx.insert(communityRevisions).values({
       workId: work.id, revisionNumber: 1, status: 'draft', title: title.data,
-      authorType: 'official', publicAuthorId: 'doupu-official', frozenDisplayName: '豆谱官方',
+      authorType: 'official', publicAuthorId: 'beadhue-official', frozenDisplayName: '豆色绘官方',
       officialBatchId: batch.id, licenseVersion: COMMUNITY_LICENSE_VERSION, licenseConfirmedAt: now,
       engineVersion: snapshot.data.engineVersion, boardProfile: snapshot.data.boardProfile,
       paletteKind: palette.kind, paletteId: palette.id,

@@ -59,7 +59,7 @@ describe('OnboardingGuide', () => {
   });
 
   it('关闭过之后不显示；且引导不会为登录态额外发请求（J-1：探测在组件间共享）', async () => {
-    window.localStorage.setItem('doupu_onboarding_dismissed', '1');
+    window.localStorage.setItem('beadhue_onboarding_dismissed', '1');
     const fetchSpy = vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => null });
     vi.stubGlobal('fetch', fetchSpy);
     render(<OnboardingGuide />);
@@ -78,7 +78,7 @@ describe('OnboardingGuide', () => {
     });
     fireEvent.click(screen.getByText('我知道了'));
     expect(screen.queryByLabelText('三步上手')).toBeNull();
-    expect(window.localStorage.getItem('doupu_onboarding_dismissed')).toBe('1');
+    expect(window.localStorage.getItem('beadhue_onboarding_dismissed')).toBe('1');
     window.localStorage.clear();
   });
 

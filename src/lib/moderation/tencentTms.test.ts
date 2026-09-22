@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildTmsRequest, moderateTextWithTms, resolveTmsCredentials, TmsError, tmsUserToken } from './tencentTms';
 
-const creds = { secretId: 'AKID', secretKey: 'KEY', region: 'ap-guangzhou', bizType: 'doupu-comments' };
+const creds = { secretId: 'AKID', secretKey: 'KEY', region: 'ap-guangzhou', bizType: 'beadhue-comments' };
 
 describe('buildTmsRequest', () => {
   it('posts the base64 content with a sanitised DataId, opaque user token and TC3 headers', () => {
@@ -13,7 +13,7 @@ describe('buildTmsRequest', () => {
     expect(request.headers.Authorization).toMatch(/^TC3-HMAC-SHA256 Credential=AKID\/2026-09-06\/tms\/tc3_request, SignedHeaders=content-type;host, Signature=[0-9a-f]{64}$/u);
     const body = JSON.parse(request.body);
     expect(Buffer.from(body.Content, 'base64').toString('utf8')).toBe('你好，世界');
-    expect(body).toMatchObject({ BizType: 'doupu-comments', DataId: 'check-123-456', Type: 'TEXT', SourceLanguage: 'zh', User: { UserId: 'abc' } });
+    expect(body).toMatchObject({ BizType: 'beadhue-comments', DataId: 'check-123-456', Type: 'TEXT', SourceLanguage: 'zh', User: { UserId: 'abc' } });
   });
 
   it('derives a stable, non-reversible user token', () => {

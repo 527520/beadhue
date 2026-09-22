@@ -5,6 +5,7 @@ import {
   paletteSelectionSchema,
   patternSchema,
   projectFileSchema,
+  originalReferenceSchema,
 } from '@/lib/schemas';
 import type { Pattern, ProjectFile } from '@/lib/types';
 
@@ -12,6 +13,7 @@ export const COMMUNITY_SNAPSHOT_VERSION = 1 as const;
 export const COMMUNITY_LICENSE_VERSION = 'limited-platform-license-v1-draft' as const;
 
 export const communitySnapshotSchema = z.object({
+  original: originalReferenceSchema.omit({ assetId: true }).optional(),
   version: z.literal(COMMUNITY_SNAPSHOT_VERSION),
   engineVersion: z.string().min(1).max(80),
   boardProfile: z.enum(BOARD_PROFILE_IDS),
@@ -54,6 +56,7 @@ export function communitySnapshotFromProject(project: unknown): CommunitySnapsho
 
 function freezeProject(project: ProjectFile): CommunitySnapshotV1 {
   return {
+    ...(project.original ? { original: { sha256: project.original.sha256, width: project.original.width, height: project.original.height, geometry: project.original.geometry ? [...project.original.geometry] as typeof project.original.geometry : undefined } } : {}),
     version: COMMUNITY_SNAPSHOT_VERSION,
     engineVersion: project.engineVersion,
     boardProfile: project.boardProfile,

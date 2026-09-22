@@ -15,7 +15,7 @@ const workId = '00000000-0000-4000-a000-000000000001';
 const copyId = '00000000-0000-4000-a000-000000000002';
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const record = { id: copyId, projectJson: JSON.stringify({
-  format: 'doupu-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '私人副本',
+  format: 'beadhue-project', version: 3, engineVersion: 'test', boardProfile: '5mm-29', name: '私人副本',
   createdAt: '2026-09-05T00:00:00Z', updatedAt: '2026-09-05T00:00:00Z',
   params: DEFAULT_GENERATION_PARAMS, paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
   pattern: { width: 1, height: 1, cells: [{ code: 'F02', hex: '#FC3D46', transparent: false }] },

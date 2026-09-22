@@ -8,13 +8,13 @@ const options: readonly PalettePickerOption[] = [
   {
     value: 'builtin:mard-classic',
     brand: 'MARD',
-    series: '豆谱经典 291 色',
+    series: '豆色绘经典 291 色',
     colors: ['#ffffff', '#000000'],
     collectedCount: 291,
     usableCount: 291,
-    sourceQuality: '豆谱经典固定数据',
+    sourceQuality: '豆色绘经典固定数据',
     boardProfiles: ['5mm / 29×29'],
-    technicalVersion: 'doupu-legacy-v1',
+    technicalVersion: 'beadhue-legacy-v1',
     defaultForBrand: true,
   },
   {
@@ -32,13 +32,13 @@ const options: readonly PalettePickerOption[] = [
   {
     value: 'builtin:coco-classic',
     brand: 'COCO',
-    series: '豆谱经典 291 色',
+    series: '豆色绘经典 291 色',
     colors: ['#fefefe', '#010101'],
     collectedCount: 291,
     usableCount: 289,
-    sourceQuality: '豆谱经典固定数据',
+    sourceQuality: '豆色绘经典固定数据',
     boardProfiles: ['5mm / 29×29'],
-    technicalVersion: 'doupu-legacy-v1',
+    technicalVersion: 'beadhue-legacy-v1',
     defaultForBrand: true,
   },
 ];

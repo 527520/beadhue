@@ -28,7 +28,7 @@ describe('originalStore', () => {
   });
 
   it('文件实现写入后可读，缺失返回 null，越界键拒绝', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'doupu-originals-'));
+    const root = await mkdtemp(join(tmpdir(), 'beadhue-originals-'));
     try {
       const store = createFileOriginalStore(root);
       await store.put('nested/key', new Uint8Array([9, 8, 7]), 'image/webp');
@@ -73,7 +73,7 @@ describe('originalStore', () => {
   });
 
   it('文件读取遇到非缺失错误继续抛出', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'doupu-originals-'));
+    const root = await mkdtemp(join(tmpdir(), 'beadhue-originals-'));
     try {
       const store = createFileOriginalStore(root);
       await mkdir(join(root, 'isdir'));

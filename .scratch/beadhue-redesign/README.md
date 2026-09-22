@@ -34,4 +34,4 @@ python3 -m http.server 4178 --bind 127.0.0.1
 - `prototype/review.html`：两套方案的截图比较与入口。
 - `evidence/`：桌面/手机截图及布局检查结果；`verification.md` 说明验收边界。
 
-本阶段未修改正式应用、仓库名或线上环境。用户确认原型后再进入业务实施。
+以上为原型阶段入口。用户已确认 B，正式实现记录见 [implementation.md](implementation.md)，截图见 `product-evidence/`。线上资源未迁移。

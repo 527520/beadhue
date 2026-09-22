@@ -15,6 +15,7 @@ import {
 import { DEFAULT_BOARD_SIZE } from '@/lib/boardProfiles';
 
 interface Options {
+  preserveCameraOnResize?: boolean;
   patternWidth: number;
   patternHeight: number;
   boardSize?: number;
@@ -42,6 +43,7 @@ interface GridViewportController {
 const FALLBACK_VIEWPORT: GridViewportSize = { width: 640, height: 520 };
 
 export default function useGridViewport({
+  preserveCameraOnResize = false,
   patternWidth,
   patternHeight,
   boardSize = DEFAULT_BOARD_SIZE,
@@ -97,6 +99,7 @@ export default function useGridViewport({
             ? fitBoardCamera(patternWidth, patternHeight, initialBoardRow, initialBoardCol, nextSize, boardSize)
             : fitGridCamera(patternWidth, patternHeight, nextSize);
         }
+        if (preserveCameraOnResize) return previous;
         const next = constrainGridCamera(previous, patternWidth, patternHeight, nextSize);
         return next.cellPx === previous.cellPx
           && next.offsetX === previous.offsetX
@@ -111,7 +114,7 @@ export default function useGridViewport({
     });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [boardSize, hasInitialBoard, initialBoardCol, initialBoardRow, patternHeight, patternWidth, testCellPx]);
+  }, [boardSize, hasInitialBoard, initialBoardCol, initialBoardRow, patternHeight, patternWidth, testCellPx, preserveCameraOnResize]);
 
   useEffect(() => {
     const nextDimensions = `${patternWidth}x${patternHeight}`;

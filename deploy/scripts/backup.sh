@@ -4,12 +4,12 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 STAMP=$(date +%Y%m%d-%H%M%S)
-FILE="doupu-${STAMP}.dump.gz"
+FILE="beadhue-${STAMP}.dump.gz"
 WORK_DIR=$(mktemp -d)
-RAW="${WORK_DIR}/doupu-${STAMP}.dump"
-MANIFEST="${WORK_DIR}/doupu-${STAMP}.list"
+RAW="${WORK_DIR}/beadhue-${STAMP}.dump"
+MANIFEST="${WORK_DIR}/beadhue-${STAMP}.list"
 ARCHIVE="${WORK_DIR}/${FILE}"
-REMOTE_DIR=${BACKUP_DESTINATION:-"doupucos:${COS_BUCKET:-}/doupu-backup"}
+REMOTE_DIR=${BACKUP_DESTINATION:-"beadhuecos:${COS_BUCKET:-}/beadhue-backup"}
 PENDING="${REMOTE_DIR}/.pending/${FILE}"
 FINAL="${REMOTE_DIR}/${FILE}"
 
@@ -21,7 +21,7 @@ trap cleanup EXIT HUP INT TERM
 fail() {
   message=$1
   echo "backup FAILED: ${message}" >&2
-  "${SCRIPT_DIR}/notify.sh" "豆谱备份失败：${message}" || echo "backup alert delivery also failed" >&2
+  "${SCRIPT_DIR}/notify.sh" "豆色绘备份失败：${message}" || echo "backup alert delivery also failed" >&2
   exit 1
 }
 
@@ -61,4 +61,4 @@ if [ -z "${FINAL_BYTES}" ] || [ "${FINAL_BYTES}" != "${LOCAL_BYTES}" ]; then
   fail "promoted object verification failed for ${FILE}"
 fi
 
-echo "backup verified and promoted: doupu-backup/${FILE} (${LOCAL_BYTES} bytes)"
+echo "backup verified and promoted: beadhue-backup/${FILE} (${LOCAL_BYTES} bytes)"

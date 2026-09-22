@@ -3,8 +3,8 @@ import { APP_NAME, APP_VERSION, ENGINE_VERSION, LIMITS, PROJECT_FILE_FORMAT, PRO
 
 describe('appInfo', () => {
   it('exposes the product identity', () => {
-    expect(APP_NAME).toBe('豆谱');
-    expect(PROJECT_FILE_FORMAT).toBe('doupu-project');
+    expect(APP_NAME).toBe('豆色绘');
+    expect(PROJECT_FILE_FORMAT).toBe('beadhue-project');
     expect(PROJECT_FILE_VERSION).toBe(3);
     expect(ENGINE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
@@ -19,6 +19,6 @@ describe('appInfo', () => {
   });
 
   it('points the source repo at the user account', () => {
-    expect(SOURCE_REPO_URL).toBe('https://github.com/527520/doupu');
+    expect(SOURCE_REPO_URL).toBe('https://github.com/527520/beadhue');
   });
 });

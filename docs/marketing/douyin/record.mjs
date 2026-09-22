@@ -4,8 +4,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mkdir } from 'node:fs/promises';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const rawDir = '/Users/wuqian/Movies/.doupu-raw-video';
-const output = '/Users/wuqian/Movies/doupu-douyin-promo-silent.webm';
+const rawDir = '/Users/wuqian/Movies/.beadhue-raw-video';
+const output = '/Users/wuqian/Movies/beadhue-douyin-promo-silent.webm';
 
 await mkdir(rawDir, { recursive: true });
 

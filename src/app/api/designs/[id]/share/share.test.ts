@@ -42,7 +42,7 @@ const routeParams = { params: Promise.resolve({ id: DESIGN_ID }) };
 
 function project(name = '小熊'): ProjectFile {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',
@@ -189,7 +189,7 @@ describe('POST /api/designs/[id]/share', () => {
 
   it('图纸数据缺失/损坏的设计不能分享（不发出打不开的链接）', async () => {
     // 用一个结构不完整的 project 覆盖：分享前的快照校验应当拒绝
-    await db.update(designs).set({ project: { format: 'doupu-project' } }).where(eq(designs.id, DESIGN_ID));
+    await db.update(designs).set({ project: { format: 'beadhue-project' } }).where(eq(designs.id, DESIGN_ID));
     expect(await errorCode(await sharePost(request('POST'), routeParams))).toBe('VALIDATION');
     expect(await db.select().from(designShares)).toHaveLength(0);
   });

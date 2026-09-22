@@ -17,7 +17,7 @@ export type Database = ProdDatabase | PgliteDatabase<typeof schema>;
  * 回退库挂到 globalThis：webpack 会把 instrumentation 与各路由打包成
  * 互相独立的模块副本，模块级变量不共享；globalThis 是唯一可靠的跨副本通道。
  */
-const globalFallbackKey = '__doupu_fallback_db__';
+const globalFallbackKey = '__beadhue_fallback_db__';
 
 let prodDb: ProdDatabase | null = null;
 let testDb: PgliteDatabase<typeof schema> | null = null;

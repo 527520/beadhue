@@ -16,7 +16,7 @@ const creds = {
   region: 'ap-guangzhou',
   from: 'noreply@doupu.fun',
 };
-const mail = { to: 'user@example.com', subject: '验证你的豆谱账号', templateId: '1000001', templateData: { token: 'verify-token-abc' } };
+const mail = { to: 'user@example.com', subject: '验证你的豆色绘账号', templateId: '1000001', templateData: { token: 'verify-token-abc' } };
 const fixedDate = new Date('2026-08-15T08:00:00.000Z');
 
 interface SesPayloadShape {

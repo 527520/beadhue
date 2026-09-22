@@ -24,6 +24,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Brand compatibility scan
+        run: npm run brand:check
       - name: Lint
         run: npm run lint
       - name: Typecheck
@@ -175,13 +177,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: doupu
-          POSTGRES_USER: doupu
-          POSTGRES_PASSWORD: doupu-ci-password
+          POSTGRES_DB: beadhue
+          POSTGRES_USER: beadhue
+          POSTGRES_PASSWORD: beadhue-ci-password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U doupu -d doupu"
+          --health-cmd "pg_isready -U beadhue -d beadhue"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
@@ -198,13 +200,13 @@ jobs:
         run: npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org
       - name: Build standalone and backup images
         run: |
-          docker build -t doupu-app:local .
+          docker build -t beadhue-app:local .
           docker compose -f docker-compose.prod.yml build backup
         env:
-          APP_IMAGE: doupu-app:local
+          APP_IMAGE: beadhue-app:local
           APP_URL: http://127.0.0.1:3000
-          DATABASE_URL: postgresql://doupu:doupu-ci-password@127.0.0.1:5432/doupu
-          POSTGRES_PASSWORD: doupu-ci-password
+          DATABASE_URL: postgresql://beadhue:beadhue-ci-password@127.0.0.1:5432/beadhue
+          POSTGRES_PASSWORD: beadhue-ci-password
           SITE_DOMAIN: localhost
           COS_SECRET_ID: ci
           COS_SECRET_KEY: ci
@@ -214,38 +216,38 @@ jobs:
           ADMIN_EMAIL: ops@example.test
           ANALYTICS_IP_HMAC_KEY: ci-analytics-ip-hmac-key-32-characters
       - name: Native Argon2 smoke
-        run: docker run --rm doupu-app:local node -e "require('argon2').hash('ci-password').then(()=>process.exit(0)).catch(()=>process.exit(1))"
+        run: docker run --rm beadhue-app:local node -e "require('argon2').hash('ci-password').then(()=>process.exit(0)).catch(()=>process.exit(1))"
       - name: Final-image strict-v3 preflight and PostgreSQL migration contract
         run: npm run test:protocol-preflight
         env:
-          DATABASE_URL: postgresql://doupu:doupu-ci-password@127.0.0.1:5432/doupu
-          PROTOCOL_PREFLIGHT_IMAGE: doupu-app:local
+          DATABASE_URL: postgresql://beadhue:beadhue-ci-password@127.0.0.1:5432/beadhue
+          PROTOCOL_PREFLIGHT_IMAGE: beadhue-app:local
       - name: PostgreSQL revision and quota contract
         run: npm run test:postgres-contract
         env:
-          DATABASE_URL: postgresql://doupu:doupu-ci-password@127.0.0.1:5432/doupu
+          DATABASE_URL: postgresql://beadhue:beadhue-ci-password@127.0.0.1:5432/beadhue
       - name: Standalone production startup, PostgreSQL route contract and browser smoke
         run: |
-          docker run -d --name doupu-standalone-ci --network host \
+          docker run -d --name beadhue-standalone-ci --network host \
             -e HOSTNAME=0.0.0.0 \
             -e APP_URL=https://example.test -e DATABASE_URL="$DATABASE_URL" \
             -e SMTP_HOST=mail.example.test -e SMTP_USER=ci -e SMTP_PASS=ci -e SMTP_FROM=ci@example.test \
             -e BACKUP_ALERT_TOKEN=ci-backup-alert-token-32-characters -e ADMIN_EMAIL=ops@example.test \
             -e ANALYTICS_IP_HMAC_KEY=ci-analytics-ip-hmac-key-32-characters \
             -e COS_BUCKET=ci -e COS_SECRET_ID=ci -e COS_SECRET_KEY=ci -e COS_REGION=ap-guangzhou \
-            doupu-app:local
+            beadhue-app:local
           # 这一步的日志要仓库 admin 才能看（anonymous/普通用户都拿不到
           # /actions/jobs/{id}/logs 与网页日志），所以把现场落盘 + 作为 artifact 上传：
           # artifact 是公开可读的，不看网页日志也能定位到底失败在哪一段。
           # 不撤销的 EXIT trap：无论哪一段失败都先抓 300 行容器日志与容器状态。
           mkdir -p .artifacts
           set -e
-          trap 'docker logs --tail 300 doupu-standalone-ci > .artifacts/standalone-container.log 2>&1 || true; docker inspect -f "container status: {{.State.Status}} exit={{.State.ExitCode}}" doupu-standalone-ci > .artifacts/standalone-container-status.txt 2>&1 || true' EXIT
+          trap 'docker logs --tail 300 beadhue-standalone-ci > .artifacts/standalone-container.log 2>&1 || true; docker inspect -f "container status: {{.State.Status}} exit={{.State.ExitCode}}" beadhue-standalone-ci > .artifacts/standalone-container-status.txt 2>&1 || true' EXIT
           healthy=false
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3000/ >/dev/null; then healthy=true; break; fi
             # 容器已经退出就别再空转 60 秒：fail-fast 让日志更快出现在输出里。
-            if [ "$(docker inspect -f '{{.State.Running}}' doupu-standalone-ci 2>/dev/null)" = "false" ]; then break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' beadhue-standalone-ci 2>/dev/null)" = "false" ]; then break; fi
             sleep 2
           done
           if [ "$healthy" != true ]; then echo "stage=health-check"; exit 31; fi
@@ -257,7 +259,7 @@ jobs:
           SESSION_HASH=$(node -e "process.stdout.write(require('node:crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" -- "$SESSION_TOKEN")
           VERIFY_HASH=$(node -e "process.stdout.write(require('node:crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" -- "$VERIFY_TOKEN")
           ADMIN_HASH=$(node -e "process.stdout.write(require('node:crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" -- "$ADMIN_TOKEN")
-          docker exec ${{ job.services.postgres.id }} psql -U doupu -d doupu -v ON_ERROR_STOP=1 -c "
+          docker exec ${{ job.services.postgres.id }} psql -U beadhue -d beadhue -v ON_ERROR_STOP=1 -c "
             INSERT INTO users(id,email,password_hash,email_verified_at) VALUES
               ('00000000-0000-4000-8000-000000000101','production-contract@example.test','not-used',now()),
               ('00000000-0000-4000-8000-000000000102','production-token@example.test','not-used',NULL);
@@ -304,12 +306,12 @@ jobs:
             echo "browser-smoke exit=$smoke case=$smoke_where"
           } > .artifacts/standalone-stage.txt
           cat .artifacts/standalone-stage.txt
-          if [ "$route" != 0 ]; then docker rm -f doupu-standalone-ci >/dev/null 2>&1; exit 32; fi
-          if [ "$smoke" != 0 ]; then docker rm -f doupu-standalone-ci >/dev/null 2>&1; exit "$smoke"; fi
-          docker rm -f doupu-standalone-ci
+          if [ "$route" != 0 ]; then docker rm -f beadhue-standalone-ci >/dev/null 2>&1; exit 32; fi
+          if [ "$smoke" != 0 ]; then docker rm -f beadhue-standalone-ci >/dev/null 2>&1; exit "$smoke"; fi
+          docker rm -f beadhue-standalone-ci
           trap - EXIT
         env:
-          DATABASE_URL: postgresql://doupu:doupu-ci-password@127.0.0.1:5432/doupu
+          DATABASE_URL: postgresql://beadhue:beadhue-ci-password@127.0.0.1:5432/beadhue
       - name: Upload standalone smoke diagnostics
         # 公开 artifact：这一步的日志本身要 admin 才能看，artifact 不用，便于任何人复查。
         if: failure()
@@ -326,19 +328,19 @@ jobs:
       - name: Verified backup and restore drill
         run: |
           mkdir -p .backup-smoke
-          docker exec ${{ job.services.postgres.id }} psql -U doupu -d doupu -c "CREATE TABLE release_backup_canary(value text NOT NULL); INSERT INTO release_backup_canary VALUES ('verified');"
+          docker exec ${{ job.services.postgres.id }} psql -U beadhue -d beadhue -c "CREATE TABLE release_backup_canary(value text NOT NULL); INSERT INTO release_backup_canary VALUES ('verified');"
           docker run --rm --network host --entrypoint sh \
-            -e PGHOST=127.0.0.1 -e PGUSER=doupu -e PGPASSWORD=doupu-ci-password -e PGDATABASE=doupu \
-            -e BACKUP_DESTINATION=/backup/doupu-backup \
+            -e PGHOST=127.0.0.1 -e PGUSER=beadhue -e PGPASSWORD=beadhue-ci-password -e PGDATABASE=beadhue \
+            -e BACKUP_DESTINATION=/backup/beadhue-backup \
             -v "$PWD/.backup-smoke:/backup" -v "$PWD/deploy/scripts:/scripts:ro" \
-            doupu-backup:local /scripts/backup.sh
-          # 归档落在 .backup-smoke/doupu-backup/ 下；恢复容器挂载 .backup-smoke 为 /backup，
+            beadhue-backup:local /scripts/backup.sh
+          # 归档落在 .backup-smoke/beadhue-backup/ 下；恢复容器挂载 .backup-smoke 为 /backup，
           # 因此要把相对路径原样带进去（此前用 ##*/ 只剩文件名，容器里找不到归档）。
-          archive=$(find .backup-smoke -name 'doupu-*.dump.gz' -type f -print -quit)
+          archive=$(find .backup-smoke -name 'beadhue-*.dump.gz' -type f -print -quit)
           test -n "${archive}" || { echo "backup archive not found under .backup-smoke" >&2; exit 1; }
           docker run --rm --network host --entrypoint sh \
-            -e PGHOST=127.0.0.1 -e PGUSER=doupu -e PGPASSWORD=doupu-ci-password -e PGDATABASE=postgres \
-            -e RESTORE_DATABASE=doupu_restore_test \
+            -e PGHOST=127.0.0.1 -e PGUSER=beadhue -e PGPASSWORD=beadhue-ci-password -e PGDATABASE=postgres \
+            -e RESTORE_DATABASE=beadhue_restore_test \
             -e "RESTORE_CANARY_SQL=SELECT value FROM release_backup_canary WHERE value='verified'" \
             -v "$PWD/.backup-smoke:/backup:ro" -v "$PWD/deploy/scripts:/scripts:ro" \
-            doupu-backup:local /scripts/restore-drill.sh "/backup/${archive#.backup-smoke/}"
+            beadhue-backup:local /scripts/restore-drill.sh "/backup/${archive#.backup-smoke/}"

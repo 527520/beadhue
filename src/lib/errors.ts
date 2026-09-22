@@ -43,13 +43,15 @@ export class AppError extends Error {
   readonly status: number;
   /** zod 字段路径或业务字段名，用于 UI 定位。 */
   readonly field?: string;
+  readonly retryAfter?: number;
 
-  constructor(code: AppErrorCode, message: string, field?: string) {
+  constructor(code: AppErrorCode, message: string, field?: string, retryAfter?: number) {
     super(message);
     this.name = 'AppError';
     this.code = code;
     this.status = HTTP_STATUS[code];
     this.field = field;
+    this.retryAfter = retryAfter;
   }
 }
 

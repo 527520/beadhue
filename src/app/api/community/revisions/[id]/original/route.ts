@@ -1,14 +1,16 @@
+import { attachPrivateOriginalToRevision } from '@/lib/originals/server';
+import { enforceMutatingGuard } from '@/lib/auth/guard';
+import { readJson } from '@/lib/auth/http';
 import { z } from 'zod';
-import { LIMITS } from '@/lib/appInfo';
 import { getDb } from '@/lib/auth/db';
 import { requireApiActor } from '@/lib/auth/dal';
 import { enforceBinaryUploadGuard } from '@/lib/auth/guard';
 import { okJson, withApiErrors } from '@/lib/auth/http';
 import { getSessionActor } from '@/lib/auth/session';
-import { readRevisionOriginal, resolveOriginalAccess, storeRevisionOriginal } from '@/lib/community/originals';
+import { assertRevisionOriginalUpload, readRevisionOriginal, resolveOriginalAccess, storeRevisionOriginal } from '@/lib/community/originals';
 import { getOriginalStore } from '@/lib/community/originalStore';
-import { AppError } from '@/lib/errors';
-import { enforceCommunityWriteLimit } from '@/lib/security/publicRateLimit';
+import { enforceOriginalUploadLimit } from '@/lib/security/originalUploadLimit';
+import { readOriginalBody } from '@/lib/image/readOriginalBody';
 
 const idSchema = z.uuid();
 
@@ -20,13 +22,10 @@ async function put(request: Request, { params }: { params: Promise<{ id: string 
   const guard = enforceBinaryUploadGuard(request);
   if (guard) return guard;
   const actor = await requireApiActor('community:interact');
-  await enforceCommunityWriteLimit(getDb(), { userId: actor.userId, request });
   const revisionId = idSchema.parse((await params).id);
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (declared > LIMITS.maxFileBytes) throw new AppError('PAYLOAD_TOO_LARGE', '原图超过 20 MB 上限');
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.byteLength === 0) throw new AppError('VALIDATION', '原图为空', 'original');
-  if (bytes.byteLength > LIMITS.maxFileBytes) throw new AppError('PAYLOAD_TOO_LARGE', '原图超过 20 MB 上限');
+  await assertRevisionOriginalUpload(getDb(), actor, revisionId);
+  await enforceOriginalUploadLimit(getDb(), { userId: actor.userId, request });
+  const bytes = await readOriginalBody(request);
   const summary = await storeRevisionOriginal(getDb(), getOriginalStore(), { actor, revisionId, bytes });
   return okJson(summary, { status: 201, headers: { 'Cache-Control': 'private, no-store' } });
 }
@@ -69,3 +68,13 @@ async function head(_request: Request, { params }: { params: Promise<{ id: strin
 export const PUT = withApiErrors(put);
 export const GET = withApiErrors(get);
 export const HEAD = withApiErrors(head);
+
+/** Reference an already uploaded owner asset; this does not consume binary upload quota. */
+export const POST = withApiErrors(async (request: Request, { params }: { params: Promise<{id:string}> }) => {
+  const guard = enforceMutatingGuard(request); if (guard) return guard;
+  const actor = await requireApiActor('community:interact');
+  const revisionId = idSchema.parse((await params).id);
+  const parsed = await readJson(request, 1024); if (!parsed.ok) return parsed.response;
+  const {assetId} = z.object({assetId:z.uuid()}).strict().parse(parsed.data);
+  return okJson(await attachPrivateOriginalToRevision(getDb(), {actor,revisionId,assetId}));
+});

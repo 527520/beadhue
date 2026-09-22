@@ -1,5 +1,8 @@
 # ADR-0009: Revision-CAS local-first synchronization
 
+> 2026-09-22：本文相关原图/选图流程决策已由 [ADR-0023](0023-beadhue-private-originals-and-candy-ui.md) 部分取代。下文保留历史原因，当前规则以新 ADR 为准。
+
+
 - Status: accepted
 - Date: 2026-08-17
 - Supersedes: the last-write-wins synchronization choice in ADR-0002

@@ -9,15 +9,17 @@ import { surfaceForPath } from './PageViewTracker';
 import { zhCN } from '@/messages/zh-CN';
 
 type Preference = AnalyticsConsent | 'withdrawn' | null;
-const preferenceEvent = 'doupu:analytics-preference';
+const preferenceEvent = 'beadhue:analytics-preference';
 let requestPending = false;
 const recovery = zhCN.communityAdmin.consentRecovery;
 const stoppedMessage = recovery.stopped;
 
 function readPreference(): Preference {
-  const value = document.cookie.split(';').map((part) => part.trim())
-    .find((part) => part.startsWith(`${ANALYTICS_CONSENT_COOKIE}=`))
-    ?.slice(ANALYTICS_CONSENT_COOKIE.length + 1);
+  const entries = document.cookie.split(';').map(part => part.trim());
+  const current = entries.find(part => part.startsWith(`${ANALYTICS_CONSENT_COOKIE}=`));
+  const legacy = entries.find(part => part.startsWith('doupu_analytics_consent='));
+  const entry = current ?? legacy;
+  const value = entry?.slice(entry.indexOf('=') + 1);
   return value === 'granted' || value === 'denied' || value === 'withdrawn' ? value : null;
 }
 
@@ -64,7 +66,7 @@ async function choose(status: AnalyticsConsent | 'withdrawn'): Promise<void> {
       } finally { window.clearTimeout(timer); }
     };
     // 锁覆盖响应 Cookie 落地：后来的撤回会删除前面 grant 返回的访客。
-    if (navigator.locks?.request) await navigator.locks.request('doupu:analytics-consent', save);
+    if (navigator.locks?.request) await navigator.locks.request('beadhue:analytics-consent', save);
     else await save(); // 无锁环境只允许拒绝/撤回，采集始终关闭。
   } catch {
     error = true;

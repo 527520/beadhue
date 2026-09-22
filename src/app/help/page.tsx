@@ -1,33 +1,36 @@
-import { zhCN } from '@/messages/zh-CN';
-import SiteHeader from '@/components/layout/SiteHeader';
-import Icon, { type IconName } from '@/components/ui/Icon';
+import { zhCN } from "@/messages/zh-CN";
+import SiteHeader from "@/components/layout/SiteHeader";
 
 export default function HelpPage() {
   const t = zhCN.help;
-  const guides: Array<{ title: string; body: string; icon: IconName }> = [
-    { title: t.uploadTitle, body: t.uploadBody, icon: 'upload' },
-    { title: t.paramsTitle, body: t.paramsBody, icon: 'sliders' },
-    { title: t.paletteTitle, body: t.paletteBody, icon: 'palette' },
-    { title: t.seamTitle, body: t.seamBody, icon: 'grid' },
-    { title: t.exportTitle, body: t.exportBody, icon: 'download' },
+  const guides = [
+    [zhCN.beadhue.helpReuseQuestion, zhCN.beadhue.helpReuseAnswer],
+    [zhCN.beadhue.helpReferenceQuestion, zhCN.beadhue.helpReferenceAnswer],
+    [zhCN.beadhue.helpPrivateQuestion, zhCN.beadhue.helpPrivateAnswer],
+    [zhCN.beadhue.helpQueueQuestion, zhCN.beadhue.helpQueueAnswer],
+    [t.uploadTitle, t.uploadBody],
+    [t.paramsTitle, t.paramsBody],
+    [t.paletteTitle, t.paletteBody],
+    [t.seamTitle, t.seamBody],
+    [t.exportTitle, t.exportBody],
+    ...t.faqs.map((faq) => [faq.q, faq.a]),
   ];
   return (
     <main id="main" className="workspace-page">
-      <SiteHeader title={t.title} currentPath="/help" subtitle={zhCN.workspace.helpAndGuide} />
-      <div className="workspace-content info-page-content">
-        <section className="info-hero">
-          <span className="info-hero-icon"><Icon name="help" size={27} /></span>
-          <div><span className="studio-eyebrow">{zhCN.workspace.helpAndGuide}</span><h2>{zhCN.onboarding.title}</h2><p>{zhCN.workspace.homeSubtitle}</p></div>
-        </section>
-        <div className="info-card-grid">
-          {guides.map((guide) => (
-            <section key={guide.title} className="info-card"><span><Icon name={guide.icon} /></span><h2>{guide.title}</h2><p>{guide.body}</p></section>
+      <SiteHeader
+        title={zhCN.beadhue.helpTitle}
+        subtitle={zhCN.beadhue.helpSubtitle}
+        currentPath="/help"
+      />
+      <div className="container">
+        <div className="help-list">
+          {guides.map(([title, body], index) => (
+            <details key={title} open={index === 0}>
+              <summary>{title}</summary>
+              <p>{body}</p>
+            </details>
           ))}
         </div>
-        <section className="faq-section">
-          <span className="studio-eyebrow">{t.faqKicker}</span><h2>{t.faqTitle}</h2>
-          <div className="faq-list">{t.faqs.map((faq) => <details key={faq.q}><summary>{faq.q}</summary><p>{faq.a}</p></details>)}</div>
-        </section>
       </div>
     </main>
   );

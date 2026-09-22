@@ -688,3 +688,23 @@ export type NewDesign = typeof designs.$inferInsert;
 export type Palette = typeof palettes.$inferSelect;
 export type RateLimit = typeof rateLimits.$inferSelect;
 export type DesignShare = typeof designShares.$inferSelect;
+
+/** Immutable private originals; design JSON binds an asset under revision CAS. */
+export const originalAssets = pgTable('original_assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sha256: text('sha256').notNull(),
+  cosKey: text('cos_key').notNull(),
+  mimeType: text('mime_type').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  width: integer('width'),
+  height: integer('height'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [uniqueIndex('original_assets_owner_digest').on(table.userId, table.sha256), index('original_assets_key').on(table.cosKey)]);
+
+/** Replaced object keys remain discoverable until an unreferenced-object sweep succeeds. */
+export const originalGarbage = pgTable('original_garbage', {
+  cosKey: text('cos_key').primaryKey(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

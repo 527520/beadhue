@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { createTestClient, type TestDatabase } from '@/../db/testClient';
 import { sessions, users } from '@/../db/schema';
 import { createSession, resolveSession } from '@/lib/auth/session';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/cookies';
+import { SESSION_COOKIE_NAME, LEGACY_SESSION_COOKIE_NAME } from '@/lib/auth/cookies';
 import { hashToken } from '@/lib/auth/tokens';
 
 describe('session expiry', () => {
@@ -20,6 +20,16 @@ describe('session expiry', () => {
     const [stored] = await db.select().from(sessions).where(eq(sessions.tokenHash, hashToken(created.token)));
     expect(stored.expiresAt.toISOString()).toBe('2026-01-31T00:00:00.000Z');
     expect(stored.absoluteExpiresAt.toISOString()).toBe('2026-04-01T00:00:00.000Z');
+  });
+
+  it('renews a legacy cookie without replacing the valid session or extending its lifetime',async()=>{
+    const [user]=await db.insert(users).values({email:'legacy-session@example.test',passwordHash:'hash'}).returning();
+    const created=await createSession(db,user.id,now);
+    const result=await resolveSession(db,`${LEGACY_SESSION_COOKIE_NAME}=${created.token}`,now,{renew:true});
+    expect(result?.userId).toBe(user.id);
+    expect(result?.token).toBe(created.token);
+    expect(result?.renewedExpiresAt?.toISOString()).toBe('2026-01-31T00:00:00.000Z');
+    expect(await resolveSession(db,`${SESSION_COOKIE_NAME}=invalid; ${LEGACY_SESSION_COOKIE_NAME}=${created.token}`,now)).toBeNull();
   });
 
   it('caps rolling DB and cookie expiry at the absolute deadline', async () => {

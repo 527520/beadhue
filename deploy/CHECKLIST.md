@@ -1,16 +1,16 @@
-# 豆谱上线检查单（腾讯云海外地域）
+# 豆色绘上线检查单（腾讯云海外地域）
 
 > 适用：单机 Docker 部署（ADR-0005）。以下步骤仅能由账号所有者本人完成；按顺序执行，每步完成后勾选。
 > 当前决策 D31 为海外节点，不填写或展示 ICP 备案号。若将来迁入中国大陆地域，必须先另立合规决策并完成备案，不能直接复用本清单切流。
 
 ## 第 0 步：发布源码到 GitHub（开源合规，ADR-0001）
 
-- [ ] 登录 github.com/527520，新建仓库 **doupu**（Public，不勾选任何初始化文件——仓库已有完整历史）。
+- [ ] 登录 github.com/527520，新建仓库 **beadhue**（Public，不勾选任何初始化文件——仓库已有完整历史）。
 - [ ] 本地执行（Windows 凭据管理器会处理认证；若提示登录，按指引完成）：
   ```powershell
   git push -u origin main
   ```
-- [ ] 确认 https://github.com/527520/doupu 可访问，Actions 页 CI 全绿。
+- [ ] 确认 https://github.com/527520/beadhue 可访问，Actions 页 CI 全绿。
 - [ ] （可选）`git tag v0.1.0 && git push origin v0.1.0` 触发 release 工作流构建 GHCR 镜像。
 
 ## 第 1 步：购买服务器
@@ -23,7 +23,7 @@
 
 ## 第 2 步：注册域名（DNSPod）
 
-- [ ] 在腾讯云域名注册页查询并购买域名（首选 `doupu.cn` / `doupu.com`；若已注册，依次尝试 `doupu.net`、`doupuapp.com`、`doupu.fun`）。短拼音 .com 大概率已被抢注，不必强求。
+- [ ] 保留已有 SITE_DOMAIN 与 APP_URL（当前 doupu.fun）；品牌更名不迁移域名。新域名须另行确认注册、DNS 和证书方案。
 - [ ] 完成域名实名认证（个人，身份证，通常 1–2 小时内完成）。
 - [ ] 记录域名与 DNSPod 管理权限，待服务器安全加固完成后解析。
 
@@ -47,8 +47,8 @@
 
 ## 第 6 步：对象存储（COS：数据库备份 + 作品原图）
 
-- [ ] 创建一个 COS 存储桶（如 `doupu-<地域>`），**私有读写**；不开公有读、不配 CDN。备份写在 `doupu-backup/` 前缀，作品原图（D49）写在 `originals/` 前缀，应用只通过服务端代理读写原图，浏览器永不直连该桶。
-- [ ] **不要**给这个桶配自动删除的生命周期规则：原图跟随作品生命周期由应用删除（作者撤回 / 注销即删；下架 30 天未恢复由维护任务删除），整桶或无前缀限定的过期规则会把原图一起删掉。备份文件由人工定期到 `doupu-backup/` 下清理。
+- [ ] 创建一个 COS 存储桶（如 `beadhue-<地域>`），**私有读写**；不开公有读、不配 CDN。备份写在 `beadhue-backup/` 前缀，作品原图（D49）写在 `originals/` 前缀，应用只通过服务端代理读写原图，浏览器永不直连该桶。
+- [ ] **不要**给这个桶配自动删除的生命周期规则：原图跟随作品生命周期由应用删除（作者撤回 / 注销即删；下架 30 天未恢复由维护任务删除），整桶或无前缀限定的过期规则会把原图一起删掉。备份文件由人工定期到 `beadhue-backup/` 下清理。
 - [ ] 创建子账号 API 密钥（仅授予该桶读写），填入 `.env`（`COS_*` 变量）。应用启动时校验 `COS_BUCKET` 与凭证齐全，缺失拒绝启动。
 - [ ] 可选：若想把原图放到另一个私有桶或另一个子账号，再建一个同样不设自动删除的私有桶，填 `.env` 的 `COS_ORIGINALS_BUCKET`（及按需 `COS_ORIGINALS_SECRET_ID/KEY/REGION`）；留空即与备份共用。
 - [ ] 上线后验证：用测试账号投稿一次并上传原图，控制台能看到 `originals/<修订ID>/<sha256>.<ext>` 对象；撤回作品后对象消失。
@@ -64,7 +64,7 @@
 ## 第 7 步：部署
 
 - [ ] SSH 登录服务器，安装 Docker 与 docker compose 插件（OpenCloudOS：`sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin`，仓库见 docker-ce 官方源/腾讯云镜像；Ubuntu：`apt install docker.io docker-compose-v2`），将当前用户加入 docker 组。
-- [ ] 将仓库中的部署编排文件同步到 `/opt/doupu`，并 `chmod +x deploy/scripts/*.sh`；应用源码不会在服务器构建。
+- [ ] 将仓库中的部署编排文件同步到 `/opt/beadhue`，并 `chmod +x deploy/scripts/*.sh`；应用源码不会在服务器构建。
 - [ ] 复制 `.env.example` 为 `.env`，填写全部变量；`APP_IMAGE` 必须指向 release workflow 推送的稳定 GHCR tag 或 digest（禁止 `latest`）。
 - [ ] 执行 `bash deploy/scripts/deploy.sh`（拉取已门禁应用镜像 → 在线只读预检 → 短暂停止 Caddy → 再次只读终检；全新空库直接放行，终检失败自动恢复原入口 → 运行数据库迁移 → 替换 app 并恢复 caddy/backup）。
 - [ ] 验证：`docker compose ps` 中 app/postgres 为 healthy、caddy 为 running；backup 在首次校验备份完成前可为 starting，成功后必须为 healthy；backup 若重试耗尽后为 exited(non-zero)，按容器日志修复备份或告警链路；`curl -I https://<域名>` 返回 200。
@@ -73,7 +73,7 @@
 
 部署就绪后，日常发版按以下门禁流程执行：
 
-- 推送稳定版本 tag，等待 release workflow 全绿；同步部署编排文件，在 `.env` 更新 `APP_IMAGE=ghcr.io/527520/doupu:vX.Y.Z`，再执行 `bash deploy/scripts/deploy.sh`。
+- 推送稳定版本 tag，等待 release workflow 全绿；同步部署编排文件，在 `.env` 更新 `APP_IMAGE=ghcr.io/527520/beadhue:vX.Y.Z`，再执行 `bash deploy/scripts/deploy.sh`。
 - 注意：同步编排文件时**不要覆盖**服务器 `.env`（SES/COS/SMTP/TMS 等配置保留）；数据库迁移随 deploy.sh 幂等执行。
 - 本轮（迁移 0013–0015）起原图默认写入备份桶 `COS_BUCKET` 的 `originals/` 前缀，`.env` 无需新增变量；升级前到控制台把该桶已有的「30 天自动删除」生命周期规则删掉（备份改为人工定期清理），确认桶上不再有任何过期规则。若 `COS_*` 不齐全，新镜像启动校验失败并自动回滚到旧入口。
 
@@ -88,20 +88,20 @@
 - [ ] 防火墙/安全组无需新增端口：沿用已放行的 `80`/`443`；迟迟在本网络内以 `chi:3200` 被访问。
 - [ ] 引导数据库（幂等，可重复执行）：
   ```
-  cd /opt/doupu
+  cd /opt/beadhue
   docker compose -f docker-compose.prod.yml exec -T postgres \
-    psql -U doupu -d postgres -v chi_password='<强随机密码>' \
+    psql -U beadhue -d postgres -v chi_password='<强随机密码>' \
     -f - < /opt/chi/deploy/postgres/bootstrap-chi.sql
   ```
-  该脚本创建 role `chi` 与 database `chi`，并**收回 chi 对 `doupu` 库的一切权限**（防止误连写脏数据）。输出末行的 `role_chi`/`database_chi` 应为 `1`/`1`。
+  该脚本创建 role `chi` 与 database `chi`，并**收回 chi 对 `beadhue` 库的一切权限**（防止误连写脏数据）。输出末行的 `role_chi`/`database_chi` 应为 `1`/`1`。
 - [ ] `.env` 新增两项：`CHI_SITE_DOMAIN=chi.doupu.fun` 与（可留默认）`CHI_UPSTREAM=chi:3200`。
 - [ ] 部署迟迟：`cd /opt/chi && cp deploy/.env.example deploy/.env`（填 `DATABASE_URL=postgres://chi:<密码>@postgres:5432/chi` 与 `ADMIN_TOKEN`）→ `bash deploy/scripts/deploy.sh`。
-- [ ] 让新站点生效：`cd /opt/doupu && docker compose -f docker-compose.prod.yml up -d caddy`。
-- [ ] 验收：`curl -I https://chi.doupu.fun` 返回 200 且证书有效；`curl -I https://<豆谱域名>` 仍返回 200；迟迟页面能建房、两个浏览器可实时同步。
-- [ ] 隔离性验收：`docker compose -f docker-compose.prod.yml exec -T postgres psql -U chi -d doupu -c 'select 1'` 必须报 `permission denied for database "doupu"`（而不是返回结果）。这正是隔离生效的证据；迟迟日志里出现同样的错误说明它的 `DATABASE_URL` 配错了库。
+- [ ] 让新站点生效：`cd /opt/beadhue && docker compose -f docker-compose.prod.yml up -d caddy`。
+- [ ] 验收：`curl -I https://chi.doupu.fun` 返回 200 且证书有效；`curl -I https://<豆色绘域名>` 仍返回 200；迟迟页面能建房、两个浏览器可实时同步。
+- [ ] 隔离性验收：`docker compose -f docker-compose.prod.yml exec -T postgres psql -U chi -d beadhue -c 'select 1'` 必须报 `permission denied for database "beadhue"`（而不是返回结果）。这正是隔离生效的证据；迟迟日志里出现同样的错误说明它的 `DATABASE_URL` 配错了库。
 - [ ] 隔离性验收 2（可选）：`psql -U chi -d chi -c 'create database x'` 与 `-c 'create role x'` 都应被拒绝，确认 chi 只是普通角色。
 - [ ] 冒烟验收：迟迟镜像内置了 `scripts/smoke.js`，`deploy/scripts/deploy.sh` 会自动跑（36 项）。手动重跑：`cd /opt/chi && docker compose -f deploy/docker-compose.yml exec -T chi node scripts/smoke.js http://127.0.0.1:3200`。
-- [ ] 回滚方式：`cd /opt/chi && docker compose -f deploy/docker-compose.yml down`；如需一并撤销入口，从 Caddyfile 删除迟迟站点块后 `docker compose -f docker-compose.prod.yml up -d caddy`。迟迟的 `chi` 库与豆谱的 `doupu` 库互不影响。
+- [ ] 回滚方式：`cd /opt/chi && docker compose -f deploy/docker-compose.yml down`；如需一并撤销入口，从 Caddyfile 删除迟迟站点块后 `docker compose -f docker-compose.prod.yml up -d caddy`。迟迟的 `chi` 库与豆色绘的 `beadhue` 库互不影响。
 
 ## 第 9 步：上线验收（对照 spec §10）
 

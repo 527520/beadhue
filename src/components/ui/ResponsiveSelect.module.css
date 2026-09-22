@@ -1,13 +1,13 @@
 /* 下拉字段（ui-polish-2026）：触发器只消费 globals 的 --field-* 变量，与输入框同一副面孔。 */
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font: inherit; }
 .label { display: block; min-height: 1.25rem; color: var(--color-ink-soft); font-size: 13px; font-weight: 500; line-height: 1.25rem; }
-.trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-width: 0; min-height: var(--field-height); padding: 9px 12px; border: 1px solid var(--field-border); border-radius: var(--field-radius); background: var(--field-bg); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--field-font-size); line-height: 1.5; text-align: left; box-shadow: var(--field-shadow); transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-width: 0; min-height: var(--field-height); padding: 9px 12px; border: 1px solid var(--field-border); border-radius: var(--field-radius); background: var(--field-bg); color: var(--color-ink); font-family: var(--font-sans); font-size: var(--field-font-size); line-height: 1.5; text-align: left; box-shadow: none; transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
 /* 长选项不再把触发器撑高：单行省略，完整文案在弹层里看得到。 */
 .value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trigger svg { flex: 0 0 auto; color: var(--color-ink-soft); transition: transform var(--dur-base) var(--ease-out), color var(--dur-fast) var(--ease-out); }
 .trigger[data-hovered]:not([data-disabled]) { border-color: var(--field-border-hover); }
 .trigger[data-hovered]:not([data-disabled]) svg { color: var(--color-ink); }
-.trigger[data-pressed] { border-color: var(--color-primary); background: var(--color-surface); box-shadow: var(--ring-focus), var(--field-shadow); }
+.trigger[data-pressed] { border-color: var(--color-primary); background: var(--color-surface); box-shadow: none; }
 .trigger[data-pressed] svg { transform: rotate(180deg); color: var(--color-primary-deep); }
 .trigger[data-focus-visible] { outline: 2px solid var(--color-primary); outline-offset: 3px; }
 .trigger[data-disabled], .trigger:disabled { background: var(--field-bg-disabled); color: var(--color-ink-muted); box-shadow: none; cursor: not-allowed; }

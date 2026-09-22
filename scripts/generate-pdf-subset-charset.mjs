@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 /** PDF 版式里固定出现的文本：页眉、图例、总计、单位等。 */
-const STATIC_TEXT = '第页共列行图例总计粒色号数量豆谱图纸未命名设计板块';
+const STATIC_TEXT = '第页共列行图例总计粒色号数量豆色绘图纸未命名设计板块';
 
 /** 拉丁字母、数字与 ASCII 标点（色号形如 C-01、A12）。 */
 const ASCII_PRINTABLE = Array.from({ length: 0x7e - 0x20 + 1 }, (_, i) => String.fromCharCode(0x20 + i)).join('');

@@ -3,6 +3,7 @@
  * 本地库不设数量上限；写入失败（配额满 E39 / 隐私模式不可用）以类型化错误上抛，
  * 由 UI 层提示导出项目文件兜底。
  */
+import { migrateLegacyDatabase } from './brandMigration';
 import { parseProjectFileValue } from '@/lib/schemas';
 import { conflictName } from '@/lib/project/parse';
 import { drawPattern } from '@/lib/render/draw';
@@ -123,9 +124,9 @@ export class StorageError extends Error {
 
 // ---------- IndexedDB 适配 ----------
 
-const DB_NAME = 'doupu';
+const DB_NAME = 'beadhue';
 // v3：新增跟拼进度存储（G-1）。升级只加 store，不改动既有数据。
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_DESIGNS = 'designs';
 const STORE_META = 'meta';
 const STORE_GENERATION_SOURCES = 'generation-sources';
@@ -154,6 +155,7 @@ export async function openIndexedDb(): Promise<StorageAdapter> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
+      if (!database.objectStoreNames.contains('_brand_migrations')) database.createObjectStore('_brand_migrations');
       if (!database.objectStoreNames.contains(STORE_DESIGNS)) {
         database.createObjectStore(STORE_DESIGNS, { keyPath: 'id' });
       }
@@ -171,6 +173,7 @@ export async function openIndexedDb(): Promise<StorageAdapter> {
     request.onerror = () => reject(new StorageError('UNAVAILABLE', '无法打开本地数据库'));
   });
 
+  await migrateLegacyDatabase(db);
   return {
     async getAll() {
       const tx = db.transaction(STORE_DESIGNS, 'readonly');

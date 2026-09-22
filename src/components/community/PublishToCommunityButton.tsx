@@ -3,9 +3,9 @@
 /**
  * 工作台「公开到豆社」（D49）。
  *
- * 公开作品必须附带原图，而完整原图只活在工作台的解码会话里：这里先把设计保存并
- * 推到云端，再把会话原图放进一次性交接库，最后跳转投稿页由用户确认上传条款。
- * 没有会话原图（例如刷新后恢复的设计）时照样可以进入投稿页，那里会要求重新选择原图。
+ * 先保存并同步设计，再将已解码的完整原图放入一次性交接库，方便投稿页预览。
+ * 私人原图由独立缓存和上传队列持久保存；投稿页优先复用已关联资产，
+ * 没有可用原图时才要求重新选择，并由用户确认公开条款。
  */
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,7 +40,7 @@ export default function PublishToCommunityButton({ designId, onBeforePublish, ge
         try {
           await putPendingOriginal({ designId, bytes: original.bytes.slice().buffer as ArrayBuffer, type: original.type, name: original.name });
         } catch {
-          // 交接失败只影响便捷性：投稿页会要求重新选择原图。
+          // 交接失败不影响已关联资产；缺失资产时由投稿页要求重新选择。
         }
       }
       router.push(`/community/submit?designId=${encodeURIComponent(designId)}`);

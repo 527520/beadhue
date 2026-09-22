@@ -1,4 +1,5 @@
 'use client';
+import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
 import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
 import Switch from '@/components/ui/Switch';
 import SegmentedControl from '@/components/ui/SegmentedControl';
@@ -272,6 +273,7 @@ export default function OfficialBatchStudio() {
   </div>;
 
   return <section className="batch-studio">
+      <OriginalUploadStatus />
     <BatchSteps current={step} />
     {!items.length && state.error && <Notice kind="danger">{state.error}</Notice>}
     {intake}

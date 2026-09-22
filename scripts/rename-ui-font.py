@@ -8,7 +8,7 @@ source, target, family = sys.argv[1:]
 font = TTFont(source, recalcTimestamp=False)
 names = font["name"]
 postscript = family.replace(" ", "")
-replacements = {1: family, 3: f"DouPu derivative: {family}", 4: family,
+replacements = {1: family, 3: f"BeadHue derivative: {family}", 4: family,
                 6: postscript, 16: family, 21: family, 25: postscript}
 for record in list(names.names):
     if record.nameID in replacements:

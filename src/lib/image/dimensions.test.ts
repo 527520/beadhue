@@ -63,3 +63,15 @@ describe('readImageDimensions', () => {
     expect(readImageDimensions(bytes, 'heic')).toBeNull();
   });
 });
+
+// Display coordinates must follow EXIF orientation, not JPEG coded dimensions.
+import { readDisplayDimensions } from './dimensions';
+it.each([5,6,7,8])('swaps non-square JPEG axes for EXIF orientation %s', orientation=>{
+ const app1=[0x45,0x78,0x69,0x66,0,0,0x49,0x49,42,0,8,0,0,0,1,0,0x12,1,3,0,1,0,0,0,orientation,0,0,0,0,0,0,0];
+ const jpeg=new Uint8Array([255,216,255,225,0,app1.length+2,...app1,255,192,0,11,8,0,20,0,40,1,1,17,0,255,217]);
+ expect(readImageDimensions(jpeg,'jpeg')).toEqual({width:40,height:20});
+ expect(readDisplayDimensions(jpeg,'jpeg')).toEqual({width:20,height:40});
+});
+it('does not guess HEIC display coordinates from auxiliary ispe dimensions',()=>{
+ expect(readDisplayDimensions(new Uint8Array(64),'heic')).toBeNull();
+});

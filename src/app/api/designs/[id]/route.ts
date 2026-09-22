@@ -1,6 +1,7 @@
 /**
  * /api/designs/[id]：GET 单个设计 / PUT 幂等 upsert（客户端 UUID）/ DELETE 墓碑删除（幂等 204）。
  */
+import { assertOriginalBinding, releasePrivateOriginal } from '@/lib/originals/server';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { getDb } from '@/lib/auth/db';
@@ -72,6 +73,7 @@ async function put(request: Request, { params }: { params: Promise<{ id: string 
   return db.transaction(async (tx) => {
     await lockDesignStorage(tx, userId);
     await enforceSyncWriteLimit(tx, userId);
+    await assertOriginalBinding(tx, userId, requestedProject.original);
     const updatedAt = new Date();
     const requestedWithMetadata: ProjectFile = { ...requestedProject, name, updatedAt: updatedAt.toISOString() };
     const existing = await tx.select().from(designs).where(and(eq(designs.userId, userId), eq(designs.id, id)));
@@ -113,13 +115,15 @@ async function del(request: Request, { params }: { params: Promise<{ id: string 
   return db.transaction(async (tx) => {
     await lockDesignStorage(tx, userId);
     await enforceSyncWriteLimit(tx, userId);
-    const rows = await tx.select({ revision: designs.revision, deletedAt: designs.deletedAt, updatedAt: designs.updatedAt }).from(designs).where(and(eq(designs.userId, userId), eq(designs.id, id)));
+    const rows = await tx.select({ revision: designs.revision, deletedAt: designs.deletedAt, updatedAt: designs.updatedAt, project: designs.project }).from(designs).where(and(eq(designs.userId, userId), eq(designs.id, id)));
     if (rows.length === 0) return okJson({ revision: baseRevision, updatedAt: new Date().toISOString() });
     if (rows[0].deletedAt && rows[0].revision === baseRevision + 1) return okJson({ revision: rows[0].revision, updatedAt: rows[0].updatedAt.toISOString() });
     if (rows[0].revision !== baseRevision) return apiError(new AppError('REVISION_CONFLICT', '云端版本已更新'));
     const deletedAt = new Date();
     const revision = baseRevision + 1;
     await tx.update(designs).set({ name: '', project: null, payloadBytes: 0, deletedAt, updatedAt: deletedAt, revision }).where(and(eq(designs.userId, userId), eq(designs.id, id), eq(designs.revision, baseRevision)));
+    const original = (rows[0].project as ProjectFile | null)?.original;
+    if (original?.assetId) await releasePrivateOriginal(tx, userId, original.assetId);
     return okJson({ revision, updatedAt: deletedAt.toISOString() });
   });
 }

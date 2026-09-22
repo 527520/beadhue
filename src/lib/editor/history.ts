@@ -19,6 +19,7 @@ export const HISTORY_SNAPSHOT_LIMIT = 400_000;
 
 export interface HistoryEntry {
   label: ToolId;
+  original?: { before: import('@/lib/originals/geometry').OriginalReference; after: import('@/lib/originals/geometry').OriginalReference };
   snapshots: EditSnapshot[];
   /** 变换类操作（旋转）的尺寸恢复信息：undo 用 before、redo 用 after。 */
   dims?: { before: { width: number; height: number }; after: { width: number; height: number } };

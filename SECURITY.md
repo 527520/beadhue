@@ -11,7 +11,7 @@
 如果你发现安全漏洞，请**不要**在公开的 GitHub Issues 中披露。请通过以下任一方式私下报告：
 
 1. GitHub 仓库的「Security → Report a vulnerability」私有渠道（如果已启用）；
-2. 邮件：wqa527520@qq.com（主题注明「豆谱安全漏洞」）。
+2. 邮件：wqa527520@qq.com（主题注明「豆色绘安全漏洞」）。
 
 请在报告中包含：受影响版本、复现步骤、影响范围与你的建议修复方案。越详细越好。
 
@@ -23,5 +23,5 @@
 
 ## 已知边界
 
-- 豆谱是单机部署的全栈应用，安全边界包括：Web 应用（Next.js）、PostgreSQL、Caddy 反代与宿主机。
+- 豆色绘是单机部署的全栈应用，安全边界包括：Web 应用（Next.js）、PostgreSQL、Caddy 反代与宿主机。
 - 部署侧请按 [deploy/CHECKLIST.md](deploy/CHECKLIST.md) 完成防火墙、密钥轮换与备份演练。

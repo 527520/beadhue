@@ -4,12 +4,12 @@
 
 ## 自动恢复演练
 
-从 COS 下载最新的 `doupu-YYYYMMDD-HHMMSS.dump.gz`，在备份容器中执行：
+从 COS 下载最新的 `beadhue-YYYYMMDD-HHMMSS.dump.gz`，在备份容器中执行：
 
 ```bash
 docker compose -f docker-compose.prod.yml run --rm \
-  -e RESTORE_DATABASE=doupu_restore_test \
-  backup /scripts/restore-drill.sh /backup/doupu-YYYYMMDD-HHMMSS.dump.gz
+  -e RESTORE_DATABASE=beadhue_restore_test \
+  backup /scripts/restore-drill.sh /backup/beadhue-YYYYMMDD-HHMMSS.dump.gz
 ```
 
 `RESTORE_DATABASE` 必须以 `_restore_test` 结尾，脚本会先校验 dump manifest，再创建隔离数据库并完整 restore。可用 `RESTORE_CANARY_SQL` 指定必须返回非空结果的 canary 查询。CI 对每次改动执行临时备份闭环；`.github/workflows/production-backup-restore.yml` 每月只接受 36 小时内最新 promote 的生产归档，在隔离 PostgreSQL 16 中完整恢复并检查核心 `users` 表。缺少 COS secrets、没有新鲜归档、下载/校验/恢复任一步失败都会让定时任务失败并进入 GitHub Actions 告警面板。

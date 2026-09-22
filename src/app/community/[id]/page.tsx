@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/layout/SiteHeader';
 import PatternPreview from '@/components/preview/PatternPreview';
-import Badge from '@/components/ui/Badge';
 import Disclosure from '@/components/ui/Disclosure';
 import Icon from '@/components/ui/Icon';
 import { CommunityDetailImpression } from '@/components/community/CommunityImpression';
@@ -53,17 +52,10 @@ export default async function CommunityDetailPage({ params, searchParams }: { pa
     <main id="main" className="workspace-page">
       <SiteHeader title={t.headerTitle} currentPath="/community" />
       <CommunityDetailImpression />
-      <div className="workspace-content community-detail">
-        <Link className="community-back" href={returnTo}><Icon name="chevron-left" size={16} />{t.backToList}</Link>
-        <header className="community-detail-header">
-          <div className="community-detail-title">
-            <h2>{work.title}</h2>
-            <p>{t.publication(work.author.displayName, publishedAt)}{work.featured && <Badge tone="featured" className="community-featured">{t.featured}</Badge>}</p>
-          </div>
-          <WorkActions key={work.id} workId={work.id} initialLikes={work.counts.likes} initialReuses={work.counts.reuses} canInteract={canInteract} />
-        </header>
-        <div className="community-detail-layout">
-          <section className="community-pattern" aria-label={t.patternStage}>
+      <div className="container community-detail">
+        <Link className="back" href={returnTo}><Icon name="chevron-left" size={16} />{t.backToList}</Link>
+        <div className="detail-grid">
+          <section className="detail-art community-pattern" aria-label={t.patternStage}>
             {work.snapshot
               ? <PatternPreview pattern={work.snapshot.pattern} boardSize={board.boardCols} />
               : <div className="community-pattern-static">
@@ -72,15 +64,20 @@ export default async function CommunityDetailPage({ params, searchParams }: { pa
                 <p className="community-pattern-gate"><Icon name="lock" size={15} /><span>{t.loginForCodes} <Link href={`/login?next=${encodeURIComponent(`/community/${work.id}`)}`}>{zhCN.communityAdmin.interaction.loginContinue}</Link></span></p>
               </div>}
           </section>
-          <aside className="community-spec-card" aria-labelledby="community-spec-title">
-            <h2 id="community-spec-title">{t.specTitle}</h2>
-            <dl className="community-spec-grid">
-              <div><dt>{t.size}</dt><dd>{work.width} × {work.height}</dd></div>
-              <div><dt>{t.colors}</dt><dd>{t.colorValue(work.colorCount)}</dd></div>
-              <div><dt>{t.boardProfile}</dt><dd>{board.displayName}</dd></div>
+          <aside className="detail-info" aria-labelledby="community-spec-title">
+            <span className="pill">{work.tags.map(tag => tag.name).join(' · ') || (work.featured ? zhCN.beadhue.featured : zhCN.beadhue.pattern)}</span>
+            <h1 id="community-spec-title">{work.title}</h1>
+            <div className="author muted"><span className="avatar">{work.author.displayName.charAt(0)}</span><span>{work.author.displayName}<small style={{display:'block'}}>{publishedAt}</small></span></div>
+            <p className="description">{t.license}</p>
+            <dl className="spec-grid">
+              <div><strong>{work.width}×{work.height}</strong><span>{zhCN.beadhue.patternSize}</span></div>
+              <div><strong>{work.colorCount}</strong><span>{zhCN.beadhue.colorsNeeded}</span></div>
+              <div><strong>{work.snapshot ? work.snapshot.pattern.cells.filter(cell => !cell.transparent && !cell.external).length : work.width * work.height}</strong><span>{work.snapshot ? zhCN.beadhue.beadsNeeded : zhCN.beadhue.canvasCells}</span></div>
             </dl>
             <div className="community-color-band large" aria-label={t.colorBand}>{work.preview.colorBand.map((color) => <span key={color} style={{ backgroundColor: color }} />)}</div>
             {work.tags.length > 0 && <div className="community-tags">{work.tags.map((tag) => <Link key={tag.id} href={communityTagHref(tag.name)} className="community-tag-chip"><Icon name="tag" size={13} />{tag.name}</Link>)}</div>}
+            <p className="note">{board.displayName} {zhCN.beadhue.stitchHint}</p>
+            <WorkActions key={work.id} workId={work.id} initialLikes={work.counts.likes} initialReuses={work.counts.reuses} canInteract={canInteract} />
             <p className="community-license-note"><Icon name="shield" size={15} /><span>{t.license}</span></p>
             <Disclosure compact summary={t.technicalDetails}><dl className="community-spec-facts"><div><dt>{t.engineVersion}</dt><dd>{work.engineVersion}</dd></div><div><dt>{t.revisionId}</dt><dd>{work.revisionId}</dd></div></dl></Disclosure>
           </aside>

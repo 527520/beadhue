@@ -96,3 +96,5 @@ describe('register 页', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('密码至少 8 个字符'));
   });
 });
+
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));

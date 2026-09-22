@@ -1,7 +1,7 @@
 import { parseCookieHeader } from '@/lib/auth/cookies';
 
-export const ANALYTICS_CONSENT_COOKIE = 'doupu_analytics_consent';
-export const ANALYTICS_VISITOR_COOKIE = 'doupu_visitor';
+export const ANALYTICS_CONSENT_COOKIE = 'beadhue_analytics_consent';
+export const ANALYTICS_VISITOR_COOKIE = 'beadhue_visitor';
 export const ANALYTICS_COOKIE_MAX_AGE_SECONDS = 180 * 24 * 60 * 60;
 export type AnalyticsConsent = 'granted' | 'denied';
 
@@ -27,11 +27,11 @@ export function clearAnalyticsCookie(name: typeof ANALYTICS_CONSENT_COOKIE | typ
 }
 
 export function readAnalyticsConsent(cookieHeader: string | null): AnalyticsConsent | null {
-  const value = parseCookieHeader(cookieHeader).get(ANALYTICS_CONSENT_COOKIE);
+  const value = parseCookieHeader(cookieHeader).get(ANALYTICS_CONSENT_COOKIE) ?? parseCookieHeader(cookieHeader).get('doupu_analytics_consent');
   return value === 'granted' || value === 'denied' ? value : null;
 }
 
 export function readAnalyticsVisitorToken(cookieHeader: string | null): string | null {
-  const value = parseCookieHeader(cookieHeader).get(ANALYTICS_VISITOR_COOKIE) ?? '';
+  const value = parseCookieHeader(cookieHeader).get(ANALYTICS_VISITOR_COOKIE) ?? parseCookieHeader(cookieHeader).get('doupu_visitor') ?? '';
   return /^[A-Za-z0-9_-]{43}$/u.test(value) ? value : null;
 }

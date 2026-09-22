@@ -54,7 +54,7 @@ describe('POST /api/internal/backup-alert', () => {
     expect(response.status).toBe(204);
     expect(sendMailMock).toHaveBeenCalledWith(
       'ops@example.com',
-      '豆谱备份告警',
+      '豆色绘备份告警',
       '<p>dump validation failed</p>',
       'dump validation failed',
       { sesTemplate: { templateId: '12345', templateData: { message: 'dump validation failed' } } },
@@ -111,7 +111,7 @@ describe('POST /api/internal/backup-alert', () => {
       await POST(request('<b>dump</b> failed', '10.0.0.3'));
       expect(sendMailMock).toHaveBeenCalledWith(
         'ops@example.com',
-        '豆谱备份告警',
+        '豆色绘备份告警',
         '<p>&lt;b&gt;dump&lt;/b&gt; failed</p>',
         '<b>dump</b> failed',
         expect.anything(),

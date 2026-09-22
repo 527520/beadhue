@@ -6,15 +6,15 @@
  * 出现，本机却一个都没有——只报 duration 时无从下手。这里在关键阶段打上标记，
  * 测试失败时把标记与长任务一起打印（公开 annotation 可读），于是不用猜是哪一段。
  *
- * 只在 window 存在且已有 __doupuPerfMarks 时记录：生产用户不会有任何开销。
+ * 只在 window 存在且已有 __beadhuePerfMarks 时记录：生产用户不会有任何开销。
  */
 declare global {
   interface Window {
-    __doupuPerfMarks?: Array<{ name: string; at: number }>;
+    __beadhuePerfMarks?: Array<{ name: string; at: number }>;
   }
 }
 
 export function perfMark(name: string): void {
   if (typeof window === 'undefined') return;
-  window.__doupuPerfMarks?.push({ name, at: Math.round(performance.now()) });
+  window.__beadhuePerfMarks?.push({ name, at: Math.round(performance.now()) });
 }

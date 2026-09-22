@@ -39,15 +39,15 @@ describe('createPngArchiveBlob', () => {
     const patternBytes = new Uint8Array([...pngSignature, 1, 2, 3]);
     const legendBytes = new Uint8Array([...pngSignature, 4, 5, 6]);
     const blob = await createPngArchiveBlob([
-      { fileName: '豆谱-测试-200x200-图纸.png', blob: new Blob([patternBytes], { type: 'image/png' }) },
-      { fileName: '豆谱-测试-200x200-图例.png', blob: new Blob([legendBytes], { type: 'image/png' }) },
+      { fileName: '豆色绘-测试-200x200-图纸.png', blob: new Blob([patternBytes], { type: 'image/png' }) },
+      { fileName: '豆色绘-测试-200x200-图例.png', blob: new Blob([legendBytes], { type: 'image/png' }) },
     ]);
 
     expect(blob.type).toBe('application/zip');
     const entries = readStoredEntries(await blob.arrayBuffer());
     expect(entries.map((entry) => entry.name)).toEqual([
-      '豆谱-测试-200x200-图纸.png',
-      '豆谱-测试-200x200-图例.png',
+      '豆色绘-测试-200x200-图纸.png',
+      '豆色绘-测试-200x200-图例.png',
     ]);
     expect(Array.from(entries[0].bytes)).toEqual(Array.from(patternBytes));
     expect(Array.from(entries[1].bytes)).toEqual(Array.from(legendBytes));

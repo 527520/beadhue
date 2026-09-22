@@ -7,12 +7,12 @@ import { emailSchema, passwordSchema, usernameSchema } from '@/lib/schemas';
 import Modal from '@/components/ui/Modal';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Notice from '@/components/ui/Notice';
-import type { DoupuApi, MeInfo } from '@/lib/sync/api';
+import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 import { LIMITS } from '@/lib/appInfo';
 import { track } from '@/lib/analytics/client';
 
 interface Props {
-  api: DoupuApi;
+  api: BeadhueApi;
   me: MeInfo | 'loading';
   onAuthChanged: () => void;
 }
@@ -23,7 +23,7 @@ export function ChangePasswordDialog({
   onSuccess,
   onBusyChange,
 }: {
-  api: DoupuApi;
+  api: BeadhueApi;
   onClose: () => void;
   onSuccess: () => void;
   onBusyChange?: (busy: boolean) => void;
@@ -115,7 +115,7 @@ export function DeleteAccountDialog({
   onSuccess,
   onBusyChange,
 }: {
-  api: DoupuApi;
+  api: BeadhueApi;
   onClose: () => void;
   onSuccess: () => void;
   onBusyChange?: (busy: boolean) => void;
@@ -303,17 +303,17 @@ export default function AccountMenu({ api, me, onAuthChanged }: Props) {
             </div>
             {profileMessage && <Notice kind="info" compact role="status">{profileMessage}</Notice>}
           </section>
-          <section className="account-action-section">
+          <details className="account-action-section"><summary>{zhCN.beadhue.accountSecurity}</summary>
             <div className="account-section-heading"><div><h2>{t.securityTitle}</h2><p>{t.securityHint}</p></div></div>
             <div className="account-button-row">
               <Button variant="secondary" icon="lock" onClick={() => setShowPassword(true)}>{t.changePassword}</Button>
               <Button variant="secondary" icon="log-out" onClick={() => void logout()} loading={logoutBusy}>{t.logout}</Button>
             </div>
-          </section>
-          <section className="account-danger-section">
+          </details>
+          <details className="account-danger-section"><summary>{zhCN.beadhue.deleteAccount}</summary>
             <div className="account-section-heading"><div><h2>{t.dangerTitle}</h2><p>{t.deleteAccountHint}</p></div></div>
             <Button variant="danger" icon="trash" onClick={() => setShowDelete(true)}>{t.deleteAccount}</Button>
-          </section>
+          </details>
         </>
       )}
       {me.state === 'unverified' && <div className="account-button-row"><Button variant="secondary" icon="log-out" onClick={() => void logout()} loading={logoutBusy}>{t.logout}</Button></div>}

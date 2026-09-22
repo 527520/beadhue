@@ -20,7 +20,7 @@ if (!connectionString || !baseUrl || !sessionToken) {
 const pool = new Pool({ connectionString, max: 4 });
 const createdIds = new Set();
 const createdPaletteIds = new Set();
-const cookie = `doupu_session=${sessionToken}`;
+const cookie = `beadhue_session=${sessionToken}`;
 const DESIGN_BYTES_PER_USER = 50 * 1024 * 1024;
 
 async function request(method, path, data) {

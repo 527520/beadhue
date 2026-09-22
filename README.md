@@ -1,17 +1,17 @@
-# 豆谱（DouPu）
+# 豆色绘（BeadHue）
 
-[![CI](https://img.shields.io/github/actions/workflow/status/527520/doupu/ci.yml?branch=main)](https://github.com/527520/doupu/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/527520/beadhue/ci.yml?branch=main)](https://github.com/527520/beadhue/actions)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/github/package-json/v/527520/doupu)](https://github.com/527520/doupu)
+[![Version](https://img.shields.io/github/package-json/v/527520/beadhue)](https://github.com/527520/beadhue)
 
 **把照片与像素画变成可编辑、可跟拼、可打印的拼豆图纸。**
 
-豆谱是一套免费、开源、无广告的拼豆创作工具：在浏览器本地生成图纸，进行像素级修补，查看用豆量与采购清单，导出 PNG、打印版 PDF 或可继续编辑的项目文件。登录后可同步私人设计与自定义色板，也可以把作品投稿到「豆社」，与其他创作者分享、互动和引用。
+豆色绘是一套免费、开源、无广告的拼豆创作工具：在浏览器本地生成图纸，进行像素级修补，查看用豆量与采购清单，导出 PNG、打印版 PDF 或可继续编辑的项目文件。登录后可同步私人设计与自定义色板，也可以把作品投稿到「豆社」，与其他创作者分享、互动和引用。
 
 图纸生成使用传统色彩匹配、量化与抖动算法，不提供 AI 图像生成或美化功能。社区评论审核可接入腾讯云文本内容安全服务，与本地制图流程分开。
 
 ```text
-选择图片 → 自动生成整图首版 → 按需裁剪 / 调参 → 编辑修补 → 跟拼 / 导出
+选择图片 → 确认整图或裁剪 → 生成 / 调参 → 编辑修补 → 跟拼 / 导出
                                             └→ 保存设计 / 只读分享 / 投稿豆社
 ```
 
@@ -25,7 +25,7 @@
 
 支持调整目标尺寸、颜色数量与色板，切换网格线、板缝线和色号标注，并通过缩放、平移查看图纸细节。
 
-![豆谱工作台：图纸预览、生成参数与色板选择](docs/screenshots/workbench-current.avif)
+![豆色绘工作台：图纸预览、生成参数与色板选择](docs/screenshots/workbench-current.avif)
 
 ### 豆社作品列表
 
@@ -35,15 +35,15 @@
 
 ![豆社作品列表：标签筛选、图纸预览与作品信息](docs/screenshots/community-current.avif)
 
-> 以上为线上版本的桌面端实机截图，按原比例缩放并压缩为 AVIF；实际界面以部署版本为准。
+> 以上为 BeadHue B 方案的本地测试截图，使用测试图纸；不代表线上已部署。手机参照窗与完整验证记录见 `.scratch/beadhue-redesign/implementation.md`。
 >
-> 在线体验：[豆谱 DouPu](https://www.doupu.fun)
+> 在线体验：[豆色绘 BeadHue](https://www.doupu.fun)
 
 ## 功能亮点
 
 | 模块 | 当前能力 |
 |---|---|
-| 本地制图 | 图片选择与拖拽上传、整图自动生成首版、可选裁剪；目标宽度与颜色数量、抖动、主色/平均色取样、亮度/对比度、背景去除与手动背景取样；生成任务可取消 |
+| 本地制图 | 图片选择与拖拽上传、确认整图或裁剪生成首版；目标宽度与颜色数量、抖动、主色/平均色取样、亮度/对比度、背景去除与手动背景取样；生成任务可取消 |
 | 像素编辑 | 画笔、橡皮、吸管、油漆桶、按色号替换、撤销/重做；支持空白画布起稿，也可对已有图纸换色板重映射，保留手工修补 |
 | 移动画布 | 有界视口、平移缩放、双指捏合、手指放大镜；显式区分手形导航与编辑工具，移动端画笔/橡皮默认精准落点模式 |
 | 色板与板型 | 13 套内置色板、自定义色板新建/编辑/导入、套装档位；支持 5mm 与 2.6mm 迷你豆制作规格，板缝与导出几何随规格变化 |
@@ -59,7 +59,7 @@
 
 PNG 使用不透明白底；PDF 包含图纸、图例与色号用量清单。制作规格决定板缝、跟拼分板及相应导出布局，不能把不同板型视为同一种物理底板。
 
-项目文件采用严格的 **`doupu-project` v3** 协议，保存图纸、参数、色板选择、套装档位和制作规格。**不读取或静默迁移 v1/v2 项目**，也不接受未知色板或未知制作规格。项目文件不包含原图、本地生成源或跟拼进度。
+项目文件采用严格的 **`beadhue-project` v3** 协议，保存图纸、参数、色板选择、套装档位和制作规格。**不读取或静默迁移 v1/v2 项目**，也不接受未知色板或未知制作规格。新导出使用 `beadhue-project`，同时兼容旧 `doupu-project` v3。项目文件仅可包含原图引用和裁剪/旋转/镜像关系，不包含原图字节、本地生成源或跟拼进度。
 
 ## 色板与制作规格
 
@@ -67,7 +67,7 @@ PNG 使用不透明白底；PDF 包含图纸、图例与色号用量清单。制
 
 | 分组 | 色板 |
 |---|---|
-| 豆谱经典版（5 套） | MARD、COCO、漫漫、盼盼、咪小窝 |
+| 豆色绘经典版（5 套） | MARD、COCO、漫漫、盼盼、咪小窝 |
 | 外部资料版（6 套） | MARD 291、COCO 291、漫漫 278、盼盼 289、咪小窝 290、MARD 221 核对版 |
 | Artkal（2 套） | Artkal C 197、Artkal M 221 |
 
@@ -87,12 +87,12 @@ Artkal 两套色板仅适配迷你豆规格；MARD 221 核对版与自定义色�
 
 ## 页面与交互
 
-桌面端采用工作室式侧边导航与顶栏，移动端采用底部导航及编辑/跟拼沉浸工作区。首页提供钉板式选图落区、最近设计与豆社作品入口；全站统一按钮、豆粒图标、表单控件及空态/错误提示。
+用户端采用 B「明快糖果拼豆盒」设计，主导航为发现、创作、我的。桌面使用顶栏，手机使用底部导航；色板、帮助与账号是次级入口。编辑画布保持中性背景，原图窗口单向跟随画布的同一范围，放大窗口不移动画布。后台仅更新品牌名称。
 
 | 入口 | 用途 |
 |---|---|
-| `/` | 开始创作、选择图片、继续最近设计、浏览豆社作品 |
-| `/app` | 制图工作台：自动首版、可选裁剪、参数调整、预览、编辑、跟拼与导出 |
+| `/` | 作品发现、搜索筛选与精选作品 |
+| `/app` | 制图工作台：选图与裁剪确认、参数调整、预览、编辑、跟拼与导出 |
 | `/designs` | 私人设计列表与继续编辑 |
 | `/palettes` | 内置色板目录、可生成颜色说明与自定义色板管理 |
 | `/community` | 豆社作品列表；按关键词、作者、标签、制作规格、色板与日期等条件筛选 |
@@ -104,7 +104,7 @@ Artkal 两套色板仅适配迷你豆规格；MARD 221 核对版与自定义色�
 
 ### 工作台
 
-选择图片后先自动生成整图首版，**裁剪是后续可选操作，不是必经步骤**。确认裁剪后更新图纸；取消裁剪不会修改现有图纸。有手工编辑时，可能覆盖编辑的操作会先要求确认。
+选择图片后进入裁剪确认页，可直接使用整图生成，也可调整选区。后续再次裁剪会更新图纸；取消裁剪不会修改现有图纸。有手工编辑时，可能覆盖编辑的操作会先要求确认。
 
 手机上可切换手形导航与编辑工具。平移、缩放和双指导航不写入图纸或跟拼进度；精准模式下拖动用于对准，松手才提交最终格，避免把移动画布误当作绘制。
 
@@ -122,15 +122,15 @@ Artkal 两套色板仅适配迷你豆规格；MARD 221 核对版与自定义色�
 
 | 场景 | 数据边界 |
 |---|---|
-| 本地制图 | 图片解码、裁剪与图纸生成在浏览器进行；完整原图不因制图操作上传服务器 |
+| 本地制图 | 图片解码、裁剪与图纸生成在浏览器进行；未登录时完整原图仅保存在本机；符合云同步资格的账号自动上传到私人空间 |
 | 本地继续编辑 | 设计保存在 IndexedDB；可保存缩小后的本地生成源以便继续调参，但它不是完整原图，也不进入项目文件或云同步 |
-| 私人云同步 | 同步设计项目数据与自定义色板，不同步完整原图、本地生成源或跟拼进度 |
+| 私人云同步 | 同步设计项目、自定义色板与完整私人原图；原图独立计量（默认 2 × 1024³ 字节），不放入项目 JSON；本地生成源和跟拼进度不云同步 |
 | 只读分享 | 固化图纸快照，不含原图与作者信息；无需登录即可查看，链接可撤销，重新分享会使旧链接失效 |
 | 豆社投稿 | 必须附带作品原图并确认上传条款；原图存入私有对象存储，不在公开作品页展示，仅按作者、审核人员与成功引用者等权限控制取回 |
 | 使用分析 | 只有明确同意后才建立匿名分析身份；不使用设备指纹，可在隐私页管理偏好。社区互动、审核等必要业务记录与可选分析分开 |
 | 评论审核 | 启用腾讯云文本内容安全服务时，评论文本会发送给该服务判定，并保留相应审核记录 |
 
-完整原图仅保留在当前解码会话中。刷新恢复的私人设计可能仍可调参，但重新裁剪或投稿时可能需要再次选择原图。跟拼进度只保存在当前浏览器中，不会随云同步或项目导出迁移；重要设计请定期导出项目文件。
+完整原图独立保存在本机缓存及私人云端。跨设备恢复只取回原图和几何关系，不重新生成或覆盖手工修补；历史设计缺失完整原图或对应关系时会明确提示重新选择。跟拼进度只保存在当前浏览器中，不会随云同步或项目导出迁移；重要设计请定期导出项目文件。
 
 ## 技术栈
 
@@ -154,8 +154,8 @@ Artkal 两套色板仅适配迷你豆规格；MARD 221 核对版与自定义色�
 使用 **Node.js 22 与 npm**，与当前 CI 保持一致。测试依赖已要求 Node.js 22；仓库生产 [Dockerfile](Dockerfile) 仍使用 `node:20-alpine`，不要据此把本地完整开发/测试环境降到 Node.js 20。
 
 ```bash
-git clone https://github.com/527520/doupu.git
-cd doupu
+git clone https://github.com/527520/beadhue.git
+cd beadhue
 npm ci
 npm run dev
 ```
@@ -172,13 +172,13 @@ npm run dev
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d --wait
-export DATABASE_URL='postgres://doupu:doupu@localhost:5432/doupu'
+export DATABASE_URL='postgres://beadhue:beadhue@localhost:5432/beadhue'
 export APP_URL='http://localhost:3000'
 npm run db:migrate
 npm run dev
 ```
 
-PowerShell 中使用 `$env:DATABASE_URL = 'postgres://doupu:doupu@localhost:5432/doupu'` 和 `$env:APP_URL = 'http://localhost:3000'` 设置同样的变量，再运行迁移与开发命令。迁移脚本直接读取进程环境，**不会自动加载 `.env.local`**。
+PowerShell 中使用 `$env:DATABASE_URL = 'postgres://beadhue:beadhue@localhost:5432/beadhue'` 和 `$env:APP_URL = 'http://localhost:3000'` 设置同样的变量，再运行迁移与开发命令。迁移脚本直接读取进程环境，**不会自动加载 `.env.local`**。
 
 自定义配置参考 [`.env.example`](.env.example)。本机开发连接 `localhost`，生产 Compose 内部连接服务名 `postgres`，不要直接照搬生产连接地址。
 
@@ -211,6 +211,10 @@ npm run test:e2e
 额外提供 PostgreSQL 修订契约、升级、治理及协议预检测试，以及覆盖率、性能、E2E 连续稳定性测试脚本；环境准备与执行顺序参见 [CI 工作流](.github/workflows/ci.yml)。测试数量随代码演进变化，以实际运行结果为准。
 
 ## 生产部署
+
+品牌升级前先阅读 [BeadHue 迁移说明](deploy/beadhue-migration.md)。本轮不自动迁移线上数据库、COS、域名或网络，保留「迟迟」连接。
+
+原图二进制上传采用独立的数据库原子限流：每账号 10 次/分钟、60 次/小时，每 IP 30 次/分钟、180 次/小时，四项同时生效且无角色豁免。客户端持久队列合并重复任务、串行上传，按 `Retry-After` 等待；失败与重试计次，编辑和图纸保存不受等待阻塞。
 
 仓库提供 Docker Compose 单机部署：应用、PostgreSQL、Caddy 与独立备份服务，配合腾讯云 COS 备份及恢复演练。
 
@@ -287,10 +291,10 @@ third_party/          第三方数据来源与许可证
 
 作者：wuqian（[GitHub / 527520](https://github.com/527520)）· 邮箱：wqa527520@qq.com。
 
-使用问题、缺陷与建议欢迎提交到 [GitHub Issues](https://github.com/527520/doupu/issues)。
+使用问题、缺陷与建议欢迎提交到 [GitHub Issues](https://github.com/527520/beadhue/issues)。
 
 ## 许可证与致谢
 
-豆谱整体采用 [AGPL-3.0](LICENSE)，基于 [Zippland/perler-beads](https://github.com/Zippland/perler-beads) 二次开发，并保留相应出处声明。新增色板数据来自固定版本的 [HansBug/pindou-color-data](https://github.com/HansBug/pindou-color-data)（MIT）。
+豆色绘整体采用 [AGPL-3.0](LICENSE)，基于 [Zippland/perler-beads](https://github.com/Zippland/perler-beads) 二次开发，并保留相应出处声明。新增色板数据来自固定版本的 [HansBug/pindou-color-data](https://github.com/HansBug/pindou-color-data)（MIT）。
 
 PDF 使用 Noto Sans CJK SC；界面使用同源交付的中文字体子集，相关字体按 OFL-1.1 授权。完整上游致谢、第三方数据及字体许可说明见 [NOTICE.md](NOTICE.md)。

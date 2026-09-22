@@ -19,14 +19,14 @@ describe('buildCosAuthorization', () => {
 });
 
 describe('createCosClient', () => {
-  const config = { secretId: 'id', secretKey: 'key', bucket: 'doupu-originals-125', region: 'ap-guangzhou', now: () => new Date(1700000000000) };
+  const config = { secretId: 'id', secretKey: 'key', bucket: 'beadhue-originals-125', region: 'ap-guangzhou', now: () => new Date(1700000000000) };
 
   it('PUTs bytes with signed host header and content type', async () => {
     const fetcher = vi.fn(async () => new Response(null, { status: 200 }));
     const client = createCosClient({ ...config, fetcher });
     await client.putObject('originals/r1/abc.png', new Uint8Array([1, 2, 3]), 'image/png');
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('https://doupu-originals-125.cos.ap-guangzhou.myqcloud.com/originals/r1/abc.png');
+    expect(url).toBe('https://beadhue-originals-125.cos.ap-guangzhou.myqcloud.com/originals/r1/abc.png');
     expect(init.method).toBe('PUT');
     const headers = init.headers as Record<string, string>;
     expect(headers['content-type']).toBe('image/png');

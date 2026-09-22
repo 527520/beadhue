@@ -20,7 +20,7 @@ export default function GlobalError({
   const t = zhCN.errorPages;
   return (
     <html lang="zh-CN">
-      <body style={{ margin: 0, background: '#FAF8F4', color: '#292633', fontFamily: '"DouPu Text", system-ui, sans-serif' }}>
+      <body style={{ margin: 0, background: '#FAF8F4', color: '#292633', fontFamily: '"BeadHue Text", system-ui, sans-serif' }}>
         <main id="main" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
           <section style={{ width: 'min(520px, 100%)', border: '1px solid #e7e2df', borderRadius: 24, background: '#fff', padding: 32, boxSizing: 'border-box', boxShadow: '0 24px 70px -45px #302938' }}>
             <div aria-hidden="true" style={{ width: 56, height: 56, display: 'grid', placeItems: 'center', borderRadius: 16, background: '#f5e2e9', color: '#873253', fontSize: 30, fontWeight: 800 }}>!</div>

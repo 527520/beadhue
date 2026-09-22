@@ -1,10 +1,10 @@
 # 贡献指南
 
-感谢你对豆谱（DouPu）的关注！豆谱是 AGPL-3.0 开源软件，欢迎任何形式的贡献：报 bug、提建议、改文档、写代码。
+感谢你对豆色绘（BeadHue）的关注！豆色绘是 AGPL-3.0 开源软件，欢迎任何形式的贡献：报 bug、提建议、改文档、写代码。
 
 ## 提问与反馈
 
-- 使用问题与功能建议：发到 [GitHub Issues](https://github.com/527520/doupu/issues)
+- 使用问题与功能建议：发到 [GitHub Issues](https://github.com/527520/beadhue/issues)
 - 联系作者：wuqian · wqa527520@qq.com
 
 ## 开发环境
@@ -44,5 +44,5 @@ npm run dev        # http://localhost:3000
 
 ## 许可证
 
-豆谱以 AGPL-3.0 发布。提交代码即表示你同意在 AGPL-3.0 下授权你的贡献。
+豆色绘以 AGPL-3.0 发布。提交代码即表示你同意在 AGPL-3.0 下授权你的贡献。
 本仓库包含基于 Zippland/perler-beads（AGPL-3.0）移植的内容，请保留出处声明（见 NOTICE.md），不要删除或改写来源注释。

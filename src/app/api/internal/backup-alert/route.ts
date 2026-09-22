@@ -72,7 +72,7 @@ async function post(request: Request) {
   if (adminEmail && !isDevMailMode() && (process.env.SMTP_HOST || sesAlertTemplateId)) {
     await sendMail(
       adminEmail,
-      '豆谱备份告警',
+      '豆色绘备份告警',
       `<p>${escapeHtml(message)}</p>`,
       message,
       {

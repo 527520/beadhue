@@ -20,7 +20,7 @@ const IP_RATE_LIMIT = Math.max(20, RATE_LIMIT * 3);
 /** 时序对齐用假哈希（懒加载，进程内缓存）：未知邮箱也执行一次 argon2 校验，抹平枚举时序。 */
 let dummyHashPromise: Promise<string> | null = null;
 function dummyPasswordHash(): Promise<string> {
-  dummyHashPromise ??= hashPassword('doupu-timing-equalizer');
+  dummyHashPromise ??= hashPassword('beadhue-timing-equalizer');
   return dummyHashPromise;
 }
 

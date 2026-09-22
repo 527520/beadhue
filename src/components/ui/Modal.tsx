@@ -25,6 +25,7 @@ export default function Modal({ label, onClose, children, panelClassName = '', p
     if (typeof document === 'undefined') return null;
     const root = document.createElement('div');
     root.dataset.modalRoot = '';
+    if (document.querySelector('.beadhue-ui')) { root.className = 'beadhue-ui beadhue-modal-theme'; root.dataset.theme = 'candy'; }
     return root;
   });
 

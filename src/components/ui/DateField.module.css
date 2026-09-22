@@ -17,7 +17,7 @@
 .separator { padding: 0 6px; color: var(--color-ink-soft); }
 .trigger { display: grid; flex: 0 0 auto; place-items: center; width: 36px; height: 36px; min-width: 36px; min-height: 36px; border-radius: 999px; border: 1.5px solid transparent; color: var(--color-ink-soft); transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out); }
 .trigger[data-hovered], .trigger[data-pressed] { border-color: rgb(185 62 98 / 40%); background: var(--color-primary-soft); color: var(--color-primary-deep); }
-.trigger[data-pressed] { transform: scale(.92); transition-duration: var(--dur-press); }
+.trigger[data-pressed] { transform: none; transition-duration: var(--dur-press); }
 .trigger[data-focus-visible] { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .error { color: var(--color-danger); font-size: 13px; }
 .popover { z-index: 100; border: 1px solid var(--color-hairline); border-radius: 16px; padding: 12px; background: var(--color-surface); box-shadow: var(--shadow-2); outline: none; }
@@ -41,8 +41,8 @@
 .cell { position: relative; display: grid; place-items: center; width: 38px; height: 38px; margin: 1px; border-radius: 999px; color: var(--color-ink); font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; outline: none; transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
 .cell[data-outside-month] { visibility: hidden; }
 .cell[data-hovered] { background: var(--color-cream-deep); }
-.cell[data-pressed] { background: var(--color-primary-soft); transform: scale(.94); }
-.cell[data-selected] { background: var(--color-primary); color: #fff; box-shadow: var(--shadow-primary); }
+.cell[data-pressed] { background: var(--color-primary-soft); transform: none; }
+.cell[data-selected] { background: var(--color-primary); color: #fff; box-shadow: none; }
 .cell[data-focus-visible] { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .cell[data-disabled] { color: var(--color-ink-soft); opacity: .4; cursor: default; }
 .cell[data-unavailable] { text-decoration: line-through; }

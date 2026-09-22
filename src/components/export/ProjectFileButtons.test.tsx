@@ -51,7 +51,7 @@ describe('ProjectFileButtons', () => {
     // 下载锚点无需挂载到 DOM；断言 click spy 实例上的 download 属性
     expect(clickSpy).toHaveBeenCalledTimes(1);
     const anchor = clickSpy.mock.instances[0] as HTMLAnchorElement;
-    expect(anchor.getAttribute('download')).toBe('豆谱-测试设计.json');
+    expect(anchor.getAttribute('download')).toBe('豆色绘-测试设计.json');
     await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:fake'), { timeout: 2500 });
     clickSpy.mockRestore();
   });

@@ -13,7 +13,7 @@ if (!connectionString) throw new Error('DATABASE_URL is required');
 
 const root = path.resolve(__dirname, '../..');
 const migrations = path.join(root, 'db/migrations');
-const partial = mkdtempSync(path.join(tmpdir(), 'doupu-0004-upgrade-'));
+const partial = mkdtempSync(path.join(tmpdir(), 'beadhue-0004-upgrade-'));
 const pool = new Pool({ connectionString, max: 2 });
 const ids = {
   user: '00000000-0000-4000-8000-000000000401',
@@ -38,8 +38,8 @@ async function main() {
   prepare0004Migrations();
   await migrate(db, { migrationsFolder: partial });
 
-  const project = { format: 'doupu-project', version: 3, name: '升级前设计', cells: ['R1'] };
-  const sharedSnapshot = { format: 'doupu-share', version: 3, project };
+  const project = { format: 'beadhue-project', version: 3, name: '升级前设计', cells: ['R1'] };
+  const sharedSnapshot = { format: 'beadhue-share', version: 3, project };
   await pool.query('begin');
   try {
     await pool.query(

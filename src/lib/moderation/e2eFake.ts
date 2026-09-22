@@ -20,5 +20,5 @@ export const E2E_MODERATION_DEPS: CommentModerationDeps = {
 };
 
 export function isE2eModerationEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.DOUPU_E2E_SEED === '1';
+  return process.env.NODE_ENV !== 'production' && process.env.BEADHUE_E2E_SEED === '1';
 }

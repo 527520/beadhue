@@ -1,6 +1,6 @@
 /**
  * 会话 Cookie 的序列化/解析（ADR-0004）：
- * doupu_session，HttpOnly / SameSite=Lax / Path=/，30 天滚动过期。
+ * beadhue_session，HttpOnly / SameSite=Lax / Path=/，30 天滚动过期。
  * Secure 仅在生产（HTTPS）附加：WebKit 会在 http://127.0.0.1 上拒绝 Secure Cookie，
  * 导致开发/E2E 环境无法保持会话。
  */
@@ -11,7 +11,8 @@ function secureFlag(): string {
   return process.env.NODE_ENV === 'production' ? '; Secure' : '';
 }
 
-export const SESSION_COOKIE_NAME = 'doupu_session';
+export const SESSION_COOKIE_NAME = 'beadhue_session';
+export const LEGACY_SESSION_COOKIE_NAME = 'doupu_session';
 /** 会话时长（票 02 配置化：环境变量 SESSION_TTL_SECONDS，默认 30 天）。 */
 export const SESSION_TTL_SECONDS = config.security.sessionTtlSeconds;
 
@@ -51,5 +52,5 @@ export function parseCookieHeader(header: string | null): Map<string, string> {
 
 /** 从请求 Cookie 头中提取会话令牌。 */
 export function readSessionToken(header: string | null): string | null {
-  return parseCookieHeader(header).get(SESSION_COOKIE_NAME) ?? null;
+  return parseCookieHeader(header).get(SESSION_COOKIE_NAME) ?? parseCookieHeader(header).get(LEGACY_SESSION_COOKIE_NAME) ?? null;
 }

@@ -6,7 +6,7 @@ import DesignsView from './DesignsView';
 import { ApiError, type CloudDesignFull } from '@/lib/sync/clientAdapter';
 import { enqueueBackgroundSync, hasPendingSync } from '@/lib/sync/queue';
 import { createStitchProgress, type StitchProgress } from '@/lib/progress/stitchProgress';
-import type { DoupuApi, MeInfo } from '@/lib/sync/api';
+import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 import type { DesignRecord, StorageAdapter } from '@/lib/storage';
 import type { ProjectFile } from '@/lib/types';
 
@@ -19,7 +19,7 @@ const iso = (offsetMs: number) => new Date(NOW + offsetMs).toISOString();
 
 function makeProject(name: string, updatedAt: string): ProjectFile {
   return {
-    format: 'doupu-project',
+    format: 'beadhue-project',
     version: 3,
     engineVersion: '2.0.0',
     boardProfile: '5mm-29',
@@ -84,7 +84,7 @@ class FakeStorage implements StorageAdapter {
   }
 }
 
-class FakeApi implements DoupuApi {
+class FakeApi implements BeadhueApi {
   meState: MeInfo = { state: 'guest' };
   cloud = new Map<string, CloudDesignFull>();
   deleted: string[] = [];

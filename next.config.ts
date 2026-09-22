@@ -9,7 +9,7 @@ const allowedDevOrigins = collectAllowedDevOrigins(process.env.DEV_LAN_ORIGIN, d
 
 const nextConfig: NextConfig = {
   // Isolate disposable browser-test builds from the user's running dev server.
-  distDir: process.env.DOUPU_E2E_BUILD === '1' ? '.next-e2e' : '.next',
+  distDir: process.env.BEADHUE_E2E_BUILD === '1' ? '.next-e2e' : '.next',
   experimental: {
     authInterrupts: true,
   },

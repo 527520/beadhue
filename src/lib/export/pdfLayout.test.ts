@@ -348,12 +348,12 @@ describe('buildExportFilename（E26；规则统一在 export/filename.ts，J-3�
   });
 
   it('空名回退「未命名设计」', () => {
-    expect(buildExportFilename('', 100, 200, 'pdf')).toBe(`豆谱-${DEFAULT_DESIGN_NAME}-100x200.pdf`);
-    expect(buildExportFilename('   ', 10, 20)).toBe(`豆谱-${DEFAULT_DESIGN_NAME}-10x20.pdf`);
+    expect(buildExportFilename('', 100, 200, 'pdf')).toBe(`豆色绘-${DEFAULT_DESIGN_NAME}-100x200.pdf`);
+    expect(buildExportFilename('   ', 10, 20)).toBe(`豆色绘-${DEFAULT_DESIGN_NAME}-10x20.pdf`);
   });
 
   it('正常名称与超长名称', () => {
-    expect(buildExportFilename('我的设计', 50, 60, 'pdf')).toBe('豆谱-我的设计-50x60.pdf');
+    expect(buildExportFilename('我的设计', 50, 60, 'pdf')).toBe('豆色绘-我的设计-50x60.pdf');
     const long = buildExportFilename('长'.repeat(200), 20, 30);
     expect(long.endsWith('-20x30.pdf')).toBe(true);
     expect(long.length).toBeLessThan(120);
@@ -362,8 +362,8 @@ describe('buildExportFilename（E26；规则统一在 export/filename.ts，J-3�
   it('PNG 与 PDF 的文件名只差扩展名（此前 - 与 _ 两套规则会给出不同名字）', () => {
     const png = buildExportFilename('测试:图纸', 10, 10, 'png');
     const pdf = buildExportFilename('测试:图纸', 10, 10, 'pdf');
-    expect(png).toBe('豆谱-测试-图纸-10x10.png');
-    expect(pdf).toBe('豆谱-测试-图纸-10x10.pdf');
+    expect(png).toBe('豆色绘-测试-图纸-10x10.png');
+    expect(pdf).toBe('豆色绘-测试-图纸-10x10.pdf');
     expect(png.replace(/\.png$/, '')).toBe(pdf.replace(/\.pdf$/, ''));
   });
 });

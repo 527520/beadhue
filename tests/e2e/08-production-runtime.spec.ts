@@ -20,7 +20,7 @@ test('an aging administrator can render read-only pages and renew the database a
   try {
     const before = (await pool.query('select expires_at from sessions where token_hash=$1', [tokenHash])).rows[0].expires_at as Date;
     expect(before.getTime() - Date.now()).toBeLessThan(15 * 24 * 60 * 60 * 1000);
-    await context.addCookies([{ name: 'doupu_session', value: token, url: origin, httpOnly: true, sameSite: 'Lax' }]);
+    await context.addCookies([{ name: 'beadhue_session', value: token, url: origin, httpOnly: true, sameSite: 'Lax' }]);
     const renewal = page.waitForResponse((response) => response.url().endsWith('/api/auth/me'));
     const rendered = await page.goto('/admin/analytics');
     expect(rendered?.status()).toBe(200);
@@ -29,9 +29,9 @@ test('an aging administrator can render read-only pages and renew the database a
     expect((await renewal).status()).toBe(200);
     const after = (await pool.query('select expires_at from sessions where token_hash=$1', [tokenHash])).rows[0].expires_at as Date;
     expect(after.getTime() - before.getTime()).toBeGreaterThan(15 * 24 * 60 * 60 * 1000);
-    await expect.poll(async () => (await context.cookies()).find((cookie) => cookie.name === 'doupu_session')?.expires ?? 0)
+    await expect.poll(async () => (await context.cookies()).find((cookie) => cookie.name === 'beadhue_session')?.expires ?? 0)
       .toBeGreaterThan(after.getTime() / 1000 - 2);
-    const cookie = (await context.cookies()).find((item) => item.name === 'doupu_session')!;
+    const cookie = (await context.cookies()).find((item) => item.name === 'beadhue_session')!;
     expect(Math.abs(cookie.expires - after.getTime() / 1000)).toBeLessThan(2);
     await page.getByRole('link', { name: /系统信息/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: '系统信息' })).toBeVisible();
@@ -57,7 +57,7 @@ test('standalone production CSP permits RSC navigation and the generation Worker
   // 同样覆盖 RSC 客户端导航（/ → /app?new=1）。
   await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
   await expect(page).toHaveURL(/\/app/);
-  await page.waitForFunction(() => document.documentElement.dataset.doupuHydrated === 'true');
+  await page.waitForFunction(() => document.documentElement.dataset.beadhueHydrated === 'true');
   await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
 
@@ -81,11 +81,11 @@ test('standalone routes enforce PostgreSQL CAS and single-use token transactions
   const headers = {
     'content-type': 'application/json',
     origin,
-    cookie: `doupu_session=${sessionToken}`,
+    cookie: `beadhue_session=${sessionToken}`,
   };
   const id = '00000000-0000-4000-8000-000000000108';
   const project = {
-    format: 'doupu-project', version: 3, engineVersion: '2.0.0', boardProfile: '5mm-29', name: '并发设计',
+    format: 'beadhue-project', version: 3, engineVersion: '2.0.0', boardProfile: '5mm-29', name: '并发设计',
     createdAt: '2026-08-17T00:00:00.000Z', updatedAt: '2026-08-17T00:00:00.000Z',
     paletteSelection: { palette: { kind: 'builtin', brand: 'MARD' }, kitTier: 0 },
     params: { targetWidth: 20, targetColorCount: 2, dithering: false, mode: 'dominant', brightness: 0, contrast: 0, backgroundRemoval: false, bgTolerance: 8 },
@@ -119,13 +119,13 @@ test('long-range production analytics includes live consented data and accessibl
   try {
     const visitor = await guest.newPage(); await visitor.goto('/privacy');
     await visitor.getByRole('button', { name: '同意匿名统计', exact: true }).click();
-    await expect.poll(async () => (await guest.cookies()).some((cookie) => cookie.name === 'doupu_visitor')).toBe(true);
+    await expect.poll(async () => (await guest.cookies()).some((cookie) => cookie.name === 'beadhue_visitor')).toBe(true);
     const accepted = await visitor.evaluate(async () => {
       const response = await fetch('/api/analytics/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ events: [{ name: 'page_viewed', properties: { surface: 'home' }, path: '/', eventId: crypto.randomUUID(), occurredAt: new Date().toISOString() }] }) });
       return (await response.json()).accepted;
     });
     expect(accepted).toBeGreaterThan(0);
-    await admin.addCookies([{ name: 'doupu_session', value: token, url: proxy.origin, httpOnly: true, secure: true, sameSite: 'Lax' }, { name: 'doupu_analytics_consent', value: 'denied', url: proxy.origin, secure: true, sameSite: 'Lax' }]);
+    await admin.addCookies([{ name: 'beadhue_session', value: token, url: proxy.origin, httpOnly: true, secure: true, sameSite: 'Lax' }, { name: 'beadhue_analytics_consent', value: 'denied', url: proxy.origin, secure: true, sameSite: 'Lax' }]);
     const page = await admin.newPage(); const now = new Date();
     const end = toShanghaiDay(now); const start = toShanghaiDay(new Date(now.getTime() - 180 * 86400000));
     await page.goto(`/admin/analytics?start=${start}&end=${end}&eventName=page_viewed&dimension=device`);

@@ -7,19 +7,19 @@
  * robots：分享链接是私密的（拿到链接才能看），所以 noindex——
  * 用户把链接发给朋友，不代表愿意被搜索引擎收录。
  */
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { eq, sql } from 'drizzle-orm';
-import { getDb } from '@/lib/auth/db';
-import { designShares } from '@/../db/schema';
-import { hashToken } from '@/lib/auth/tokens';
-import { parseShareSnapshot, type ShareSnapshot } from '@/lib/share/snapshot';
-import { computeStats, totalBeadCount } from '@/lib/engine/generate';
-import { zhCN } from '@/messages/zh-CN';
-import SharedPatternView from '@/components/share/SharedPatternView';
-import Brand from '@/components/layout/Brand';
-import Icon from '@/components/ui/Icon';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { eq, sql } from "drizzle-orm";
+import { getDb } from "@/lib/auth/db";
+import { designShares } from "@/../db/schema";
+import { hashToken } from "@/lib/auth/tokens";
+import { parseShareSnapshot, type ShareSnapshot } from "@/lib/share/snapshot";
+import { computeStats, totalBeadCount } from "@/lib/engine/generate";
+import { zhCN } from "@/messages/zh-CN";
+import SharedPatternView from "@/components/share/SharedPatternView";
+import SiteHeader from "@/components/layout/SiteHeader";
+import Icon from "@/components/ui/Icon";
 
 export const metadata: Metadata = {
   title: zhCN.share.pageTitle,
@@ -42,7 +42,11 @@ async function loadShare(token: string): Promise<ShareSnapshot | null> {
   return parseShareSnapshot(rows[0].snapshot);
 }
 
-export default async function SharedDesignPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function SharedDesignPage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
   const { token } = await params;
   const snapshot = await loadShare(token);
   if (!snapshot) notFound();
@@ -52,35 +56,35 @@ export default async function SharedDesignPage({ params }: { params: Promise<{ t
   const t = zhCN.share;
 
   return (
-    <main id="main" className="share-studio-page">
-      <header className="share-studio-header">
-        <Brand />
-        <span><Icon name="lock" size={14} />{t.readonlyBadge}</span>
-      </header>
-
-      <section className="share-studio-content">
-        <header className="share-studio-intro">
+    <main id="main">
+      <SiteHeader title={t.pageTitle} currentPath="/s" hideHeading />
+      <div className="container">
+        <div className="page-top">
           <div>
-            <p className="studio-eyebrow">{t.pageKicker}</p>
+            <div className="eyebrow">{t.pageKicker}</div>
             <h1>{snapshot.name.trim() || zhCN.project.unnamed}</h1>
           </div>
-          <strong>{t.summary(snapshot.pattern.width, snapshot.pattern.height, total, stats.length)}</strong>
-        </header>
-
+          <span className="pill">{t.readonlyBadge}</span>
+        </div>
         <SharedPatternView
           pattern={snapshot.pattern}
           stats={stats}
           boardProfile={snapshot.boardProfile}
           palette={snapshot.palette}
+          summary={t.summary(
+            snapshot.pattern.width,
+            snapshot.pattern.height,
+            total,
+            stats.length,
+          )}
         />
-
-        <footer className="share-studio-cta">
-          <div><Icon name="spark" size={20} /><p>{t.cta}</p></div>
-          <Link href="/app?new=1" className="btn-primary">
-            {t.makeYourOwn}<Icon name="arrow" size={15} />
+        <div className="share-create-link">
+          <Link href="/app?new=1" className="button">
+            {t.makeYourOwn}
+            <Icon name="arrow" size={15} />
           </Link>
-        </footer>
-      </section>
+        </div>
+      </div>
     </main>
   );
 }

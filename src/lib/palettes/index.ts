@@ -53,7 +53,7 @@ interface VendoredExternalPalette {
 }
 
 interface VendoredExternalData {
-  schema: 'doupu-vendored-pindou-color-data-v1';
+  schema: 'beadhue-vendored-pindou-color-data-v1';
   source: {
     repository: string;
     revision: string;
@@ -65,7 +65,7 @@ interface VendoredExternalData {
 }
 
 interface VendoredLegacyPalette {
-  schema: 'doupu-legacy-builtin-palette-v1';
+  schema: 'beadhue-legacy-builtin-palette-v1';
   id: Brand;
   analysis: {
     engineColorCount: number;
@@ -147,7 +147,7 @@ export interface BuiltinPaletteSource {
   versionId: string;
   /** 上游仓库中的原始数据路径。 */
   path: string;
-  /** 豆谱仓库中实际被目录读取的固定生成产物。 */
+  /** 豆色绘仓库中实际被目录读取的固定生成产物。 */
   vendoredPath: string;
   license: 'AGPL-3.0' | 'MIT';
   qualityLabel: string;
@@ -257,7 +257,7 @@ const PINNED_EXTERNAL_REVISION = '178dafbc9e77d3de556550dbd058270200129186';
 const vendoredExternalData = pinnedExternalData as unknown as VendoredExternalData;
 
 if (
-  vendoredExternalData.schema !== 'doupu-vendored-pindou-color-data-v1' ||
+  vendoredExternalData.schema !== 'beadhue-vendored-pindou-color-data-v1' ||
   vendoredExternalData.source.revision !== PINNED_EXTERNAL_REVISION
 ) {
   throw new Error('内置外部色板数据版本与目录 ID 不一致');
@@ -324,7 +324,7 @@ function createCatalogRecord(stub: CatalogStub): CatalogRecord {
   const { sourceQualityLabel, sourceQualitySummary, ...displayCopy } = stub.copy;
   const source: BuiltinPaletteSource = Object.freeze({
     repository: isLegacy ? 'Zippland/perler-beads' : 'HansBug/pindou-color-data',
-    revision: isLegacy ? 'doupu-legacy-v1' : PINNED_EXTERNAL_REVISION,
+    revision: isLegacy ? 'beadhue-legacy-v1' : PINNED_EXTERNAL_REVISION,
     versionId: isLegacy
       ? `zippland-291-v1/${stub.id}`
       : `pindou-color-data@${PINNED_EXTERNAL_REVISION}/${stub.sourceId}`,
@@ -341,7 +341,7 @@ function createCatalogRecord(stub: CatalogStub): CatalogRecord {
             Object.freeze({
               url: 'https://github.com/Zippland/perler-beads',
               quality: 'upstream_repository',
-              notes: '豆谱既有五品牌映射的上游仓库。',
+              notes: '豆色绘既有五品牌映射的上游仓库。',
             }),
           ]
         : external!.data.sources.map((reference) => Object.freeze({ ...reference })),
