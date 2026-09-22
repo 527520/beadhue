@@ -151,7 +151,7 @@ export default function Modal({ label, onClose, children, panelClassName = '', p
 function focusableElements(panel: HTMLElement): HTMLElement[] {
   return Array.from(
     panel.querySelectorAll<HTMLElement>(
-      'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])',
     ),
   ).filter((element) => {
     if (element.tabIndex < 0 || element.matches(':disabled, input[type="hidden"]')) return false;

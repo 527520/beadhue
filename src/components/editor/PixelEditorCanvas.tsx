@@ -885,7 +885,14 @@ export default function PixelEditorCanvas({
         </form>
       )}
 
-      <div className="beadhue-canvas-header"><span className="mono">{pattern.width} × {pattern.height} {zhCN.beadhue.beadUnit}</span><button type="button" aria-pressed={referenceOpen} onClick={() => setReferenceOpen(v=>!v)}><Icon name="image" size={15} />{zhCN.beadhue.referenceTitle}</button></div>
+      <div className="beadhue-canvas-header"><span className="mono editor-dimensions">{pattern.width} × {pattern.height} {zhCN.beadhue.beadUnit}</span>
+        <div className="editor-active-color" role="status" aria-label={t.currentColor}>
+          <span className="editor-active-color-swatch" style={{ backgroundColor: currentColor?.hex ?? 'transparent' }} aria-hidden="true" />
+          <span className="editor-active-color-label">{t.currentColor}</span>
+          <strong className="mono">{currentColor?.code ?? t.noColor}</strong>
+          <span className="mono editor-active-color-hex">{currentColor?.hex}</span>
+        </div>
+        <button type="button" aria-pressed={referenceOpen} onClick={() => setReferenceOpen(v=>!v)}><Icon name="image" size={15} />{zhCN.beadhue.referenceTitle}</button></div>
       <div
         ref={viewport.viewportRef}
         tabIndex={0}

@@ -203,7 +203,7 @@ export function ImageCropper({ image, initialRect, onConfirm, onCancel, disabled
   }, []);
 
   const previewWidthLimit = Math.max(1, Math.min(MAX_DISPLAY_WIDTH, containerWidth ?? MAX_DISPLAY_WIDTH));
-  const previewHeightLimit = presentation === 'beadhue' ? 370 : fitViewport ? Math.max(1, Math.min(MAX_DISPLAY_HEIGHT, containerHeight ?? MAX_DISPLAY_HEIGHT)) : MAX_DISPLAY_HEIGHT;
+  const previewHeightLimit = presentation === 'beadhue' ? Math.max(1, Math.min(370, containerHeight ?? 370)) : fitViewport ? Math.max(1, Math.min(MAX_DISPLAY_HEIGHT, containerHeight ?? MAX_DISPLAY_HEIGHT)) : MAX_DISPLAY_HEIGHT;
   // 解码器已经给出有界预览（最长边 512）。展示尺寸只做 CSS 缩放，
   // 不要再走 JS 逐像素重采样——打开裁剪弹层时那次循环会超过 50ms。
   const fitted = fitCropPreviewSize(image.width, image.height, previewWidthLimit, previewHeightLimit);

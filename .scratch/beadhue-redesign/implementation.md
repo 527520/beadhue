@@ -2,6 +2,8 @@
 
 日期：2026-09-22。基线 `origin/main` 为 `5c1bf387d53d0cad7ca03f5e4f02969efc35c8fc`，独立工作树分支 `feat/beadhue-redesign`。原工作区的截图修改保留。
 
+后续截图反馈修复及最新截图见 [feedback-fixes.md](feedback-fixes.md)。
+
 ## 交付范围
 
 - 用户确认 B「明快糖果拼豆盒」后，冻结 `prototype/`，按照其导航、布局、色彩及两端参照窗实施用户端。覆盖发现、详情、我的设计、选图裁剪、工作台、保存/公开、账号、色板、帮助、分享和错误状态。

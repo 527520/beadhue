@@ -56,6 +56,21 @@ describe('Modal', () => {
     } finally { trigger.remove(); }
   });
 
+  it('Tab 可以到达原生折叠标题并展开参数', async () => {
+    render(<Modal label="参数抽屉" onClose={() => {}}>
+      <button>关闭参数</button>
+      <details><summary>尺寸与照片效果</summary><button>调整尺寸</button></details>
+    </Modal>);
+    await userEvent.tab();
+    const summary = screen.getByText('尺寸与照片效果');
+    expect(summary).toHaveFocus();
+    // jsdom does not emulate summary's native Enter activation; real keyboard expansion is covered by E2E.
+    await userEvent.click(summary);
+    expect(summary.parentElement).toHaveAttribute('open');
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: '调整尺寸' })).toHaveFocus();
+  });
+
   it('焦点循环跳过收起区域、负 tabindex 和隐藏控件', async () => {
     render(<Modal label="带折叠操作" onClose={() => {}}>
       <button>第一个可见操作</button><button>最后一个可见操作</button>

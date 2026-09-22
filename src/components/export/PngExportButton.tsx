@@ -186,9 +186,9 @@ export default function PngExportButton({
       )}
 
       {open && (
-        <section aria-label={t.dialogTitle} className="rounded-2xl border border-lilac/40 bg-white p-3 shadow-soft">
+        <section aria-label={t.dialogTitle} className="png-export-options">
           <h3 className="mb-2 text-sm font-medium">{t.dialogTitle}</h3>
-          <div className="flex flex-col gap-2 text-sm">
+          <div className="png-export-fields">
               <ResponsiveSelect label={t.cellSize}
                 id={optionsId}
                 disabled={busy}
@@ -209,7 +209,7 @@ export default function PngExportButton({
             <Switch label={t.cropToContent} checked={optCrop} disabled={busy} onChange={setOptCrop} />
             <Switch label={t.includeLegend} checked={optLegend} disabled={busy} onChange={setOptLegend} />
           </div>
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="png-export-actions">
             <button
               type="button"
               onClick={() => setOpen(false)}

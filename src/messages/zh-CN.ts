@@ -101,6 +101,7 @@ export const zhCN = {
   "createTitle": "创作一张图纸",
   "createSubtitle": "从你的喜欢开始",
   "backToPreview": "返回预览",
+  "backToDesigns": "返回我的设计",
   "privateLabel": "私人设计 ·",
   "parameters": "参数",
   "export": "导出",

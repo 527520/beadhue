@@ -1,4 +1,5 @@
 "use client";
+import WorkbenchSettings from "./WorkbenchSettings";
 import OriginalUploadStatus from "@/components/beadhue/OriginalUploadStatus";
 import {
   cacheOriginal,
@@ -2929,8 +2930,12 @@ export default function Workbench({
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label={zhCN.beadhue.backToPreview}
-                  onClick={exitMobileWorkspace}
+                  aria-label={tab === "preview" && step !== "crop" ? zhCN.beadhue.backToDesigns : zhCN.beadhue.backToPreview}
+                  onClick={() => {
+                    if (step === "crop") handleCropCancel();
+                    else if (tab !== "preview") exitMobileWorkspace();
+                    else void saveBeforeLeave(() => router.push("/designs"));
+                  }}
                 >
                   <Icon name="back" />
                 </button>
@@ -2955,7 +2960,11 @@ export default function Workbench({
                   type="button"
                   className="button mobile-settings-button"
                   aria-expanded={settingsOpen}
-                  onClick={() => setSettingsOpen((v) => !v)}
+                  onClick={(event) => {
+                    // Safari does not focus buttons on pointer click; keep the sheet's return target explicit.
+                    event.currentTarget.focus();
+                    setSettingsOpen((v) => !v);
+                  }}
                 >
                   <Icon name="sliders" />
                   {zhCN.beadhue.parameters}
@@ -3397,11 +3406,8 @@ export default function Workbench({
               )}
             </section>
 
-            <aside
-              className="beadhue-settings settings-panel"
-              aria-label={zhCN.beadhue.patternSettings}
-            >
-              <div className="row between">
+            <WorkbenchSettings open={settingsOpen} onClose={() => setSettingsOpen(false)}>
+              <div className="row between beadhue-settings-heading">
                 <h2>{zhCN.beadhue.patternSettings}</h2>
                 <button
                   type="button"
@@ -3604,7 +3610,7 @@ export default function Workbench({
                 designId={designId}
                 sha256={original?.sha256}
               />
-            </aside>
+            </WorkbenchSettings>
           </div>
         )}
         {confirmDialog}
