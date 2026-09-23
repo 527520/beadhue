@@ -1,13 +1,16 @@
 /**
  * 发信成本防护测试（PGlite 真实限流语义）：
- * 每邮箱每日 / 每 IP 每小时 / 全局每日三层，验证优先级与窗口隔离。
+ * 每邮箱每日 / 每 IP 每小时 / 全局每日三层，验证优先级与窗口隔离；
+ * 全局桶按账号档位一分为二（admin-round-3 12），互相不挤占。
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTestClient, type TestDatabase } from '@/../db/testClient';
-import { checkMailSendLimits, reserveMailSendLimits } from './mailLimits';
+import { users } from '@/../db/schema';
+import { checkMailSendLimits, mailBudgetBucket, reserveMailSendLimits } from './mailLimits';
 
 let db: TestDatabase;
 const now = new Date('2026-08-15T08:00:00.000Z');
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 beforeAll(async () => {
   db = await createTestClient();
@@ -80,5 +83,40 @@ describe('checkMailSendLimits', () => {
     const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const result = await checkMailSendLimits(db, { email, ip: '3.3.3.9', now: tomorrow });
     expect(result).toBe('ok');
+  });
+});
+
+describe('邮件预算分桶（新账号 / 已建立账号）', () => {
+  it('桶判定：已验证且注册满 7 天才算已建立账号，其余（含不存在的邮箱）算新账号', () => {
+    const established = new Date(now.getTime() - 30 * DAY_MS);
+    const tooFresh = new Date(now.getTime() - 3 * DAY_MS);
+    expect(mailBudgetBucket({ emailVerifiedAt: now, createdAt: established }, now)).toBe('established');
+    expect(mailBudgetBucket({ emailVerifiedAt: now, createdAt: tooFresh }, now)).toBe('new');
+    expect(mailBudgetBucket({ emailVerifiedAt: null, createdAt: established }, now)).toBe('new');
+    expect(mailBudgetBucket(null, now)).toBe('new');
+  });
+
+  it('烧掉新账号桶不影响已建立账号的找回密码', async () => {
+    const freshDb = await createTestClient();
+    process.env.MAIL_DAILY_SEND_LIMIT = '2';
+    process.env.MAIL_ESTABLISHED_DAILY_LIMIT = '5';
+    try {
+      // 攻击者拿一堆不存在（或全新）的邮箱把「新账号」桶烧穿
+      expect(await checkMailSendLimits(freshDb, { email: 'ghost-1@example.com', ip: '9.9.9.1', now })).toBe('ok');
+      expect(await checkMailSendLimits(freshDb, { email: 'ghost-2@example.com', ip: '9.9.9.2', now })).toBe('ok');
+      expect(await checkMailSendLimits(freshDb, { email: 'ghost-3@example.com', ip: '9.9.9.3', now })).toBe('globalLimited');
+
+      // 已建立账号（已验证 + 注册满 30 天）走另一个桶：发信照常
+      const veteran = new Date(now.getTime() - 30 * DAY_MS);
+      await freshDb.insert(users).values({ email: 'veteran@example.com', emailVerifiedAt: now, createdAt: veteran });
+      expect(await checkMailSendLimits(freshDb, { email: 'veteran@example.com', ip: '9.9.9.4', now })).toBe('ok');
+
+      // 未验证账号仍算新账号：跟着被烧掉的桶一起受限
+      await freshDb.insert(users).values({ email: 'unverified@example.com', emailVerifiedAt: null, createdAt: veteran });
+      expect(await checkMailSendLimits(freshDb, { email: 'unverified@example.com', ip: '9.9.9.5', now })).toBe('globalLimited');
+    } finally {
+      delete process.env.MAIL_DAILY_SEND_LIMIT;
+      delete process.env.MAIL_ESTABLISHED_DAILY_LIMIT;
+    }
   });
 });

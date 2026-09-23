@@ -50,7 +50,7 @@ describe('local official batch session', () => {
   it.each([undefined, [], [crypto.randomUUID()], [saved.revisionId, saved.revisionId]].map((ids) => ({ ids })))('does not report publication for missing or mismatched revision confirmations: %j', async ({ ids }) => {
     const fetcher = vi.fn().mockResolvedValueOnce(response({ batch: row('completed', 5), publishedRevisionIds: ids })).mockResolvedValueOnce(response({ batch: row('completed', 5), publishedRevisionIds: [saved.revisionId] }));
     const session = new BatchSession({ fetcher, generate: generation, concurrency: 1, uploadOriginal });
-    session.restore({ ...row('completed', 4), createdAt: '2026-09-01', successCount: 1, failureCount: 0, itemCount: 1, drafts: [{ id: saved.revisionId, workId: saved.workId, title: '草稿', status: 'draft', preview }] } as StoredBatch);
+    session.restore({ ...row('completed', 4), createdAt: '2026-09-01', successCount: 1, failureCount: 0, itemCount: 1, drafts: [{ id: saved.revisionId, workId: saved.workId, title: '草稿', status: 'draft', version: 1, preview }] } as StoredBatch);
     session.updateItem(session.getSnapshot().items[0].localId, { selected: true }); await session.publish();
     expect(session.getSnapshot().uncertain).toBe(true); expect(session.getSnapshot().items[0]).toMatchObject({ status: 'saved', selected: true });
     await session.retryCommand(); expect(session.getSnapshot().items[0]).toMatchObject({ status: 'published', selected: false });
@@ -90,7 +90,7 @@ describe('local official batch session', () => {
   it('freezes publishing selection through an uncertain reply, and releases it only after identical replay', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce(response({}, 503)).mockResolvedValueOnce(response({ batch: row('completed', 5), publishedRevisionIds: [saved.revisionId] }));
     const session = new BatchSession({ fetcher, generate: generation, concurrency: 1, uploadOriginal });
-    session.restore({ ...row('completed', 4), createdAt: '2026-09-01', successCount: 1, failureCount: 0, itemCount: 1, drafts: [{ id: saved.revisionId, workId: saved.workId, title: '真实草稿', status: 'draft', preview: { version: 1, width: 1, height: 1, originalWidth: 1, originalHeight: 1, cells: ['#FFFFFF'], colorBand: ['#FFFFFF'] } }] } as StoredBatch);
+    session.restore({ ...row('completed', 4), createdAt: '2026-09-01', successCount: 1, failureCount: 0, itemCount: 1, drafts: [{ id: saved.revisionId, workId: saved.workId, title: '真实草稿', status: 'draft', version: 1, preview: { version: 1, width: 1, height: 1, originalWidth: 1, originalHeight: 1, cells: ['#FFFFFF'], colorBand: ['#FFFFFF'] } }] } as StoredBatch);
     const item = session.getSnapshot().items[0]; expect(item.selected).toBe(false);
     await session.publish(); expect(fetcher).not.toHaveBeenCalled();
     session.updateItem(item.localId, { selected: true }); await session.publish();
@@ -275,8 +275,8 @@ describe('local official batch session', () => {
     const upload = vi.fn(async () => undefined);
     const session = new BatchSession({ generate: generation, concurrency: 1, uploadOriginal: upload });
     session.restore({ ...row('completed', 3), createdAt: '2026-09-01', successCount: 2, failureCount: 0, itemCount: 2, drafts: [
-      { id: saved.revisionId, workId: saved.workId, title: '有原图', status: 'draft', preview, hasOriginal: true },
-      { id: '00000000-0000-4000-8000-000000000009', workId: saved.workId, title: '缺原图', status: 'draft', preview, hasOriginal: false },
+      { id: saved.revisionId, workId: saved.workId, title: '有原图', status: 'draft', version: 1, preview, hasOriginal: true },
+      { id: '00000000-0000-4000-8000-000000000009', workId: saved.workId, title: '缺原图', status: 'draft', version: 1, preview, hasOriginal: false },
     ] } as StoredBatch);
     expect(session.getSnapshot().items.map((item) => item.status)).toEqual(['saved', 'upload_failed']);
     expect(session.publishableCount).toBe(1);
@@ -300,6 +300,86 @@ describe('local official batch session', () => {
     await session.retryAllFailed(); await flush();
     expect(session.getSnapshot().items.every((item) => item.status === 'saved')).toBe(true);
     expect(session.retryableCount).toBe(0);
+    session.dispose();
+  });
+
+  /*
+    admin-round-3 04/05：生成完成后仍可改标题 / 参数 / 图纸，并原地写回同一份草稿修订；
+    已发布项一律不可再改（服务端也会以 STATE_CONFLICT 拒绝）。
+  */
+  /** 生成完成后编辑用的服务器桩：create → running，drafts → 新修订，草稿 PATCH → 新版本，publish → 已发布。 */
+  const editingFetcher = (draftVersion: number) => {
+    let current = row('running', 1);
+    return vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/drafts')) return response({ ...saved, version: draftVersion });
+      if (url.endsWith('/publish')) return response({ batch: { ...current, version: current.version + 1 }, publishedRevisionIds: [saved.revisionId] });
+      if (init?.method === 'PATCH') {
+        // 草稿原地修订 / 批次状态迁移走同一个 PATCH 方法，靠路径区分。
+        if (/\/drafts\/[0-9a-f-]{36}$/u.test(url)) return response({ revisionId: saved.revisionId, workId: saved.workId, version: draftVersion + 1, title: '新标题', status: 'draft' });
+        const { action } = JSON.parse(String(init.body)) as { action: string };
+        current = { ...current, version: current.version + 1, status: action === 'finish' ? 'completed' : action === 'cancel' ? 'cancelled' : action === 'pause' ? 'paused' : 'running' };
+        return response(current);
+      }
+      return response(current);
+    });
+  };
+
+  it('edits a saved draft title and writes it back to the same revision', async () => {
+    const fetcher = editingFetcher(3);
+    const session = new BatchSession({ fetcher, generate: generation, concurrency: 1, uploadOriginal });
+    session.selectFiles([file()]); await session.start(); await flush();
+    const item = session.getSnapshot().items[0];
+    expect(item).toMatchObject({ status: 'saved', revisionVersion: 3, dirty: false });
+
+    session.updateItem(item.localId, { title: '新标题' });
+    expect(session.getSnapshot().items[0]).toMatchObject({ title: '新标题', dirty: true });
+    expect(await session.saveItemEdits(item.localId)).toBe(true);
+    const patch = fetcher.mock.calls.find(([url, init]) => init?.method === 'PATCH' && /\/drafts\//u.test(String(url)))!;
+    expect(String(patch[0])).toBe(`/api/admin/batches/${batchId}/drafts/${saved.revisionId}`);
+    expect(JSON.parse(String(patch[1]?.body))).toEqual({ expectedVersion: 3, title: '新标题', reason: expect.any(String) });
+    expect(session.getSnapshot().items[0]).toMatchObject({ status: 'saved', dirty: false, revisionVersion: 4 });
+    session.dispose();
+  });
+
+  it('regenerates a saved draft with the current uniform params and only then stages a snapshot', async () => {
+    const fetcher = editingFetcher(1);
+    const generate = vi.fn(generation);
+    // 草稿保存成功后本地文件会释放：这里用服务端原图回读注入（真实实现走 D49 的取回接口）。
+    const fetchOriginal = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    const session = new BatchSession({ fetcher, generate, concurrency: 1, uploadOriginal, fetchOriginal });
+    session.selectFiles([file()]); await session.start(); await flush();
+    const item = session.getSnapshot().items[0];
+    expect(item).toMatchObject({ status: 'saved', revisionVersion: 1 });
+    // 生成后统一参数仍可改（此前会被 setDefaults 直接拒绝）。
+    session.setDefaults({ ...session.getSnapshot().defaults, targetWidth: 60 });
+    expect(session.getSnapshot().defaults.targetWidth).toBe(60);
+    await session.regenerateItem(item.localId);
+    expect(fetchOriginal).toHaveBeenCalledWith(saved.revisionId);
+    expect(generate).toHaveBeenCalledTimes(2);
+    const generateCalls = generate.mock.calls as unknown as Array<[{ params: { targetWidth: number } }]>;
+    expect(generateCalls[1]?.[0].params.targetWidth).toBe(60);
+    expect(session.isDirty(item.localId)).toBe(true);
+    expect(session.getSnapshot().items[0].status).toBe('saved');
+    // 重新生成只暂存本地：此刻没有针对草稿修订的写入（批次自身的状态迁移不算）。
+    expect(fetcher.mock.calls.filter(([url, init]) => init?.method === 'PATCH' && /\/drafts\//u.test(String(url)))).toHaveLength(0);
+    await session.saveItemEdits(item.localId);
+    const patch = fetcher.mock.calls.find(([url, init]) => init?.method === 'PATCH' && /\/drafts\//u.test(String(url)))!;
+    expect(JSON.parse(String(patch[1]?.body))).toMatchObject({ expectedVersion: 1, snapshot: expect.anything() });
+    expect(session.isDirty(item.localId)).toBe(false);
+    session.dispose();
+  });
+
+  it('never edits a published draft', async () => {
+    const fetcher = editingFetcher(1);
+    const session = new BatchSession({ fetcher, generate: generation, concurrency: 1, uploadOriginal });
+    session.selectFiles([file()]); await session.start(); await flush();
+    const item = session.getSnapshot().items[0];
+    expect(item.status).toBe('saved');
+    session.updateItem(item.localId, { selected: true });
+    await session.publish();
+    expect(session.getSnapshot().items[0].status).toBe('published');
+    session.updateItem(item.localId, { title: '不该生效' });
+    expect(session.getSnapshot().items[0]).toMatchObject({ status: 'published', dirty: false });
     session.dispose();
   });
 });

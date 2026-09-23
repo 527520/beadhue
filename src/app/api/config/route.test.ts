@@ -1,4 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createTestClient } from '@/../db/testClient';
+import { setTestDb } from '@/lib/auth/db';
 
 const { publicConfigMock } = vi.hoisted(() => ({
   publicConfigMock: vi.fn(),
@@ -10,6 +12,12 @@ vi.mock('@/lib/config', async (importOriginal) => ({
 }));
 
 import { GET } from './route';
+
+beforeAll(async () => {
+  // admin-round-3 12 起 GET /api/config 先过每 IP 限流（要读库）：注入测试库，
+  // 用例才真正走到 publicConfig 抛错的分支，而不是在 getDb() 就失败。
+  setTestDb(await createTestClient());
+});
 
 describe('GET /api/config', () => {
   it('未知异常返回统一 JSON，并沿用请求 ID', async () => {

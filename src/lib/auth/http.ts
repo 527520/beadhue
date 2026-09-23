@@ -1,12 +1,19 @@
 /**
  * API 响应工具：JSON 解析、统一错误体（spec §4.2），绝不泄露内部细节。
+ *
+ * 运行日志（用户第 15 条）：`withApiErrors` 同时是「请求日志上下文」的入口——
+ * 在这里开 AsyncLocalStorage、生成/沿用 requestId，之后慢查询与错误日志都能读到
+ * 同一个 requestId、账号与掩码 IP。未知错误（500）落一条 system_logs；
+ * 4xx/429 一律不落库，避免把攻击流量放大成写库流量。
  */
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { AppError, type ApiErrorBody } from '@/lib/errors';
 import { zodErrorsToStrings } from '@/lib/schemas';
 import { config } from '@/lib/config';
-import { retryAfterSeconds } from '@/lib/auth/rateLimit';
+import { retryAfterSeconds, clientIp } from '@/lib/auth/rateLimit';
+import { maskIp, pushSpan, withLogContext } from '@/lib/observability/context';
+import { fireSystemLog } from '@/lib/observability/log';
 
 export type JsonResult = { ok: true; data: unknown } | { ok: false; response: NextResponse };
 
@@ -82,7 +89,8 @@ export function apiError(error: unknown, requestId: string = crypto.randomUUID()
     const body: ApiErrorBody = { error: { code: error.code, message: error.message }, requestId };
     if (error.field) body.error.field = error.field;
     const headers: Record<string, string> = { 'x-request-id': requestId };
-    // 专用限流可提供其实际窗口恢复时间；历史小时限流保留默认值。
+    // 限流：告诉客户端窗口何时重置，而不是让它盲目重试。
+    // 默认按小时窗口（多数限流都是小时桶）；登录临时锁定、原图上传等专用限流由 AppError 显式给出实际恢复秒数。
     if (error.code === 'RATE_LIMITED') headers['Retry-After'] = String(error.retryAfter ?? retryAfterSeconds());
     return NextResponse.json(body, { status: error.status, headers });
   }
@@ -97,15 +105,34 @@ export function apiError(error: unknown, requestId: string = crypto.randomUUID()
     return NextResponse.json(body, { status: 400, headers: { 'x-request-id': requestId } });
   }
   console.error(`[api] unexpected error requestId=${requestId}:`, error);
+  // 未知错误（500）落一条运行日志：保留 stdout 行，同时把 requestId / 账号 /
+  // 掩码 IP / 错误堆栈写进 system_logs，后台「运行日志」可直接按 requestId 检索。
+  // 4xx 与 429 刻意不写：那是攻击者可控的量，写库等于把攻击放大成写放大。
+  fireSystemLog({
+    level: 'error',
+    source: 'api',
+    event: 'api.unhandled',
+    requestId,
+    status: 500,
+    errorCode: errorCodeOf(error),
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : null,
+  });
   return NextResponse.json(
     { error: { code: 'INTERNAL', message: '服务器内部错误' }, requestId },
     { status: 500, headers: { 'x-request-id': requestId } },
   );
 }
 
+function errorCodeOf(error: unknown): string | null {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code : null;
+}
+
 /**
  * 路由最外层异常边界：捕获未知异常，并确保每个响应都携带同一个 request ID。
  * 错误 JSON 同时携带 requestId，便于用户报障与服务端日志关联。
+ * 同时为整条请求链开启日志上下文（requestId / 掩码 IP / 方法 / 路径）。
  */
 export function withApiErrors<Args extends unknown[]>(
   handler: (...args: Args) => Response | Promise<Response>,
@@ -114,11 +141,21 @@ export function withApiErrors<Args extends unknown[]>(
     const request = args[0] instanceof Request ? args[0] : null;
     const incomingId = request?.headers.get('x-request-id') ?? '';
     const requestId = /^[A-Za-z0-9._-]{1,64}$/.test(incomingId) ? incomingId : crypto.randomUUID();
-    try {
-      return await attachRequestId(await handler(...args), requestId);
-    } catch (error) {
-      return apiError(error, requestId);
-    }
+    const url = request ? new URL(request.url) : null;
+    return withLogContext({
+      requestId,
+      ipMasked: maskIp(request ? clientIp(request) : 'local'),
+      method: request?.method ?? '',
+      path: url?.pathname ?? '',
+      route: url?.pathname ?? '',
+    }, async () => {
+      pushSpan({ kind: 'route', name: `${request?.method ?? 'REQUEST'} ${url?.pathname ?? ''}`.trim() });
+      try {
+        return await attachRequestId(await handler(...args), requestId);
+      } catch (error) {
+        return apiError(error, requestId);
+      }
+    });
   };
 }
 

@@ -1,7 +1,8 @@
-import { and, desc, eq, ilike, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { communityRevisions, communityTags, communityWorks, communityWorkTags, users } from '@/../db/schema';
+import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
 import { ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { AppError } from '@/lib/errors';
 import { communityPreviewSchema, parseCommunitySnapshot } from './snapshot';
@@ -9,21 +10,49 @@ import { communityPreviewSchema, parseCommunitySnapshot } from './snapshot';
 const querySchema = z.object({
   q: z.string().trim().max(80).default(''),
   status: z.enum(['all', 'active', 'withdrawn', 'removed']).default('all'),
-  cursor: z.string().max(500).optional(),
+  /** 公开状态：与 DTO 的 isPublic 派生口径完全一致（正常 + 有当前公开修订）。 */
+  public: z.enum(['all', 'public', 'hidden']).default('all'),
+  /** 按标签过滤（标签管理里的批量打标候选列表）：missing = 还没打这个标签。 */
+  tagId: z.uuid().optional(),
+  tagState: z.enum(['all', 'missing', 'has']).default('all'),
+  ...pageQueryFields,
 }).strict();
-const cursorSchema = z.object({ createdAt: z.iso.datetime(), id: z.uuid() }).strict();
-const PAGE_SIZE = 50;
+
+/** 公开状态的 SQL 谓词：只此一处，列表筛选与 DTO 派生都从这里来。 */
+function publicConditions(scope: 'public' | 'hidden') {
+  const visible = and(eq(communityWorks.lifecycleStatus, 'active'), isNotNull(communityWorks.currentPublishedRevisionId));
+  return scope === 'public' ? visible : or(ne(communityWorks.lifecycleStatus, 'active'), isNull(communityWorks.currentPublishedRevisionId));
+}
+
+/**
+ * 标签管理的批量打标候选（admin-round-3 08）：`missing` 只给还没打该标签的作品，
+ * 避免管理员对着已经打好的作品重复勾选；`has` 用于反向核对。
+ */
+function tagStateCondition(tagId: string, state: 'missing' | 'has') {
+  const exists = sql`exists (select 1 from ${communityWorkTags} cwt where cwt.work_id = ${communityWorks.id} and cwt.tag_id = ${tagId})`;
+  return state === 'has' ? exists : sql`not ${exists}`;
+}
 
 export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown) {
   const query = querySchema.parse(input);
-  let cursor: z.infer<typeof cursorSchema> | null = null;
-  if (query.cursor) {
-    try { cursor = cursorSchema.parse(JSON.parse(Buffer.from(query.cursor, 'base64url').toString('utf8'))); }
-    catch { throw new AppError('VALIDATION', '作品列表游标无效'); }
-  }
   // Lists only read the small preview. A selected work fetches its frozen material separately.
   const displayRevision = sql`coalesce(${communityWorks.currentPublishedRevisionId},
     (select r.id from community_revisions r where r.work_id = ${communityWorks.id} order by r.revision_number desc limit 1))`;
+  const conditions = [
+    query.status === 'all' ? undefined : eq(communityWorks.lifecycleStatus, query.status),
+    query.public === 'all' ? undefined : publicConditions(query.public),
+    query.tagId && query.tagState !== 'all' ? tagStateCondition(query.tagId, query.tagState) : undefined,
+    query.q ? or(ilike(communityRevisions.title, `%${query.q}%`), ilike(sql`case
+      when ${communityRevisions.authorType} = 'official' then '豆色绘官方'
+      when ${users.accountStatus} = 'anonymized' then ${ANONYMIZED_DISPLAY_NAME}
+      else ${communityRevisions.frozenDisplayName} end`, `%${query.q}%`), sql`${communityWorks.id}::text = ${query.q}`) : undefined,
+  ];
+  const where = and(...conditions);
+  const size = query.size;
+  // 先数总数再把页码夹回范围内，避免「请求第 9 页（只剩 3 页）」时先返回空页让客户端闪一下。
+  const total = readCount(await db.select({ count: countExpression }).from(communityWorks).leftJoin(communityRevisions, eq(communityRevisions.id, displayRevision))
+    .leftJoin(users, eq(users.id, communityWorks.authorUserId)).where(where));
+  const meta = pageMeta(total, query.page, size);
   const rows = await db.select({
     id: communityWorks.id, version: communityWorks.version, lifecycleStatus: communityWorks.lifecycleStatus,
     commentsLocked: communityWorks.commentsLocked, featuredAt: communityWorks.featuredAt,
@@ -34,15 +63,9 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     accountStatus: users.accountStatus, revisionNumber: communityRevisions.revisionNumber,
   }).from(communityWorks).leftJoin(communityRevisions, eq(communityRevisions.id, displayRevision))
     .leftJoin(users, eq(users.id, communityWorks.authorUserId))
-    .where(and(
-      query.status === 'all' ? undefined : eq(communityWorks.lifecycleStatus, query.status),
-      query.q ? or(ilike(communityRevisions.title, `%${query.q}%`), ilike(sql`case
-        when ${communityRevisions.authorType} = 'official' then '豆色绘官方'
-        when ${users.accountStatus} = 'anonymized' then ${ANONYMIZED_DISPLAY_NAME}
-        else ${communityRevisions.frozenDisplayName} end`, `%${query.q}%`), sql`${communityWorks.id}::text = ${query.q}`) : undefined,
-      cursor ? or(lt(communityWorks.createdAt, new Date(cursor.createdAt)), and(eq(communityWorks.createdAt, new Date(cursor.createdAt)), lt(communityWorks.id, cursor.id))) : undefined,
-    )).orderBy(desc(communityWorks.createdAt), desc(communityWorks.id)).limit(PAGE_SIZE + 1);
-  const items = rows.slice(0, PAGE_SIZE).map((row) => {
+    .where(where).orderBy(desc(communityWorks.createdAt), desc(communityWorks.id))
+    .limit(size).offset(pageOffset(meta.page, size));
+  const items = rows.map((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
     return {
       id: row.id, version: row.version, lifecycleStatus: row.lifecycleStatus, commentsLocked: row.commentsLocked,
@@ -53,8 +76,7 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
       thumbnail: row.displayRevisionId && row.width && row.height ? { revisionId: row.displayRevisionId, width: row.width, height: row.height } : null,
     };
   });
-  const last = rows[PAGE_SIZE - 1];
-  return { items, nextCursor: rows.length > PAGE_SIZE && last ? Buffer.from(JSON.stringify({ createdAt: last.createdAt.toISOString(), id: last.id })).toString('base64url') : null };
+  return { items, ...meta };
 }
 
 export async function inspectManagedCommunityWork(db: AnyDatabase, workId: string) {

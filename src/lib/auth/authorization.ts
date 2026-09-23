@@ -18,6 +18,12 @@ export interface Actor {
   role: UserRole;
   accountStatus: AccountStatus;
   emailVerified: boolean;
+  /**
+   * 账号注册时间（可选）：用于「新账号」分档（公开读配额、邮件预算）。
+   * 由 session 解析时带上；测试或旧调用点手写的 Actor 可以省略，
+   * 省略时按已建立账号处理（见 lib/security/accountReadQuota.ts）。
+   */
+  accountCreatedAt?: Date;
 }
 
 const ROLE_CAPABILITIES: Record<UserRole, ReadonlySet<Capability>> = {

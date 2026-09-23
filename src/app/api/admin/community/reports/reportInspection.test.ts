@@ -71,7 +71,7 @@ describe('report target inspection authorization and context', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toContain('no-store');
     for (const list of [listComments, listReports]) {
-      const queueResponse = await list();
+      const queueResponse = await list(new Request('http://localhost:3000/api/admin/community/queue'));
       expect(queueResponse.headers.get('cache-control')).toContain('no-store');
       const text = JSON.stringify(await queueResponse.json());
       for (const field of ['reporterUserId', 'handledByUserId', 'authorUserId', 'handlingReason', authorId]) expect(text).not.toContain(field);

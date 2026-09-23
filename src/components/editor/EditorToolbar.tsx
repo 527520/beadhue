@@ -15,6 +15,8 @@ interface Props {
   interactionMode?: 'pan' | 'edit';
   layout?: 'desktop' | 'mobile';
   moreOpen?: boolean;
+  /** 后台草稿编辑器按用户口径做减法：隐藏镜像/旋转与清空（admin-round-3 05）。 */
+  hideOps?: ReadonlyArray<'transform' | 'clear'>;
   onPanMode?: () => void;
   onMoreToggle?: () => void;
   onToolChange: (tool: ToolId) => void;
@@ -42,6 +44,7 @@ export default function EditorToolbar({
   replaceCountMessage,
   interactionMode = 'edit',
   moreOpen = false,
+  hideOps = [],
   onPanMode = () => undefined,
   onMoreToggle = () => undefined,
   onToolChange,
@@ -114,8 +117,10 @@ export default function EditorToolbar({
           <Icon name="redo" size={18} />
           <span>{t.redo}</span>
         </button>
-        <button type="button" onClick={() => onTransform('rotateCW')} aria-label={t.rotateCW} title={t.rotateCW}><span className="transform-icon" aria-hidden="true">↻</span><span>{zhCN.beadhue.rotate}</span></button>
-        <button type="button" onClick={() => onTransform('mirrorH')} aria-label={t.mirrorH} title={t.mirrorH}><span className="transform-icon" aria-hidden="true">⇋</span><span>{zhCN.beadhue.mirror}</span></button>
+        {!hideOps.includes('transform') && <>
+          <button type="button" onClick={() => onTransform('rotateCW')} aria-label={t.rotateCW} title={t.rotateCW}><span className="transform-icon" aria-hidden="true">↻</span><span>{zhCN.beadhue.rotate}</span></button>
+          <button type="button" onClick={() => onTransform('mirrorH')} aria-label={t.mirrorH} title={t.mirrorH}><span className="transform-icon" aria-hidden="true">⇋</span><span>{zhCN.beadhue.mirror}</span></button>
+        </>}
         <button type="button" onClick={onMoreToggle} aria-expanded={secondaryOpen} aria-label={t.moreTools}>
           <Icon name="more" size={18} />
           <span>{t.moreTools}</span>
@@ -159,12 +164,12 @@ export default function EditorToolbar({
           <button type="button" onClick={onReplaceOpen} className="btn-tool">{t.replace}</button>
           {replaceCountMessage && <span className="text-xs text-ink-soft">{replaceCountMessage}</span>}
 
-          <span className="flex items-center gap-1" aria-label={t.transformGroup}>
+          {!hideOps.includes('transform') && <span className="flex items-center gap-1" aria-label={t.transformGroup}>
             <button type="button" onClick={() => onTransform('mirrorV')} title={t.mirrorV} className="btn-tool">⇵</button>
             <button type="button" onClick={() => onTransform('rotateCCW')} title={t.rotateCCW} className="btn-tool">↺</button>
-          </span>
+          </span>}
 
-          <button type="button" onClick={onClear} title={t.clearTitle} className="btn-danger-outline btn-xs">{t.clear}</button>
+          {!hideOps.includes('clear') && <button type="button" onClick={onClear} title={t.clearTitle} className="btn-danger-outline btn-xs">{t.clear}</button>}
         </div>
       </div>
     </div>

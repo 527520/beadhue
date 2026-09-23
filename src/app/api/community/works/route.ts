@@ -3,10 +3,12 @@ import { getDb } from '@/lib/auth/db';
 import { requireApiActor } from '@/lib/auth/dal';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
+import { getSessionActor } from '@/lib/auth/session';
 import { createCommunityWork } from '@/lib/community/service';
 import { listPublicCommunityWorks, parseCommunityListUrl } from '@/lib/community/queries';
 import { executeIdempotently } from '@/lib/idempotency';
 import type { AnyDatabase } from '@/../db/client';
+import { enforceAccountRequestQuota, enforceAccountWorkQuota } from '@/lib/security/accountReadQuota';
 import { enforceCommunityWriteLimit, enforcePublicReadLimit } from '@/lib/security/publicRateLimit';
 
 const createSchema = z.object({
@@ -18,7 +20,16 @@ const createSchema = z.object({
 
 async function get(request: Request) {
   await enforcePublicReadLimit(getDb(), request, 'works');
-  return okJson(await listPublicCommunityWorks(getDb(), parseCommunityListUrl(request.url)), {
+  // 登录后的公开读同样要计账号配额（IP 桶可被换 IP 绕过）：总量在读库前拦，读库后补记本次返回的作品。
+  const actor = await getSessionActor();
+  if (actor) {
+    await enforceAccountRequestQuota(getDb(), { userId: actor.userId, accountCreatedAt: actor.accountCreatedAt });
+  }
+  const page = await listPublicCommunityWorks(getDb(), parseCommunityListUrl(request.url));
+  if (actor) {
+    enforceAccountWorkQuota({ userId: actor.userId, accountCreatedAt: actor.accountCreatedAt, workIds: page.items.map((item) => item.id) });
+  }
+  return okJson(page, {
     headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
   });
 }

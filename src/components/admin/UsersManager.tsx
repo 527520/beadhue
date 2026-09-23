@@ -6,11 +6,11 @@ import { zhCN } from '@/messages/zh-CN';
 import { USER_ROLES, type UserRole, type AccountStatus } from '@/lib/auth/authorization';
 import AdminCommandNotice from './AdminCommandNotice';
 import AdminQueueState from './AdminQueueState';
-import { AdminEmpty, FilterBar, ReasonPanel, StatusBadge } from './AdminPrimitives';
+import { AdminEmpty, AdminPagination, FilterBar, ReasonPanel, StatusBadge } from './AdminPrimitives';
 import Button from '@/components/ui/Button';
 import Notice from '@/components/ui/Notice';
 import TextField from '@/components/ui/TextField';
-import { useAdminCollection } from './useAdminCollection';
+import { useAdminPage } from './useAdminPage';
 import { useAdminCommand } from './useAdminCommand';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
 
@@ -22,7 +22,7 @@ export default function UsersManager({ currentUserId }: { currentUserId: string 
   const states = zhCN.communityAdmin.states;
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
-  const queue = useAdminCollection<UserRow>(`/api/admin/users?q=${encodeURIComponent(search)}`);
+  const queue = useAdminPage<UserRow>(`/api/admin/users?q=${encodeURIComponent(search)}`, 'users');
   const command = useAdminCommand();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = queue.items.find((item) => item.userId === selectedId) ?? null;
@@ -40,8 +40,9 @@ export default function UsersManager({ currentUserId }: { currentUserId: string 
   const query = () => {
     if (command.locked) return;
     select(null);
-    if (q.trim() === search) void queue.reload();
-    else setSearch(q.trim());
+    const unchanged = q.trim() === search;
+    if (!unchanged) setSearch(q.trim());
+    else if (queue.page === 1) void queue.reload(); else queue.setPage(1);
   };
   const update = async (change: { role?: UserRole; accountStatus?: 'active' | 'suspended' }) => {
     if (!selected || !ready) return;
@@ -57,7 +58,7 @@ export default function UsersManager({ currentUserId }: { currentUserId: string 
   const notice = <AdminCommandNotice command={command} onRefresh={() => void queue.reload()} />;
   return <div className={`admin-task-layout users-task-layout${selected ? ' is-inspecting' : ''}`}>
     <section className="admin-panel admin-task-queue" tabIndex={-1} ref={queueRef} aria-label={t.title}>
-      <header><h2>{t.title}</h2>{!queue.loading && !queue.error && <span>{queue.items.length}</span>}</header>
+      <header><h2>{t.title}</h2>{!queue.loading && !queue.error && <span>{zhCN.communityAdmin.pagination.totalCount(queue.total)}</span>}</header>
       <FilterBar submitLabel={t.query} disabled={command.locked || queue.loading} onSubmit={(event) => { event.preventDefault(); query(); }}>
         <TextField label={t.search} value={q} maxLength={80} disabled={command.locked} onChange={(event) => setQ(event.target.value)} />
       </FilterBar>
@@ -69,6 +70,10 @@ export default function UsersManager({ currentUserId }: { currentUserId: string 
           <strong>{user.username || user.maskedEmail || t.anonymized}</strong><span><StatusBadge kind="role" value={user.role} /><StatusBadge kind="account" value={user.accountStatus} />{user.username && user.maskedEmail && <small>{user.maskedEmail}</small>}</span>
         </button></li>)}</ul>
       </AdminQueueState>
+      <AdminPagination page={queue.page} totalPages={queue.totalPages} size={queue.size} total={queue.total}
+        onPage={(next) => { if (!command.locked) { select(null); queue.setPage(next); } }}
+        onSize={(next) => { if (!command.locked) { select(null); queue.setSize(next); } }}
+        disabled={command.locked || queue.loading} />
     </section>
     <section className="admin-panel admin-task-detail" tabIndex={-1} ref={detailRef} aria-label={t.action}>
       <header><h2>{t.action}</h2></header>

@@ -4,7 +4,7 @@ import { generationParamsSchema } from '@/lib/schemas';
 import { DEFAULT_OFFICIAL_BATCH_SPEC, isValidOfficialBatchSpec, mergeOfficialBatchDefaults, officialBatchDefaultsSchema, splitOfficialBatchDefaults, type OfficialBatchSpec } from '@/lib/community/batchDefaults';
 import { batchGenerationFailureMessage, validateOfficialBatchFiles } from '@/lib/community/batchClient';
 import { communityPreviewSchema, deriveCommunityPreview, type CommunityPreviewV1, type CommunitySnapshotV1 } from '@/lib/community/snapshot';
-import { uploadRevisionOriginal } from '@/lib/community/originalsClient';
+import { fetchRevisionOriginal, uploadRevisionOriginal } from '@/lib/community/originalsClient';
 import { track } from '@/lib/analytics/client';
 import { randomId } from '@/lib/ids';
 import { zhCN } from '@/messages/zh-CN';
@@ -22,12 +22,16 @@ export interface BatchItem {
   paramsOverride: Partial<GenerationParams>; status: BatchItemStatus; progress: number;
   error: string | null; revisionId: string | null; workId: string | null; selected: boolean; preview: CommunityPreviewV1 | null;
   hasOriginal: boolean;
+  /** 服务端草稿修订的版本号：原地修订（admin-round-3 04）用作 expectedVersion。 */
+  revisionVersion: number | null;
+  /** 已保存的草稿又被本地改过（标题/参数/图纸），还没写回服务器。 */
+  dirty: boolean;
 }
 export interface BatchRow { id: string; version: number; status: 'running' | 'paused' | 'completed' | 'cancelled'; failureCount?: number }
 export interface StoredBatch extends BatchRow {
   createdAt: string; itemCount: number; successCount: number; failureCount: number;
   defaultParams?: unknown;
-  drafts: Array<{ id: string; workId: string; title: string; status: string; preview: CommunityPreviewV1; hasOriginal?: boolean }>;
+  drafts: Array<{ id: string; workId: string; title: string; status: string; version: number; preview: CommunityPreviewV1; hasOriginal?: boolean }>;
 }
 interface State {
   items: BatchItem[]; batch: BatchRow | null; defaults: GenerationParams; spec: OfficialBatchSpec; reason: string;
@@ -38,12 +42,20 @@ interface Attempt { url: string; method: 'POST' | 'PATCH'; body: string; key: st
 interface Command extends Attempt { name: string; accept: (body: unknown) => void }
 interface Dependencies {
   generate: (input: { file: File; crop: BatchCrop | null; params: GenerationParams; spec: OfficialBatchSpec }, onProgress: (value: number) => void) => BatchGeneration;
-  /** 上传官方草稿原图（D49）；缺省走 /api/community/revisions/:id/original。 */
+  /** 上传官方草稿原图（D49）；缺省走管理员专用上传路径。 */
   uploadOriginal?: (revisionId: string, file: File) => Promise<void>;
+  /** 本地原图已释放时回读服务端保存的原图（重新生成用）；缺省走管理端可读的公开代理路径。 */
+  fetchOriginal?: (revisionId: string) => Promise<Uint8Array | null>;
   concurrency: 1 | 2; fetcher?: (url: string, init: RequestInit) => Promise<Response>;
 }
 async function defaultUploadOriginal(revisionId: string, file: File): Promise<void> {
-  await uploadRevisionOriginal(revisionId, new Uint8Array(await file.arrayBuffer()));
+  // 管理端专用上传路径：官方批次的 50 张原图不该吃掉豆社公开写接口的每账号额度（admin-round-3 10）。
+  await uploadRevisionOriginal(revisionId, new Uint8Array(await file.arrayBuffer()), fetch, 'admin');
+}
+/** 回读服务端原图：作者/管理员本就有权取回（D49），重新生成时不必让管理员重新选图。 */
+async function defaultFetchOriginal(revisionId: string): Promise<Uint8Array | null> {
+  const fetched = await fetchRevisionOriginal(revisionId);
+  return fetched?.bytes ?? null;
 }
 const BATCH_ITEM_STATUSES: readonly BatchItemStatus[] = ['pending', 'running', 'saving', 'save_unknown', 'uploading', 'upload_failed', 'saved', 'published', 'failed', 'cancelled', 'unavailable'];
 export const RETRYABLE_STATUSES: readonly BatchItemStatus[] = ['failed', 'cancelled', 'save_unknown', 'upload_failed'];
@@ -62,7 +74,7 @@ const storedBatchSchema = z.object({
   itemCount: z.number().int().min(1).max(50), successCount: z.number().int().min(0).max(50), failureCount: z.number().int().min(0).max(50),
   defaultParams: officialBatchDefaultsSchema.optional(),
   drafts: z.array(z.object({ id: uuid, workId: uuid, title: z.string().min(1).max(80),
-    status: z.enum(['draft', 'pending_review', 'published', 'rejected', 'withdrawn', 'superseded']), preview: communityPreviewSchema, hasOriginal: z.boolean().optional() })).max(50),
+    status: z.enum(['draft', 'pending_review', 'published', 'rejected', 'withdrawn', 'superseded']), version: z.number().int().positive(), preview: communityPreviewSchema, hasOriginal: z.boolean().optional() })).max(50),
 }).refine((batch) => batch.successCount <= batch.itemCount && batch.failureCount <= batch.itemCount
   && batch.drafts.length <= batch.itemCount && new Set(batch.drafts.map((draft) => draft.id)).size === batch.drafts.length);
 export const isStoredBatch = (value: unknown): value is StoredBatch => storedBatchSchema.safeParse(value).success;
@@ -81,6 +93,8 @@ export class BatchSession {
   private listeners = new Set<() => void>();
   private active = new Map<string, { cancel: () => void }>();
   private saves = new Map<string, Attempt>();
+  /** 重新生成/精细编辑得到的、还没有写回服务器的快照；只为被改过的项保留。 */
+  private pendingSnapshots = new Map<string, CommunitySnapshotV1>();
   private controllers = new Set<AbortController>();
   private attempt: Command | null = null;
   private disposed = false;
@@ -130,19 +144,27 @@ export class BatchSession {
     await this.execute(this.attempt);
   }
   retryCommand = async () => { if (this.attempt) await this.execute(this.attempt); };
-  setDefaults(value: GenerationParams) { if (!this.state.batch && !this.locked) this.emit({ defaults: value }); }
+  setDefaults(value: GenerationParams) { if (!this.locked) this.emit({ defaults: value }); }
   /** 制作规格只在开始前可改；色板换了就顺带校正不兼容的底板与档位。 */
   setSpec(value: OfficialBatchSpec) { if (!this.state.batch && !this.locked) this.emit({ spec: value }); }
-  setReason(reason: string) { if (!this.state.batch && !this.locked) this.emit({ reason }); }
+  setReason(reason: string) { if (!this.locked) this.emit({ reason }); }
   selectFiles(files: File[]) {
     if (!this.replaceable) return;
     const error = validateOfficialBatchFiles(files); if (error) { this.emit({ error }); return; }
-    this.emit({ batch: null, mode: 'idle', conflict: false, error: null, notice: t.localOnly, items: files.map((file, index) => ({ localId: randomId(), file, localName: file.name, title: t.defaultTitle(index + 1), crop: null, paramsOverride: {}, status: 'pending', progress: 0, error: null, revisionId: null, workId: null, selected: false, preview: null, hasOriginal: false })) });
+    this.emit({ batch: null, mode: 'idle', conflict: false, error: null, notice: t.localOnly, items: files.map((file, index) => ({ localId: randomId(), file, localName: file.name, title: t.defaultTitle(index + 1), crop: null, paramsOverride: {}, status: 'pending', progress: 0, error: null, revisionId: null, workId: null, selected: false, preview: null, hasOriginal: false, revisionVersion: null, dirty: false })) });
   }
+  /**
+   * 单项编辑。批次开始后**仍可改**标题、裁剪与逐项参数（admin-round-3 04），
+   * 但已发布的项不可再改：服务端也会拒绝改写已公开的修订。
+   * 改到已保存的草稿上时标记 dirty，由「保存修改」写回同一份修订。
+   */
   updateItem(id: string, change: Partial<Pick<BatchItem, 'title' | 'crop' | 'paramsOverride' | 'selected'>>) {
     if (this.locked) return;
-    if (Object.keys(change).some((key) => key !== 'selected') && this.state.batch) return;
-    this.patch(id, change);
+    const item = this.state.items.find((entry) => entry.localId === id);
+    if (!item) return;
+    if (Object.keys(change).some((key) => key !== 'selected') && item.status === 'published') return;
+    const touched = Object.keys(change).some((key) => key !== 'selected');
+    this.patch(id, { ...change, dirty: item.dirty || (touched && item.revisionId !== null) });
   }
   /** 一键全选：只勾选真正可发布（已保存且带原图）的草稿。 */
   selectAll() {
@@ -212,10 +234,10 @@ export class BatchSession {
   private async save(id: string, attempt: Attempt) {
     this.patch(id, { status: 'saving', error: null });
     const result = await this.request(attempt); if (this.disposed) return;
-    const body = result.ok ? result.body as { batchId?: unknown; revisionId?: unknown; workId?: unknown; status?: unknown } | null : null;
+    const body = result.ok ? result.body as { batchId?: unknown; revisionId?: unknown; workId?: unknown; status?: unknown; version?: unknown } | null : null;
     if (result.ok && body?.batchId === this.state.batch?.id && body?.status === 'draft' && isUuid(body?.revisionId) && isUuid(body?.workId)) {
       this.saves.delete(id);
-      this.patch(id, { status: 'uploading', revisionId: body.revisionId, workId: body.workId, selected: false, error: null });
+      this.patch(id, { status: 'uploading', revisionId: body.revisionId, workId: body.workId, revisionVersion: typeof body.version === 'number' ? body.version : null, selected: false, error: null, dirty: false });
       track({ name: 'official_batch_item_succeeded', properties: {} });
       // 原图上传不再占用生成槽：下一张可以立刻解码/生成。
       this.active.delete(id);
@@ -262,6 +284,79 @@ export class BatchSession {
     if (!item || !['pending', 'running', 'failed'].includes(item.status)) return;
     if (item.status === 'failed') this.saves.delete(id);
     this.patch(id, { status: 'cancelled', error: null, preview: null }); this.active.get(id)?.cancel(); this.pump();
+  }
+  /**
+   * 用当前统一参数（叠加逐项覆盖）重新生成一张**已保存**的草稿。
+   * 只更新本地预览与待写快照，不立刻写服务器：调参抖动不该放大成写放大，
+   * 由管理员点「保存修改」一次性提交（admin-round-3 04）。
+   */
+  async regenerateItem(id: string) {
+    if (this.locked || this.processing || this.state.conflict) return;
+    const item = this.state.items.find((entry) => entry.localId === id);
+    if (!item || item.status === 'published') return;
+    // 草稿保存后本地文件会释放（50 张原图不能常驻内存）：那时回读服务端保存的原图再生成。
+    let file = item.file;
+    if (!file) {
+      if (!item.revisionId || !item.hasOriginal) { this.patch(id, { error: t.regenerateNeedsOriginal }); return; }
+      try {
+        const bytes = await (this.deps.fetchOriginal ?? defaultFetchOriginal)(item.revisionId);
+        if (!bytes) { this.patch(id, { error: t.regenerateNeedsOriginal }); return; }
+        file = new File([new Uint8Array(bytes)], item.localName, { type: 'application/octet-stream' });
+      } catch (error) {
+        this.patch(id, { error: batchGenerationFailureMessage(error) });
+        return;
+      }
+    }
+    this.patch(id, { status: 'running', progress: 1, error: null });
+    try {
+      const task = this.deps.generate({ file, crop: item.crop, params: { ...this.state.defaults, ...item.paramsOverride }, spec: this.state.spec }, (progress) => this.patch(id, { progress: Math.round(progress) }));
+      this.active.set(id, task);
+      const snapshot = await task.promise;
+      if (this.disposed) return;
+      this.pendingSnapshots.set(id, snapshot);
+      this.patch(id, { status: item.revisionId ? 'saved' : 'cancelled', dirty: true, progress: 100, preview: deriveCommunityPreview(snapshot.pattern), error: null });
+    } catch (error) {
+      if (this.disposed) return;
+      const cancelled = error instanceof Error && error.name === 'AbortError';
+      this.patch(id, { status: cancelled ? 'cancelled' : 'failed', error: cancelled ? null : batchGenerationFailureMessage(error) });
+    } finally { this.active.delete(id); this.emit({}); }
+  }
+  /** 精细编辑器写完快照后回填：预览与版本号以服务端返回为准。 */
+  applyEditedDraft(id: string, change: { preview: CommunityPreviewV1; version: number }) {
+    this.pendingSnapshots.delete(id);
+    this.patch(id, { preview: change.preview, revisionVersion: change.version, dirty: false, status: 'saved', error: null });
+  }
+  /** 是否有还没写回服务器的修改。 */
+  isDirty(id: string) { return this.state.items.find((entry) => entry.localId === id)?.dirty ?? false; }
+  /** 精细编辑器/重新生成得到的快照先放到这里，等「保存修改」一次性写回。 */
+  stageSnapshot(id: string, snapshot: CommunitySnapshotV1) {
+    this.pendingSnapshots.set(id, snapshot);
+    this.patch(id, { dirty: true, preview: deriveCommunityPreview(snapshot.pattern) });
+  }
+  /**
+   * 把某一项的标题（以及重新生成得到的快照）写回**同一份**草稿修订。
+   * 已发布的项不可原地改写，服务端也会以 STATE_CONFLICT 拒绝。
+   * 返回是否写入成功（供编辑器决定关不关窗）。
+   */
+  async saveItemEdits(id: string): Promise<boolean> {
+    if (this.locked) return false;
+    const item = this.state.items.find((entry) => entry.localId === id);
+    const batch = this.state.batch;
+    if (!item || !batch || !item.revisionId || item.revisionVersion === null || item.status === 'published') return false;
+    const snapshot = this.pendingSnapshots.get(id);
+    this.patch(id, { status: 'saving', error: null });
+    await this.command('saveItem', `/api/admin/batches/${batch.id}/drafts/${item.revisionId}`, 'PATCH', {
+      expectedVersion: item.revisionVersion, title: item.title.trim(),
+      ...(snapshot ? { snapshot } : {}), reason: this.state.reason,
+    }, (body) => {
+      const saved = body as { revisionId?: unknown; version?: unknown; title?: unknown } | null;
+      if (!isUuid(saved?.revisionId) || typeof saved?.version !== 'number' || saved.revisionId !== item.revisionId) throw new Error();
+      this.pendingSnapshots.delete(id);
+      this.patch(id, { status: 'saved', dirty: false, revisionVersion: saved.version, error: null });
+      this.emit({ notice: t.editsSaved });
+    });
+    const after = this.state;
+    return !after.error && !after.uncertain && !this.isDirty(id) && this.pendingSnapshots.get(id) === undefined;
   }
   private async transition(action: 'pause' | 'resume' | 'cancel' | 'finish') {
     const batch = this.state.batch; if (!batch) return;
@@ -351,18 +446,18 @@ export class BatchSession {
     if (!this.replaceable) return;
     const parsedDefaults = officialBatchDefaultsSchema.safeParse(batch.defaultParams);
     const restored = parsedDefaults.success ? splitOfficialBatchDefaults(parsedDefaults.data) : { params: { ...DEFAULT_GENERATION_PARAMS }, spec: { ...DEFAULT_OFFICIAL_BATCH_SPEC } };
-    this.emit({ batch, defaults: restored.params, spec: restored.spec, mode: 'paused', error: null, conflict: false, notice: t.restored, items: batch.drafts.map((draft, index) => ({ localId: `restored:${draft.id}`, file: null, localName: t.restoredDraft(index + 1), title: draft.title, crop: null, paramsOverride: {}, ...draftStatus(draft), progress: 100, revisionId: draft.id, workId: draft.workId, selected: false, preview: draft.preview })) });
+    this.emit({ batch, defaults: restored.params, spec: restored.spec, mode: 'paused', error: null, conflict: false, notice: t.restored, items: batch.drafts.map((draft, index) => ({ localId: `restored:${draft.id}`, file: null, localName: t.restoredDraft(index + 1), title: draft.title, crop: null, paramsOverride: {}, ...draftStatus(draft), progress: 100, revisionId: draft.id, workId: draft.workId, revisionVersion: draft.version, dirty: false, selected: false, preview: draft.preview })) });
   }
   refreshState(batch: StoredBatch) {
     if (!isStoredBatch(batch)) { this.emit({ error: zhCN.communityAdmin.command.refreshFailed }); return; }
     if (this.locked || this.processing || batch.id !== this.state.batch?.id || batch.version < this.state.batch.version) return;
     this.emit({ batch, mode: 'paused', conflict: false, error: null, notice: t.refreshed, items: this.state.items.map((item) => {
       const draft = batch.drafts.find((entry) => entry.id === item.revisionId);
-      return draft ? { ...item, selected: false, ...draftStatus(draft) } : { ...item, selected: false };
+      return draft ? { ...item, selected: false, revisionVersion: draft.version, ...draftStatus(draft) } : { ...item, selected: false };
     }) });
   }
   dispose() {
     this.disposed = true; this.active.forEach((task) => task.cancel()); this.controllers.forEach((controller) => controller.abort());
-    this.active.clear(); this.controllers.clear(); this.saves.clear(); this.attempt = null; this.state = { ...this.state, items: [] }; this.listeners.clear();
+    this.active.clear(); this.controllers.clear(); this.saves.clear(); this.pendingSnapshots.clear(); this.attempt = null; this.state = { ...this.state, items: [] }; this.listeners.clear();
   }
 }

@@ -1,15 +1,24 @@
+import Link from 'next/link';
 import { forbidden } from 'next/navigation';
 import { getDb } from '@/lib/auth/db';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import { getSystemInfo } from '@/lib/admin/queries';
+import { countRecentServerErrors, getSystemInfo } from '@/lib/admin/queries';
 import { summarizeModerationToday } from '@/lib/moderation/commentModeration';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import Icon from '@/components/ui/Icon';
 import { zhCN } from '@/messages/zh-CN';
 
 export default async function AdminSystemPage() {
-  if (!authorize(await getSessionActor(), 'system:read')) forbidden();
-  const [info, moderation] = await Promise.all([getSystemInfo(getDb()), summarizeModerationToday(getDb())]);
+  const actor = await getSessionActor();
+  if (!authorize(actor, 'system:read')) forbidden();
+  // 运行日志（用户第 15 条）：入口与计数只给能真正读日志的管理员看（audit:read）。
+  const canReadLogs = authorize(actor, 'audit:read');
+  const [info, moderation, serverErrors] = await Promise.all([
+    getSystemInfo(getDb()),
+    summarizeModerationToday(getDb()),
+    canReadLogs ? countRecentServerErrors(getDb()) : Promise.resolve(null),
+  ]);
   const t = zhCN.communityAdmin.system;
   const m = zhCN.communityAdmin.moderationHealth;
   const taskLabel = (task: string) => t.tasks[task as keyof typeof t.tasks] ?? task;
@@ -27,6 +36,15 @@ export default async function AdminSystemPage() {
         <div><dt>{m.unavailable}</dt><dd>{moderation.unavailable}</dd></div>
         <div><dt>{m.outcomes}</dt><dd>{m.outcomeLine(moderation.published, moderation.pendingReview, moderation.rejected, moderation.rateLimited)}</dd></div>
         <div><dt>{m.lastError}</dt><dd>{moderation.health.lastErrorAt ? `${date(moderation.health.lastErrorAt.toISOString())} · ${moderation.health.lastErrorCode ?? ''}` : t.empty}</dd></div>
+      </dl>
+    </section>
+    <section className="admin-panel" aria-label={t.logsTitle}>
+      <header><h2>{t.logsTitle}</h2>{canReadLogs
+        ? <Link href="/admin/logs" className="admin-shortcut">{t.logsOpen}<Icon name="arrow" size={14} /></Link>
+        : <span>{t.logsDenied}</span>}</header>
+      <p className="admin-help">{t.logsHelp}</p>
+      <dl className="admin-evidence-list">
+        <div><dt>{t.logsServerErrors}</dt><dd>{serverErrors ?? t.notRecorded}</dd></div>
       </dl>
     </section>
     <section className="admin-metrics" aria-label={t.versionEvidence}>

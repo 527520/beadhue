@@ -97,4 +97,54 @@ describe('设计系统一致性', () => {
     }
     expect(bad).toEqual([]);
   });
+
+  /*
+    admin-round-3 01：按钮尺寸统一。
+    「后台按钮怎么都不一样大」的根因是一条不分层的 `button:not([tabindex="-1"])` 44px 下限，
+    它盖掉了 @layer 里 .btn-sm / .btn-xs 的高度——同一套类名在 <button> 上是 44px、
+    在 <a> / <label> 上是 36 / 32px。以下四条护栏防止它再长回来。
+  */
+  const globalsCss = () => readFileSync(join(process.cwd(), 'src', 'app', 'globals.css'), 'utf8');
+  const ruleOf = (css: string, selector: string): string => {
+    const match = new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*\\}`).exec(css);
+    if (!match) throw new Error(`globals.css 缺少 ${selector} 的规则`);
+    return match[0];
+  };
+
+  it('原生按钮的 44px 高度下限不覆盖按钮体系（宽度下限保留给 flex 收缩基准）', () => {
+    const css = globalsCss();
+    // 高度下限：必须排除按钮体系，否则 .btn-sm / .btn-xs 会被拉回 44px。
+    const heightRule = /^button:not\(\[tabindex="-1"\]\)[^{]*\{[^}]*min-height[^}]*\}/mu.exec(css);
+    expect(heightRule, 'globals.css 缺少原生按钮高度下限规则').not.toBeNull();
+    for (const excluded of [':not([class*="btn-"])', ':not(.chip)', ':not(.disclosure-trigger)']) {
+      expect(heightRule![0], `高度下限必须排除 ${excluded}`).toContain(excluded);
+    }
+    // 宽度下限：按钮体系也要有——flex 容器的收缩基准，去掉会让 200% 布局放大时横向溢出。
+    const widthRule = /^button:not\(\[tabindex="-1"\]\)[^{]*\{[^}]*min-width: 44px[^}]*\}/mu.exec(css);
+    expect(widthRule, 'globals.css 缺少原生按钮宽度下限规则').not.toBeNull();
+  });
+
+  it('按钮尺寸修饰符只从 --control-height-* token 取值', () => {
+    const css = globalsCss();
+    expect(ruleOf(css, '.btn-sm')).toContain('var(--control-height-sm)');
+    expect(ruleOf(css, '.btn-xs')).toContain('var(--control-height-xs)');
+  });
+
+  it('后台不手写按钮类名（原生 button 用 <Button>，文件选择 label 用 <FileButton>）', () => {
+    const adminFiles = sourceFiles.filter((file) => file.includes(join('src', 'components', 'admin')) || file.includes(join('src', 'app', 'admin')));
+    const bad: string[] = [];
+    for (const file of adminFiles) {
+      const source = readFileSync(file, 'utf8');
+      if (/<button[^>]*className="btn-/u.test(source)) bad.push(`${file}: 原生 button 直接套 btn-* 类`);
+      if (/<label[^>]*className="btn-/u.test(source)) bad.push(`${file}: label 直接套 btn-* 类`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('动作行容器子项居中（flex 默认 stretch 会把矮按钮拉成同行最高者）', () => {
+    const css = globalsCss();
+    for (const selector of ['.admin-form-actions', '.modal-actions', '.admin-reason-actions', '.batch-card-actions', '.panel-actions']) {
+      expect(ruleOf(css, selector), `${selector} 需要 align-items`).toContain('align-items');
+    }
+  });
 });

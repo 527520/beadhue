@@ -49,9 +49,12 @@ export default function TagInput({ label, value, onChange, suggest, max = 10, di
   const add = (raw: string) => {
     const name = normalize(raw);
     if (!name || full) return;
-    if (value.some((existing) => existing.toLocaleLowerCase('zh-CN') === name.toLocaleLowerCase('zh-CN'))) { setDraft(''); return; }
+    if (value.some((existing) => existing.toLocaleLowerCase('zh-CN') === name.toLocaleLowerCase('zh-CN'))) { setDraft(''); setOpen(false); return; }
     onChange([...value, name.slice(0, 30)]);
     setDraft(''); setActive(-1);
+    // 提交后立即收起联想面板：它浮在输入框下方，留着会盖住「保存标签」这类紧随其后的按钮
+    // （WebKit 上尤其明显：点按钮被联想项拦截，admin-round-3 07）。
+    setOpen(false); setSuggestions([]);
   };
   const remove = (index: number) => { if (!disabled) onChange(value.filter((_, i) => i !== index)); };
 

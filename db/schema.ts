@@ -366,6 +366,8 @@ export const communityTags = pgTable(
     uniqueIndex('community_tags_name_unique').on(sql`lower(${table.name})`),
     uniqueIndex('community_tags_slug_unique').on(table.slug),
     index('community_tags_order_idx').on(table.active, table.sortOrder, table.name),
+    // 合并标签时按 merged_into_tag_id 反查「哪些标签并进了这个标签」，此前只能全表扫。
+    index('community_tags_merged_into_idx').on(table.mergedIntoTagId),
   ],
 );
 
@@ -665,8 +667,75 @@ export const designShares = pgTable(
   ],
 );
 
+/**
+ * 运行日志（用户第 15 条）：后台自建的错误与事件流水。
+ *
+ * - 不存用户内容：请求体、评论正文、邮箱、令牌、图纸/快照在写入前由
+ *   `src/lib/observability/context.ts#redact` 剥掉；
+ * - 网络地址只存掩码值（IPv4 末段清零 / IPv6 只留前 48 位）；
+ * - `request_id` 与 API 500 响应体里的 requestId 同源，用户报障时可直接检索；
+ * - 保留期默认 30 天，由每日清理任务删除。
+ */
+export const systemLogs = pgTable(
+  'system_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    level: text('level').notNull(),
+    source: text('source').notNull(),
+    event: text('event').notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+    actorRole: text('actor_role'),
+    ipMasked: text('ip_masked'),
+    requestId: text('request_id'),
+    method: text('method'),
+    path: text('path'),
+    route: text('route'),
+    status: integer('status'),
+    durationMs: integer('duration_ms'),
+    errorCode: text('error_code'),
+    message: text('message'),
+    stack: text('stack'),
+    context: jsonb('context'),
+  },
+  (table) => [
+    index('system_logs_created_idx').on(table.createdAt.desc()),
+    index('system_logs_level_created_idx').on(table.level, table.createdAt.desc()),
+    index('system_logs_event_created_idx').on(table.event, table.createdAt.desc()),
+    index('system_logs_actor_created_idx').on(table.actorUserId, table.createdAt.desc()),
+    index('system_logs_request_idx').on(table.requestId),
+  ],
+);
+
+/**
+ * 慢查询（用户第 15 条）：只记超过阈值的语句，含 route → service → db 调用链。
+ * 只存语句文本（drizzle 发 `$n` 占位符），绝不存参数值；保留期默认 14 天。
+ */
+export const slowQueries = pgTable(
+  'slow_queries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    requestId: text('request_id'),
+    actorUserId: uuid('actor_user_id'),
+    route: text('route'),
+    method: text('method'),
+    statement: text('statement').notNull(),
+    durationMs: integer('duration_ms').notNull(),
+    rowCount: integer('row_count'),
+    chain: jsonb('chain').notNull(),
+  },
+  (table) => [
+    index('slow_queries_created_idx').on(table.createdAt.desc()),
+    index('slow_queries_duration_idx').on(table.durationMs.desc()),
+    index('slow_queries_route_created_idx').on(table.route, table.createdAt.desc()),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type SystemLog = typeof systemLogs.$inferSelect;
+export type SlowQuery = typeof slowQueries.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;
 export type MaintenanceRun = typeof maintenanceRuns.$inferSelect;
 export type AnalyticsVisitor = typeof analyticsVisitors.$inferSelect;

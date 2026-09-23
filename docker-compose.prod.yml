@@ -1,5 +1,10 @@
 # 豆色绘生产部署编排（ADR-0005）：app + postgres + caddy + 每日备份
 # 用法：cp .env.example .env，填写已通过 release 门禁的 APP_IMAGE 后执行 deploy.sh
+#
+# 显式固定 project name（admin-round-3 11）：保留线上既有 Compose 项目名 doupu（品牌更名不改线上资源身份）。
+# 默认名取自目录名：若在 /opt/doupu 以外的目录部署，命名卷（pgdata 等）会被当成新卷而出现空库；
+# 与「迟迟」共享的网络另由文件末尾 networks.default.name 固定为 doupu_default。
+name: doupu
 services:
   app:
     # 生产只消费 release workflow 推送的稳定 tag/digest；禁止服务器从任意源码本地重建。
@@ -86,6 +91,36 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    # ---- 资源上限与最小权限（本票 11；单机小内存主机的兜底，全部可用 .env 覆盖）----
+    # 容器日志轮转：json-file 默认无上限，长期运行会把系统盘写满（单机盘满 = 全站不可用）。
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 内存上限：默认 1g，给 standalone Node + argon2 原生模块留足；调参见 deploy/CHECKLIST.md。
+    mem_limit: ${APP_MEM_LIMIT:-1g}
+    # CPU 上限：默认 1.5 核（2 核小机上给 postgres/Caddy 留出余量）。
+    cpus: ${APP_CPUS:-1.5}
+    # 进程/线程数上限：挡 fork 炸弹与失控的并发任务；默认值远高于正常峰值。
+    pids_limit: 512
+    # 丢弃全部 Linux capability：应用只需监听 >1024 端口、读写自己挂载的 tmpfs。
+    cap_drop:
+      - ALL
+    # 禁止 setuid/setgid 提权（镜像里本就用非 root 的 nextjs 用户运行）。
+    security_opt:
+      - no-new-privileges:true
+    # 只读根文件系统：被入侵的进程无法改写镜像内容（应用代码/依赖）。
+    read_only: true
+    # 只读根文件系统下仍需可写的位置（缺失会让 Next 在写缓存时报 EROFS）：
+    # - /tmp：Node/Next 的 os.tmpdir() 临时文件；64m 足够本应用（无大文件落盘）。
+    # - /app/.next/cache：Next 16 把 fetch/增量缓存写在 distDir 下的 cache 目录
+    #   （node_modules/next/dist/server/lib/incremental-cache/file-system-cache.js 里
+    #   解析为 <serverDistDir>/../cache/fetch-cache，即 /app/.next/cache/fetch-cache）。
+    #   缓存是可丢数据，放 tmpfs 既满足写入又不会无限增长；128m 足够。
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/.next/cache:size=128m,mode=1777
 
   postgres:
     image: postgres:16-alpine
@@ -101,6 +136,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # ---- 资源上限与最小权限（本票 11）----
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 内存上限：默认 768m。注意 PostgreSQL 会按需吃 shared_buffers（默认 128MB）
+    # 与排序/哈希的内存，上限过低只会让查询失败，不会让数据损坏；调参见 CHECKLIST。
+    mem_limit: ${POSTGRES_MEM_LIMIT:-768m}
+    # /dev/shm 默认仅 64MB：并行查询/大排序会报 "could not resize shared memory"，
+    # 这里显式给 256MB（比调大 work_mem 更安全，不占用主内存上限）。
+    shm_size: 256mb
+    # 进程数上限：PostgreSQL 每连接一个后端进程，256 远高于本应用连接池上限（DB_POOL_MAX）。
+    pids_limit: ${POSTGRES_PIDS_LIMIT:-256}
+    # capability 白名单：不 drop ALL。postgres 官方镜像的 entrypoint 以 root 启动，
+    # 需要 CHOWN/DAC_OVERRIDE/FOWNER 处理数据目录与 initdb 文件、SETUID/SETGID 切到
+    # postgres 用户；多丢弃任何一项都会让容器起不来。
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
 
   caddy:
     image: caddy:2-alpine
@@ -123,6 +183,16 @@ services:
       - caddy_config:/config
     depends_on:
       - app
+    # ---- 资源上限（本票 11）----
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # Caddy 的访问日志会明显增加日志量（本票新增），轮转上限因此更重要。
+    # 内存默认 256m：TLS 证书、连接与日志缓冲都远小于此；调参见 CHECKLIST。
+    mem_limit: ${CADDY_MEM_LIMIT:-256m}
+    pids_limit: ${CADDY_PIDS_LIMIT:-256}
 
   backup:
     build:
@@ -137,8 +207,13 @@ services:
       PGUSER: ${POSTGRES_USER:-beadhue}
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: ${POSTGRES_DB:-beadhue}
-      COS_SECRET_ID: ${COS_SECRET_ID:?请在 .env 中设置 COS_SECRET_ID}
-      COS_SECRET_KEY: ${COS_SECRET_KEY:?请在 .env 中设置 COS_SECRET_KEY}
+      # 备份专用 COS 凭证（本票 11）：容器内仍叫 COS_SECRET_ID/COS_SECRET_KEY
+      # （backup.sh 与 rclone 读的就是这两个名字），但 .env 里必须来自
+      # BACKUP_COS_SECRET_ID/KEY —— 刻意不回退到 app 的 COS_*：备份只需要
+      # beadhue-backup/ 前缀的写权限，用应用密钥等于把原图桶的读写权也交给备份任务。
+      # 未配置时取空值：备份脚本启动即失败并告警（不会静默写出无凭证的“成功”）。
+      COS_SECRET_ID: ${BACKUP_COS_SECRET_ID:-}
+      COS_SECRET_KEY: ${BACKUP_COS_SECRET_KEY:-}
       COS_BUCKET: ${COS_BUCKET:?请在 .env 中设置 COS_BUCKET}
       COS_REGION: ${COS_REGION:?请在 .env 中设置 COS_REGION}
       # 失败告警：POST 到 app 容器内部告警端点（共享令牌鉴权）
@@ -151,8 +226,8 @@ services:
       RCLONE_CONFIG_BEADHUECOS_TYPE: s3
       RCLONE_CONFIG_BEADHUECOS_PROVIDER: TencentCOS
       RCLONE_CONFIG_BEADHUECOS_ENV_AUTH: "true"
-      RCLONE_CONFIG_BEADHUECOS_ACCESS_KEY_ID: ${COS_SECRET_ID:-}
-      RCLONE_CONFIG_BEADHUECOS_SECRET_ACCESS_KEY: ${COS_SECRET_KEY:-}
+      RCLONE_CONFIG_BEADHUECOS_ACCESS_KEY_ID: ${BACKUP_COS_SECRET_ID:-}
+      RCLONE_CONFIG_BEADHUECOS_SECRET_ACCESS_KEY: ${BACKUP_COS_SECRET_KEY:-}
       RCLONE_CONFIG_BEADHUECOS_ENDPOINT: https://cos.${COS_REGION:-ap-seoul}.myqcloud.com
     volumes:
       - ./deploy/scripts:/scripts:ro
@@ -163,6 +238,16 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5m
+    # ---- 资源上限（本票 11）----
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # 备份容器只在运行 pg_dump 时吃内存，默认 512m（含 gzip 压缩缓冲）足够；
+    # 大库需要调大时改 .env 的 BACKUP_MEM_LIMIT（见 deploy/CHECKLIST.md）。
+    mem_limit: ${BACKUP_MEM_LIMIT:-512m}
+    pids_limit: ${BACKUP_PIDS_LIMIT:-256}
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestClient, type TestDatabase } from './testClient';
 import {
@@ -14,6 +14,7 @@ import { mergeCommunityTag } from '@/lib/community/adminService';
 import { listManagedCommunityWorks } from '@/lib/community/adminQueries';
 import {
   getPublicCommunityWork,
+  listAllCommunityTagsWithCounts,
   listCommunityReviewQueue,
   listOwnCommunityWorks,
   listPopularCommunityTags,
@@ -191,7 +192,8 @@ describe('public community query boundary', () => {
     const own = await listOwnCommunityWorks(db, authorId);
     expect(own).toHaveLength(26);
     expect(own.some((work) => work.revisions.some((revision) => revision.status === 'pending_review'))).toBe(true);
-    const queue = await listCommunityReviewQueue(db);
+    const { items: queue, total: queueTotal } = await listCommunityReviewQueue(db);
+    expect(queueTotal).toBe(1);
     expect(queue).toMatchObject([{
       title: '待审查询作品',
       author: { authorType: 'user', publicAuthorId, displayName: 'Alice' },
@@ -210,7 +212,9 @@ describe('public community query boundary', () => {
       expect((await listPublicCommunityWorks(db, { sort: 'latest', author })).items).toEqual([]);
       expect((await listManagedCommunityWorks(db, { q: author })).items).toEqual([]);
     }
-    expect((await listManagedCommunityWorks(db, { q: '已注销用户' })).items).toHaveLength(26);
+    // 后台列表默认每页 10（admin-round-3 06）：这里要断言「全部 26 件都能按已注销显示名查到」，显式放大每页条数。
+    const anonymized = await listManagedCommunityWorks(db, { q: '已注销用户', size: 100 });
+    expect(anonymized.items).toHaveLength(26); expect(anonymized.total).toBe(26);
     const retained = await listPublicCommunityWorks(db, { sort: 'latest', author: publicAuthorId });
     expect(retained.items).toHaveLength(24);
     expect(retained.items.every((item) => item.author.displayName === '已注销用户')).toBe(true);
@@ -233,5 +237,40 @@ describe('public community query boundary', () => {
     const [inactive] = await db.insert(communityTags).values({ name: '停用', slug: 'inactive', active: false }).returning();
     await expect(mergeCommunityTag(db, { actor, sourceTagId: final.id, targetTagId: inactive.id, expectedVersion: 1,
       reason: '禁止合并到停用标签', requestId: 'inactive' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('停用且未合并的标签不再能筛出作品，计数里也不出现', async () => {
+    const [retired] = await db.insert(communityTags).values({ name: '停用标签', slug: 'retired-tag', active: false, sortOrder: 90 }).returning();
+    await db.insert(communityWorkTags).values({ workId: workIds[0], tagId: retired.id });
+    // 种子里只留「启用中的标签」与「已合并的别名」：停用又没合并的名字与 slug 都不再返回作品。
+    await expect(listPublicCommunityWorks(db, { sort: 'latest', tag: '停用标签' })).resolves.toMatchObject({ items: [] });
+    await expect(listPublicCommunityWorks(db, { sort: 'latest', tag: 'retired-tag' })).resolves.toMatchObject({ items: [] });
+    // 已合并的旧别名（同时被停用）仍沿合并链落到正式标签，历史分享链接不失效。
+    expect((await listPublicCommunityWorks(db, { sort: 'latest', tag: '旧宠物' })).items).toHaveLength(24);
+    expect((await listAllCommunityTagsWithCounts(db)).map((tag) => tag.slug)).toEqual(['pets']);
+  });
+
+  it('列表可跳过逐作品标签查询，默认仍带标签', async () => {
+    const selectSpy = vi.spyOn(db, 'select');
+    const withTags = await listPublicCommunityWorks(db, { sort: 'latest', q: '作品 03' });
+    const taggedCalls = selectSpy.mock.calls.length;
+    selectSpy.mockClear();
+    const plain = await listPublicCommunityWorks(db, { sort: 'latest', q: '作品 03' }, { includeTags: false });
+    const plainCalls = selectSpy.mock.calls.length;
+    selectSpy.mockRestore();
+    expect(withTags.items[0].tags).toEqual([{ id: resolvedTagId, name: '宠物', slug: 'pets' }]);
+    expect(taggedCalls).toBe(2); // 作品查询 + 标签查询
+    expect(plainCalls).toBe(1); // 只剩作品查询
+    expect(plain.items[0]).toMatchObject({ id: withTags.items[0].id, title: '查询作品 03', tags: [] });
+  });
+
+  it('筛选控件的标签计数与按该标签筛出的作品数一致', async () => {
+    const tags = await listAllCommunityTagsWithCounts(db);
+    expect(tags).toEqual([{ id: resolvedTagId, name: '宠物', slug: 'pets', count: 25 }]);
+    expect(await listPopularCommunityTags(db)).toEqual(tags); // 两处共用同一个计数表达式
+    const first = await listPublicCommunityWorks(db, { sort: 'latest', tag: '宠物' });
+    const second = await listPublicCommunityWorks(db, { sort: 'latest', tag: '宠物', cursor: first.nextCursor! });
+    expect(first.items).toHaveLength(24);
+    expect(first.items.length + second.items.length).toBe(tags[0].count);
   });
 });

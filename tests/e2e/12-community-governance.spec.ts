@@ -158,9 +158,13 @@ test('moderator 只能进入治理模块，管理员模块不出现在导航', a
 test('admin 可读取人员、审计和系统证据；规则页已退役', async ({ page }) => {
   await login(page, 'e2e-admin@example.com', '/admin/users');
   await expect(page.getByRole('heading', { name: '人员管理' })).toBeVisible();
+  // 账号列表默认每页 10 条（admin-round-3 06）：先搜自己，夹具才一定在第一页。
+  await page.getByLabel('搜索账号').fill('E2E Admin');
+  await page.getByRole('button', { name: '查询', exact: true }).click();
   await expect(page.getByText('E2E Admin').first()).toBeVisible();
   await expect(page.getByText('e2e-admin@example.com')).toHaveCount(0);
-  const people = await page.evaluate(async () => (await fetch('/api/admin/users')).json());
+  // API 侧同样带 q：默认分页下「最近 10 个账号」不含最早创建的夹具账号。
+  const people = await page.evaluate(async () => (await fetch(`/api/admin/users?q=${encodeURIComponent('E2E Admin')}`)).json());
   expect(people.items.find((item: { username: string }) => item.username === 'E2E Admin')).toMatchObject({ maskedEmail: 'e***n@example.com' });
   expect(JSON.stringify(people)).not.toContain('e2e-admin@example.com');
   expect((await page.request.get('/admin/rules')).status()).toBe(404);
@@ -169,7 +173,7 @@ test('admin 可读取人员、审计和系统证据；规则页已退役', async
   await page.goto('/admin/system');
   await expect(page.getByText('未接入').first()).toBeVisible();
   await expect(page.getByText('评论内容安全服务（腾讯云）')).toBeVisible();
-  await expect(page.getByText('0015_comment_moderation_checks')).toBeVisible();
+  await expect(page.getByText('0019_ops_observability')).toBeVisible();
 });
 
 test('分析后台在精确与长期聚合范围间明确切换能力', async ({ page }) => {

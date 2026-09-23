@@ -43,6 +43,10 @@ export class AppError extends Error {
   readonly status: number;
   /** zod 字段路径或业务字段名，用于 UI 定位。 */
   readonly field?: string;
+  /**
+   * 限流响应建议的等待秒数。缺省时 apiError 按小时窗口给（多数限流都是小时桶）；
+   * 登录临时锁定、原图上传分钟窗口等短窗口要显式传，否则客户端会被告知等一小时。
+   */
   readonly retryAfter?: number;
 
   constructor(code: AppErrorCode, message: string, field?: string, retryAfter?: number) {

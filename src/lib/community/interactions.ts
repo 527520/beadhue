@@ -23,6 +23,7 @@ import type { Actor } from '@/lib/auth/authorization';
 import { lockActiveAccount } from '@/lib/auth/writeAccess';
 import { resolvePublicDisplayName, ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { sanitizeAuditState } from '@/lib/admin/audit';
+import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
 import { AppError } from '@/lib/errors';
 import type { ProjectFile } from '@/lib/types';
 import { assertDesignQuota, lockDesignStorage } from '@/lib/sync/designQuota';
@@ -385,20 +386,21 @@ export async function handleCommunityReport(db: AnyDatabase, input: {
   });
 }
 
+/** 治理台队列的分页参数（admin-round-3 06）：评论与举报各自独立翻页。 */
+const governanceQuerySchema = z.object({ ...pageQueryFields }).strict();
+
 /** 治理台的评论队列：待审评论 + 最近 30 天被拦截的评论，附带最近一次内容安全判定。 */
-export async function listGovernanceQueues(db: AnyDatabase, now: Date = new Date()) {
+export async function listGovernanceComments(db: AnyDatabase, input: unknown = {}, now: Date = new Date()) {
+  const query = governanceQuerySchema.parse(input);
   const rejectedSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const [rawComments, reports] = await Promise.all([
+  const where = or(eq(communityComments.status, 'pending_review'), and(eq(communityComments.status, 'rejected'), gte(communityComments.createdAt, rejectedSince)));
+  const [rawComments, totalRows] = await Promise.all([
     db.select({ id: communityComments.id, workId: communityComments.workId, status: communityComments.status,
       version: communityComments.version, body: communityComments.body, riskCategories: communityComments.riskCategories,
       createdAt: communityComments.createdAt, reviewReason: communityComments.reviewReason }).from(communityComments)
-      .where(or(eq(communityComments.status, 'pending_review'), and(eq(communityComments.status, 'rejected'), gte(communityComments.createdAt, rejectedSince))))
-      .orderBy(communityComments.createdAt).limit(150),
-    db.select({ id: communityReports.id, targetType: communityReports.targetType, targetId: communityReports.targetId,
-      targetVersion: communityReports.targetVersion, status: communityReports.status, version: communityReports.version,
-      category: communityReports.category, details: communityReports.details, createdAt: communityReports.createdAt,
-    }).from(communityReports).where(inArray(communityReports.status, ['open', 'accepted']))
-      .orderBy(communityReports.createdAt).limit(100),
+      .where(where)
+      .orderBy(communityComments.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
+    db.select({ count: countExpression }).from(communityComments).where(where),
   ]);
   const checks = rawComments.length === 0 ? [] : await db.select({
     commentId: commentModerationChecks.commentId, provider: commentModerationChecks.provider, suggestion: commentModerationChecks.suggestion,
@@ -408,7 +410,7 @@ export async function listGovernanceQueues(db: AnyDatabase, now: Date = new Date
     .orderBy(desc(commentModerationChecks.createdAt));
   const latestCheck = new Map<string, typeof checks[number]>();
   for (const check of checks) if (check.commentId && !latestCheck.has(check.commentId)) latestCheck.set(check.commentId, check);
-  const comments = rawComments.map((row) => {
+  const items = rawComments.map((row) => {
     const check = latestCheck.get(row.id);
     return {
       ...row,
@@ -418,5 +420,20 @@ export async function listGovernanceQueues(db: AnyDatabase, now: Date = new Date
       } : null,
     };
   });
-  return { comments, reports };
+  return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
+}
+
+/** 治理台的举报队列：待受理与已受理的案件。 */
+export async function listGovernanceReports(db: AnyDatabase, input: unknown = {}) {
+  const query = governanceQuerySchema.parse(input);
+  const where = inArray(communityReports.status, ['open', 'accepted']);
+  const [items, totalRows] = await Promise.all([
+    db.select({ id: communityReports.id, targetType: communityReports.targetType, targetId: communityReports.targetId,
+      targetVersion: communityReports.targetVersion, status: communityReports.status, version: communityReports.version,
+      category: communityReports.category, details: communityReports.details, createdAt: communityReports.createdAt,
+    }).from(communityReports).where(where)
+      .orderBy(communityReports.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
+    db.select({ count: countExpression }).from(communityReports).where(where),
+  ]);
+  return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }

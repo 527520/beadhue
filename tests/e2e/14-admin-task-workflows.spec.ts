@@ -18,6 +18,12 @@ async function post(page: Page, url: string, body: unknown) {
   expect(result.status, JSON.stringify(result.body)).toBeLessThan(300);
   return result.body;
 }
+/** 标签列表默认每页 10 条：先按名称搜索再断言，避免夹具被挤到第二页（admin-round-3 06）。 */
+async function searchTag(page: Page, keyword: string) {
+  await page.getByLabel('搜索标签').fill(keyword);
+  await page.getByRole('button', { name: '查询标签' }).click();
+  await expect(page.locator('.admin-object-list button').filter({ hasText: keyword }).first()).toBeVisible();
+}
 async function fixtureWork(page: Page, title: string) {
   const batch = await post(page, '/api/admin/batches', { itemCount: 1, defaultParams: DEFAULT_GENERATION_PARAMS, engineVersion: 'e2e', reason: '本地治理任务夹具' });
   const draft = await post(page, `/api/admin/batches/${batch.id}/drafts`, { title, reason: '本地治理任务夹具', snapshot: {
@@ -68,16 +74,26 @@ test('标签创建丢响应同键恢复，改名停用及具名合并可完成',
   await page.locator('.admin-task-detail').getByRole('button', { name: '新建标签', exact: true }).click();
   await expect(page.getByLabel('标签名称', { exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '重试确认' }).click();
+  // 列表默认每页 10 条（admin-round-3 06）：先按名称搜索，夹具才一定在第一页。
+  await searchTag(page, name);
   await expect(page.locator('.admin-object-list button').filter({ hasText: name })).toHaveCount(1);
   expect(writes).toHaveLength(2); expect(writes[0]).toEqual(writes[1]);
   await page.locator('.admin-object-list button').filter({ hasText: name }).click();
   await page.getByLabel('标签名称', { exact: true }).fill(`新${name}`);
   await page.getByLabel('操作理由').fill('更新名称并暂时停用');
-  await page.getByRole('switch', { name: '启用', exact: true }).uncheck();
+  // WebKit 上对 RAC switch 直接 uncheck() 偶发不触发受控 onChange，用键盘空格更接近真人操作。
+  const enabled = page.getByRole('switch', { name: '启用', exact: true });
+  await enabled.focus();
+  await page.keyboard.press('Space');
+  await expect(enabled).not.toBeChecked();
   await page.getByRole('button', { name: '保存修改' }).click();
+  // 等到写入确认再搜索，避免在列表重载途中查询到旧行。
+  await expect(page.getByText('操作已完成。')).toBeVisible();
+  await searchTag(page, `新${name}`);
   await expect(page.locator('.admin-object-list button').filter({ hasText: `新${name}` })).toContainText('停用');
   const target = await post(page, '/api/admin/community/tags', { name: `归档 ${suffix}`, slug: `target-${suffix}`, reason: '归并重复分类', expectedVersion: 0 });
   await page.reload();
+  await searchTag(page, `新${name}`);
   await page.locator('.admin-object-list button').filter({ hasText: `新${name}` }).click();
   await page.getByLabel('操作理由').fill('核对后合并到具名目标');
   await page.getByText('合并重复标签', { exact: true }).click();

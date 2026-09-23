@@ -22,13 +22,15 @@ describe('admin query privacy and system evidence', () => {
   it('masks account email and reports unavailable backup truthfully', async () => {
     const db = await createTestClient();
     await db.insert(users).values({ email: 'private@example.com', passwordHash: 'secret', emailVerifiedAt: new Date() });
-    const [user] = await listGovernedUsers(db);
+    const { items: userRows, total } = await listGovernedUsers(db);
+    const [user] = userRows;
     expect(user).toMatchObject({ maskedEmail: 'p***e@example.com', emailVerified: true });
+    expect(total).toBe(1);
     expect(user).not.toHaveProperty('email');
     expect(user).not.toHaveProperty('passwordHash');
     const info = await getSystemInfo(db);
     expect(info.backup).toEqual({ status: 'not_integrated', label: '未接入' });
-    expect(info.migrationJournalLatest).toBe('0018_original_object_cleanup');
+    expect(info.migrationJournalLatest).toBe('0019_ops_observability');
     expect(info.databaseMigration.id).not.toBeNull();
     expect(info.databaseMigration.appliedAt).toBeNull();
     expect(info.databaseMigration.journalTimestamp).not.toBeNull();
@@ -41,15 +43,17 @@ describe('admin query privacy and system evidence', () => {
       reason: 'verified material', requestId: `request-${index}`, createdAt: new Date('2026-09-01T01:00:00Z'),
       beforeState: { status: 'pending_review', email: 'private@example.com', token: 'secret' }, afterState: { status: 'published' },
     })));
-    const first = await listAdminAudit(db, {});
-    expect(first.items).toHaveLength(50); expect(first.nextCursor).toBeTruthy();
-    const second = await listAdminAudit(db, { cursor: first.nextCursor });
-    expect(second.items).toHaveLength(5); expect(second.nextCursor).toBeNull();
+    // 时间完全相同也必须不重不漏：改成页码分页后由 (created_at desc, id desc) 的稳定排序保证。
+    const first = await listAdminAudit(db, { size: 50 });
+    expect(first.items).toHaveLength(50); expect(first.total).toBe(55); expect(first.totalPages).toBe(2);
+    const second = await listAdminAudit(db, { size: 50, page: 2 });
+    expect(second.items).toHaveLength(5);
     expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(55);
     expect(first.items[0].beforeState).toEqual({ status: 'pending_review' });
     expect((await listAdminAudit(db, { q: 'request-54', from: '2026-09-01', to: '2026-09-01' })).items).toHaveLength(1);
     expect((await listAdminAudit(db, { from: '2026-09-02' })).items).toHaveLength(0);
-    await expect(listAdminAudit(db, { cursor: 'not-a-cursor' })).rejects.toMatchObject({ code: 'VALIDATION' });
+    // 每页条数只接受 10 / 20 / 50 / 100 白名单。
+    await expect(listAdminAudit(db, { size: 7 })).rejects.toBeTruthy();
     await expect(listAdminAudit(db, { from: '2026-09-03', to: '2026-09-01' })).rejects.toBeTruthy();
   });
 

@@ -4,10 +4,11 @@ import type { AnyDatabase } from '@/../db/client';
 import { adminAuditLogs, communityOriginals, communityRevisions, communityWorks, officialBatches } from '@/../db/schema';
 import type { Actor } from '@/lib/auth/authorization';
 import { sanitizeAuditState } from '@/lib/admin/audit';
+import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
 import { AppError } from '@/lib/errors';
 import { compatibleBoardProfilesForPalette } from '@/lib/boardProfiles';
 import { officialBatchDefaultsSchema } from './batchDefaults';
-import { communityPreviewSchema, communitySnapshotSchema, COMMUNITY_LICENSE_VERSION, deriveCommunityPreview, snapshotColorCount, snapshotPaletteIdentity } from './snapshot';
+import { communityPreviewSchema, communitySnapshotSchema, COMMUNITY_LICENSE_VERSION, deriveCommunityPreview, snapshotColorCount, snapshotPaletteIdentity, type CommunitySnapshotV1 } from './snapshot';
 
 const reasonSchema = z.string().trim().min(3).max(500);
 const titleSchema = z.string().trim().min(1).max(80);
@@ -75,7 +76,70 @@ export async function saveOfficialDraft(db: AnyDatabase, input: {
       reason, requestId: input.requestId, beforeState: null,
       afterState: sanitizeAuditState({ revisionStatus: revision.status, revision: revision.version }),
     });
-    return { batchId: batch.id, workId: work.id, revisionId: revision.id, status: revision.status };
+    return { batchId: batch.id, workId: work.id, revisionId: revision.id, version: revision.version, status: revision.status };
+  });
+}
+
+/**
+ * 未发布官方草稿原地修订（ADR-0024）：修订号、原图绑定与批次成功数都不变，
+ * 只覆盖标题与图纸列并递增修订版本号；已发布修订继续遵守 ADR-0015 的不可变约束。
+ */
+export async function reviseOfficialDraft(db: AnyDatabase, input: {
+  actor: Actor; batchId: string; revisionId: string; expectedVersion: number;
+  title?: string; snapshot?: unknown; reason: string; requestId: string; now?: Date;
+}) {
+  let nextTitle: string | null = null;
+  if (input.title !== undefined) {
+    const parsed = titleSchema.safeParse(input.title);
+    if (!parsed.success) throw new AppError('VALIDATION', '官方草稿标题无效', 'title');
+    nextTitle = parsed.data;
+  }
+  let nextSnapshot: CommunitySnapshotV1 | null = null;
+  if (input.snapshot !== undefined) {
+    const parsed = communitySnapshotSchema.safeParse(input.snapshot);
+    if (!parsed.success) throw new AppError('VALIDATION', '官方草稿图纸无效', 'snapshot');
+    nextSnapshot = parsed.data;
+  }
+  if (nextTitle === null && nextSnapshot === null) throw new AppError('VALIDATION', '草稿修订内容为空');
+  if (nextSnapshot && !compatibleBoardProfilesForPalette(nextSnapshot.paletteSelection.palette).some((profile) => profile.id === nextSnapshot.boardProfile)) {
+    throw new AppError('VALIDATION', '官方草稿的制作规格与色板不兼容', 'snapshot');
+  }
+  const palette = nextSnapshot ? snapshotPaletteIdentity(nextSnapshot) : null;
+  const reason = reasonSchema.parse(input.reason);
+  const now = input.now ?? new Date();
+  return db.transaction(async (tx) => {
+    const [batch] = await tx.select().from(officialBatches).where(eq(officialBatches.id, input.batchId)).for('update');
+    if (!batch || batch.adminUserId !== input.actor.userId) throw new AppError('NOT_FOUND', '批次不存在');
+    const [revision] = await tx.select().from(communityRevisions).where(eq(communityRevisions.id, input.revisionId)).for('update');
+    if (!revision || revision.officialBatchId !== batch.id) throw new AppError('NOT_FOUND', '草稿不存在');
+    if (revision.authorType !== 'official' || revision.status !== 'draft') throw new AppError('STATE_CONFLICT', '只能修订未发布的官方草稿');
+    const [work] = await tx.select({ id: communityWorks.id, currentPublishedRevisionId: communityWorks.currentPublishedRevisionId })
+      .from(communityWorks).where(eq(communityWorks.id, revision.workId)).for('update');
+    if (!work) throw new AppError('NOT_FOUND', '草稿不存在');
+    // 作品已经指向公开修订时，草稿不能再被静默改写，否则公开内容与审核结论会脱钩。
+    if (work.currentPublishedRevisionId !== null) throw new AppError('STATE_CONFLICT', '该草稿所属作品已发布，不能再原地修订');
+    if (revision.version !== input.expectedVersion) throw new AppError('STATE_CONFLICT', '草稿版本已变化，请刷新后重试');
+    const [updated] = await tx.update(communityRevisions).set({
+      ...(nextTitle !== null ? { title: nextTitle } : {}),
+      ...(nextSnapshot !== null && palette ? {
+        engineVersion: nextSnapshot.engineVersion, boardProfile: nextSnapshot.boardProfile,
+        paletteKind: palette.kind, paletteId: palette.id,
+        width: nextSnapshot.pattern.width, height: nextSnapshot.pattern.height,
+        colorCount: snapshotColorCount(nextSnapshot), snapshot: nextSnapshot,
+        preview: deriveCommunityPreview(nextSnapshot.pattern),
+      } : {}),
+      version: revision.version + 1, updatedAt: now,
+    }).where(and(eq(communityRevisions.id, revision.id), eq(communityRevisions.version, revision.version))).returning();
+    if (!updated) throw new AppError('STATE_CONFLICT', '草稿版本已变化，请刷新后重试');
+    // 审计只记录状态与版本，标题文本不入库（sanitizeAuditState 白名单同样会过滤）。
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: input.actor.userId, actorRole: input.actor.role,
+      action: 'official.draft_revised', targetType: 'community_revision', targetId: revision.id,
+      reason, requestId: input.requestId,
+      beforeState: sanitizeAuditState({ revisionStatus: revision.status, revision: revision.version }),
+      afterState: sanitizeAuditState({ revisionStatus: updated.status, revision: updated.version }),
+    });
+    return { revisionId: updated.id, workId: updated.workId, version: updated.version, status: updated.status, title: updated.title };
   });
 }
 
@@ -164,18 +228,28 @@ export async function publishOfficialBatch(db: AnyDatabase, input: {
   });
 }
 
-export async function listOfficialBatches(db: AnyDatabase, actorUserId: string) {
-  const batches = await db.select().from(officialBatches).where(eq(officialBatches.adminUserId, actorUserId))
-    .orderBy(desc(officialBatches.createdAt)).limit(50);
-  if (batches.length === 0) return [];
+/** 后台批次历史分页参数（admin-round-3 06）。 */
+const batchesQuerySchema = z.object({ ...pageQueryFields }).strict();
+
+export async function listOfficialBatches(db: AnyDatabase, actorUserId: string, input: unknown = {}) {
+  const query = batchesQuerySchema.parse(input);
+  const where = eq(officialBatches.adminUserId, actorUserId);
+  const [batches, totalRows] = await Promise.all([
+    db.select().from(officialBatches).where(where)
+      .orderBy(desc(officialBatches.createdAt), desc(officialBatches.id))
+      .limit(query.size).offset(pageOffset(query.page, query.size)),
+    db.select({ count: countExpression }).from(officialBatches).where(where),
+  ]);
+  const total = readCount(totalRows);
+  if (batches.length === 0) return { items: [], ...pageMeta(total, query.page, query.size) };
   const revisions = await db.select({
     id: communityRevisions.id, workId: communityRevisions.workId, officialBatchId: communityRevisions.officialBatchId,
-    title: communityRevisions.title, status: communityRevisions.status,
+    title: communityRevisions.title, status: communityRevisions.status, version: communityRevisions.version,
     preview: communityRevisions.preview, width: communityRevisions.width, height: communityRevisions.height,
   }).from(communityRevisions).where(inArray(communityRevisions.officialBatchId, batches.map((batch) => batch.id)));
   const withOriginal = revisions.length === 0 ? new Set<string>() : new Set((await db.select({ revisionId: communityOriginals.revisionId }).from(communityOriginals)
     .where(and(inArray(communityOriginals.revisionId, revisions.map((revision) => revision.id)), isNull(communityOriginals.deletedAt)))).map((row) => row.revisionId));
-  return batches.map((batch) => ({
+  const items = batches.map((batch) => ({
     ...batch, defaultParams: batch.defaultParams,
     startedAt: batch.startedAt?.toISOString() ?? null, completedAt: batch.completedAt?.toISOString() ?? null,
     createdAt: batch.createdAt.toISOString(), updatedAt: batch.updatedAt.toISOString(),
@@ -184,4 +258,5 @@ export async function listOfficialBatches(db: AnyDatabase, actorUserId: string) 
       return preview.success ? [{ ...revision, hasOriginal: withOriginal.has(revision.id), preview: preview.data }] : [];
     }),
   }));
+  return { items, ...pageMeta(total, query.page, query.size) };
 }

@@ -15,6 +15,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # 扫描结果以 SARIF 上传到 GitHub 代码扫描（本票 11 新增的 Trivy 步骤）。
+      security-events: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,3 +39,26 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Scan the release image for HIGH/CRITICAL vulnerabilities（Trivy）
+        # 门禁口径：只对 HIGH/CRITICAL 失败，且忽略「上游尚无修复版本」的漏洞
+        # （ignore-unfixed），否则基础镜像里长期无补丁的条目会让每次发版都红。
+        # 镜像在上一步已推送，本步骤用于「发现即失败」并留下可复查的 SARIF 报告；
+        # 部署脚本只接受本 workflow 全绿的 tag，所以红了的 tag 不会被部署。
+        uses: aquasecurity/trivy-action@v0.36.0
+        # always()：让扫描失败也先把 SARIF 交给下一步上传，报告不因失败而丢失。
+        if: always()
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Upload Trivy SARIF report
+        # 无论扫描是否失败都上传：失败时这份报告就是唯一的证据。
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy-results.sarif
+          retention-days: 30

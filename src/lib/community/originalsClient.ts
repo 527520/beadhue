@@ -21,8 +21,14 @@ async function readError(response: Response, fallback: string): Promise<Original
 
 export interface UploadedOriginal { revisionId: string; mimeType: string; byteSize: number; width: number | null; height: number | null }
 
+/** admin = 走管理端专用上传路径，不消耗豆社公开写配额（admin-round-3 10）。 */
+export type OriginalScope = 'public' | 'admin';
+const uploadPath = (scope: OriginalScope, revisionId: string) => scope === 'admin'
+  ? `/api/admin/community/revisions/${revisionId}/original`
+  : `/api/community/revisions/${revisionId}/original`;
+
 /** 上传原图字节到某草稿修订；服务端按魔数判定类型，这里只带 octet-stream。 */
-export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Array, fetcher: typeof fetch = fetch): Promise<UploadedOriginal> {
+export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Array, fetcher: typeof fetch = fetch, scope: OriginalScope = 'public'): Promise<UploadedOriginal> {
   if (bytes.byteLength === 0) throw new OriginalUploadError(400, 'VALIDATION', '原图为空');
   if (bytes.byteLength > LIMITS.maxFileBytes) throw new OriginalUploadError(413, 'PAYLOAD_TOO_LARGE', '原图超过 20 MB 上限');
   if (fetcher === fetch && typeof indexedDB !== 'undefined') {
@@ -31,9 +37,9 @@ export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Arr
     const cached = await cacheOriginal(bytes, type, 'original');
     const account = await fetcher('/api/auth/me').then(r => r.ok ? r.json() : null) as {email?:string}|null;
     if (!account?.email) throw new OriginalUploadError(401, 'UNAUTHORIZED', '请登录已验证的账号');
-    return await enqueueOriginalUpload({url:`/api/community/revisions/${revisionId}/original`,sha256:cached.sha256,email:account.email}) as unknown as UploadedOriginal;
+    return await enqueueOriginalUpload({url:uploadPath(scope, revisionId),sha256:cached.sha256,email:account.email}) as unknown as UploadedOriginal;
   }
-  const response = await fetcher(`/api/community/revisions/${revisionId}/original`, {
+  const response = await fetcher(uploadPath(scope, revisionId), {
     method: 'PUT',
     headers: { 'content-type': 'application/octet-stream' },
     body: new Uint8Array(bytes),

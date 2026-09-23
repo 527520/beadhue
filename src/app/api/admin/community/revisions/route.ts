@@ -3,9 +3,11 @@ import { requireApiActor } from '@/lib/auth/dal';
 import { okJson, withApiErrors } from '@/lib/auth/http';
 import { listCommunityReviewQueue } from '@/lib/community/queries';
 
-async function get() {
+async function get(request: Request) {
   await requireApiActor('community:moderate');
-  return okJson({ items: await listCommunityReviewQueue(getDb()) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const search = new URL(request.url).searchParams;
+  const input = Object.fromEntries(['page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  return okJson(await listCommunityReviewQueue(getDb(), input), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export const GET = withApiErrors(get);

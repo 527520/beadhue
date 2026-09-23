@@ -3,7 +3,11 @@
  * - 开发/E2E 无 DATABASE_URL 时初始化进程内 PGlite 数据库（免装 Postgres）。
  * - 生产：APP_URL 必须是 https 地址（验证/重置邮件链接与 Origin 校验依赖它），
  *   缺失或非 https 时 fail-fast，避免发出指向 localhost 的邮件链接。
+ * - 运行日志（用户第 15 条）：onRequestError 捕获渲染/路由/Server Action 的未处理异常；
+ *   每日清理顺带删除过期的 system_logs 与 slow_queries。
  */
+import type { Instrumentation } from 'next';
+
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     if (process.env.NODE_ENV === 'production') {
@@ -48,6 +52,16 @@ export async function register(): Promise<void> {
         } catch (error) {
           console.error('[cleanup] 原图清理失败（不阻塞应用）:', error);
         }
+        try {
+          // 运行日志保留期（用户第 15 条）：system_logs 默认 30 天、slow_queries 默认 14 天。
+          const { cleanupObservabilityLogs } = await import('@/lib/observability/retention');
+          const logs = await cleanupObservabilityLogs(getDb(), new Date());
+          if (logs.systemLogs + logs.slowQueries > 0) {
+            console.log(`[cleanup] 运行日志清理 system_logs=${logs.systemLogs} slow_queries=${logs.slowQueries}`);
+          }
+        } catch (error) {
+          console.error('[cleanup] 运行日志清理失败（不阻塞应用）:', error);
+        }
       };
       void runCleanup();
       setInterval(() => void runCleanup(), 24 * 60 * 60 * 1000);
@@ -61,3 +75,40 @@ export async function register(): Promise<void> {
     }
   }
 }
+
+/**
+ * 把「哪个账号、哪个 IP、什么操作、什么错误」写进运行日志（用户第 15 条）。
+ *
+ * 覆盖 API 之外的服务端路径：RSC 渲染（render）、Route Handler（route）、
+ * Server Action（action）。API 路由的未知异常由 `withApiErrors` 负责，两条路径
+ * 不会重复落库（前者异常已被捕获，不会冒到这里）。
+ * 仅 Node 运行时执行：Edge 运行时没有数据库客户端。
+ */
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  // 错误钩子里不能假设应用模块已加载：动态导入，避免影响启动期。
+  const [{ writeSystemLogBestEffort }, { maskIp }] = await Promise.all([
+    import('@/lib/observability/log'),
+    import('@/lib/observability/context'),
+  ]);
+  const incomingId = request.headers['x-request-id'];
+  const headerId = Array.isArray(incomingId) ? incomingId[0] : incomingId;
+  const realIp = request.headers['x-real-ip'];
+  const forwarded = request.headers['x-forwarded-for'];
+  const rawIp = (Array.isArray(realIp) ? realIp[0] : realIp) ?? (Array.isArray(forwarded) ? forwarded[0] : forwarded) ?? 'local';
+  const digest = typeof error === 'object' && error !== null && 'digest' in error ? String((error as { digest?: unknown }).digest) : null;
+  await writeSystemLogBestEffort({
+    level: 'error',
+    source: context.routeType,
+    event: `${context.routeType}.unhandled`,
+    requestId: typeof headerId === 'string' && headerId ? headerId.slice(0, 64) : crypto.randomUUID(),
+    ipMasked: maskIp(rawIp.split(',')[0]),
+    method: request.method,
+    path: request.path.split('?')[0],
+    route: context.routePath,
+    errorCode: digest,
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : null,
+    context: { routerKind: context.routerKind, renderSource: context.renderSource, digest },
+  });
+};

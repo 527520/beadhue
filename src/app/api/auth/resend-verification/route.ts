@@ -9,6 +9,7 @@ import { reserveMailSendLimits } from '@/lib/auth/mailLimits';
 import { buildVerifyLink, isDevMailMode, isMailCircuitOpen, sendMail } from '@/lib/auth/mailer';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { apiError, noContent, readJson, withApiErrors } from '@/lib/auth/http';
+import { recordSecurityEvent } from '@/lib/observability/log';
 import { zhCN } from '@/messages/zh-CN';
 import { lockActiveAccount } from '@/lib/auth/writeAccess';
 
@@ -90,6 +91,8 @@ async function post(request: Request) {
         // 发送失败：保持 204（防枚举——首个失败请求不泄露账号状态；熔断器已打开，
         // 后续请求统一 503），操作者可从日志排查。
         console.error('[mail] resend send failed');
+        // 运行日志（用户第 15 条）：保留 stdout，同时挂到当前请求的 requestId 上备查。
+        await recordSecurityEvent(db, { event: 'mail.resend_send_failed', level: 'error', message: '重发验证邮件失败' });
         return noContent();
       }
     } else if (!isDevMailMode()) {

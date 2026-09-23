@@ -4,6 +4,7 @@ import { okJson, withApiErrors } from '@/lib/auth/http';
 import { AppError } from '@/lib/errors';
 import { getPublicCommunityWork } from '@/lib/community/queries';
 import { getSessionActor } from '@/lib/auth/session';
+import { enforceAccountReadQuota } from '@/lib/security/accountReadQuota';
 import { enforcePublicReadLimit } from '@/lib/security/publicRateLimit';
 
 /** 匿名访客拿不到完整图纸 JSON（ADR-0021）；登录后响应因人而异，不进共享缓存。 */
@@ -12,6 +13,10 @@ async function get(request: Request, { params }: { params: Promise<{ id: string 
   if (!id.success) throw new AppError('NOT_FOUND', '作品不存在');
   await enforcePublicReadLimit(getDb(), request, 'work');
   const actor = await getSessionActor();
+  // 详情是「图纸快照」的主要出口：登录后按账号计总量 + 每小时不同作品数（新账号更紧）。
+  if (actor) {
+    await enforceAccountReadQuota(getDb(), { userId: actor.userId, accountCreatedAt: actor.accountCreatedAt, workIds: [id.data] });
+  }
   const work = await getPublicCommunityWork(getDb(), id.data, { includeSnapshot: Boolean(actor) });
   if (!work) throw new AppError('NOT_FOUND', '作品不存在');
   return okJson(work, { headers: { 'Cache-Control': actor ? 'private, no-store' : 'public, s-maxage=60, stale-while-revalidate=300', Vary: 'Cookie' } });

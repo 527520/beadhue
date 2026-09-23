@@ -14,7 +14,7 @@ GitHub 已从 `527520/doupu` 更名为 `527520/beadhue`，历史保留。本地�
 
 1. 在独立环境完成类型、Lint、单元/数据库集成、三浏览器流程及生产构建。真实 PostgreSQL 升级演练与真实 COS 授权/大小/读写验证须另列结果。
 2. 做数据库备份并用现有恢复脚本演练，记录备份对象位置、镜像 digest、Compose 项目与命名卷。新备份文件名使用 beadhue 前缀，恢复脚本接受旧文件名。
-3. 若原 `BACKUP_DESTINATION` 使用旧 rclone remote，更新为 `beadhuecos:<原桶>/<原备份前缀>`；只改客户端 remote 名称，保留桶和已有路径。新版 Compose 的 `RCLONE_CONFIG_BEADHUECOS_*` 从相同 COS 配置取得凭证，不迁移对象。
+3. 若原 `BACKUP_DESTINATION` 使用旧 rclone remote，更新为 `beadhuecos:<原桶>/<原备份前缀>`；只改客户端 remote 名称，保留桶和已有路径。新版 Compose 的 `RCLONE_CONFIG_BEADHUECOS_*` 改从备份专用的 `BACKUP_COS_SECRET_ID` / `BACKUP_COS_SECRET_KEY` 取得凭证（R14，D62；须先在服务器 `.env` 补齐），不迁移对象。
 4. 检查新 GHCR 包的读权限及发布工作流，确认已发布新镜像后再更新 `APP_IMAGE`。现有旧稳定镜像仍可通过部署脚本的格式验证，便于备份恢复演练；这不代表旧协议可直接回滚。
 5. 配置原图独立容量 `ORIGINAL_QUOTA_BYTES=2147483648`；上传限制为 `RATE_ORIGINAL_USER_MINUTE=10`、`RATE_ORIGINAL_USER_HOUR=60`、`RATE_ORIGINAL_IP_MINUTE=30`、`RATE_ORIGINAL_IP_HOUR=180`。公网 IP 来源沿用可信代理配置，不能信任任意客户端转发头。
 

@@ -1,0 +1,118 @@
+# Dependabot 版本更新（本票 11）：只做「有 PR、可回滚」的例行升级，
+# 不做自动合并 —— 依赖升级仍要走 CI（lint/typecheck/coverage/integration/performance/E2E）。
+#
+# 与仓库现有依赖风格的关系（不修改 package.json）：
+# - next / eslint-config-next / react / react-dom / tailwindcss 等当前以精确或 caret 版本
+#   锁定（如 "next": "16.3.4"），Dependabot 只会在同时满足 package.json 与该文件的
+#   约束下提 PR；是否接受升级仍由人工决定，锁死版本这一风格不被改动。
+# - 安全更新（security updates）由 GitHub 独立发起，不受本文件的分组与 schedule 限制。
+version: 2
+updates:
+  # ---- npm（唯一一处 package.json 在仓库根）----
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    commit-message:
+      # 便于在 CHANGELOG / git log 里一眼分辨依赖升级
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+    # 分组：把同类依赖合并成少数几个 PR，避免每周十几个单包 PR。
+    # 组按声明顺序匹配，第一个命中即归属，因此精确的组要写在通配组前面。
+    groups:
+      # React 19 / Next 16 生态：next 与 eslint-config-next 必须同版本，放同一组
+      # 才不会出现「next 升了、配套 eslint 配置没升」的半升级状态。
+      next-react:
+        patterns:
+          - "next"
+          - "eslint-config-next"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "react-aria-components"
+          - "@internationalized/date"
+      # 测试与覆盖率工具链：版本互相咬合（vitest ↔ coverage ↔ jsdom ↔ testing-library）
+      testing:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/*"
+          - "@testing-library/*"
+          - "jsdom"
+          - "@axe-core/playwright"
+          - "axe-core"
+          - "@vitejs/plugin-react"
+          - "@electric-sql/pglite"
+      # 构建与类型：@types/node 跟随容器内的 node 20 运行时，单独一组便于人工把关
+      toolchain:
+        patterns:
+          - "typescript"
+          - "esbuild"
+          - "eslint"
+          - "drizzle-kit"
+          - "@types/node"
+      # 其余依赖（pg / drizzle-orm / zod / argon2 / pdf-lib 等）默认合并到这一组
+      runtime-and-others:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "next"
+          - "eslint-config-next"
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+          - "react-aria-components"
+          - "@internationalized/date"
+          - "vitest"
+          - "@vitest/*"
+          - "@playwright/*"
+          - "@testing-library/*"
+          - "jsdom"
+          - "@axe-core/playwright"
+          - "axe-core"
+          - "@vitejs/plugin-react"
+          - "@electric-sql/pglite"
+          - "typescript"
+          - "esbuild"
+          - "eslint"
+          - "drizzle-kit"
+          - "@types/node"
+        # 大版本升级常常牵动本仓库的协议/API（如 zod 4、nodemailer 9），
+        # 单独成组而不是混进小版本里，评审时一眼能看出「这是大版本」。
+        update-types:
+          - "major"
+      # 小版本与补丁统一一个 PR，最快也能一周内全量跟进
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ---- GitHub Actions（workflow 里用到的 action 版本）----
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      # 所有 action 合成一个 PR：本仓库 workflow 改动必然涉及 CI 门禁，
+      # 一次评审比逐个 PR 更安全（且 action 升级本身极少互相冲突）。
+      github-actions:
+        patterns:
+          - "*"

@@ -76,6 +76,7 @@ export async function resolveSession(
       verified: users.emailVerifiedAt,
       role: users.role,
       accountStatus: users.accountStatus,
+      createdAt: users.createdAt,
       expiresAt: sessions.expiresAt,
       absoluteExpiresAt: sessions.absoluteExpiresAt,
     })
@@ -96,6 +97,7 @@ export async function resolveSession(
     role: rows[0].role as UserRole,
     accountStatus: rows[0].accountStatus as AccountStatus,
     emailVerified: rows[0].verified !== null,
+    accountCreatedAt: rows[0].createdAt,
     token,
     renewedExpiresAt,
   };
@@ -143,6 +145,7 @@ export async function getSessionActor(opts: { requireVerified?: boolean; renew?:
     role: result.role,
     accountStatus: result.accountStatus,
     emailVerified: result.emailVerified,
+    accountCreatedAt: result.accountCreatedAt,
   };
 }
 

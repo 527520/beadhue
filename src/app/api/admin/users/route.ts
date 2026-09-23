@@ -5,6 +5,8 @@ import { listGovernedUsers } from '@/lib/admin/queries';
 
 async function get(request: Request) {
   await requireApiActor('users:manage');
-  return okJson({ items: await listGovernedUsers(getDb(), new URL(request.url).searchParams.get('q') ?? undefined) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const search = new URL(request.url).searchParams;
+  const input = Object.fromEntries(['q', 'page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  return okJson(await listGovernedUsers(getDb(), input), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 export const GET = withApiErrors(get);

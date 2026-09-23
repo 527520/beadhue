@@ -7,8 +7,8 @@ import DateRangePicker from '@/components/ui/DateRangePicker';
 import Button from '@/components/ui/Button';
 import TextField from '@/components/ui/TextField';
 import AdminQueueState from './AdminQueueState';
-import { AdminEmpty, FilterBar, Pagination } from './AdminPrimitives';
-import { useAdminCollection } from './useAdminCollection';
+import { AdminEmpty, AdminPagination, FilterBar } from './AdminPrimitives';
+import { useAdminPage } from './useAdminPage';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
 
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'Asia/Shanghai' }).format(new Date(value));
@@ -36,28 +36,33 @@ export default function AuditExplorer() {
   const c = zhCN.communityAdmin.command;
   const [fields, setFields] = useState({ q: '', from: '', to: '' });
   const [filter, setFilter] = useState(fields);
-  const [cursors, setCursors] = useState(['']);
   const query = new URLSearchParams(filter);
-  if (cursors.at(-1)) query.set('cursor', cursors.at(-1)!);
-  const queue = useAdminCollection<AdminAuditEntry>(`/api/admin/audit?${query}`);
+  const queue = useAdminPage<AdminAuditEntry>(`/api/admin/audit?${query}`, 'audit');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = queue.items.find((item) => item.id === selectedId) ?? null;
   const { queueRef, detailRef } = useAdminTaskFocus(selected?.id ?? null);
-  const move = (next: string[]) => { setSelectedId(null); setCursors(next); };
+  const move = (next: number) => { setSelectedId(null); queue.setPage(next); };
   const stateView = (state: AdminAuditEntry['beforeState']) => state && Object.keys(state).length > 0
     ? <dl className="admin-evidence-list">{Object.entries(state).map(([key, value]) => <div key={key}><dt>{stateKeyLabel(key)}</dt><dd>{stateValueLabel(key, value)}</dd></div>)}</dl>
     : <p className="admin-help">{t.noState}</p>;
   return <div className={`admin-task-layout${selected ? ' is-inspecting' : ''}`}>
     <section className="admin-panel admin-task-queue" ref={queueRef} tabIndex={-1} aria-label={t.queue}>
-      <header><h2>{t.queue}</h2><span>{zhCN.communityAdmin.works.page(cursors.length)}</span></header>
+      <header><h2>{t.queue}</h2><span>{zhCN.communityAdmin.pagination.totalCount(queue.total)}</span></header>
       {/* 搜索与查询同一行、底边对齐；日期区间独占下一整行——队列栏只有 370px 上下，三者塞不进一行。 */}
-      <FilterBar submitLabel={t.query} disabled={queue.loading || Boolean(fields.from && fields.to && fields.from > fields.to)} onSubmit={(event) => { event.preventDefault(); move(['']); setFilter({ ...fields }); if (JSON.stringify(fields) === JSON.stringify(filter) && cursors.length === 1) void queue.reload(); }}>
+      <FilterBar submitLabel={t.query} disabled={queue.loading || Boolean(fields.from && fields.to && fields.from > fields.to)} onSubmit={(event) => {
+        event.preventDefault(); setSelectedId(null);
+        const unchanged = JSON.stringify(fields) === JSON.stringify(filter);
+        setFilter({ ...fields });
+        // 条件没变时 setFilter 不会触发重新读取（URL 相同），显式刷新一次。
+        if (unchanged && queue.page === 1) void queue.reload(); else queue.setPage(1);
+      }}>
         <TextField label={t.search} value={fields.q} maxLength={120} onChange={(event) => setFields({ ...fields, q: event.target.value })} />
         <DateRangePicker label={t.range} startLabel={t.from} endLabel={t.to} value={{ start: fields.from, end: fields.to }} onValueChange={({ start, end }) => setFields({ ...fields, from: start, to: end })} className="form-row-wide" />
       </FilterBar>
       <p className="admin-help admin-queue-help">{t.queryHelp}</p>
       <AdminQueueState {...queue} empty={queue.items.length === 0}><ul className="admin-object-list stagger">{queue.items.map((item, index) => <li key={item.id} style={{ '--i': index } as CSSProperties}><button type="button" aria-current={selectedId === item.id} onClick={() => setSelectedId(item.id)}><strong>{actionLabel(item.action)}</strong><span>{formatDate(item.createdAt)} · {zhCN.communityAdmin.states.role[item.actorRole]} · {targetLabel(item.targetType)}</span><small className="mono-id">{item.targetId}</small></button></li>)}</ul></AdminQueueState>
-      <Pagination page={cursors.length} hasPrevious={cursors.length > 1} hasNext={Boolean(queue.nextCursor)} disabled={queue.loading} onPrevious={() => move(cursors.slice(0, -1))} onNext={() => move([...cursors, queue.nextCursor!])} />
+      <AdminPagination page={queue.page} totalPages={queue.totalPages} size={queue.size} total={queue.total}
+        onPage={move} onSize={(next) => { setSelectedId(null); queue.setSize(next); }} disabled={queue.loading} />
     </section>
     <section className="admin-panel admin-task-detail" ref={detailRef} tabIndex={-1} aria-label={t.detail}>
       <header><h2>{t.detail}</h2></header>
