@@ -7,7 +7,7 @@
 1. [spec.md](spec.md)：目标、不变量、决策 D64–D72、路由、接口、门禁。
 2. [design.md](design.md)：令牌、组件规范、逐屏设计。
 3. 你这张票对应的原型：`prototype/js/screens/*.js`、`prototype/styles/screens/*.css`，以及共享的 `prototype/styles/{tokens,base,components,layout}.css`、`prototype/js/{ui,beads,data}.js`。**原型是验收基准**：结构、层级、文案、间距、状态、响应式行为都照它实现。原型里的模拟数据换成真实接口。
-4. 验收截图：`evidence/prototype-final/*.png`（桌面 1440 与手机 390），更多状态在 `evidence/prototype/`。
+4. 验收截图：`evidence/prototype-final/*.png`（桌面 1440 与手机 390）。更多状态（弹层、菜单、抽屉、未登录等）用 `tools/shoot-prototype.mjs`、`shoot-states.mjs`、`shoot-detail.mjs`、`shoot-create-editor.mjs`、`shoot-me.mjs` 从原型重新生成到 `evidence/prototype/`（该目录不入库）。
 5. `CONTEXT.md` 与 `docs/adr/`（业务合同），`AGENTS.md`。
 
 ## 查看原型
