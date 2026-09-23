@@ -57,7 +57,20 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **CSP**：Base UI 的运行时样式已由根布局的 CSPProvider 关闭并由 `theme.css` 静态提供；新增 Base UI 组件时确认不插入 `<style>` / `<script>`（Tabs.Indicator、Slider.Thumb 不要开 `renderBeforeHydration`）。
 - **接口**：票 02 的全部新接口与变更接口的请求 / 响应示例在 `issues/02-backend-apis.md` 的 Comments；缩略图地址带 `?v=2`；详情 `colorUsage` 未登录为 null；列表登录时每项带 `liked`。
 - **E2E 基线**：合入 01、02 后 Chromium 上有 6 条 E2E 在基线就失败（旧工作台选择器与 `/app` 的 axe 问题），重做对应页面的票负责修复；不要把它们当成你的回归，也不要跳过。
-- **并行**：部分票会在隔离工作树里并行。E2E 端口用环境变量 `E2E_PORT`（票 03 起支持，默认 3100），开发服务端口自选（3101+），避免和别的代理冲突。
+- **并行**：部分票会在隔离工作树里并行。E2E 端口用环境变量 `E2E_PORT`（票 03 起支持，默认 3100），开发服务端口自选（3101+），避免和别的代理冲突。隔离工作树的 `node_modules` 不能是指向工作树外的软链（Turbopack 拒绝），用 `cp -cR`（APFS 克隆，十几秒）。
+
+## 后续票须知（票 03 完成后补充）
+
+- **外壳**：页面自己渲染 `<SiteShell nav=… topbarCta=… tabbar=… footer=… mobileTop=…>`（`src/components/shell/site-shell.tsx`，约定同原型 screen 的 nav / tabbar / topbarCta / mobileTop）。它渲染唯一的 `<main id="main">`，页面内不要再写 `<main>`；外壳各部分自带 `data-ui`，页面的新界面根自己加 `data-ui`。手机自定义顶栏用 `MobileTopBack` / `MobileTopTitle` / `MobileTopSpacer`；工作台类页面用 `onNavigate(href)` 拦截外壳里的跳转。
+- **旧内容**：尚未重做的页面把旧内容包在 `LegacyScope`（`src/components/layout/`）里，旧标题行用 `LegacyPageHeading`；重做页面时去掉这两层。旧页面主体已移到 `DesignsView`、`CommunityMineView`、`AccountSettingsView`、`PalettesView`，`/me/*` 与 `/palettes` 只是薄壳。
+- **登录**：需要登录的操作用 `useRequireLogin()(action)`（登录弹窗成功后继续原操作）；只要一个入口按钮用 `useLoginDialog()?.open({ onSuccess })`；旧式「登录后继续」链接用 `LoginLink`。登录态 `useAuthStatus()` 带 `role`、`publicAuthorId`；单测里连续渲染要 `resetAuthStatusCache()`。
+- **提示**：`useToast()` 全站可用（根布局 ToastProvider），无 Provider 时静默；不要再自己包 ToastProvider。
+- **搜索**：`SiteShell` 的 `query` 回填顶栏搜索框（发现页传 `q`）；`searchExtras` 放进手机全屏搜索页（票 04 的「按类目看看」）。建议数据 `useSearchSuggest`，最近搜索 `rememberSearch` / `useRecentSearches`。
+- **新目录登记**：护栏目录清单移到 `tests/unit/uiScanned.ts`（uiGuardrails 与 designSystem 共用），同时登记 `src/app/theme.css` 的 `@source`。已登记：components/{ui,shell,auth,works}、app/{me,u,login,register,forgot-password,reset-password,verify-email,dev}。
+- **服务端组件**：`buttonVariants()` 等 cva 函数在 `'use client'` 文件里，服务端组件不能调用，要么放进客户端小组件，要么渲染组件本身。
+- **路由**：旧路由重定向表在 `src/lib/routes/legacyRedirects.ts`；登录默认回跳 `/me`，允许回到 `/`；E2E 登录后的地址按新路由写。
+- **统计同意**：浮卡文案「不同意」「同意统计」，地标名「匿名使用统计」；E2E 关闭它用 `getByRole('button', { name: '不同意', exact: true })`。
+- **截图**：`tools/shoot-shell.mjs proto|impl [状态…]`（实现侧 `IMPL_BASE`、登录态由 `shoot-shell-login.mjs` 生成）可作为各票截图脚本的起点。
 
 ## 提交
 
