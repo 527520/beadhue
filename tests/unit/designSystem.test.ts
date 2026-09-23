@@ -42,7 +42,10 @@ describe('设计系统一致性', () => {
 
   it('圆角只用 full / 2xl / xl / lg 四档（色块 sm 与裁剪画布 none 为记录在案的例外）', () => {
     const exceptions = /rounded-sm|rounded-none/;
+    // R15 新组件与新页面用新的五档圆角（theme.css：sm 8 / md 12 / lg 16 / xl 24 / full），由 uiGuardrails.test.ts 约束。
+    const r15 = [join('src', 'components', 'ui') + '/', join('src', 'app', 'dev') + '/'];
     const bad = offenders(/\brounded(?:-(?:md|3xl))?(?=["'\s])/g)
+      .filter((entry) => !r15.some((dir) => entry.startsWith(dir)))
       .filter((entry) => !exceptions.test(entry));
     expect(bad).toEqual([]);
   });
@@ -86,7 +89,8 @@ describe('设计系统一致性', () => {
 
   it('文案不在组件里硬编码中文（统一从 zh-CN.ts 引用）', () => {
     const bad: string[] = [];
-    for (const file of sourceFiles) {
+    // /dev/ui 组件总览的演示文案只在开发环境渲染；不进 zh-CN.ts，免得增大每个页面的首屏 JS。
+    for (const file of sourceFiles.filter((path) => !path.startsWith(join('src', 'app', 'dev') + '/'))) {
       // 注释按约定是中文的，先剥掉再检查字符串字面量。
       const source = readFileSync(file, 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
