@@ -19,6 +19,7 @@ import {
   palettes,
   officialBatches,
   moderationRuleSetVersions,
+  notifications,
   rateLimits,
   sessions,
   users,
@@ -131,6 +132,8 @@ export async function anonymizeAccount(
     await tx.delete(designs).where(eq(designs.userId, account.id));
     await tx.update(originalAssets).set({deletedAt:now}).where(eq(originalAssets.userId,account.id));
     await tx.delete(palettes).where(eq(palettes.userId, account.id));
+    // 站内通知属于私人数据（D70），注销即删除。
+    await tx.delete(notifications).where(eq(notifications.userId, account.id));
 
     // Audit facts remain append-only, but the retired account must no longer be
     // recoverable from actor/target identifiers or account-state snapshots.

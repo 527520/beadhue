@@ -331,6 +331,8 @@ export const communityRevisions = pgTable(
     colorCount: integer('color_count').notNull(),
     snapshot: jsonb('snapshot').notNull(),
     preview: jsonb('preview').notNull(),
+    /** 作者投稿时给的建议标签（D68）：不是正式标签，审核员可一键采纳进作品标签。 */
+    suggestedTags: text('suggested_tags').array().notNull().default(sql`'{}'::text[]`),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     reviewedByUserId: uuid('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -356,6 +358,10 @@ export const communityTags = pgTable(
     name: text('name').notNull(),
     slug: text('slug').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
+    /** 类目条图标：内置图标键或 8–16 格像素图标的紧凑编码，格式见 src/lib/community/tagIcon.ts。 */
+    icon: text('icon'),
+    /** 是否进入发现页的类目条。 */
+    featured: boolean('featured').notNull().default(false),
     active: boolean('active').notNull().default(true),
     mergedIntoTagId: uuid('merged_into_tag_id'),
     version: integer('version').notNull().default(1),
@@ -732,8 +738,30 @@ export const slowQueries = pgTable(
   ],
 );
 
+/**
+ * 站内通知（D70）：投稿通过 / 驳回、作品下架 / 恢复、作品收到公开评论。
+ * payload 只放跳转与展示所需的公开事实（作品编号、标题、评论编号、驳回理由），不存评论正文；
+ * 保留 90 天，由每日清理任务删除。
+ */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('notifications_user_created_idx').on(table.userId, table.createdAt.desc(), table.id.desc()),
+    index('notifications_user_unread_idx').on(table.userId).where(sql`${table.readAt} is null`),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
 export type SystemLog = typeof systemLogs.$inferSelect;
 export type SlowQuery = typeof slowQueries.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

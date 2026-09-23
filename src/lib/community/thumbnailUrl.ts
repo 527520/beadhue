@@ -1,6 +1,14 @@
-/** 缩略图地址（浏览器与服务端共用，不依赖数据库模块）。 */
+import { THUMBNAIL_RENDER_VERSION } from '@/lib/render/thumbnailSize';
+
+/** 缩略图地址（浏览器与服务端共用，不依赖数据库模块）；`v` 是渲染版本，改样式即换地址。 */
+function thumbnailQuery(size: 'default' | 'large', extra: Record<string, string> = {}): string {
+  const query = new URLSearchParams({ ...extra, v: String(THUMBNAIL_RENDER_VERSION) });
+  if (size === 'large') query.set('size', 'large');
+  return query.toString();
+}
+
 export function communityThumbnailUrl(revisionId: string, size: 'default' | 'large' = 'default'): string {
-  return `/api/community/revisions/${revisionId}/thumbnail${size === 'large' ? '?size=large' : ''}`;
+  return `/api/community/revisions/${revisionId}/thumbnail?${thumbnailQuery(size)}`;
 }
 
 /**
@@ -9,10 +17,15 @@ export function communityThumbnailUrl(revisionId: string, size: 'default' | 'lar
  * 于是官方批次会被豆社公开接口限流。管理端路径按管理员会话独立计量，公开阈值不受影响。
  */
 export function adminThumbnailUrl(revisionId: string, size: 'default' | 'large' = 'default'): string {
-  return `/api/admin/community/revisions/${revisionId}/thumbnail${size === 'large' ? '?size=large' : ''}`;
+  return `/api/admin/community/revisions/${revisionId}/thumbnail?${thumbnailQuery(size)}`;
 }
 
 /** 按调用方作用域选择地址；后台组件统一传 scope="admin"。 */
 export function thumbnailUrlFor(scope: 'public' | 'admin', revisionId: string): string {
   return scope === 'admin' ? adminThumbnailUrl(revisionId) : communityThumbnailUrl(revisionId);
+}
+
+/** 私人设计缩略图（仅本人可读）：修订号进地址，设计一改地址就变，旧图按修订长期缓存。 */
+export function designThumbnailUrl(designId: string, revision: number): string {
+  return `/api/designs/${designId}/thumbnail?${thumbnailQuery('default', { rev: String(revision) })}`;
 }

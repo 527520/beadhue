@@ -11,8 +11,11 @@ const schema = z.object({
   name: z.string().optional(),
   slug: z.string().optional(),
   sortOrder: z.number().int().optional(),
+  icon: z.string().max(400).nullable().optional(),
+  featured: z.boolean().optional(),
   active: z.boolean().optional(),
-  reason: z.string(),
+  // 只调图标 / 排序 / 精选可不填理由；改名、改标识、启停仍必填（服务层校验）。
+  reason: z.string().optional(),
 }).strict();
 
 async function patch(request: Request, { params }: { params: Promise<{ id: string }> }) {

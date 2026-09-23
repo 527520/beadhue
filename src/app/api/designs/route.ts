@@ -11,6 +11,7 @@ import { apiError, okJson, withApiErrors } from '@/lib/auth/http';
 import { AppError } from '@/lib/errors';
 import type { ProjectFile } from '@/lib/types';
 import { decodeDesignCursor, DESIGN_PAGE_SIZE, encodeDesignCursor } from '@/lib/sync/revision';
+import { designThumbnailUrl } from '@/lib/community/thumbnailUrl';
 
 function toProject(value: unknown): ProjectFile | null {
   return value && typeof value === 'object' ? (value as ProjectFile) : null;
@@ -47,6 +48,8 @@ async function get(request: Request = new Request('http://localhost/api/designs'
         updatedAt: row.updatedAt.toISOString(),
         deleted: row.deletedAt !== null,
         revision: row.revision,
+        // 豆粒缩略图（D67）：地址带修订号，墓碑与没有图纸的记录为 null。
+        thumbnailUrl: row.deletedAt === null && project?.pattern ? designThumbnailUrl(row.id, row.revision) : null,
       };
     });
   const last = items.at(-1);

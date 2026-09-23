@@ -13,7 +13,7 @@ import { AppError } from '@/lib/errors';
 
 export { retryAfterSeconds };
 
-export type PublicReadRoute = 'works' | 'work' | 'comments' | 'thumbnail';
+export type PublicReadRoute = 'works' | 'work' | 'comments' | 'thumbnail' | 'related' | 'author';
 
 export function publicReadKey(route: PublicReadRoute, ip: string): string {
   return `public:${route}:${ip}`;

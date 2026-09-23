@@ -42,7 +42,8 @@ const eventSchemas = [
   z.object({ name: z.literal('login_succeeded'), properties: empty }).strict(),
   z.object({ name: z.literal('logout_succeeded'), properties: empty }).strict(),
   z.object({ name: z.literal('community_list_viewed'), properties: z.object({
-    sort: z.enum(['latest', 'featured', 'popular']),
+    // R15 发现页排序（rec / new / likes / reuses）与旧豆社页排序并存。
+    sort: z.enum(['rec', 'new', 'likes', 'reuses', 'latest', 'featured', 'popular']),
   }).strict() }).strict(),
   z.object({ name: z.literal('community_detail_viewed'), properties: empty }).strict(),
   z.object({ name: z.literal('community_submission_created'), properties: empty }).strict(),

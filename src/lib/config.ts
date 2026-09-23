@@ -135,8 +135,23 @@ export interface SiteConfig extends PublicConfig {
     configRateLimit: number;
     /** PUT /api/analytics/consent 每 IP 每小时上限 */
     consentRateLimit: number;
+    /** 私人设计缩略图每账号每小时上限（含 304） */
+    designThumbnailRateLimit: number;
+    /** 搜索建议每 IP 每小时上限（输入时防抖请求） */
+    searchSuggestRateLimit: number;
+    /** 「我的」只读接口（统计 / 通知 / 未读数）每账号每小时上限 */
+    meReadRateLimit: number;
+    /** 「我的」写接口（通知已读）每账号每小时上限 */
+    meWriteRateLimit: number;
+    /** 豆社列表总数的进程内缓存秒数（0 关闭） */
+    communityCountCacheSeconds: number;
     sessionTtlSeconds: number;
     maxBodyBytes: number;
+  };
+  /** 站内通知（D70）。 */
+  notifications: {
+    /** 通知保留天数，超过由每日清理删除 */
+    retentionDays: number;
   };
   /** 生产连接池韧性：任一项为 0 表示不设该超时（不推荐）。 */
   database: {
@@ -235,8 +250,21 @@ const DEFAULTS: SiteConfig = {
     configRateLimit: 1200,
     // 同意 / 撤回是低频操作，且必须始终可用：额度按「一小时内反复切换」给足。
     consentRateLimit: 60,
+    // 「我的设计」一页 50 张卡片，缩略图按修订长期缓存：3000 次/时够反复翻页与改图。
+    designThumbnailRateLimit: 3000,
+    // 输入防抖后约每秒 1 次：1800 次/时 ≈ 半小时连续输入。
+    searchSuggestRateLimit: 1800,
+    // 通知未读数随页面聚焦与导航刷新，额度按「每分钟 30 次」给足。
+    meReadRateLimit: 1800,
+    meWriteRateLimit: 600,
+    // 同一组筛选的总数 60 秒内复用：翻页与刷新不再每次都 count(*)。
+    communityCountCacheSeconds: 60,
     sessionTtlSeconds: 30 * 24 * 60 * 60,
     maxBodyBytes: 64 * 1024,
+  },
+  notifications: {
+    // D70：站内通知保留 90 天。
+    retentionDays: 90,
   },
   database: {
     poolMax: 10,
@@ -349,8 +377,16 @@ function compute(): SiteConfig {
       tagsRateLimit: readInt('RATE_TAGS_IP_HOUR', DEFAULTS.security.tagsRateLimit, 1),
       configRateLimit: readInt('RATE_CONFIG_IP_HOUR', DEFAULTS.security.configRateLimit, 1),
       consentRateLimit: readInt('RATE_CONSENT_IP_HOUR', DEFAULTS.security.consentRateLimit, 1),
+      designThumbnailRateLimit: readInt('RATE_DESIGN_THUMBNAIL_USER_HOUR', DEFAULTS.security.designThumbnailRateLimit, 1),
+      searchSuggestRateLimit: readInt('RATE_SEARCH_SUGGEST_IP_HOUR', DEFAULTS.security.searchSuggestRateLimit, 1),
+      meReadRateLimit: readInt('RATE_ME_READ_USER_HOUR', DEFAULTS.security.meReadRateLimit, 1),
+      meWriteRateLimit: readInt('RATE_ME_WRITE_USER_HOUR', DEFAULTS.security.meWriteRateLimit, 1),
+      communityCountCacheSeconds: readInt('COMMUNITY_COUNT_CACHE_SECONDS', DEFAULTS.security.communityCountCacheSeconds, 0, 3600),
       sessionTtlSeconds: readInt('SESSION_TTL_SECONDS', DEFAULTS.security.sessionTtlSeconds, 60),
       maxBodyBytes: readInt('MAX_BODY_BYTES', DEFAULTS.security.maxBodyBytes, 1024),
+    },
+    notifications: {
+      retentionDays: readInt('NOTIFICATION_RETENTION_DAYS', DEFAULTS.notifications.retentionDays, 1, 3650),
     },
     database: {
       poolMax: readInt('DB_POOL_MAX', DEFAULTS.database.poolMax, 1, 200),

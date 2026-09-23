@@ -62,6 +62,14 @@ export async function register(): Promise<void> {
         } catch (error) {
           console.error('[cleanup] 运行日志清理失败（不阻塞应用）:', error);
         }
+        try {
+          // 站内通知保留期（D70）：默认 90 天。
+          const { cleanupExpiredNotifications } = await import('@/lib/notifications/service');
+          const removed = await cleanupExpiredNotifications(getDb(), new Date());
+          if (removed > 0) console.log(`[cleanup] 站内通知清理 ${removed} 条`);
+        } catch (error) {
+          console.error('[cleanup] 站内通知清理失败（不阻塞应用）:', error);
+        }
       };
       void runCleanup();
       setInterval(() => void runCleanup(), 24 * 60 * 60 * 1000);

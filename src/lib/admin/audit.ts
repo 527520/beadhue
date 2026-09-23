@@ -22,6 +22,7 @@ const AUDIT_STATE_KEYS = new Set([
   'ruleCount',
   'active',
   'sortOrder',
+  'hasIcon',
   'decision',
   'count',
 ]);

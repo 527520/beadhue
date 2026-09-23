@@ -1,5 +1,12 @@
 /** 缩略图尺寸规则（纯函数，浏览器与服务端共用，服务端渲染与 <img> 的固有尺寸必须一致）。 */
 
+/**
+ * 服务端缩略图的渲染版本（D67 起为豆粒风格 = 2）。
+ * 缩略图响应是 `immutable` 长期缓存，改渲染样式时必须递增：它进入图片地址（`v=`）与进程缓存键，
+ * 旧地址的浏览器缓存随之自然失效，不必等一年过期。
+ */
+export const THUMBNAIL_RENDER_VERSION = 2;
+
 export const THUMBNAIL_TARGET_PX = 720;
 export const THUMBNAIL_MIN_CELL_PX = 2;
 export const THUMBNAIL_MAX_CELL_PX = 16;

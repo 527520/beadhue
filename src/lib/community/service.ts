@@ -20,6 +20,8 @@ import {
   snapshotColorCount,
   snapshotPaletteIdentity,
 } from './snapshot';
+import { notifyWorkAuthor } from '@/lib/notifications/service';
+import { normalizeSuggestedTags, SUGGESTED_TAG_LIMIT, SUGGESTED_TAG_MAX_LENGTH } from './tagNames';
 import { assertRevisionHasOriginal, inheritRevisionOriginal, markOriginalsDeleted, retireSupersededOriginal } from './originals';
 
 export const communityTitleSchema = z.string().trim().min(1).max(80);
@@ -38,6 +40,8 @@ interface CreateRevisionInput {
   expectedDesignRevision: number;
   title: string;
   licenseVersion: string;
+  /** 作者建议标签（D68）：随修订保存，不直接成为正式标签。 */
+  suggestedTags?: string[];
   now?: Date;
 }
 
@@ -67,6 +71,8 @@ async function revisionPayload(tx: AnyDatabase, input: CreateRevisionInput) {
   if (input.licenseVersion !== COMMUNITY_LICENSE_VERSION) {
     throw new AppError('VALIDATION', '请确认当前版本的豆社有限平台许可', 'licenseVersion');
   }
+  const suggestedTags = normalizeSuggestedTags(input.suggestedTags);
+  if (!suggestedTags) throw new AppError('VALIDATION', `建议标签最多 ${SUGGESTED_TAG_LIMIT} 个，每个 1–${SUGGESTED_TAG_MAX_LENGTH} 个字`, 'suggestedTags');
   const [design] = await tx.select({ project: designs.project, revision: designs.revision }).from(designs).where(and(
     eq(designs.id, input.designId),
     eq(designs.userId, input.actor.userId),
@@ -82,6 +88,7 @@ async function revisionPayload(tx: AnyDatabase, input: CreateRevisionInput) {
   const palette = snapshotPaletteIdentity(snapshot);
   return {
     title: title.data,
+    suggestedTags,
     snapshot,
     preview: deriveCommunityPreview(snapshot.pattern),
     identity,
@@ -118,6 +125,7 @@ export async function createCommunityWork(db: AnyDatabase, input: CreateRevision
       height: payload.snapshot.pattern.height,
       colorCount: snapshotColorCount(payload.snapshot),
       snapshot: payload.snapshot,
+      suggestedTags: payload.suggestedTags,
       preview: payload.preview,
       createdAt: now,
       updatedAt: now,
@@ -165,6 +173,7 @@ export async function createCommunityRevision(
       height: payload.snapshot.pattern.height,
       colorCount: snapshotColorCount(payload.snapshot),
       snapshot: payload.snapshot,
+      suggestedTags: payload.suggestedTags,
       preview: payload.preview,
       createdAt: now,
       updatedAt: now,
@@ -326,6 +335,12 @@ export async function reviewCommunityRevision(
       requestId: input.requestId,
       beforeState: sanitizeAuditState({ revisionStatus: revision.status, revision: revision.version }),
       afterState: sanitizeAuditState({ revisionStatus: updated.status, revision: updated.version }),
+    });
+    await notifyWorkAuthor(tx, {
+      work,
+      type: input.decision === 'published' ? 'revision_approved' : 'revision_rejected',
+      payload: { revisionId: revision.id, title: revision.title, ...(input.decision === 'rejected' ? { reason: reason.data } : {}) },
+      now,
     });
     return { ...updated, purgeKeys };
   });

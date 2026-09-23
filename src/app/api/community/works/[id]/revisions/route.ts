@@ -12,6 +12,7 @@ const bodySchema = z.object({
   expectedDesignRevision: z.number().int().positive(),
   title: z.string(),
   licenseVersion: z.string(),
+  suggestedTags: z.array(z.string().max(60)).max(20).optional(),
 }).strict();
 
 async function post(request: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -32,6 +32,7 @@ import { moderateComment, type CommentModerationDeps } from '@/lib/moderation/co
 import { E2E_MODERATION_DEPS, isE2eModerationEnabled } from '@/lib/moderation/e2eFake';
 import { parseCommunitySnapshot } from './snapshot';
 import { signCursor, verifyCursor } from '@/lib/security/cursor';
+import { notifyWorkCommented } from '@/lib/notifications/service';
 
 const commentBodySchema = z.string().trim().min(1).max(500);
 const reasonSchema = z.string().trim().min(3).max(500);
@@ -198,6 +199,7 @@ export async function createCommunityComment(db: AnyDatabase, input: {
     if (status === 'published') {
       await tx.update(communityWorks).set({ commentCount: sql`${communityWorks.commentCount} + 1`, updatedAt: now })
         .where(eq(communityWorks.id, work.id));
+      await notifyWorkCommented(tx, { workId: work.id, commentId: comment.id, commenterUserId: input.actor.userId, now });
     }
     return { kind: status === 'rejected' ? 'rejected' as const : 'ok' as const, comment };
   });
@@ -344,6 +346,8 @@ export async function moderateCommunityComment(db: AnyDatabase, input: {
     if (delta !== 0) await tx.update(communityWorks).set({
       commentCount: sql`greatest(0, ${communityWorks.commentCount} + ${delta})`, updatedAt: now,
     }).where(eq(communityWorks.id, comment.workId));
+    // 待审 / 被拦截的评论经人工复核首次公开：此刻才通知作品作者（D70）。
+    if (delta > 0) await notifyWorkCommented(tx, { workId: comment.workId, commentId: comment.id, commenterUserId: comment.authorUserId, now });
     await tx.insert(adminAuditLogs).values({
       actorUserId: input.actor.userId, actorRole: input.actor.role,
       action: `community.comment_${input.decision}`, targetType: 'community_comment', targetId: comment.id,
