@@ -5,7 +5,7 @@ import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
 import { getSessionActor } from '@/lib/auth/session';
 import { createCommunityWork } from '@/lib/community/service';
-import { listPublicCommunityWorks, parseCommunityListUrl } from '@/lib/community/queries';
+import { countPublicCommunityWorks, listPublicCommunityWorks, parseCommunityListUrl } from '@/lib/community/queries';
 import { executeIdempotently } from '@/lib/idempotency';
 import type { AnyDatabase } from '@/../db/client';
 import { enforceAccountRequestQuota, enforceAccountWorkQuota } from '@/lib/security/accountReadQuota';
@@ -25,12 +25,20 @@ async function get(request: Request) {
   if (actor) {
     await enforceAccountRequestQuota(getDb(), { userId: actor.userId, accountCreatedAt: actor.accountCreatedAt });
   }
-  const page = await listPublicCommunityWorks(getDb(), parseCommunityListUrl(request.url));
+  const query = parseCommunityListUrl(request.url);
+  const [page, total] = await Promise.all([
+    listPublicCommunityWorks(getDb(), query, { viewerUserId: actor?.userId }),
+    countPublicCommunityWorks(getDb(), query),
+  ]);
   if (actor) {
     enforceAccountWorkQuota({ userId: actor.userId, accountCreatedAt: actor.accountCreatedAt, workIds: page.items.map((item) => item.id) });
   }
-  return okJson(page, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  // 登录后每项带「我是否喜欢」，响应因人而异，不进共享缓存。
+  return okJson({ ...page, total }, {
+    headers: {
+      'Cache-Control': actor ? 'private, no-store' : 'public, s-maxage=60, stale-while-revalidate=300',
+      Vary: 'Cookie',
+    },
   });
 }
 
