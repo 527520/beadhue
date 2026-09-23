@@ -59,6 +59,36 @@ it('bulk-adds a tag to every checked work in the list', async () => {
   expect(writes).toHaveLength(1);
   expect(JSON.parse(String(writes[0][1]?.body))).toEqual({ workIds: ['work-one'], tags: ['海绵宝宝'] });
 });
+it('patches the work in place after saving tags instead of reloading the whole list', async () => {
+  render(<WorksManager />);
+  fireEvent.click(await screen.findByRole('button', { name: /红色小猫/ }));
+  await screen.findByText('完整作品材料');
+  const listCalls = () => vi.mocked(fetch).mock.calls.filter(([url]) => String(url).startsWith('/api/admin/community/works?')).length;
+  const before = listCalls();
+  const input = screen.getByRole('combobox');
+  fireEvent.change(input, { target: { value: '星星人' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ workId: 'work-one', version: 4, tags: [{ id: 'tag-star', name: '星星人' }] })));
+  fireEvent.click(screen.getByRole('button', { name: '保存标签' }));
+  await waitFor(() => expect(screen.getByText('操作已完成。')).toBeInTheDocument());
+  // 保存标签不再重拉列表：列表请求次数不变，详情也没有卸载成骨架（admin-round-3 04）。
+  expect(listCalls()).toBe(before);
+  expect(screen.getByText('完整作品材料')).toBeInTheDocument();
+  // 服务端返回的新版本号就地生效，第二次保存不必先刷新（此前会先 reload 才敢再写）。
+  fireEvent.change(input, { target: { value: '水豚' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ workId: 'work-one', version: 5, tags: [] })));
+  fireEvent.click(screen.getByRole('button', { name: '保存标签' }));
+  await waitFor(() => expect(vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(2));
+  const puts = vi.mocked(fetch).mock.calls.filter(([, init]) => init?.method === 'PUT');
+  expect(JSON.parse(String(puts[1][1]?.body)).expectedVersion).toBe(4);
+});
+it('renders the public status filter next to the work state filter', async () => {
+  // 交互与查询参数由路由测试（public=public|hidden）与新 e2e 覆盖；这里只护栏「控件没有被删掉」。
+  render(<WorksManager />);
+  await screen.findByRole('button', { name: /红色小猫/ });
+  expect(screen.getByText('公开状态')).toBeInTheDocument();
+});
 it('offers restore only when an approved revision exists', async () => {
   vi.mocked(fetch).mockImplementation(async (url) => new Response(JSON.stringify(String(url).endsWith('/work-one') ? { ...detail, lifecycleStatus: 'removed', isPublic: false, canRestore: false } : { items: [{ ...row, lifecycleStatus: 'removed' }], nextCursor: null })));
   render(<WorksManager />); fireEvent.click(await screen.findByRole('button', { name: /红色小猫/ }));

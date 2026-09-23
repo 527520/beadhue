@@ -5,6 +5,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNull,
   lt,
   or,
   sql,
@@ -21,6 +22,8 @@ import {
   users,
 } from '@/../db/schema';
 import { BOARD_PROFILE_IDS } from '@/lib/boardProfiles';
+import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { pushSpan } from '@/lib/observability/context';
 import { ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { AppError } from '@/lib/errors';
 import { communityPreviewSchema, parseCommunitySnapshot } from './snapshot';
@@ -40,6 +43,9 @@ const querySchema = z.object({
   cursor: z.string().max(500).optional(),
 }).strict();
 export type CommunityListQuery = z.infer<typeof querySchema>;
+
+/** 后台审核队列分页参数（admin-round-3 06）。 */
+export const reviewQueueQuerySchema = z.object({ ...pageQueryFields }).strict();
 
 const cursorSchema = z.object({
   sort: z.enum(['latest', 'featured', 'popular']),
@@ -144,12 +150,16 @@ async function tagsByWork(db: AnyDatabase, workIds: string[]) {
 /**
  * 按名称解析筛选标签（大小写不敏感、沿合并链走到终点）。
  * 也接受旧链接里的 slug，方便历史分享链接继续可用。
+ * 种子只认「启用中的标签」与「已合并的别名」：停用且未合并的标签不再能筛出作品，
+ * 而历史分享链接里的旧别名（往往同时被停用并合并）仍沿合并链落到当前的正式标签。
  */
 function tagFilterCondition(tag: string): SQL {
   const lowered = normalizeTagName(tag).toLocaleLowerCase('zh-CN');
   return sql`exists (
     with recursive resolved_tags as (
-      select id, merged_into_tag_id from ${communityTags} where lower(name) = ${lowered} or slug = ${tag}
+      select id, merged_into_tag_id from ${communityTags}
+        where (active = true or merged_into_tag_id is not null)
+          and (lower(name) = ${lowered} or slug = ${tag})
       union
       select t.id, t.merged_into_tag_id from ${communityTags} t
         join resolved_tags r on t.id = r.merged_into_tag_id
@@ -159,24 +169,64 @@ function tagFilterCondition(tag: string): SQL {
   )`;
 }
 
+/** 公开标签计数表达式：热门标签与筛选控件共用同一个表达式，保证两处数字一致。 */
+const publicTagCount = sql<number>`count(*)::int`;
+
 /** 豆社顶部的热门标签：按当前公开作品数排序。 */
 export async function listPopularCommunityTags(db: AnyDatabase, limit = 12): Promise<Array<CommunityTagDto & { count: number }>> {
   const rows = await db.select({
     id: communityTags.id,
     name: communityTags.name,
     slug: communityTags.slug,
-    count: sql<number>`count(*)::int`,
+    count: publicTagCount,
   }).from(communityWorkTags)
     .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
     .innerJoin(communityWorks, eq(communityWorks.id, communityWorkTags.workId))
     .where(and(eq(communityTags.active, true), eq(communityWorks.lifecycleStatus, 'active'), sql`${communityWorks.currentPublishedRevisionId} is not null`))
     .groupBy(communityTags.id, communityTags.name, communityTags.slug, communityTags.sortOrder)
-    .orderBy(desc(sql`count(*)`), communityTags.sortOrder, communityTags.name)
+    .orderBy(desc(publicTagCount), communityTags.sortOrder, communityTags.name)
     .limit(limit);
   return rows.map((row) => ({ id: row.id, name: row.name, slug: row.slug, count: Number(row.count) }));
 }
 
-export async function listPublicCommunityWorks(db: AnyDatabase, queryInput: CommunityListQuery) {
+/**
+ * 全部公开标签及公开作品数（admin-round-3 09）：标签筛选控件的候选项。
+ * 谓词与公开列表一致——标签启用且没被合并、作品正常且已有当前公开版本——所以这里的数字
+ * 就是「按这个标签筛选能筛出的作品数」；一次聚合查询取完，页面不再逐个标签查。
+ */
+export async function listAllCommunityTagsWithCounts(db: AnyDatabase, limit = 500): Promise<Array<CommunityTagDto & { count: number }>> {
+  const rows = await db.select({
+    id: communityTags.id,
+    name: communityTags.name,
+    slug: communityTags.slug,
+    count: publicTagCount,
+  }).from(communityWorkTags)
+    .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
+    .innerJoin(communityWorks, eq(communityWorks.id, communityWorkTags.workId))
+    .where(and(
+      eq(communityTags.active, true),
+      isNull(communityTags.mergedIntoTagId),
+      eq(communityWorks.lifecycleStatus, 'active'),
+      sql`${communityWorks.currentPublishedRevisionId} is not null`,
+    ))
+    .groupBy(communityTags.id, communityTags.name, communityTags.slug, communityTags.sortOrder)
+    .orderBy(desc(publicTagCount), communityTags.sortOrder, communityTags.name)
+    .limit(limit);
+  return rows.map((row) => ({ id: row.id, name: row.name, slug: row.slug, count: Number(row.count) }));
+}
+
+/**
+ * 公开作品列表。`includeTags=false` 时跳过逐作品标签查询（列表页已不展示标签，
+ * 省掉 SSR 热路径上的一次往返）；默认仍带标签，`GET /api/community/works` 的响应形状不变。
+ */
+export async function listPublicCommunityWorks(
+  db: AnyDatabase,
+  queryInput: CommunityListQuery,
+  options: { includeTags?: boolean } = {},
+) {
+  // 慢查询的调用链需要「公开列表」这一环（admin-round-3 13）；打点无副作用，进程外无上下文时自动忽略。
+  pushSpan({ kind: 'service', name: 'community.listPublicWorks', detail: queryInput?.sort });
+  const includeTags = options.includeTags ?? true;
   const query = querySchema.parse(queryInput);
   const cursor = decodeCursor(query.cursor, query.sort);
   if (query.cursor && !cursor) throw new AppError('VALIDATION', '分页游标无效', 'cursor');
@@ -222,7 +272,7 @@ export async function listPublicCommunityWorks(db: AnyDatabase, queryInput: Comm
     .orderBy(desc(primary), desc(communityRevisions.publishedAt), desc(communityWorks.id))
     .limit(COMMUNITY_PAGE_SIZE + 1);
   const visible = rows.slice(0, COMMUNITY_PAGE_SIZE);
-  const tags = await tagsByWork(db, visible.map((row) => row.id));
+  const tags = includeTags ? await tagsByWork(db, visible.map((row) => row.id)) : null;
   const items = visible.flatMap((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
     if (!preview.success || !row.publishedAt) return [];
@@ -237,7 +287,7 @@ export async function listPublicCommunityWorks(db: AnyDatabase, queryInput: Comm
       height: row.height,
       colorCount: row.colorCount,
       preview: preview.data,
-      tags: tags.get(row.id) ?? [],
+      tags: tags?.get(row.id) ?? [],
       counts: { likes: row.likeCount, comments: row.commentCount, reuses: row.reuseCount },
       featured: row.featuredAt !== null,
       publishedAt: row.publishedAt.toISOString(),
@@ -260,6 +310,7 @@ export async function listPublicCommunityWorks(db: AnyDatabase, queryInput: Comm
  * 服务端渲染的大图与统计；色号网格、交互查看器和「用这张制作」需要登录（ADR-0021）。
  */
 export async function getPublicCommunityWork(db: AnyDatabase, id: string, options: { includeSnapshot?: boolean } = {}) {
+  pushSpan({ kind: 'service', name: 'community.getPublicWork' });
   const includeSnapshot = options.includeSnapshot ?? true;
   const [row] = await db.select({ ...publicSelection, engineVersion: communityRevisions.engineVersion, snapshot: communityRevisions.snapshot })
     .from(communityWorks)
@@ -336,29 +387,34 @@ export async function listOwnCommunityWorks(db: AnyDatabase, userId: string) {
   }));
 }
 
-export async function listCommunityReviewQueue(db: AnyDatabase) {
-  const rows = await db.select({
-    revisionId: communityRevisions.id,
-    workId: communityRevisions.workId,
-    revisionNumber: communityRevisions.revisionNumber,
-    title: communityRevisions.title,
-    version: communityRevisions.version,
-    publicAuthorId: communityRevisions.publicAuthorId,
-    frozenDisplayName: communityRevisions.frozenDisplayName,
-    authorType: communityRevisions.authorType,
-    preview: communityRevisions.preview,
-    width: communityRevisions.width,
-    height: communityRevisions.height,
-    colorCount: communityRevisions.colorCount,
-    boardProfile: communityRevisions.boardProfile,
-    submittedAt: communityRevisions.submittedAt,
-    accountStatus: users.accountStatus,
-  }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
-    .leftJoin(users, eq(users.id, communityWorks.authorUserId))
-    .where(and(eq(communityRevisions.status, 'pending_review'), eq(communityWorks.lifecycleStatus, 'active')))
-    .orderBy(communityRevisions.submittedAt, communityRevisions.id)
-    .limit(100);
-  return rows.flatMap((row) => {
+export async function listCommunityReviewQueue(db: AnyDatabase, input: unknown = {}) {
+  const query = reviewQueueQuerySchema.parse(input);
+  const where = and(eq(communityRevisions.status, 'pending_review'), eq(communityWorks.lifecycleStatus, 'active'));
+  const [rows, totalRows] = await Promise.all([
+    db.select({
+      revisionId: communityRevisions.id,
+      workId: communityRevisions.workId,
+      revisionNumber: communityRevisions.revisionNumber,
+      title: communityRevisions.title,
+      version: communityRevisions.version,
+      publicAuthorId: communityRevisions.publicAuthorId,
+      frozenDisplayName: communityRevisions.frozenDisplayName,
+      authorType: communityRevisions.authorType,
+      preview: communityRevisions.preview,
+      width: communityRevisions.width,
+      height: communityRevisions.height,
+      colorCount: communityRevisions.colorCount,
+      boardProfile: communityRevisions.boardProfile,
+      submittedAt: communityRevisions.submittedAt,
+      accountStatus: users.accountStatus,
+    }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
+      .leftJoin(users, eq(users.id, communityWorks.authorUserId))
+      .where(where)
+      .orderBy(communityRevisions.submittedAt, communityRevisions.id)
+      .limit(query.size).offset(pageOffset(query.page, query.size)),
+    db.select({ count: countExpression }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId)).where(where),
+  ]);
+  const items = rows.flatMap((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
     const { publicAuthorId, frozenDisplayName, authorType, accountStatus, ...safeRow } = row;
     return preview.success ? [{
@@ -370,6 +426,7 @@ export async function listCommunityReviewQueue(db: AnyDatabase) {
       submittedAt: row.submittedAt?.toISOString() ?? null,
     }] : [];
   });
+  return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }
 
 /** 所选审核材料才读取完整快照；不返回内部作者或来源设计身份。 */

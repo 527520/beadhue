@@ -6,11 +6,13 @@ import { getDb } from '@/lib/auth/db';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { createSession } from '@/lib/auth/session';
 import { serializeSessionCookie } from '@/lib/auth/cookies';
-import { checkRateLimit, clientIp, rateLimitKey } from '@/lib/auth/rateLimit';
+import { checkRateLimit, clearLoginFailures, clientIp, loginLockState, rateLimitKey, recordLoginFailure } from '@/lib/auth/rateLimit';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { apiError, okJson, readJson, withApiErrors } from '@/lib/auth/http';
 import { zhCN } from '@/messages/zh-CN';
 import { config } from '@/lib/config';
+import { maskIp } from '@/lib/observability/context';
+import { recordSecurityEvent } from '@/lib/observability/log';
 
 /** 登录限流阈值（票 02 配置化：环境变量 RATE_LOGIN，默认 10 次/时/IP+邮箱）。 */
 const RATE_LIMIT = config.security.loginRateLimit;
@@ -36,6 +38,17 @@ async function post(request: Request) {
   const { email, password } = parsed.data;
 
   const db = getDb();
+  // 按邮箱的失败锁定最先检查：锁定期间密码正确也一律 429（否则猜中密码就绕过了锁定）。
+  const lock = await loginLockState(db, email);
+  if (lock.locked) {
+    // 账号级锁定是安全事件（多 IP 分布式猜密码的主要拦截点），写一条运行日志便于事后核查（admin-round-3 13）。
+    await recordSecurityEvent(db, {
+      event: 'security.login_lockout', level: 'warn',
+      message: '账号因连续登录失败被临时锁定',
+      context: { ipMasked: maskIp(ip), retryAfterSeconds: lock.retryAfterSeconds },
+    });
+    return apiError(new AppError('RATE_LIMITED', zhCN.auth.tooManyRequests, undefined, { retryAfterSeconds: lock.retryAfterSeconds }));
+  }
   if (!(await checkRateLimit(db, rateLimitKey('login', ip, email), RATE_LIMIT))) {
     return apiError(new AppError('RATE_LIMITED', zhCN.auth.tooManyRequests));
   }
@@ -56,11 +69,14 @@ async function post(request: Request) {
 
   // 用户不存在与密码错误使用同一文案（防枚举，spec E28/E31）；
   // 未知邮箱也执行一次假哈希校验，抹平「已注册 + 错密码」与「未注册」的 argon2 时序差。
+  // 两种情况都记一次失败：锁定键只含邮箱字符串，对未注册邮箱同样生效，不产生枚举面。
   if (rows.length === 0 || rows[0].passwordHash === null) {
     await verifyPassword(await dummyPasswordHash(), password);
+    await recordLoginFailure(db, email);
     return apiError(new AppError('UNAUTHORIZED', zhCN.auth.invalidCredentials));
   }
   if (!(await verifyPassword(rows[0].passwordHash, password))) {
+    await recordLoginFailure(db, email);
     return apiError(new AppError('UNAUTHORIZED', zhCN.auth.invalidCredentials));
   }
 
@@ -68,6 +84,8 @@ async function post(request: Request) {
   if (user.accountStatus !== 'active') {
     return apiError(new AppError('ACCOUNT_SUSPENDED', zhCN.auth.accountUnavailable));
   }
+  // 成功登录清零失败计数与临时锁定；每 IP / 每邮箱的尝试配额保持原样（不因成功而返还）。
+  await clearLoginFailures(db, email);
   const session = await createSession(db, user.id);
   return okJson(
     { email: user.email, emailVerified: user.emailVerifiedAt !== null },

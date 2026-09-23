@@ -20,6 +20,8 @@ const tagSlugSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0
 const tagOrderSchema = z.number().int().min(-2147483648).max(2147483647);
 /** 打标是高频低风险操作：允许不填理由，审计仍然记录并使用这条默认理由。 */
 export const DEFAULT_TAGGING_REASON = '标签调整';
+/** 新建标签同样不强制手填理由（admin-round-3 08）；审计仍留痕，使用这条默认理由。 */
+export const DEFAULT_TAG_CREATE_REASON = '标签管理：新建标签';
 
 function tagName(raw: string): string {
   const name = normalizeTagName(raw);
@@ -155,12 +157,12 @@ export async function createCommunityTag(db: AnyDatabase, input: {
   name: string;
   slug?: string;
   sortOrder?: number;
-  reason: string;
+  reason?: string;
   requestId: string;
 }) {
   const name = tagName(input.name);
   const slug = input.slug === undefined || input.slug === '' ? deriveTagSlug(name) : tagSlugSchema.parse(input.slug);
-  const why = reason(input.reason);
+  const why = input.reason?.trim() ? reason(input.reason) : DEFAULT_TAG_CREATE_REASON;
   const sortOrder = tagOrderSchema.parse(input.sortOrder ?? 0);
   return db.transaction(async (tx) => {
     const [tag] = await tx.insert(communityTags).values({ name, slug, sortOrder }).onConflictDoNothing().returning();

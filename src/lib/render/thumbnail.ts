@@ -92,25 +92,47 @@ export function renderPatternThumbnail(pattern: Pattern, options: ThumbnailOptio
 }
 
 /**
- * 进程内 LRU：修订不可变，同一修订的 PNG 只需渲染一次；按字节预算淘汰，
+ * 进程内 LRU：修订不可变，同一修订的 PNG 只需渲染一次；按字节预算 + 条数上限淘汰，
  * 避免列表页每次冷加载都对 24 张图纸重新光栅化。
+ *
+ * 两个槽位（同一份 Map，公开槽位带前缀）：
+ * - `get` / `set`：管理端使用，可能装着**草稿**修订的图，命中不代表该修订公开；
+ * - `getPublic` / `setPublic`：公开路由使用，只有「当前公开修订」的渲染结果才允许写入。
+ *   公开路径把命中当作「该修订公开」的证据，从而跳过读库鉴权；两个槽位绝不能串用，
+ *   否则后台看过的草稿图会被匿名访客凭修订编号取走。
  */
+const PUBLIC_SLOT_PREFIX = '\u0000public\u0000';
+
 export class ThumbnailCache {
   private readonly entries = new Map<string, Buffer>();
   private bytes = 0;
-  constructor(private readonly budgetBytes = 32 * 1024 * 1024) {}
+  private readonly maxEntries: number;
+  constructor(private readonly budgetBytes = 32 * 1024 * 1024, maxEntries = Number.MAX_SAFE_INTEGER) {
+    // 至少留 1 条：否则每次 set 都会立刻把自己淘汰掉（等于关闭缓存）。
+    this.maxEntries = Math.max(1, maxEntries);
+  }
   get(key: string): Buffer | undefined {
     const value = this.entries.get(key);
     if (value) { this.entries.delete(key); this.entries.set(key, value); }
     return value;
   }
   set(key: string, value: Buffer): void {
+    this.put(key, value);
+  }
+  /** 公开缩略图槽位：仅当修订当前公开时可写。 */
+  getPublic(key: string): Buffer | undefined {
+    return this.get(PUBLIC_SLOT_PREFIX + key);
+  }
+  setPublic(key: string, value: Buffer): void {
+    this.put(PUBLIC_SLOT_PREFIX + key, value);
+  }
+  private put(key: string, value: Buffer): void {
     const existing = this.entries.get(key);
     if (existing) { this.bytes -= existing.length; this.entries.delete(key); }
     this.entries.set(key, value);
     this.bytes += value.length;
     for (const [oldest, buffer] of this.entries) {
-      if (this.bytes <= this.budgetBytes) break;
+      if (this.bytes <= this.budgetBytes && this.entries.size <= this.maxEntries) break;
       this.entries.delete(oldest);
       this.bytes -= buffer.length;
     }

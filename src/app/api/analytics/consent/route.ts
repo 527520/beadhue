@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { getDb } from '@/lib/auth/db';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { apiError, readJson, withApiErrors } from '@/lib/auth/http';
+import { config } from '@/lib/config';
+import { enforcePublicIpLimit } from '@/lib/security/publicRateLimit';
 import {
   ANALYTICS_VISITOR_COOKIE,
   clearAnalyticsCookie,
@@ -14,9 +16,11 @@ import { eraseAnalyticsVisitor, grantAnalyticsConsent } from '@/lib/analytics/co
 
 const consentSchema = z.object({ status: z.enum(['granted', 'denied', 'withdrawn']) }).strict();
 
+/** 同意 / 撤回是匿名端点（无账号可计），补每 IP 小时限流；额度给足正常反复切换的余量。 */
 async function put(request: Request): Promise<NextResponse> {
   const guard = enforceMutatingGuard(request);
   if (guard) return guard;
+  await enforcePublicIpLimit(getDb(), request, 'consent', config.security.consentRateLimit);
   const body = await readJson(request, 8 * 1024);
   if (!body.ok) return body.response;
   const parsed = consentSchema.safeParse(body.data);

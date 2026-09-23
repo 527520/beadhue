@@ -67,6 +67,19 @@ export default async function globalSetup(): Promise<void> {
         RATE_COMMUNITY_WRITE_USER_HOUR: '10000',
         RATE_COMMUNITY_WRITE_IP_HOUR: '10000',
         RATE_PUBLIC_READ_IP_HOUR: '20000',
+        // admin-round-3 12 新增的闸门：三个浏览器项目串行跑一轮，登录态账号是「刚注册」，
+        // 页面上每次加载都会拉 /api/config，公开读与账号配额都可能被正常用例耗尽 → 按老办法放宽。
+        RATE_ACCOUNT_READ_USER_HOUR: '20000',
+        RATE_ACCOUNT_READ_DISTINCT_WORKS_HOUR: '20000',
+        RATE_NEW_ACCOUNT_READ_USER_HOUR: '20000',
+        RATE_NEW_ACCOUNT_READ_DISTINCT_WORKS_HOUR: '20000',
+        RATE_ORIGINAL_READ_USER_HOUR: '10000',
+        RATE_ORIGINAL_READ_IP_HOUR: '20000',
+        RATE_TAGS_IP_HOUR: '20000',
+        RATE_CONFIG_IP_HOUR: '20000',
+        RATE_CONSENT_IP_HOUR: '10000',
+        // 用例会故意输错密码：阈值放大，避免后续用例被临时锁定牵连（锁定语义由单测覆盖）。
+        LOGIN_FAILURE_THRESHOLD: '1000',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,

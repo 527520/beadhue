@@ -6,6 +6,7 @@
  * 所有发送的邮件同时入 sentMails（上限 100 条）供测试断言。
  */
 import nodemailer from 'nodemailer';
+import { fireSystemLog } from '@/lib/observability/log';
 import { DEV_MAIL_LINK_HEADER } from './mailMeta';
 import { sendViaTencentSes } from './tencentSes';
 import { resolveMailAdapter } from './runtimeConfig';
@@ -128,6 +129,15 @@ export async function sendMail(
       // 只记录渠道类型与错误摘要（code + 官方 Message），绝不落凭证/正文
       const detail = error instanceof Error ? error.message : String(error);
       console.error('[mail] send failed via', SMTP_HOST ? 'smtp' : 'ses', ':', detail);
+      // 同一条失败也进运行日志（用户第 15 条）：后台能按 requestId 看到「这次请求发信失败了」。
+      // 不等待落库：发信失败本身已经在熔断器里，这里不能再给请求加一段数据库往返。
+      fireSystemLog({
+        level: 'error',
+        source: 'mail',
+        event: 'mail.send_failed',
+        message: detail,
+        context: { adapter: SMTP_HOST ? 'smtp' : 'ses' },
+      });
     }
     throw error;
   }

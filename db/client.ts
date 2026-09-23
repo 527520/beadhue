@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import { sql, lt } from 'drizzle-orm';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 import { poolOptions } from '@/lib/config';
+import { registerProdPool } from '@/lib/observability/dbInstrumentation';
 import * as schema from './schema';
 import { designs, idempotencyRecords, palettes, rateLimits } from './schema';
 
@@ -14,9 +15,14 @@ export type ProdDatabase = NodePgDatabase<typeof schema>;
 /** 生产/测试两种客户端共用的联合类型（PGlite 仅为 type-only 导入，不进打包链）。 */
 export type AnyDatabase = ProdDatabase | PgliteDatabase<typeof schema>;
 
-/** 生产客户端：连接池（超时与容量见 config.database，A-11）。 */
+/**
+ * 生产客户端：连接池（超时与容量见 config.database，A-11）。
+ * 建池后立刻交给 observability/dbInstrumentation 注册到 globalThis：
+ * 慢查询计时与后台「数据库」页的连接池读数都读这一个池。
+ */
 export function createProdClient(databaseUrl: string): ProdDatabase {
   const pool = new Pool({ connectionString: databaseUrl, ...poolOptions() });
+  registerProdPool(pool);
   return drizzlePg(pool, { schema });
 }
 

@@ -26,7 +26,8 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   tool: 'btn-tool',
 };
 const SIZE_CLASS: Record<ButtonSize, string> = { md: '', sm: 'btn-sm', xs: 'btn-xs' };
-const ICON_SIZE: Record<ButtonSize, number> = { md: 18, sm: 16, xs: 14 };
+/** 图标随按钮尺寸走；`FileButton` 等「长得像按钮」的控件复用同一张表，避免手写图标尺寸跑偏。 */
+export const ICON_SIZE: Record<ButtonSize, number> = { md: 18, sm: 16, xs: 14 };
 
 export function buttonClassName(variant: ButtonVariant = 'secondary', size: ButtonSize = 'md', className?: string): string {
   return [VARIANT_CLASS[variant], SIZE_CLASS[size], className ?? ''].filter(Boolean).join(' ');

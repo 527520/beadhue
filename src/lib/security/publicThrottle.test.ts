@@ -27,10 +27,15 @@ describe('页面级进程内节流', () => {
     expect(throttle.size()).toBeLessThanOrEqual(100);
   });
 
-  it('只节流豆社列表 / 详情与 sitemap', () => {
+  it('只节流豆社列表 / 详情、sitemap 分页与 robots.txt', () => {
     expect(isThrottledPublicPath('/community')).toBe(true);
     expect(isThrottledPublicPath('/community/5d7a4ccc-5aa1-405c-a6c5-3471e3b4f0d6')).toBe(true);
     expect(isThrottledPublicPath('/sitemap/0.xml')).toBe(true);
+    expect(isThrottledPublicPath('/sitemap/12.xml')).toBe(true);
+    expect(isThrottledPublicPath('/robots.txt')).toBe(true);
+    // `/sitemap.xml` 不是 generateSitemaps 生成的路径（真实路径是 /sitemap/<n>.xml），
+    // 死分支已删：爬虫拿到的是 404，不会触达数据库。
+    expect(isThrottledPublicPath('/sitemap.xml')).toBe(false);
     expect(isThrottledPublicPath('/community/mine')).toBe(false);
     expect(isThrottledPublicPath('/app')).toBe(false);
   });

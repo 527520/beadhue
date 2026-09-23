@@ -22,6 +22,8 @@ it('limits audit and runtime evidence to admins and never caches the response pu
       if (role === 'admin') expect(response.headers.get('cache-control')).toContain('no-store');
     }
   }
-  expect((await audit('?cursor=broken')).status).toBe(400);
+  // admin-round-3 06：审计改页码分页，非法页码/每页条数仍必须 400。
+  expect((await audit('?size=7')).status).toBe(400);
+  expect((await audit('?page=0')).status).toBe(400);
   expect((await audit('?from=2026-09-05&to=2026-09-01')).status).toBe(400);
 });

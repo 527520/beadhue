@@ -5,12 +5,12 @@ import PatternPreview from '@/components/preview/PatternPreview';
 import { getBoardProfile } from '@/lib/boardProfiles';
 import type { ReportTargetInspection } from '@/lib/community/reportInspection';
 import { zhCN } from '@/messages/zh-CN';
-import { useAdminCollection } from './useAdminCollection';
+import { useAdminPage } from './useAdminPage';
 import { useAdminInspection } from './useAdminInspection';
 import { useAdminCommand } from './useAdminCommand';
 import AdminCommandNotice from './AdminCommandNotice';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
-import { AdminEmpty, AdminSkeleton, ReasonPanel, StatusBadge } from './AdminPrimitives';
+import { AdminEmpty, AdminPagination, AdminSkeleton, ReasonPanel, StatusBadge } from './AdminPrimitives';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Notice from '@/components/ui/Notice';
 
@@ -61,7 +61,7 @@ export default function GovernanceConsole({ mode }: { mode: Mode }) {
   const g = t.governance;
   const c = t.command;
   const states = t.states;
-  const queue = useAdminCollection<Item>(`/api/admin/community/${mode}`);
+  const queue = useAdminPage<Item>(`/api/admin/community/${mode}`, mode);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const selected = queue.items.find((item) => item.id === selectedId) ?? null;
@@ -96,11 +96,15 @@ export default function GovernanceConsole({ mode }: { mode: Mode }) {
   const reloadQueue = <div className="admin-form-stack"><Notice kind="danger">{queue.error}</Notice><div className="admin-form-actions"><Button variant="secondary" size="sm" icon="refresh" onClick={() => void queue.reload()}>{c.reload}</Button></div></div>;
   return <div className={`review-console governance-console${selected ? ' is-inspecting' : ''}`}>
     <section className="review-queue" aria-label={g.queue} tabIndex={-1} ref={queueRef}>
-      <header><h2>{mode === 'comments' ? t.pendingComments : t.pendingReports}</h2><span>{queue.items.length}</span></header>
+      <header><h2>{mode === 'comments' ? t.pendingComments : t.pendingReports}</h2><span>{zhCN.communityAdmin.pagination.totalCount(queue.total)}</span></header>
       {queue.error ? reloadQueue
-        : queue.loading ? <AdminSkeleton label={c.loading} />
+        : queue.loading && queue.items.length === 0 ? <AdminSkeleton label={c.loading} />
           : queue.items.length === 0 ? <AdminEmpty icon="check" title={g.empty} />
             : <ul className="stagger">{queue.items.map((item, index) => <li key={item.id} style={{ '--i': index } as CSSProperties}><button type="button" disabled={command.locked} aria-current={selected?.id === item.id} onClick={() => select(item.id)}><span><strong>{item.body?.slice(0, 24) || `${states.target[item.targetType as keyof typeof states.target] ?? item.targetType} / ${item.category ? riskLabel(item.category) : t.unmarked}`}</strong><small>{statusLabel(item.status)} · v{item.version}</small></span></button></li>)}</ul>}
+      <AdminPagination page={queue.page} totalPages={queue.totalPages} size={queue.size} total={queue.total}
+        onPage={(next) => { if (!command.locked) { select(null); queue.setPage(next); } }}
+        onSize={(next) => { if (!command.locked) { select(null); queue.setSize(next); } }}
+        disabled={command.locked || queue.loading} />
     </section>
     <section className="review-preview" aria-label={g.caseMaterial} tabIndex={-1} ref={detailRef}>{selected ? <div className="review-preview-body animate-rise">
       <Button variant="quiet" size="sm" icon="chevron-left" className="admin-back-to-queue" disabled={command.locked} onClick={() => select(null)}>{c.back}</Button>

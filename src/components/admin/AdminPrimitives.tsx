@@ -4,13 +4,16 @@
  * 后台共享组件（site-ui-overhaul 06）。此前分页、筛选条、状态徽标、理由 + 确认区都是各 Manager 内联的 JSX，
  * 九个模块九种写法。这里把它们收成小组件，样式仍走 globals.css 的 .admin-* 类。
  */
-import { Children, type FormEvent, type ReactNode } from 'react';
+import { Children, useState, type FormEvent, type ReactNode } from 'react';
 import Badge, { type BadgeTone } from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
 import EmptyState from '@/components/ui/EmptyState';
+import NumberField from '@/components/ui/NumberField';
+import SegmentedControl from '@/components/ui/SegmentedControl';
 import Textarea from '@/components/ui/Textarea';
 import type { IconName } from '@/components/ui/Icon';
+import { PAGE_SIZES, type PageSize } from '@/lib/admin/pagination';
 import { zhCN } from '@/messages/zh-CN';
 
 const states = zhCN.communityAdmin.states;
@@ -25,14 +28,40 @@ export function ListDetailLayout({ queue, detail, notice, inspecting = false, cl
   </div>;
 }
 
-export function Pagination({ page, hasPrevious, hasNext, onPrevious, onNext, disabled = false }: {
-  page?: number; hasPrevious: boolean; hasNext: boolean; onPrevious: () => void; onNext: () => void; disabled?: boolean;
+/**
+ * 后台列表分页（admin-round-3 06）：共 N 条 · 每页 10/20/50/100 · 第 N 页 / 共 M 页 · 跳页。
+ * 只负责呈现与回调，页码状态由 `useAdminPage` 持有（每页条数按模块记住）。
+ */
+export function AdminPagination({ page, totalPages, size, total, onPage, onSize, disabled = false }: {
+  page: number; totalPages: number; size: PageSize; total: number;
+  onPage: (page: number) => void; onSize: (size: PageSize) => void; disabled?: boolean;
 }) {
-  const t = zhCN.communityAdmin.works;
-  return <nav className="admin-pagination" aria-label={t.pagination}>
-    <Button variant="secondary" size="sm" icon="chevron-left" disabled={disabled || !hasPrevious} onClick={onPrevious}>{t.previous}</Button>
-    {page !== undefined && <span className="admin-pagination-page">{t.page(page)}</span>}
-    <Button variant="secondary" size="sm" icon="chevron-right" iconPosition="end" disabled={disabled || !hasNext} onClick={onNext}>{t.next}</Button>
+  const t = zhCN.communityAdmin.pagination;
+  const [jump, setJump] = useState<number | undefined>(undefined);
+  const [invalid, setInvalid] = useState(false);
+  const jumpTo = () => {
+    if (jump === undefined) { setInvalid(false); return; }
+    if (!Number.isInteger(jump) || jump < 1 || jump > totalPages) { setInvalid(true); return; }
+    setInvalid(false); setJump(undefined); onPage(jump);
+  };
+  return <nav className="admin-pagination" aria-label={t.label}>
+    <div className="admin-pagination-summary">
+      <span className="admin-pagination-total">{t.totalCount(total)}</span>
+      <SegmentedControl className="admin-pagination-size" size="sm" label={t.pageSize} value={String(size)}
+        disabled={disabled} onValueChange={(next) => onSize(Number(next) as PageSize)}
+        options={PAGE_SIZES.map((value) => ({ value: String(value), label: t.pageSizeOption(value) }))} />
+    </div>
+    <div className="admin-pagination-nav">
+      <Button variant="secondary" size="sm" icon="chevron-left" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)}>{t.previous}</Button>
+      <span className="admin-pagination-page">{t.pageOf(Math.min(page, totalPages), totalPages)}</span>
+      <form className="admin-pagination-jump" onSubmit={(event) => { event.preventDefault(); jumpTo(); }}>
+        <NumberField compact hideLabel label={t.jumpTo} value={jump} min={1} max={totalPages} disabled={disabled}
+          onValueChange={(value) => { setJump(value); setInvalid(false); }} className={invalid ? 'is-invalid' : ''} />
+        <Button type="submit" variant="secondary" size="sm" disabled={disabled || totalPages <= 1}>{t.jump}</Button>
+      </form>
+      <Button variant="secondary" size="sm" icon="chevron-right" iconPosition="end" disabled={disabled || page >= totalPages} onClick={() => onPage(page + 1)}>{t.next}</Button>
+      {invalid && <span className="admin-pagination-error" role="alert">{t.range(totalPages)}</span>}
+    </div>
   </nav>;
 }
 

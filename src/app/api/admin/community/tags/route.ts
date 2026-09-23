@@ -1,28 +1,20 @@
-import { asc, ilike, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { communityTags, communityWorkTags } from '@/../db/schema';
 import { getDb } from '@/lib/auth/db';
 import { requireApiActor } from '@/lib/auth/dal';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
+import { listCommunityTagsAdmin } from '@/lib/community/tagQueries';
 import { createCommunityTag } from '@/lib/community/adminService';
 import { executeIdempotently } from '@/lib/idempotency';
 
-const schema = z.object({ name: z.string(), slug: z.string().optional(), sortOrder: z.number().int().optional(), reason: z.string(), expectedVersion: z.literal(0) }).strict();
+/** 新建标签：理由可选（admin-round-3 08）。用户明确要求新增标签不必填操作理由，缺省写固定审计理由。 */
+const schema = z.object({ name: z.string(), slug: z.string().optional(), sortOrder: z.number().int().optional(), reason: z.string().optional(), expectedVersion: z.literal(0) }).strict();
 
 async function get(request: Request) {
   await requireApiActor('community:moderate');
-  const q = new URL(request.url).searchParams.get('q')?.trim() ?? '';
-  const db = getDb();
-  const usage = sql<number>`(select count(*) from ${communityWorkTags} cwt where cwt.tag_id = ${communityTags.id})::int`;
-  const rows = await db.select({
-    id: communityTags.id, name: communityTags.name, slug: communityTags.slug, sortOrder: communityTags.sortOrder,
-    active: communityTags.active, mergedIntoTagId: communityTags.mergedIntoTagId, version: communityTags.version,
-    createdAt: communityTags.createdAt, updatedAt: communityTags.updatedAt, workCount: usage,
-  }).from(communityTags)
-    .where(q ? ilike(communityTags.name, `%${q}%`) : undefined)
-    .orderBy(asc(communityTags.sortOrder), asc(communityTags.name)).limit(q ? 20 : 500);
-  return okJson({ items: rows.map((row) => ({ ...row, workCount: Number(row.workCount) })) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const search = new URL(request.url).searchParams;
+  const input = Object.fromEntries(['q', 'page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  return okJson(await listCommunityTagsAdmin(getDb(), input), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 async function post(request: Request) {

@@ -312,7 +312,8 @@ describe('community reuse, interaction and governance transactions', () => {
     expect((await db.select().from(communityWorks).where(eq(communityWorks.id, newWork.work.id)))[0].lifecycleStatus).toBe('withdrawn');
     expect((await db.select().from(communityWorks).where(eq(communityWorks.id, workId)))[0].lifecycleStatus).toBe('active');
     expect((await db.select().from(communityRevisions).where(eq(communityRevisions.id, pending.id)))[0].status).toBe('withdrawn');
-    expect(await listCommunityReviewQueue(db)).toEqual([]);
+    // admin-round-3 06：审核队列改页码分页，返回 { items, total, page, size, totalPages }。
+    expect((await listCommunityReviewQueue(db)).items).toEqual([]);
     await expect(reviewCommunityRevision(db, { actor: moderator, revisionId: pending.id, expectedVersion: pending.version, decision: 'published', reason: '账号已注销不可再发布', requestId: 'late-review' })).rejects.toMatchObject({ code: 'STATE_CONFLICT' });
     const audits = await db.select().from(adminAuditLogs);
     expect(audits.filter((audit) => audit.targetType === 'user')).toEqual([

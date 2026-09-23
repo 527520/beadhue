@@ -30,6 +30,7 @@ export default async function AdminOverviewPage() {
       { href: '/admin/users', icon: 'users' as IconName, label: nav.users },
       { href: '/admin/analytics', icon: 'chart' as IconName, label: nav.analytics },
       { href: '/admin/audit', icon: 'list' as IconName, label: nav.audit },
+      { href: '/admin/logs', icon: 'alert' as IconName, label: nav.logs },
     ] : []),
   ];
   const allClear = queues.every((queue) => queue.count === 0);

@@ -20,11 +20,17 @@ async function readError(response: Response, fallback: string): Promise<Original
 
 export interface UploadedOriginal { revisionId: string; mimeType: string; byteSize: number; width: number | null; height: number | null }
 
+/** admin = 走管理端专用上传路径，不消耗豆社公开写配额（admin-round-3 10）。 */
+export type OriginalScope = 'public' | 'admin';
+const uploadPath = (scope: OriginalScope, revisionId: string) => scope === 'admin'
+  ? `/api/admin/community/revisions/${revisionId}/original`
+  : `/api/community/revisions/${revisionId}/original`;
+
 /** 上传原图字节到某草稿修订；服务端按魔数判定类型，这里只带 octet-stream。 */
-export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Array, fetcher: typeof fetch = fetch): Promise<UploadedOriginal> {
+export async function uploadRevisionOriginal(revisionId: string, bytes: Uint8Array, fetcher: typeof fetch = fetch, scope: OriginalScope = 'public'): Promise<UploadedOriginal> {
   if (bytes.byteLength === 0) throw new OriginalUploadError(400, 'VALIDATION', '原图为空');
   if (bytes.byteLength > LIMITS.maxFileBytes) throw new OriginalUploadError(413, 'PAYLOAD_TOO_LARGE', '原图超过 20 MB 上限');
-  const response = await fetcher(`/api/community/revisions/${revisionId}/original`, {
+  const response = await fetcher(uploadPath(scope, revisionId), {
     method: 'PUT',
     headers: { 'content-type': 'application/octet-stream' },
     body: new Uint8Array(bytes),

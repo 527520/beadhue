@@ -24,6 +24,7 @@ import Checkbox from '@/components/ui/Checkbox';
 import Chip from '@/components/ui/Chip';
 import Disclosure from '@/components/ui/Disclosure';
 import EmptyState from '@/components/ui/EmptyState';
+import FileButton from '@/components/ui/FileButton';
 import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
 import Notice from '@/components/ui/Notice';
@@ -34,10 +35,11 @@ import CommunityThumbnail from '@/components/community/CommunityThumbnail';
 import OriginalPreview from '@/components/community/OriginalPreview';
 import PatternPreview from '@/components/preview/PatternPreview';
 import { BatchSession, isStoredBatch, RETRYABLE_STATUSES, type BatchItem, type BatchItemStatus, type StoredBatch } from './batchSession';
+import BatchDraftEditor from './BatchDraftEditor';
 import { createOfficialBatchGeneratePool } from './batchGeneration';
-import { useAdminCollection } from './useAdminCollection';
+import { useAdminPage } from './useAdminPage';
 import { useAdminInspection } from './useAdminInspection';
-import { AdminSkeleton } from './AdminPrimitives';
+import { AdminPagination, AdminSkeleton } from './AdminPrimitives';
 
 const t = zhCN.communityAdmin.batch;
 const c = zhCN.communityAdmin.command;
@@ -150,40 +152,46 @@ function DraftInspection({ item, onClose }: { item: BatchItem; onClose: () => vo
  * 卡片按 item 引用做 memo：会话每次进度刷新都会产生新的 state，但只有被修改的那一项会拿到新的 item 对象，
  * 其余 49 张卡片不重渲染（50 项批次此前每次进度更新都要重画全部卡片）。
  */
-const BatchItemCard = memo(function BatchItemCard({ item, index, session, editable, serverThumbnails, defaults, locked, processing, conflict, hasSave, onCrop, onInspect }: {
+const BatchItemCard = memo(function BatchItemCard({ item, index, session, editable, serverThumbnails, defaults, locked, processing, conflict, hasSave, onCrop, onInspect, onEditDraft }: {
   item: BatchItem; index: number; session: BatchSession; editable: boolean; serverThumbnails: boolean; defaults: GenerationParams;
-  locked: boolean; processing: boolean; conflict: boolean; hasSave: boolean; onCrop: (id: string) => void; onInspect: (id: string) => void;
+  locked: boolean; processing: boolean; conflict: boolean; hasSave: boolean; onCrop: (id: string) => void; onInspect: (id: string) => void; onEditDraft: (id: string) => void;
 }) {
   const [overridesOpen, setOverridesOpen] = useState(false);
   const busy = ['running', 'saving', 'uploading'].includes(item.status);
   const retryable = RETRYABLE_STATUSES.includes(item.status) && (item.file || hasSave);
   const needsOriginalFile = item.status === 'upload_failed' && !item.file && item.revisionId;
   const overrideCount = Object.keys(item.paramsOverride).length;
+  // 生成完成后仍可改：只要不是已发布项，标题 / 裁剪 / 逐项参数 / 重新生成都放开（admin-round-3 04）。
+  const canEdit = editable && item.status !== 'published' && !busy;
+  const canRegenerate = canEdit && Boolean(item.file) && !hasSave && Boolean(item.revisionId);
   return <li className="batch-card" data-tone={STATUS_TONE[item.status]} data-status={item.status} aria-label={t.itemLabel(index + 1)}>
     <div className="batch-card-media pegboard">
       {item.revisionId && item.preview && serverThumbnails
-        ? <CommunityThumbnail revisionId={item.revisionId} width={item.preview.originalWidth} height={item.preview.originalHeight} label={t.previewLabel(item.title)} />
+        ? <CommunityThumbnail scope="admin" revisionId={item.revisionId} width={item.preview.originalWidth} height={item.preview.originalHeight} label={t.previewLabel(item.title)} />
         : item.preview ? <CommunityPreviewCanvas preview={item.preview} label={t.previewLabel(item.title)} />
         : <div className="batch-card-placeholder">{busy ? <span className="batch-card-percent">{item.progress}<small>{t.percent}</small></span> : <><Icon name="image" size={22} /><span>{t.noPreview}</span></>}</div>}
       {busy && <div className="batch-card-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.progress}><span style={{ width: `${item.progress}%` }} /></div>}
       <span className="batch-card-index">{String(index + 1).padStart(2, '0')}</span>
     </div>
     <div className="batch-card-body">
-      <header><Badge tone={STATUS_TONE[item.status]}>{t.status[item.status]}</Badge>{item.hasOriginal && item.status !== 'published' && <Badge tone="ok" dot={false}><Icon name="check" size={12} />{t.originalReady}</Badge>}</header>
-      <TextField size="sm" className="batch-card-title" label={t.publicTitle} value={item.title} maxLength={80} disabled={!editable} onChange={(event) => session.updateItem(item.localId, { title: event.target.value })} />
-      <p className="batch-card-file"><Icon name="image" size={13} />{item.localName}{item.preview && ` · ${item.preview.originalWidth}×${item.preview.originalHeight}`}</p>
-      {item.file && editable && <div className="batch-card-crop"><Button variant="secondary" size="xs" icon="crop" onClick={() => onCrop(item.localId)}>{item.crop ? t.recrop : t.cropTitle}</Button><span>{item.crop ? t.cropSummary(item.crop.width, item.crop.height) : t.uncropped}</span>{item.crop && <Button variant="quiet" size="xs" onClick={() => session.updateItem(item.localId, { crop: null })}>{t.resetCrop}</Button>}</div>}
+      <header><Badge tone={STATUS_TONE[item.status]}>{t.status[item.status]}</Badge>{item.hasOriginal && item.status !== 'published' && <Badge tone="ok" dot={false}><Icon name="check" size={12} />{t.originalReady}</Badge>}{item.dirty && <Badge tone="warn">{t.dirty}</Badge>}</header>
+      <TextField size="sm" className="batch-card-title" label={t.publicTitle} value={item.title} maxLength={80} disabled={!canEdit} onChange={(event) => session.updateItem(item.localId, { title: event.target.value })} />
+      <p className="batch-card-file"><Icon name="image" size={13} />{item.localName}{item.preview && ` · ${item.preview.originalWidth}×${item.preview.originalHeight}`}{item.revisionVersion !== null && ` · ${t.revisionVersion(item.revisionVersion)}`}</p>
+      {item.file && canEdit && <div className="batch-card-crop"><Button variant="secondary" size="xs" icon="crop" onClick={() => onCrop(item.localId)}>{item.crop ? t.recrop : t.cropTitle}</Button><span>{item.crop ? t.cropSummary(item.crop.width, item.crop.height) : t.uncropped}</span>{item.crop && <Button variant="quiet" size="xs" onClick={() => session.updateItem(item.localId, { crop: null })}>{t.resetCrop}</Button>}</div>}
       {/* 覆盖参数编辑器只在展开时挂载：50 张卡片各带一套数字输入会拖慢每次进度刷新。 */}
-      {editable && <Disclosure compact icon="sliders" summary={t.itemOverrides} meta={overrideCount > 0 ? `${overrideCount}` : undefined} expanded={overridesOpen} onExpandedChange={setOverridesOpen}>{overridesOpen && <><BatchParamsEditor value={item.paramsOverride} inherited={defaults} onChange={(paramsOverride) => session.updateItem(item.localId, { paramsOverride })} />{overrideCount > 0 && <div className="admin-form-actions"><Button variant="quiet" size="xs" icon="close" onClick={() => session.updateItem(item.localId, { paramsOverride: {} })}>{t.resetOverrides}</Button></div>}</>}</Disclosure>}
+      {canEdit && <Disclosure compact icon="sliders" summary={t.itemOverrides} meta={overrideCount > 0 ? `${overrideCount}` : undefined} expanded={overridesOpen} onExpandedChange={setOverridesOpen}>{overridesOpen && <><BatchParamsEditor value={item.paramsOverride} inherited={defaults} onChange={(paramsOverride) => session.updateItem(item.localId, { paramsOverride })} />{overrideCount > 0 && <div className="admin-form-actions"><Button variant="quiet" size="xs" icon="close" onClick={() => session.updateItem(item.localId, { paramsOverride: {} })}>{t.resetOverrides}</Button></div>}</>}</Disclosure>}
       {item.error && <Notice kind="danger" compact>{item.error}</Notice>}
       {item.status === 'save_unknown' && <Notice kind="warning" compact>{t.saveUnknown}</Notice>}
     </div>
     <footer className="batch-card-actions">
       {item.status === 'saved' && <Checkbox compact className="admin-checkbox" label={t.selectPublish} checked={item.selected} disabled={locked} onChange={(checked) => session.updateItem(item.localId, { selected: checked })} />}
+      {item.dirty && item.status === 'saved' && <Button variant="primary" size="xs" icon="check" disabled={locked || processing || conflict} onClick={() => void session.saveItemEdits(item.localId)}>{t.saveEdits}</Button>}
+      {canRegenerate && <Button variant="secondary" size="xs" icon="refresh" disabled={locked || processing || conflict} onClick={() => void session.regenerateItem(item.localId)}>{t.regenerate}</Button>}
+      {item.revisionId && ['saved', 'published', 'upload_failed'].includes(item.status) && <Button variant="secondary" size="xs" icon="edit" disabled={locked || processing || item.status === 'upload_failed'} onClick={() => onEditDraft(item.localId)}>{t.editDraft}</Button>}
       {item.revisionId && ['saved', 'published', 'upload_failed'].includes(item.status) && <Button variant="secondary" size="xs" icon="eye" onClick={() => onInspect(item.localId)}>{t.inspectTitle}</Button>}
       {['pending', 'running', 'failed'].includes(item.status) && <Button variant="quiet" size="xs" icon="close" disabled={locked} onClick={() => session.cancelItem(item.localId)}>{t.cancelItem}</Button>}
       {retryable && <Button variant="secondary" size="xs" icon="refresh" disabled={locked || processing || conflict} onClick={() => void session.retryItem(item.localId)}>{item.status === 'upload_failed' ? t.retryUpload : hasSave ? t.retrySave : t.retry}</Button>}
-      {needsOriginalFile && <label className="btn-outline btn-xs batch-select-files" data-disabled={locked}>{t.attachOriginal}<input className="sr-only" type="file" accept="image/*,.heic,.heif" disabled={locked} onChange={(event) => { const file = event.target.files?.[0]; if (file) void session.attachOriginal(item.localId, file); event.target.value = ''; }} /></label>}
+      {needsOriginalFile && <FileButton size="xs" className="batch-select-files" disabled={locked} onFiles={(files) => { const file = files[0]; if (file) void session.attachOriginal(item.localId, file); }}>{t.attachOriginal}</FileButton>}
       {item.status === 'published' && item.workId && <ButtonLink external variant="quiet" size="xs" icon="external" iconPosition="end" href={`/community/${item.workId}`} target="_blank" rel="noreferrer">{t.openPublic}</ButtonLink>}
     </footer>
   </li>;
@@ -199,10 +207,11 @@ export default function OfficialBatchStudio() {
     return { session: new BatchSession({ generate: nextPool.generate, concurrency }), pool: nextPool };
   });
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
-  const history = useAdminCollection<StoredBatch>('/api/admin/batches', isStoredBatch);
+  const history = useAdminPage<StoredBatch>('/api/admin/batches', 'batches', isStoredBatch);
   const cleanup = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cropId, setCropId] = useState<string | null>(null);
   const [inspectionId, setInspectionId] = useState<string | null>(null);
+  const [editorId, setEditorId] = useState<string | null>(null);
   const [replacement, setReplacement] = useState<{ files: File[] } | { batch: StoredBatch } | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -226,9 +235,13 @@ export default function OfficialBatchStudio() {
   const { items, batch } = state;
   const selected = items.filter((item) => item.status === 'saved' && item.selected);
   const publishable = items.filter((item) => item.status === 'saved');
+  // 制作规格只在开始前可改；参数 / 理由 / 单张草稿在生成完成后仍可改（admin-round-3 04）。
   const editable = !batch && !session.locked;
+  const itemEditable = !session.locked;
+  const dirtyCount = items.filter((item) => item.dirty).length;
   const cropItem = items.find((item) => item.localId === cropId);
   const inspected = items.find((item) => item.localId === inspectionId);
+  const edited = items.find((item) => item.localId === editorId);
   const visibleItems = filter === 'all' ? items : items.filter((item) => FILTER_STATUSES[filter].includes(item.status));
   const countFor = (key: StatusFilter) => key === 'all' ? items.length : items.filter((item) => FILTER_STATUSES[key].includes(item.status)).length;
   const processed = items.filter((item) => !['pending', 'running', 'saving', 'uploading'].includes(item.status)).length;
@@ -261,14 +274,16 @@ export default function OfficialBatchStudio() {
     {step === 'select'
       ? <><span className="upload-dropzone-icon"><Icon name="images" size={22} /></span><p><strong>{t.dropTitle}</strong><small>{t.dropHint}</small></p></>
       : <p className="batch-intake-summary"><Icon name="images" size={16} />{t.itemsTitle(items.length)}{batch && <span className="batch-summary">{t.batchStatus[batch.status]} · {t.counts(items.filter((item) => ['saved', 'published'].includes(item.status)).length, items.length)}</span>}</p>}
-    <label className={`${step === 'select' ? 'btn-primary' : 'btn-outline btn-sm'} batch-select-files`} data-disabled={!session.replaceable}><Icon name={step === 'select' ? 'upload' : 'refresh'} size={step === 'select' ? 18 : 14} />{t.selectFiles}<input className="sr-only" type="file" disabled={!session.replaceable} accept="image/*,.heic,.heif" multiple onChange={(event) => { if (event.target.files?.length) choose({ files: [...event.target.files] }); event.target.value = ''; }} /></label>
+    <FileButton variant={step === 'select' ? 'primary' : 'secondary'} size={step === 'select' ? 'md' : 'sm'} icon={step === 'select' ? 'upload' : 'refresh'} className="batch-select-files" disabled={!session.replaceable} multiple onFiles={(files) => choose({ files })}>{t.selectFiles}</FileButton>
   </div>;
   const historyList = <div className="batch-history">
     <div className="batch-history-head"><p className="admin-help">{t.localOnly}</p><Button variant="quiet" size="sm" icon="refresh" disabled={history.loading} onClick={() => void history.reload()}>{c.reload}</Button></div>
-    {history.error ? <Notice kind="danger">{history.error}</Notice> : history.loading ? <AdminSkeleton rows={2} label={c.loading} /> : history.items.length === 0 ? <p className="admin-help">{t.noHistory}</p> : <ul className="stagger">{history.items.map((entry, index) => <li key={entry.id} style={{ '--i': index } as CSSProperties}>
+    {history.error ? <Notice kind="danger">{history.error}</Notice> : history.loading && history.items.length === 0 ? <AdminSkeleton rows={2} label={c.loading} /> : history.items.length === 0 ? <p className="admin-help">{t.noHistory}</p> : <ul className="stagger">{history.items.map((entry, index) => <li key={entry.id} style={{ '--i': index } as CSSProperties}>
       <Button variant="secondary" size="sm" icon="clock" disabled={!session.replaceable} onClick={() => choose({ batch: entry })}>{t.historyEntry(new Date(entry.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }), entry.successCount, entry.itemCount)} · {t.batchStatus[entry.status]}</Button>
       <small className="mono-id">{t.batchId} {entry.id}</small>
     </li>)}</ul>}
+    {history.total > history.size && <AdminPagination page={history.page} totalPages={history.totalPages} size={history.size} total={history.total}
+      onPage={history.setPage} onSize={history.setSize} disabled={history.loading} />}
   </div>;
 
   return <section className="batch-studio">
@@ -285,8 +300,8 @@ export default function OfficialBatchStudio() {
         <header><h2>{t.configureTitle}</h2>{batch && <p className="mono-id">{t.batchId} {batch.id}</p>}</header>
         <div className="batch-panel-body">
           <Disclosure compact icon="palette" summary={t.spec} meta={specSummary(state.spec)} expanded={specOpen} onExpandedChange={setSpecOpen}>{specOpen && <><SpecPicker spec={state.spec} onChange={(spec) => session.setSpec(spec)} disabled={!editable} /><p className="admin-help">{t.specFrozen}</p></>}</Disclosure>
-          <Disclosure compact icon="sliders" summary={`${t.uniformParams} · ${state.defaults.targetWidth} ${t.widthUnit} · ${state.defaults.targetColorCount} ${t.colorUnit}`} expanded={paramsOpen && !batch} onExpandedChange={setParamsOpen}>{paramsOpen && !batch && <fieldset disabled={!editable} className="batch-fieldset"><BatchParamsEditor value={state.defaults} disabled={!editable} onChange={(value) => session.setDefaults({ ...DEFAULT_GENERATION_PARAMS, ...value })} /></fieldset>}</Disclosure>
-          <TextField className="batch-reason" label={t.reason} value={state.reason} disabled={!editable} maxLength={500} onChange={(event) => session.setReason(event.target.value)} />
+          <Disclosure compact icon="sliders" summary={`${t.uniformParams} · ${state.defaults.targetWidth} ${t.widthUnit} · ${state.defaults.targetColorCount} ${t.colorUnit}`} expanded={paramsOpen} onExpandedChange={setParamsOpen}>{paramsOpen && <><fieldset disabled={session.locked} className="batch-fieldset"><BatchParamsEditor value={state.defaults} disabled={session.locked} onChange={(value) => session.setDefaults({ ...DEFAULT_GENERATION_PARAMS, ...value })} /></fieldset><p className="admin-help">{t.uniformParamsHelp}</p></>}</Disclosure>
+          <TextField className="batch-reason" label={t.reason} value={state.reason} disabled={session.locked} maxLength={500} onChange={(event) => session.setReason(event.target.value)} />
           {!batch && <Disclosure compact icon="clock" summary={t.history}>{historyList}</Disclosure>}
         </div>
       </section>
@@ -306,20 +321,22 @@ export default function OfficialBatchStudio() {
           <span className="batch-toolbar-summary">{t.selectedSummary(selected.length, publishable.length)}</span>
           <Button variant="secondary" disabled={session.locked || publishable.length === 0 || selected.length === publishable.length} onClick={() => session.selectAll()}>{t.selectAll}</Button>
           {selected.length > 0 && <Button variant="quiet" disabled={session.locked} onClick={() => session.clearSelection()}>{t.clearSelection}</Button>}
-          <Button variant="primary" icon="send" disabled={session.locked || session.processing || Boolean(session.retainedSaveCount) || state.conflict || !selected.length} onClick={(event) => { event.currentTarget.focus(); setConfirmPublish(true); setConfirmed(false); }}>{t.publishSelected} · {selected.length}</Button>
+          <Button variant="primary" icon="send" disabled={session.locked || session.processing || Boolean(session.retainedSaveCount) || state.conflict || !selected.length || dirtyCount > 0} onClick={(event) => { event.currentTarget.focus(); setConfirmPublish(true); setConfirmed(false); }}>{t.publishSelected} · {selected.length}</Button>
         </>}
       </div>
       {step === 'generate' && <p className="admin-help">{t.generatingHint}</p>}
+      {dirtyCount > 0 && <Notice kind="warning">{t.dirtyHint}</Notice>}
       {step === 'publish' && publishable.length > 0 && <p className="admin-help">{t.reviewHint}</p>}
       {batch && <div className="batch-filter" role="group" aria-label={t.filterLabel}>
         {(['all', 'pending', 'running', 'saved', 'failed', 'published'] as StatusFilter[]).map((key) => <Chip key={key} className="batch-filter-chip" pressed={filter === key} count={countFor(key)} onClick={() => setFilter(key)}>{key === 'all' ? t.filterAll : t.filters[key]}</Chip>)}
       </div>}
       {/* 生成期间卡片用本地派生预览，批次停下后再换成服务端带格线缩略图，避免 50 张 PNG 渲染与草稿保存抢同一个服务器。 */}
-      <ol className="batch-cards">{visibleItems.map((item) => <BatchItemCard key={item.localId} item={item} index={items.indexOf(item)} session={session} editable={editable} serverThumbnails={!(batch && state.mode === 'running')} defaults={state.defaults} locked={session.locked} processing={session.processing} conflict={state.conflict} hasSave={session.hasSave(item.localId)} onCrop={setCropId} onInspect={setInspectionId} />)}</ol>
+      <ol className="batch-cards">{visibleItems.map((item) => <BatchItemCard key={item.localId} item={item} index={items.indexOf(item)} session={session} editable={itemEditable} serverThumbnails={!(batch && state.mode === 'running')} defaults={state.defaults} locked={session.locked} processing={session.processing} conflict={state.conflict} hasSave={session.hasSave(item.localId)} onCrop={setCropId} onInspect={setInspectionId} onEditDraft={setEditorId} />)}</ol>
       {visibleItems.length === 0 && <EmptyState compact align="start" icon="filter" title={t.filterEmpty} />}
     </>}
     {cropItem && <BatchCropEditor item={cropItem} session={session} onClose={() => setCropId(null)} />}
     {inspected && <DraftInspection item={inspected} onClose={() => setInspectionId(null)} />}
+    {edited && edited.revisionId && <BatchDraftEditor item={edited} session={session} onClose={() => setEditorId(null)} />}
     {replacement && <Modal label={t.replaceTitle} onClose={() => setReplacement(null)} panelClassName="batch-dialog"><h2>{t.replaceTitle}</h2><p className="modal-copy">{t.replaceHelp}</p><div className="modal-actions"><Button variant="quiet" onClick={() => setReplacement(null)}>{t.keepFiles}</Button><Button variant="dangerSolid" onClick={() => { if ('files' in replacement) session.selectFiles(replacement.files); else session.restore(replacement.batch); setReplacement(null); setConfirmPublish(false); setFilter('all'); }}>{t.replaceConfirm}</Button></div></Modal>}
     {confirmPublish && <Modal label={t.publishSelected} onClose={() => { if (!session.locked) setConfirmPublish(false); }} panelClassName="batch-dialog"><h2>{t.publishSelected}</h2><p className="modal-copy">{t.publishHelp}</p><ul>{selected.map((item) => <li key={item.localId}>{item.title}</li>)}</ul><Checkbox className="admin-checkbox" label={t.confirmPublication} checked={confirmed} disabled={session.locked} onChange={setConfirmed} />
       {state.error && <Notice kind="danger">{state.error}</Notice>}{state.uncertain && <Notice kind="warning" as="div"><span>{c.uncertain}</span><Button variant="secondary" size="sm" icon="refresh" disabled={state.busy} onClick={() => void session.retryCommand().then(() => { if (!session.locked && !session.getSnapshot().error) setConfirmPublish(false); })}>{c.retry}</Button></Notice>}

@@ -10,6 +10,7 @@ import { reserveMailSendLimits } from '@/lib/auth/mailLimits';
 import { buildResetLink, DEV_MAIL_LINK_HEADER, isDevMailMode, isMailCircuitOpen, sendMail } from '@/lib/auth/mailer';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
 import { apiError, noContent, readJson, withApiErrors } from '@/lib/auth/http';
+import { recordSecurityEvent } from '@/lib/observability/log';
 import { zhCN } from '@/messages/zh-CN';
 
 const RESET_TTL_MS = 60 * 60 * 1000; // 1 小时
@@ -88,6 +89,8 @@ async function post(request: Request) {
       } catch {
         // 发送失败：保持 204（防枚举；熔断器已打开，后续请求统一 503）
         console.error('[mail] forgot send failed');
+        // 运行日志（用户第 15 条）：保留 stdout，同时把这次失败挂到当前请求的 requestId 上。
+        await recordSecurityEvent(db, { event: 'mail.forgot_send_failed', level: 'error', message: '重置密码邮件发送失败' });
         return noContent();
       }
       // 开发邮件模式：链接随响应头返回，前端直接展示（正式环境绝不下发）

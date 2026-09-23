@@ -21,6 +21,8 @@ const modules: readonly Module[] = [
   ['/admin/users', zhCN.communityAdmin.nav.users, 'admin', 'users'],
   ['/admin/analytics', zhCN.communityAdmin.nav.analytics, 'admin', 'chart'],
   ['/admin/audit', zhCN.communityAdmin.nav.audit, 'admin', 'list'],
+  // 运行日志只在管理员菜单里出现：错误行带堆栈与调用链，能力用 audit:read（服务端页面与接口各自再校验一次）。
+  ['/admin/logs', zhCN.communityAdmin.nav.logs, 'admin', 'alert'],
   ['/admin/system', zhCN.communityAdmin.nav.system, 'admin', 'shield'],
 ];
 

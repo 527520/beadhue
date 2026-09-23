@@ -38,5 +38,12 @@ export function useAdminInspection<T>(url: string | null) {
     return () => { window.clearTimeout(timer); requestSequence.current++; reads.current?.abort(); };
   }, [reload]);
   const current = state.url === url;
-  return { data: current ? state.data : null, error: current ? state.error : null, refreshing: current && state.refreshing, reload };
+  /**
+   * 就地打补丁：保存标签这类「服务端已返回新事实」的写入不必再整份重读详情，
+   * 否则标签输入框会在重新读取期间被禁用、材料区闪回加载态（admin-round-3 07）。
+   */
+  const applyLocal = useCallback((patch: Partial<T>) => {
+    setState((previous) => previous.url === url && previous.data ? { ...previous, data: { ...previous.data, ...patch } } : previous);
+  }, [url]);
+  return { data: current ? state.data : null, error: current ? state.error : null, refreshing: current && state.refreshing, reload, applyLocal };
 }

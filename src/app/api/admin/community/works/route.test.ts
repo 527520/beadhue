@@ -51,13 +51,38 @@ it('guards list and detail, limits list payloads, and retains approved material 
   expect((await update('restore', 2)).status).toBe(200);
   expect(await (await detail()).json()).toMatchObject({ isPublic: true, version: 3 });
 });
-it('uses bounded deterministic cursor pages and supports exact IDs without reading full snapshots', async () => {
+it('paginates by page/size with a real total and rejects sizes outside the whitelist', async () => {
   token = (await createSession(db, moderatorId)).token;
-  await db.insert(communityWorks).values(Array.from({ length: 51 }, () => ({ authorUserId: authorId, createdAt: new Date('2026-01-01T00:00:00Z') })));
-  const first = await (await list()).json(); expect(first.items).toHaveLength(50); expect(first.nextCursor).toBeTruthy();
-  const second = await (await list(`?cursor=${first.nextCursor}`)).json(); expect(second.items).toHaveLength(2); expect(second.nextCursor).toBeNull();
-  expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(52);
+  await db.insert(communityWorks).values(Array.from({ length: 25 }, () => ({ authorUserId: authorId, createdAt: new Date('2026-01-01T00:00:00Z') })));
+  const first = await (await list()).json();
+  expect(first.items).toHaveLength(10); expect(first.total).toBe(26); expect(first.totalPages).toBe(3); expect(first.page).toBe(1);
+  const second = await (await list('?page=2')).json();
+  expect(second.items).toHaveLength(10); expect(second.page).toBe(2);
+  const third = await (await list('?page=3&size=20')).json();
+  expect(third.items).toHaveLength(6); expect(third.size).toBe(20);
+  // 超过总页数时服务端夹回最后一页，客户端不会停在空页。
+  const clamped = await (await list('?page=99')).json();
+  expect(clamped.page).toBe(3); expect(clamped.items).toHaveLength(6);
+  expect(new Set([...first.items, ...second.items, ...third.items].map((item) => item.id)).size).toBe(26);
   expect((await (await list(`?q=${workId}`)).json()).items).toHaveLength(1);
-  expect((await list('?cursor=invalid')).status).toBe(400);
+  expect((await list('?size=7')).status).toBe(400);
+  expect((await list('?page=0')).status).toBe(400);
   expect((await list('?status=invalid')).status).toBe(400);
+});
+
+it('filters by public status with the same predicate the row DTO reports', async () => {
+  token = (await createSession(db, moderatorId)).token;
+  // 已下架但有已批准修订：属于「未公开」，不能因为存在修订而被算成公开。
+  const [withdrawn] = await db.insert(communityWorks).values({ authorUserId: authorId, lifecycleStatus: 'withdrawn', currentPublishedRevisionId: crypto.randomUUID() }).returning();
+  // 正常但从未发布：也是未公开。
+  const [neverPublished] = await db.insert(communityWorks).values({ authorUserId: authorId }).returning();
+  const all = await (await list()).json();
+  expect(all.total).toBe(3);
+  const onlyPublic = await (await list('?public=public')).json();
+  expect(onlyPublic.items.map((item: { id: string }) => item.id)).toEqual([workId]);
+  expect(onlyPublic.items.every((item: { isPublic: boolean }) => item.isPublic)).toBe(true);
+  const hidden = await (await list('?public=hidden&size=20')).json();
+  expect(hidden.items.map((item: { id: string }) => item.id).sort()).toEqual([withdrawn.id, neverPublished.id].sort());
+  expect(hidden.items.every((item: { isPublic: boolean }) => item.isPublic === false)).toBe(true);
+  expect((await list('?public=nope')).status).toBe(400);
 });

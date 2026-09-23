@@ -6,8 +6,29 @@ import CommunityPage from './page';
 vi.mock('@/lib/auth/db', () => ({ getDb: () => ({}) }));
 vi.mock('@/components/layout/SiteHeader', () => ({ default: () => <header /> }));
 vi.mock('@/components/community/CommunityImpression', () => ({ CommunityListImpression: () => null }));
-const query = vi.hoisted(() => ({ list: vi.fn(), tags: vi.fn(async () => [{ id: 'tag-1', name: '花朵', slug: 'flowers', count: 3 }]) }));
-vi.mock('@/lib/community/queries', async (original) => ({ ...(await original<object>()), listPublicCommunityWorks: query.list, listPopularCommunityTags: query.tags }));
+// TagFilter 用 useRouter 做客户端跳转；本文件只验证服务端渲染结果，这里给一个空实现。
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+const query = vi.hoisted(() => ({
+  list: vi.fn(),
+  tags: vi.fn(async () => [{ id: 'tag-1', name: '花朵', slug: 'flowers', count: 3 }]),
+  allTags: vi.fn(async () => [
+    { id: 'tag-1', name: '花朵', slug: 'flowers', count: 3 },
+    { id: 'tag-2', name: '猫咪', slug: 'cats', count: 1 },
+  ]),
+}));
+vi.mock('@/lib/community/queries', async (original) => ({
+  ...(await original<object>()),
+  listPublicCommunityWorks: query.list,
+  listPopularCommunityTags: query.tags,
+  listAllCommunityTagsWithCounts: query.allTags,
+}));
+
+const card = {
+  id: 'work-1', revisionId: 'revision-1', title: '窗边的小花', author: { authorType: 'user' as const, publicAuthorId: 'pa-1', displayName: '爱丽丝' },
+  boardProfile: '5mm-29', palette: { kind: 'builtin', id: 'MARD' }, width: 29, height: 29, colorCount: 2,
+  preview: { colorBand: ['#ff0000', '#ffffff'] }, tags: [{ id: 'tag-1', name: '花朵', slug: 'flowers' }],
+  counts: { likes: 1, comments: 2, reuses: 3 }, featured: false, publishedAt: '2026-09-05T12:00:00.000Z',
+};
 
 it('豆社下一页保留所有有效筛选，重设筛选不带旧游标', async () => {
   query.list.mockResolvedValue({ items: [], nextCursor: 'next/cursor+value' });
@@ -39,4 +60,19 @@ it('无效日期筛选提供恢复入口，不让整页变为服务器错误', a
   render(await CommunityPage({ searchParams: Promise.resolve({ from: 'invalid-date' }) }));
   expect(screen.getByText('筛选条件无法识别')).toBeVisible();
   expect(screen.getByRole('link', { name: '清除筛选' })).toHaveAttribute('href', '/community');
+});
+
+it('列表卡片不再显示标签，标签筛选控件接管筛选', async () => {
+  query.list.mockResolvedValue({ items: [card], nextCursor: null });
+  render(await CommunityPage({ searchParams: Promise.resolve({}) }));
+  // 卡片只剩封面与标题两个链接，标签行整块消失。
+  const listCard = document.querySelector<HTMLElement>('.community-card')!;
+  expect(document.querySelector('.community-tags')).toBeNull();
+  expect(within(listCard).getAllByRole('link')).toHaveLength(2);
+  // 可搜索的单选控件与热门芯片行同时在位。
+  expect(screen.getByRole('combobox', { name: '按标签筛选' })).toBeVisible();
+  expect(screen.getByRole('link', { name: /花朵/ })).toHaveAttribute('href', '/community?tag=%E8%8A%B1%E6%9C%B5');
+  // SSR 热路径跳过逐作品标签查询；热门芯片只取前 8 个。
+  expect(query.list).toHaveBeenCalledWith({}, expect.anything(), { includeTags: false });
+  expect(query.tags).toHaveBeenCalledWith({}, 8);
 });

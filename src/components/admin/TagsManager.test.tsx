@@ -34,8 +34,13 @@ it('requires selecting a tag and explicitly confirms the named merge target', as
   expect(JSON.parse(String(writes[0][1]?.body))).toMatchObject({ targetTagId: 'target', expectedVersion: 2 });
 });
 it('shows read failures with retry instead of a false empty list', async () => {
-  vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));
+  // 合并候选（?size=100）与列表是两次读取：只让列表失败，断言错误态而不是假空列表。
+  vi.mocked(fetch).mockImplementation(async (url) => {
+    if (String(url).includes('size=100')) return new Response(JSON.stringify({ items: [] }));
+    throw new Error('offline');
+  });
   render(<TagsManager />); await screen.findByRole('alert');
+  vi.mocked(fetch).mockImplementation(async (url) => new Response(JSON.stringify({ items: String(url).includes('size=100') ? [] : tags })));
   fireEvent.click(screen.getByRole('button', { name: '重新读取' }));
   expect(await screen.findByRole('button', { name: /小猫/ })).toBeEnabled();
 });

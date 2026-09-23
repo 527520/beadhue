@@ -11,12 +11,12 @@ import OriginalPreview from '@/components/community/OriginalPreview';
 import PatternPreview from '@/components/preview/PatternPreview';
 import AdminQueueState from './AdminQueueState';
 import AdminCommandNotice from './AdminCommandNotice';
-import { AdminEmpty, AdminSkeleton, FilterBar, Pagination, ReasonPanel, StatusBadge } from './AdminPrimitives';
+import { AdminEmpty, AdminPagination, AdminSkeleton, FilterBar, ReasonPanel, StatusBadge } from './AdminPrimitives';
 import Button, { ButtonLink } from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
 import Notice from '@/components/ui/Notice';
 import TextField from '@/components/ui/TextField';
-import { useAdminCollection } from './useAdminCollection';
+import { useAdminPage } from './useAdminPage';
 import { useAdminInspection } from './useAdminInspection';
 import { useAdminCommand } from './useAdminCommand';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
@@ -39,12 +39,10 @@ export default function WorksManager({ initialWorkId }: { initialWorkId?: string
   const states = zhCN.communityAdmin.states;
   const [q, setQ] = useState(initialWorkId ?? '');
   const [status, setStatus] = useState('all');
-  const [filter, setFilter] = useState({ q: initialWorkId ?? '', status: 'all' });
-  const [cursors, setCursors] = useState(['']);
+  const [publicState, setPublicState] = useState('all');
+  const [filter, setFilter] = useState({ q: initialWorkId ?? '', status: 'all', public: 'all' });
   const query = new URLSearchParams(filter);
-  const cursor = cursors.at(-1);
-  if (cursor) query.set('cursor', cursor);
-  const queue = useAdminCollection<ManagedCommunityWork>(`/api/admin/community/works?${query}`);
+  const queue = useAdminPage<ManagedCommunityWork>(`/api/admin/community/works?${query}`, 'works');
   const command = useAdminCommand();
   const [selectedId, setSelectedId] = useState<string | null>(initialWorkId ?? null);
   const selected = queue.items.find((item) => item.id === selectedId) ?? null;
@@ -78,29 +76,52 @@ export default function WorksManager({ initialWorkId }: { initialWorkId?: string
       setSelectedId(null); setReason(''); setDanger(null); setConfirmed(false); await queue.reload();
     });
   };
+  /*
+    保存标签（admin-round-3 04/07）：服务端返回新的作品版本与标签集合，就地打补丁即可，
+    不再 `queue.reload()` —— 那会让整个作品列表卸载成骨架，标签输入框也会短暂禁用、
+    还可能闪出「版本已过期」。打标是唯一不需要操作理由的管理写入（D51）。
+  */
+  const patchTags = (workId: string, version: number, tags: Array<{ id: string; name: string }>) => {
+    queue.patchItem(workId, { version });
+    if (detail?.id === workId) inspection.applyLocal({ version, tags });
+  };
   const saveTags = async () => {
     if (!selected || !ready || sameTags(tagDraft, tagBase)) return;
-    await command.run({ url: `/api/admin/community/works/${selected.id}/tags`, method: 'PUT', body: { expectedVersion: selected.version, tags: tagDraft } }, async () => {
-      await queue.reload(); await inspection.reload();
-    });
+    await command.run<{ workId: string; version: number; tags: Array<{ id: string; name: string }> }>(
+      { url: `/api/admin/community/works/${selected.id}/tags`, method: 'PUT', body: { expectedVersion: selected.version, tags: tagDraft } },
+      async (saved) => {
+        if (saved?.workId) patchTags(saved.workId, saved.version, saved.tags ?? []);
+        else await inspection.reload();
+        setTagEdit(null);
+      });
   };
   const bulkTag = async () => {
     if (command.locked || checked.length === 0 || bulkTags.length === 0) return;
-    await command.run({ url: '/api/admin/community/works/tags', method: 'POST', body: { workIds: checked, tags: bulkTags } }, async () => {
-      setBulkTags([]); setChecked([]); await queue.reload(); if (selected) await inspection.reload();
-    });
+    await command.run<{ works?: Array<{ workId: string; version: number }> }>(
+      { url: '/api/admin/community/works/tags', method: 'POST', body: { workIds: checked, tags: bulkTags } },
+      async (saved) => {
+        for (const work of saved?.works ?? []) queue.patchItem(work.workId, { version: work.version });
+        setBulkTags([]); setChecked([]);
+      });
   };
-  const page = (next: string[]) => { if (!command.locked) { select(null); setCursors(next); setChecked([]); } };
   const allChecked = queue.items.length > 0 && checked.length === queue.items.length;
   const reasonReady = Boolean(ready) && reason.trim().length >= 3;
   // 结果反馈紧挨着动作：有选中项时在理由区正下方，处理完毕（选中项清空）后落在详情面板顶部。
   const notice = <AdminCommandNotice command={command} onRefresh={() => void refresh()} />;
   return <div className={`admin-task-layout works-task-layout${selected ? ' is-inspecting' : ''}`}>
     <section className="admin-panel admin-task-queue" ref={queueRef} tabIndex={-1} aria-label={t.queue}>
-      <header><h2>{t.queue}</h2><span>{t.page(cursors.length)}</span></header>
-      <FilterBar submitLabel={t.query} disabled={command.locked || queue.loading} onSubmit={(event) => { event.preventDefault(); if (!command.locked) { select(null); setFilter({ q: q.trim(), status }); setCursors(['']); setChecked([]); if (q.trim() === filter.q && status === filter.status && cursors.length === 1) void queue.reload(); } }}>
+      <header><h2>{t.queue}</h2><span>{zhCN.communityAdmin.pagination.totalCount(queue.total)}</span></header>
+      <FilterBar submitLabel={t.query} disabled={command.locked || queue.loading} onSubmit={(event) => {
+        event.preventDefault(); if (command.locked) return;
+        select(null); setChecked([]);
+        const unchanged = q.trim() === filter.q && status === filter.status && publicState === filter.public;
+        setFilter({ q: q.trim(), status, public: publicState });
+        // 条件没变时 URL 相同、不会触发重新读取，显式刷新一次。
+        if (unchanged && queue.page === 1) void queue.reload(); else queue.setPage(1);
+      }}>
         <TextField label={t.search} value={q} maxLength={80} disabled={command.locked} onChange={(event) => setQ(event.target.value)} />
         <ResponsiveSelect label={t.status} value={status} disabled={command.locked} onValueChange={setStatus} options={[{value:'all',label:t.all},...(['active','withdrawn','removed'] as const).map(value=>({value,label:states.work[value]}))]} />
+        <ResponsiveSelect label={t.publicStatus} value={publicState} disabled={command.locked} onValueChange={setPublicState} options={[{value:'all',label:t.all},{value:'public',label:t.public},{value:'hidden',label:t.notPublic}]} />
       </FilterBar>
       <AdminQueueState {...queue} empty={queue.items.length === 0}>
         <div className="admin-batch-select"><Checkbox compact label={<>{allChecked ? t.clearSelection : t.selectAll}{checked.length > 0 && <span className="admin-batch-count">{t.selectedCount(checked.length)}</span>}</>} checked={allChecked} disabled={command.locked} onChange={(next) => setChecked(next ? queue.items.map((item) => item.id) : [])} /></div>
@@ -111,12 +132,15 @@ export default function WorksManager({ initialWorkId }: { initialWorkId?: string
         <ul className="admin-object-list stagger">{queue.items.map((item, index) => <li key={item.id} style={{ '--i': index } as CSSProperties}>
           <Checkbox compact className="admin-row-check" label={<span className="sr-only">{t.selectWork(item.title ?? t.noTitle)}</span>} checked={checked.includes(item.id)} disabled={command.locked} onChange={(next) => setChecked((current) => next ? [...current, item.id] : current.filter((id) => id !== item.id))} />
           <button type="button" disabled={command.locked} aria-current={selectedId === item.id} onClick={() => select(item.id)}>
-            {item.thumbnail && <CommunityThumbnail revisionId={item.thumbnail.revisionId} width={item.thumbnail.width} height={item.thumbnail.height} label={item.title ?? t.noTitle} />}
+            {item.thumbnail && <CommunityThumbnail scope="admin" revisionId={item.thumbnail.revisionId} width={item.thumbnail.width} height={item.thumbnail.height} label={item.title ?? t.noTitle} />}
             <strong>{item.title ?? t.noTitle}</strong><span>{item.displayName}<StatusBadge kind="work" value={item.lifecycleStatus} /><small>{item.isPublic ? t.public : t.notPublic}</small>{item.featured && <small>{t.featured}</small>}</span>
           </button>
         </li>)}</ul>
       </AdminQueueState>
-      <Pagination page={cursors.length} hasPrevious={cursors.length > 1} hasNext={Boolean(queue.nextCursor)} disabled={command.locked || queue.loading} onPrevious={() => page(cursors.slice(0, -1))} onNext={() => page([...cursors, queue.nextCursor!])} />
+      <AdminPagination page={queue.page} totalPages={queue.totalPages} size={queue.size} total={queue.total}
+        onPage={(next) => { if (!command.locked) { select(null); setChecked([]); queue.setPage(next); } }}
+        onSize={(next) => { if (!command.locked) { select(null); setChecked([]); queue.setSize(next); } }}
+        disabled={command.locked || queue.loading} />
     </section>
     <section className="admin-panel admin-task-detail" ref={detailRef} tabIndex={-1} aria-label={t.material}>
       <header><h2>{t.material}</h2>{inspection.refreshing && <span role="status">{c.loading}</span>}</header>

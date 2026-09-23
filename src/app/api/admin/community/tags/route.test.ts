@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { createTestClient, type TestDatabase } from '@/../db/testClient';
-import { adminAuditLogs, communityTags, users } from '@/../db/schema';
+import { adminAuditLogs, communityTags, communityWorks, communityWorkTags, users } from '@/../db/schema';
 import { setTestDb } from '@/lib/auth/db';
 import { createSession } from '@/lib/auth/session';
 import { SESSION_COOKIE_NAME } from '@/lib/auth/cookies';
@@ -33,3 +34,33 @@ it('uses a zero creation version, returns definite duplicate conflicts and valid
   expect(listed.headers.get('cache-control')).toContain('no-store');
   expect((await listed.json()).items).toMatchObject([{ name: '星星人', workCount: 0 }]);
 });
+
+it('counts tagged works with a real join instead of the always-zero correlated subquery', async () => {
+  const [moderator] = await db.insert(users).values({ email: 'tag-counter@example.test', role: 'moderator', emailVerifiedAt: new Date() }).returning();
+  token = (await createSession(db, moderator.id)).token;
+  const created = await POST(request({ name: '星星人', expectedVersion: 0, reason: '经人工核对的分类' }, 'create-star'));
+  expect(created.status).toBe(201);
+  const [tag] = await db.select().from(communityTags);
+  const [author] = await db.insert(users).values({ email: 'tag-author@example.test', role: 'user', emailVerifiedAt: new Date() }).returning();
+  const [work] = await db.insert(communityWorks).values({ authorUserId: author.id }).returning();
+  const [published] = await db.insert(communityWorks).values({ authorUserId: author.id }).returning();
+  await db.update(communityWorks).set({ currentPublishedRevisionId: crypto.randomUUID() }).where(eq(communityWorks.id, published.id));
+  await db.insert(communityWorkTags).values([
+    { workId: work.id, tagId: tag.id },
+    { workId: published.id, tagId: tag.id },
+  ]);
+  // 回归点：旧实现把外层的 community_tags.id 渲染成不带表名的 "id"，被解析成 cwt.id → 永远 0。
+  const body = await (await GET(new Request('http://localhost/api/admin/community/tags'))).json();
+  expect(body.items).toMatchObject([{ name: '星星人', workCount: 2, publicWorkCount: 1 }]);
+  expect(body.total).toBe(1);
+});
+
+it('creates a tag without a hand-written reason and still writes an audit reason', async () => {
+  const [moderator] = await db.insert(users).values({ email: 'tag-noreason@example.test', role: 'moderator', emailVerifiedAt: new Date() }).returning();
+  token = (await createSession(db, moderator.id)).token;
+  const created = await POST(request({ name: '水豚', expectedVersion: 0 }, 'create-without-reason'));
+  expect(created.status).toBe(201);
+  const [log] = await db.select().from(adminAuditLogs);
+  expect(log).toMatchObject({ action: 'community.tag_created', reason: '标签管理：新建标签' });
+});
+

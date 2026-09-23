@@ -53,6 +53,8 @@ interface Props {
   /** Deterministic component-test seam. Production always measures its viewport. */
   defaultCellPx?: number;
   layout?: 'desktop' | 'mobile';
+  /** 隐藏工具栏里的整图级操作（后台草稿编辑器做减法用，admin-round-3 05）。 */
+  hideOps?: ReadonlyArray<'transform' | 'clear'>;
   onStatsChange?: (stats: PatternStatsItem[], total: number) => void;
   onColorChange?: (color: PaletteColor | null) => void;
   onPatternChange?: (pattern: Pattern) => void;
@@ -112,6 +114,7 @@ export default function PixelEditorCanvas({
   autoFocus = false,
   defaultCellPx,
   layout = 'desktop',
+  hideOps,
   onStatsChange,
   onColorChange,
   onPatternChange,
@@ -779,6 +782,7 @@ export default function PixelEditorCanvas({
         interactionMode={interactionMode}
         layout={layout}
         moreOpen={moreOpen}
+        hideOps={hideOps}
         onPanMode={enterPanMode}
         onMoreToggle={() => setMoreOpen((open) => !open)}
         onToolChange={(next) => enterEditMode(next)}

@@ -8,9 +8,10 @@ describe('governance task state', () => {
   beforeEach(() => vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: [item] })))));
   it('selects material before showing reasons and retains it through failed writes', async () => {
     render(<GovernanceConsole mode="comments" />);
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    // 分页控件本身有一个「跳到第几页」数字输入框，所以这里按理由字段的名字断言，而不是任意 textbox。
+    expect(screen.queryByRole('textbox', { name: '处置理由' })).not.toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: /待审纯文本/ }));
-    const reason = screen.getByRole('textbox');
+    const reason = screen.getByRole('textbox', { name: '处置理由' });
     fireEvent.change(reason, { target: { value: '经过人工检查' } });
     vi.mocked(fetch).mockRejectedValueOnce(new Error('offline'));
     fireEvent.click(screen.getByRole('button', { name: '公开' }));

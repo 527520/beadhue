@@ -1,4 +1,25 @@
 # 豆谱反向代理与 TLS（Caddy 自动签发 Let's Encrypt 证书）
+#
+# 全局选项块（无 key 的块，必须位于文件最前）：超时属于「服务器级」选项，
+# 不是站点指令，因此不能写进站点块里（写进去会报 unrecognized directive: timeouts）。
+# 以下取值同时作用于本 Caddy 实例上所有站点的服务器（含末尾的迟迟），
+# 全部是宽松上限：正常上传/导出/长响应都远在阈值内，只用于兜住慢速攻击。
+{
+	servers {
+		timeouts {
+			# 整个请求（含请求体）的读取上限。20MB 原图在 3Mbps 家宽下约 53s，
+			# 60s 留有余量；超时断连，避免慢速上传长期占用连接。
+			read_body 60s
+			# 只读请求头：挡 slowloris 式「一个字节一个字节发头」。
+			read_header 10s
+			# 单次响应写上限。原图下载（20MB）远小于 120s。
+			write 120s
+			# keep-alive 空闲上限：空闲连接 120s 后回收，不再无限挂着。
+			idle 120s
+		}
+	}
+}
+
 # www 子域重定向到主域（避免重复内容，www 证书同样自动签发）
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
@@ -7,9 +28,24 @@ www.{$SITE_DOMAIN} {
 {$SITE_DOMAIN} {
 	encode gzip
 
+	# 访问日志（JSON 到 stdout）：爬虫 / 扫描器 / 异常的可见性全靠它，
+	# 可在服务器上用 `docker compose -f docker-compose.prod.yml logs -f caddy` 过滤。
+	# 只记录访问日志（access log），不开启 debug 级错误日志，避免日志量失控。
+	log {
+		output stdout
+		format json
+	}
+
 	# 注入真实客户端 IP：应用限流键（发信成本防护）只信任该头；
 	# 客户端伪造的 X-Forwarded-For 因此失效（app 侧优先读取 x-real-ip）。
 	request_header X-Real-IP {remote_host}
+
+	# 请求体上限：应用侧原图硬上限 20MB（src/lib/appInfo.ts 的 maxFileBytes），
+	# 这里给 25MB 留出 multipart/JSON 封装的余量；超限由 Caddy 直接 413，
+	# 不再把几十 MB 的垃圾读进 app 进程（内存与带宽保护）。
+	request_body {
+		max_size 25MB
+	}
 
 	header {
 		X-Content-Type-Options nosniff
@@ -37,6 +73,14 @@ www.{$SITE_DOMAIN} {
 # ============================================================================
 {$CHI_SITE_DOMAIN} {
 	encode zstd gzip
+
+	# 与主站一致的访问日志：两个站点在同一 Caddy 实例里，只开一个会让迟迟侧
+	# 的爬虫流量继续不可见。说明：本站点刻意不加 request_body 上限——
+	# 迟迟的上传由它自己的应用侧限制，本文件不改动迟迟的请求体语义。
+	log {
+		output stdout
+		format json
+	}
 
 	# 与主站一致的取值：迟迟的限流键只信任这个头，客户端伪造无效。
 	request_header X-Real-IP {remote_host}

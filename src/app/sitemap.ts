@@ -14,9 +14,12 @@ export async function generateSitemaps(): Promise<Array<{ id: number }>> {
   return Array.from({ length: sitemapPageCount(total, sitemapWindow().pageSize) }, (_, id) => ({ id }));
 }
 
-export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+export default async function sitemap({ id }: { id: Promise<string> | string | number }): Promise<MetadataRoute.Sitemap> {
   const base = process.env.APP_URL ?? 'http://localhost:3000';
-  const page = Number.isInteger(id) && id >= 0 ? id : 0;
+  // Next 16 把 sitemap 的 id 作为 Promise 传入（值为 `"<n>"` 这样的字符串，见 generate-sitemaps 文档）；
+  // 此前按 number 判断，`Number.isInteger(Promise)` 恒为 false，导致每一页都渲染成第 0 页
+  //（内容重复且永远拿不到第 1 页之后的作品，爬虫还要多抓 N 倍）。
+  const page = normalizeSitemapId(await id);
   const now = new Date();
   const staticEntries: MetadataRoute.Sitemap = page !== 0 ? [] : ['', '/app', '/palettes', '/community', '/community/rules', '/community/copyright', '/privacy', '/help', '/about'].map((route) => ({
     url: `${base}${route}`,
@@ -32,4 +35,11 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
     changeFrequency: 'monthly' as const,
     priority: 0.7,
   }))];
+}
+
+/** 解析 sitemap 的页码参数（可能是 Promise 解析出的字符串、数字或 `"0.xml"`），非法一律回退第 0 页。 */
+export function normalizeSitemapId(raw: unknown): number {
+  const text = String(raw ?? '').replace(/\.xml$/u, '').trim();
+  const value = Number.parseInt(text, 10);
+  return Number.isInteger(value) && value >= 0 ? value : 0;
 }

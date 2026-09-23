@@ -149,9 +149,9 @@ describe('PostgreSQL 16 community and governance concurrency', () => {
       actorRole: 'moderator' as const, actorUserId: actor.userId, action: 'test.read', targetType: 'test', targetId: suffix,
       reason: '本地审计分页验证', requestId: `${suffix}-audit-${index}`, createdAt: new Date('2026-09-01T01:00:00Z'),
     })));
-    const first = await listAdminAudit(db, { q: `${suffix}-audit` });
-    const second = await listAdminAudit(db, { q: `${suffix}-audit`, cursor: first.nextCursor });
-    expect(first.items).toHaveLength(50); expect(second.items).toHaveLength(5);
+    const first = await listAdminAudit(db, { q: `${suffix}-audit`, size: 50 });
+    const second = await listAdminAudit(db, { q: `${suffix}-audit`, size: 50, page: 2 });
+    expect(first.items).toHaveLength(50); expect(second.items).toHaveLength(5); expect(first.total).toBe(55);
     expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(55);
     const task = `test.${suffix}`;
     const rows = await db.insert(maintenanceRuns).values([

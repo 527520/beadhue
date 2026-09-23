@@ -21,6 +21,7 @@ import { AppError } from '@/lib/errors';
 import { validateImageFile } from '@/lib/image/validation';
 import { readImageDimensions } from '@/lib/image/dimensions';
 import type { ImageType } from '@/lib/image/sniff';
+import type { ByteLruCache as OriginalByteCache } from './originalCache';
 import type { OriginalObjectStore } from './originalStore';
 
 export const ORIGINAL_BLOCK_RETENTION_DAYS = 30;
@@ -137,12 +138,28 @@ export async function resolveOriginalAccess(db: AnyDatabase, actor: Actor | null
   return null;
 }
 
-export async function readRevisionOriginal(db: AnyDatabase, store: OriginalObjectStore, actor: Actor | null, revisionId: string) {
+/**
+ * 按已判定的访问资格读取字节（命中进程缓存则不再打对象存储）。
+ * 管理端原图预览若复用本函数，传同一个缓存实例即可共享字节。
+ */
+export async function readOriginalBody(store: OriginalObjectStore, row: { cosKey: string; mimeType: string }, cache?: OriginalByteCache | null) {
+  const cached = cache?.get(row.cosKey);
+  if (cached) return { body: cached, contentType: row.mimeType };
+  const object = await store.get(row.cosKey);
+  if (!object) throw new AppError('NOT_FOUND', '原图对象已不存在');
+  cache?.set(row.cosKey, object.body);
+  return { body: object.body, contentType: object.contentType ?? row.mimeType };
+}
+
+/**
+ * 读取原图字节（鉴权在前，命中进程缓存则不再打 COS）。
+ * `cache` 由调用方注入（见 originalCache.ts），未传则每次直读对象存储。
+ */
+export async function readRevisionOriginal(db: AnyDatabase, store: OriginalObjectStore, actor: Actor | null, revisionId: string, cache?: OriginalByteCache | null) {
   const resolved = await resolveOriginalAccess(db, actor, revisionId);
   if (!resolved) throw new AppError('NOT_FOUND', '原图不存在或无权访问');
-  const object = await store.get(resolved.row.cosKey);
-  if (!object) throw new AppError('NOT_FOUND', '原图对象已不存在');
-  return { ...resolved, body: object.body, contentType: object.contentType ?? resolved.row.mimeType };
+  const { body, contentType } = await readOriginalBody(store, resolved.row, cache);
+  return { ...resolved, body, contentType };
 }
 
 /** 事务内标记删除；返回需要在提交后清除的对象键（已去重）。 */

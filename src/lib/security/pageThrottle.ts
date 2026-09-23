@@ -34,7 +34,17 @@ export function createPageThrottle(options: { limitPerMinute: number; maxKeys?: 
   };
 }
 
-/** 需要页面级节流的公开路径：豆社列表与详情、sitemap。 */
+/**
+ * 需要页面级节流的公开路径：豆社列表与详情、sitemap 分页、robots.txt。
+ *
+ * 修正（admin-round-3 12）：`generateSitemaps` 只注册 `/sitemap/<n>.xml`
+ * （见 Next 的 `generate-sitemaps` 文档与 `next-metadata-route-loader`：静态参数是
+ * `"<n>.xml"`，没有 `/sitemap.xml` 这条路由），原先那个分支是永不命中的死代码，
+ * 同时 `/robots.txt` 反而完全没有节流；现在按真实路径匹配并补上 robots.txt。
+ */
 export function isThrottledPublicPath(pathname: string): boolean {
-  return pathname === '/community' || /^\/community\/[0-9a-f-]{36}$/iu.test(pathname) || pathname === '/sitemap.xml' || /^\/sitemap\/\d+\.xml$/u.test(pathname);
+  return pathname === '/community'
+    || /^\/community\/[0-9a-f-]{36}$/iu.test(pathname)
+    || /^\/sitemap\/\d+\.xml$/u.test(pathname)
+    || pathname === '/robots.txt';
 }

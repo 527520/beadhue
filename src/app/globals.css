@@ -105,6 +105,16 @@
   --field-radius-sm: 10px;
   --field-font-size: 15px;
 
+  /*
+    控件高度尺（admin-round-3 01）：按钮 / 芯片 / 折叠触发器等等可点控件一律只从这里取高度。
+    此前 `.btn-sm` / `.btn-xs` 写在 @layer 里，却被一条不分层的 `button:not([tabindex="-1"])`
+    44px 下限盖掉 —— 同一套类名在 <button> 上是 44px，在 <a> / <label> 上却是 36 / 32px，
+    这正是「后台按钮怎么都不一样大」的根因。现在高度只有三档，且 `<a>` 与 `<button>` 一致。
+  */
+  --control-height-md: 44px;
+  --control-height-sm: 36px;
+  --control-height-xs: 32px;
+
   /* 柔和粉色阴影（卡片/主按钮）——历史别名，映射到新阴影尺。 */
   --shadow-soft: var(--shadow-primary);
   --shadow-card: var(--shadow-1);
@@ -157,7 +167,7 @@
   */
   .btn-primary, .btn-outline, .btn-quiet, .btn-ghost, .btn-tool, .btn-danger, .btn-danger-outline, .btn-danger-quiet {
     display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-    min-height: 44px; padding: .55rem 1.1rem; border: 1px solid transparent; border-radius: 12px;
+    min-height: var(--control-height-md); padding: .55rem 1.1rem; border: 1px solid transparent; border-radius: 12px;
     font-size: 15px; font-weight: 600; line-height: 1.25; text-decoration: none; white-space: nowrap;
     transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
   }
@@ -196,8 +206,8 @@
   /*
     尺寸修饰符：放在所有种类之后（同层同特异性后定义者胜）。
   */
-  .btn-sm { min-height: 36px; padding: .3rem .8rem; font-size: 14px; border-radius: 10px; }
-  .btn-xs { min-height: 32px; padding: .2rem .6rem; font-size: 13px; border-radius: 9px; }
+  .btn-sm { min-height: var(--control-height-sm); padding: .3rem .8rem; font-size: 14px; border-radius: 10px; }
+  .btn-xs { min-height: var(--control-height-xs); padding: .2rem .6rem; font-size: 13px; border-radius: 9px; }
   /** 图标按钮：只收紧内边距，不动字号（缩放 ± 这类符号按钮）。 */
   .btn-icon { padding-inline: .5rem; }
   /*
@@ -205,7 +215,7 @@
     选中态（aria-pressed）是软态：莓果软底 + 半透明莓果边 + 莓果深图标——像一颗被按进底板、透出底色的豆，
     不再是实心满填（满填的小圆在浅底上像一个靶心）。
   */
-  .btn-bead { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1.5px solid var(--color-hairline-strong); border-radius: 999px; background: var(--color-surface); color: var(--color-ink-soft); box-shadow: var(--shadow-1); transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+  .btn-bead { position: relative; display: inline-grid; place-items: center; width: var(--control-height-md); height: var(--control-height-md); padding: 0; border: 1.5px solid var(--color-hairline-strong); border-radius: 999px; background: var(--color-surface); color: var(--color-ink-soft); box-shadow: var(--shadow-1); transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out); }
   .btn-bead:hover:not(:disabled) { border-color: rgb(185 62 98 / 45%); color: var(--color-primary-deep); background: var(--color-primary-soft); box-shadow: var(--shadow-2); transform: translateY(-1px); }
   .btn-bead:active:not(:disabled) { transform: scale(.92); transition-duration: var(--dur-press); box-shadow: none; }
   .btn-bead[aria-pressed="true"] { border-color: rgb(185 62 98 / 38%); background: var(--color-primary-soft); color: var(--color-primary-deep); box-shadow: inset 0 1px 2px rgb(150 48 79 / 12%); }
@@ -219,7 +229,7 @@
   .btn-bead:disabled > svg { opacity: .55; }
   /* 加载中的豆粒（点赞状态未返回）：保持正常观感，只把图标降一点，不要在灰态与亮态之间闪。 */
   .btn-bead[data-loading="true"] > svg { opacity: .5; }
-  .btn-bead.btn-bead-sm { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+  .btn-bead.btn-bead-sm { width: var(--control-height-sm); height: var(--control-height-sm); min-width: var(--control-height-sm); min-height: var(--control-height-sm); }
   .btn-bead.btn-bead-sm svg { width: 16px; height: 16px; }
   /* 落位：按下变为选中时图标弹一下（heart-pop 有过冲），取消时从略小回弹到原位。 */
   .btn-bead-settle[aria-pressed="true"] > svg { animation: heart-pop 360ms var(--ease-spring); }
@@ -258,7 +268,7 @@
   .modal-panel h2:first-child, .modal-panel h3:first-child, .modal-panel form > h3:first-child, .modal-title { margin: 0 0 .5rem; font-family: var(--font-sans); font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--color-ink); }
   .modal-title.is-danger { color: var(--color-danger); }
   .modal-copy { margin: 0 0 1rem; color: var(--color-ink-soft); font-size: 14px; line-height: 1.65; }
-  .modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
+  .modal-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; margin-top: 1rem; }
   .modal-actions > * { min-width: 5.5rem; }
   .modal-form { display: flex; flex-direction: column; gap: .75rem; }
   /* 粉色文字链接 */
@@ -309,6 +319,8 @@
   button,
   [role='button'],
   summary,
+  /* 文件选择等「长得像按钮的 label」不是原生控件，命中区要单独兜住（FileButton）。 */
+  label[class*='btn-'],
   a:not(.link-soft),
   input[type='checkbox'],
   input[type='radio'] {
@@ -460,10 +472,42 @@ body {
 .admin-task-detail { position: static; }
 .admin-task-notice { grid-column: 1 / -1; display: grid; gap: .75rem; }
 .admin-task-notice:empty { display: none; }
+/*
+  列表内滚动（admin-round-3 06）：桌面双栏下「整个窗口滚动」改成「列表自己滚」。
+  只作用于同时含 .admin-task-layout 的任务页（:has），概览/分析/系统这些长页面保持窗口滚动；
+  901px 以下退化为单栏（队列或详情二选一），维持页面滚动更好用。
+  高度链必须逐级给到 min-height: 0 / overflow: hidden，否则 flex 子项会按内容撑开、滚动条不出现。
+*/
+@media (min-width: 901px) {
+  .admin-page:has(.admin-task-layout) { height: 100svh; min-height: 0; overflow: hidden; }
+  .admin-page:has(.admin-task-layout) > * { flex: 0 0 auto; }
+  .admin-page:has(.admin-task-layout) > .admin-task-layout { flex: 1 1 auto; min-height: 0; height: auto; align-items: stretch; }
+  .admin-task-layout > .admin-panel { display: flex; flex-direction: column; min-height: 0; }
+  /* 头部 / 筛选条 / 批量条 / 分页固定，只有行列表滚动。
+     面板里除列表以外的子项一律不许收缩——flex 默认 flex-shrink:1 会把它们压扁、
+     让行按钮被下层元素盖住（Playwright 会报 pointer events intercepted）。
+     列表自身给一个最小可视高度，避免矮视口下只剩一条缝。 */
+  .admin-task-layout > .admin-panel > * { flex: 0 0 auto; }
+  .admin-task-layout > .admin-panel > ul.admin-object-list,
+  .admin-task-layout > .admin-panel > .review-queue > ul { flex: 1 1 auto; min-height: 8rem; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+  .admin-task-layout > .admin-panel > .review-queue { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+  .admin-task-detail > .admin-form-stack { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+}
 .admin-pagination, .admin-work-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
-.admin-pagination { align-items: center; justify-content: space-between; padding: .75rem 1rem; border-top: 1px solid var(--color-cream-deep); }
-.admin-pagination-page { color: var(--color-ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
-.admin-work-actions { padding-top: .25rem; }
+/* 分页（admin-round-3 06）：上行「共 N 条 + 每页几档」，下行「上一页 / 第 N 页共 M 页 / 跳页 / 下一页」。
+   队列栏只有 370px 上下，挤在一行会把跳页框折成孤零零的第三行，所以固定这个两段式。 */
+.admin-pagination { flex-direction: column; align-items: stretch; gap: .5rem; padding: .75rem 1rem; border-top: 1px solid var(--color-cream-deep); }
+.admin-pagination-summary { display: flex; align-items: center; justify-content: space-between; gap: .5rem .75rem; flex-wrap: wrap; }
+.admin-pagination-total { color: var(--color-ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.admin-pagination-size { flex: 0 0 auto; }
+.admin-pagination-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.admin-pagination-page { flex: 1 1 auto; text-align: center; color: var(--color-ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.admin-pagination-jump { display: flex; align-items: center; gap: .35rem; }
+.admin-pagination-jump .number-field { width: 5.5rem; }
+.admin-pagination-jump .number-field.is-invalid .number-field-group { border-color: var(--color-danger); }
+.admin-pagination-error { flex: 1 1 100%; color: var(--color-danger); font-size: 13px; }
+.admin-queue-error { padding: .5rem .75rem 0; }
+.admin-work-actions { padding-top: .25rem; align-items: center; }
 .works-task-layout .admin-object-list button { display: grid; grid-template-columns: 4rem minmax(0, 1fr); }
 .works-task-layout .admin-object-list canvas, .works-task-layout .admin-object-list .community-thumbnail { grid-row: span 2; width: 4rem; height: 4rem; border-radius: 8px; object-fit: contain; }
 .works-task-layout .admin-object-list strong, .works-task-layout .admin-object-list span { grid-column: 2; }
@@ -504,13 +548,32 @@ body {
 .report-material > .btn-outline, .report-material > .btn-primary, .admin-form-stack > a[class*="btn-"] { justify-self: start; }
 .admin-queue-help { padding: .6rem 1rem 0; }
 .admin-badges { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: 0; color: var(--color-ink-soft); font-size: 13px; }
-.admin-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--color-lilac-soft); color: var(--color-lilac-deep); font-size: 14px; font-weight: 700; }
+/*
+  人员管理的行头像是按钮的第一个 span。三条规则缺一不可（admin-round-3 01）：
+  1. `> span { grid-column: 2 }` 也会命中 .admin-avatar，必须排除，否则头像落到第 2 列、第 1 列全空；
+  2. 该选择器特异性 0,1,2 还盖掉 .admin-avatar 的 display:grid/place-items:center → 首字靠左不居中，
+     所以头像规则提升为 .admin-object-list .admin-avatar；
+  3. 头像有固定高度，grid 的 stretch 失效，必须显式 align-self:center 才能在两行区域里垂直居中。
+*/
+.admin-object-list .admin-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: var(--color-lilac-soft); color: var(--color-lilac-deep); font-size: 14px; font-weight: 700; }
 .users-task-layout .admin-object-list button { display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: .7rem; }
-.users-task-layout .admin-object-list .admin-avatar { grid-row: span 2; }
-.users-task-layout .admin-object-list strong, .users-task-layout .admin-object-list > li > button > span { grid-column: 2; }
+.users-task-layout .admin-object-list .admin-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+.users-task-layout .admin-object-list strong, .users-task-layout .admin-object-list > li > button > span:not(.admin-avatar) { grid-column: 2; }
 .admin-confirmation-field { display: grid; gap: .3rem; color: var(--color-ink-soft); font-size: 13px; }
 .admin-confirmation-field input { min-height: 44px; padding: 9px 12px; border: 1px solid var(--color-border); border-radius: 12px; background: #fff; color: var(--color-ink); font-family: ui-monospace, monospace; font-size: 14px; }
 .admin-batch-count { margin-left: .5rem; color: var(--color-ink-soft); font-weight: 400; }
+/* 标签管理的批量打标选择器（admin-round-3 08）：勾选框 + 缩略图 + 标题，横向一行。 */
+.admin-picker-search { display: flex; align-items: end; gap: .5rem; }
+.admin-picker-search .field { flex: 1 1 auto; }
+.admin-pick-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .6rem; padding: .45rem .85rem; border-bottom: 1px solid var(--color-cream-deep); cursor: pointer; }
+.admin-object-list li:last-child .admin-pick-row { border-bottom: 0; }
+.admin-pick-row:hover { background: var(--color-cream); }
+.admin-pick-main { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.admin-pick-row .community-thumbnail { width: 3.25rem; height: 3.25rem; border-radius: 8px; object-fit: contain; }
+.admin-pick-body { min-width: 0; display: grid; gap: .1rem; }
+.admin-pick-body strong { font-size: 14px; font-weight: 600; }
+.admin-pick-body small { color: var(--color-ink-soft); font-size: 12.5px; }
+.admin-pick-row .checkbox-box { margin-top: 0; }
 /*
   筛选条（AdminPrimitives）：两段式。第一段「搜索 + 查询」同一行——搜索吃满剩余宽度、查询贴右、底边对齐；
   第二段是其余筛选（状态 / 日期区间），各占一整行。队列栏永远只有 370px 上下，不做 auto-fit 网格。
@@ -521,7 +584,8 @@ body {
 .admin-filter-primary .field-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-filter-secondary { --col: 12rem; }
 .admin-filter-secondary > .form-row-wide { grid-column: 1 / -1; }
-.admin-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+/* 动作行：子项一律居中，否则 flex 默认 stretch 会把矮按钮拉成同行最高者的高度。 */
+.admin-form-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; }
 .admin-command-notice { display: grid; gap: .5rem; }
 .admin-command-notice .notice { flex-wrap: wrap; align-items: center; }
 .admin-command-notice .notice > span { flex: 1 1 14rem; }
@@ -753,7 +817,15 @@ body {
 .batch-dialog, .batch-inspection { max-height: calc(100dvh - 2rem); overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
 .batch-dialog { width: min(36rem, 100%); display: grid; gap: .75rem; }
 .batch-dialog h2 { margin: 0; font-family: var(--font-sans); font-size: 18px; font-weight: 600; }
-.batch-dialog ul { max-height: 40vh; margin: 0; padding-left: 1.25rem; list-style: decimal; overflow: auto; }
+/*
+  发布确认清单：两位数序号（10. 起）此前被裁掉首字符——`list-style: decimal` 的标记默认在
+  padding 外（`list-style-position: outside`），而这里同时是滚动容器（overflow: auto + 20px 左内边距），
+  标记区间不够 19–22px 就被 padding box 裁掉。改成计数器 + 固定宽度标记列：宽度自己定，
+  多少位都不会被裁，且保留 40vh 上限与内部滚动。
+*/
+.batch-dialog ul { max-height: 40vh; margin: 0; padding-left: 0; list-style: none; overflow: auto; counter-reset: batch-draft; }
+.batch-dialog ul > li { display: grid; grid-template-columns: 2.5rem minmax(0, 1fr); align-items: baseline; overflow-wrap: anywhere; }
+.batch-dialog ul > li::before { counter-increment: batch-draft; content: counter(batch-draft) "."; color: var(--color-ink-soft); font-variant-numeric: tabular-nums; }
 .batch-select-files { cursor: pointer; }
 .batch-select-files:focus-within { outline: 2px solid var(--color-primary); outline-offset: 3px; }
 /* label 不是原生禁用控件，axe 仍会检查对比度：禁用态改背景而不是把文字调灰。 */
@@ -831,7 +903,7 @@ body {
 .community-filter-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .community-panel-filters { display: grid; gap: 18px; }
 .community-panel-filters > label { display: grid; gap: 6px; font-size: 13px; }
-.panel-actions { display: flex; gap: 10px; margin-top: 8px; }
+.panel-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
 .panel-actions > * { flex: 1; }
 .community-hero h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 3vw, 36px); }
 .community-hero { padding: 0; }
@@ -983,9 +1055,6 @@ body {
   .community-spec-card { position: static; }
   .community-detail-header .community-actions { justify-items: start; }
   .home-community ul { grid-template-columns: 1fr; }
-}
-@media (max-width: 430px) {
-  .community-grid { grid-template-columns: 1fr; }
 }
 
 /* ============================================================
@@ -2803,7 +2872,17 @@ body {
 
 /* Shared tactile controls and responsive detail surfaces. */
 input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), textarea { font-size: var(--field-font-size); }
-button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
+/*
+  原生按钮命中区下限。
+  高度：必须排除按钮体系自身的类（.btn-* / .chip / .disclosure-trigger）——这条规则不分层，
+  会盖掉 @layer 里 .btn-sm / .btn-xs 的 min-height，导致同一套类名在 <button> 上是 44px、
+  在 <a> / <label> 上是 36 / 32px（admin-round-3 01 的根因）。
+  宽度：仍然保留 44px，且**不排除**按钮体系——去掉它会改变 flex 收缩的基准（min-width:auto 让
+  nowrap 按钮按 min-content 撑开），200% 布局放大下同意横幅这类窄容器会直接横向溢出。
+  触屏（pointer: coarse）另有统一 44px 下限，手机上三档都会回到 44，命中区不回退。
+*/
+button:not([tabindex="-1"]) { min-width: 44px; }
+button:not([tabindex="-1"]):not([class*="btn-"]):not(.chip):not(.disclosure-trigger) { min-height: 44px; }
 .editor-tool-button, .desktop-mode-button { min-height: 44px; }
 /*
   分段选择（ui-polish-2026）：下沉轨道 + 一枚滑动的白色豆片。
@@ -2832,7 +2911,7 @@ button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
 .segmented-control:disabled label { cursor: not-allowed; }
 .segmented-control.is-sm .segmented-track { padding: 2px; border-radius: 11px; }
 .segmented-control.is-sm .segmented-track::before { top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px - (var(--n, 2) - 1) * 4px) / var(--n, 2)); border-radius: 9px; }
-.segmented-control.is-sm span { min-height: 32px; padding: 4px 10px; border-radius: 9px; font-size: 13.5px; }
+.segmented-control.is-sm span { min-height: var(--control-height-xs); padding: 4px 10px; border-radius: 9px; font-size: 13.5px; }
 /* :has() 不可用时退回给选中项自己一层白底。 */
 @supports not selector(:has(a)) {
   .segmented-track::before { display: none; }
@@ -2895,7 +2974,7 @@ button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
 .number-field.is-compact .number-field-input { font-size: 14px; padding-block: 4px; }
 
 .disclosure { min-width: 0; border: 1px solid var(--color-hairline); border-radius: 14px; background: var(--color-surface); box-shadow: var(--shadow-1); }
-.disclosure-trigger { display: flex; width: 100%; align-items: center; gap: .6rem; min-height: 48px; padding: .6rem .9rem; border-radius: 14px; color: var(--color-ink); font-size: 15px; font-weight: 600; text-align: left; transition: background-color 160ms; }
+.disclosure-trigger { display: flex; width: 100%; align-items: center; gap: .6rem; min-height: var(--control-height-md); padding: .6rem .9rem; border-radius: 14px; color: var(--color-ink); font-size: 15px; font-weight: 600; text-align: left; transition: background-color 160ms; }
 .disclosure-trigger[data-hovered] { background: var(--color-cream); }
 .disclosure-trigger[data-focus-visible] { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .disclosure-icon { color: var(--color-ink-soft); flex: 0 0 auto; }
@@ -2952,7 +3031,7 @@ button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
 .textarea-count { display: inline-flex; align-items: center; gap: .75rem; margin-left: auto; color: var(--color-ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 /* 筛选芯片（ui-polish-2026）：静置发丝边 + 静置阴影，选中软莓果底（不再画小点），按下轻收。 */
-.chip { display: inline-flex; align-items: center; gap: .4rem; min-height: 36px; padding: .3rem .85rem; border: 1px solid var(--color-hairline-strong); border-radius: 999px; background: var(--color-surface); color: var(--color-ink-soft); font-size: 14px; font-weight: 500; box-shadow: var(--shadow-1); transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-press) var(--ease-out); }
+.chip { display: inline-flex; align-items: center; gap: .4rem; min-height: var(--control-height-sm); padding: .3rem .85rem; border: 1px solid var(--color-hairline-strong); border-radius: 999px; background: var(--color-surface); color: var(--color-ink-soft); font-size: 14px; font-weight: 500; box-shadow: var(--shadow-1); transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-press) var(--ease-out); }
 .chip:hover:not(:disabled) { border-color: rgb(185 62 98 / 45%); color: var(--color-primary-deep); box-shadow: var(--shadow-2); }
 .chip:active:not(:disabled) { transform: scale(.97); box-shadow: none; }
 .chip[aria-pressed="true"] { border-color: rgb(185 62 98 / 40%); background: var(--color-primary-soft); color: var(--color-primary-deep); box-shadow: inset 0 1px 2px rgb(150 48 79 / 10%); }
@@ -2960,7 +3039,7 @@ button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
 .chip small { padding: 0 .4rem; border-radius: 999px; background: var(--color-cream-deep); color: var(--color-ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
 .chip[aria-pressed="true"] small { background: var(--color-surface); }
 .chip:disabled { color: var(--color-ink-muted); border-color: var(--color-hairline); box-shadow: none; }
-.chip.is-xs { min-height: 32px; padding: .2rem .7rem; font-size: 13px; }
+.chip.is-xs { min-height: var(--control-height-xs); padding: .2rem .7rem; font-size: 13px; }
 
 /* 状态徽标：软底 + 同色 18% 描边，边缘在任何底色上都清楚。 */
 .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .1rem .55rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; background: var(--color-cream-deep); color: var(--color-ink-soft); font-size: 12.5px; font-weight: 500; line-height: 1.6; white-space: nowrap; }
@@ -3069,3 +3148,62 @@ button:not([tabindex="-1"]) { min-width: 44px; min-height: 44px; }
   .admin-overview-card:hover, .admin-overview-card:active, .home-recent li:hover, .home-community li:hover, .community-mine-list > li:hover,
   .upload-dropzone:hover, .upload-dropzone:active, .home-recent li:active, .link-action:hover::after, .home-blank-action:hover > svg:last-child { transform: none; translate: none; }
 }
+
+/* === admin-round-3 09：豆社标签筛选与移动端卡片 === */
+/* 标签单选控件：外观沿用 TagInput 的井式输入 + 悬浮候选列表，只是候选项是纯文本（可点、可键盘选）。 */
+.tag-filter { position: relative; display: grid; gap: .35rem; min-width: 0; }
+.tag-filter-label { display: block; min-height: 1.25rem; font-size: 13px; font-weight: 500; line-height: 1.25rem; color: var(--color-ink-soft); }
+.tag-filter-combo { position: relative; min-width: 0; }
+.tag-filter-field { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; min-height: var(--field-height); padding: .4rem .5rem; border: 1px solid var(--field-border); border-radius: var(--field-radius); background: var(--field-bg); box-shadow: var(--field-shadow); cursor: text; transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.tag-filter-field:hover { border-color: var(--field-border-hover); }
+.tag-filter-field:focus-within { border-color: var(--color-primary); box-shadow: var(--ring-focus), var(--field-shadow); background: var(--color-surface); }
+.tag-filter-text { flex: 1 1 10rem; min-width: 6rem; min-height: 28px; padding: .2rem .25rem; border: 0; background: transparent; font-size: .95rem; }
+.tag-filter-text:focus { outline: none; }
+.tag-filter-chip { display: inline-flex; align-items: center; gap: .35rem; min-height: 28px; padding: .1rem .6rem; border: 1px solid rgb(185 62 98 / 40%); border-radius: 999px; background: var(--color-primary-soft); color: var(--color-primary-deep); font-size: 13px; font-weight: 600; text-decoration: none; }
+.tag-filter-chip:hover { border-color: rgb(185 62 98 / 55%); background: var(--color-surface); }
+.tag-filter-suggestions { position: absolute; z-index: 6; top: calc(100% + .25rem); left: 0; right: 0; max-height: 15rem; overflow-y: auto; margin: 0; padding: .35rem; list-style: none; border: 1px solid var(--color-hairline); border-radius: 12px; background: var(--color-surface); box-shadow: var(--shadow-2); animation: menu-in var(--dur-fast) var(--ease-out) both; }
+.tag-filter-option { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; }
+.tag-filter-option[aria-selected="true"], .tag-filter-option:hover { background: var(--color-primary-soft); }
+.tag-filter-option small { color: var(--color-ink-soft); }
+.tag-filter-empty { margin: .35rem 0 0; color: var(--color-ink-soft); font-size: .8125rem; }
+.tag-filter-help { font-size: .8rem; line-height: 1.5; color: var(--color-ink-soft); }
+
+/* 手机档：≤430px 不再退回单列，保持两列并整体收紧（间距/圆角/内边距/字号），标题两行截断、页脚换行。 */
+@media (max-width: 430px) {
+  .community-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .55rem; }
+  .community-card { border-radius: 12px; }
+  .community-card-preview { padding: .4rem; }
+  .community-card-body { gap: .3rem; padding: .55rem .6rem .35rem; }
+  .community-card h2 { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: .875rem; line-height: 1.35; }
+  .community-card p { margin-top: .15rem; font-size: .6875rem; }
+  .community-color-band, .community-color-band span { min-width: .25rem; }
+  .community-color-band { height: .25rem; }
+  .community-featured { font-size: .6875rem; }
+  .community-card footer { flex-wrap: wrap; gap: .15rem .55rem; padding: .45rem .6rem; font-size: .6875rem; }
+  .community-tag-bar { gap: .35rem; }
+  .community-tag-chip { min-height: 32px; padding: .2rem .6rem; font-size: .8125rem; }
+}
+
+
+/* ------------------------------------------------------------------ *
+ * 运行日志（用户第 15 条）：/admin/logs 的三个视图。
+ * 只新增选择器，不改动上面任何既有规则。
+ * ------------------------------------------------------------------ */
+.admin-log-views { display: flex; flex-direction: column; gap: 1rem; min-height: 0; }
+.admin-log-tabs { align-self: flex-start; }
+.admin-log-database { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.admin-log-database > .admin-panel { display: flex; flex-direction: column; gap: .6rem; }
+/* 堆栈与 SQL 语句：等宽、可横向滚动，不撑破详情栏。 */
+.admin-log-pre { margin: 0; max-height: 22rem; overflow: auto; padding: .6rem .7rem; border: 1px solid var(--color-hairline); border-radius: 12px; background: var(--color-cream); color: var(--color-ink); font-family: var(--font-mono, ui-monospace); font-size: .8125rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+/* 同一次请求的全部记录：时间 / 级别 / 事件 / 消息四列对齐。 */
+.admin-log-related { display: flex; flex-direction: column; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.admin-log-related li { display: grid; gap: .15rem .5rem; grid-template-columns: auto auto; align-items: center; padding: .4rem .5rem; border-radius: 10px; }
+.admin-log-related li.is-current { background: var(--color-primary-soft); }
+.admin-log-related li span:last-child { grid-column: 1 / -1; color: var(--color-ink-soft); font-size: .8125rem; }
+/* 慢查询调用链：route › service › db 面包屑。 */
+.admin-log-chain { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: 0; padding: 0; list-style: none; }
+.admin-log-chain li { display: inline-flex; align-items: center; gap: .35rem; min-width: 0; }
+.admin-log-chain li + li::before { content: '›'; color: var(--color-ink-soft); }
+.admin-log-chain li small { color: var(--color-ink-soft); }
+/* pg_stat_statements 启用步骤：有序列表，行距放宽便于照做。 */
+.admin-log-steps { margin: 0; padding-left: 1.2rem; color: var(--color-ink-soft); font-size: .875rem; line-height: 1.7; }

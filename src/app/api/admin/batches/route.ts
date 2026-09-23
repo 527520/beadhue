@@ -7,7 +7,12 @@ import { createOfficialBatch, listOfficialBatches, officialBatchDefaultParamsSch
 import { executeIdempotently } from '@/lib/idempotency';
 
 const schema = z.object({ itemCount: z.number().int().min(1).max(50), defaultParams: officialBatchDefaultParamsSchema, engineVersion: z.string(), reason: z.string() }).strict();
-async function get() { const actor = await requireApiActor('official:manage'); return okJson({ items: await listOfficialBatches(getDb(), actor.userId) }, { headers: { 'cache-control': 'private, no-store' } }); }
+async function get(request: Request) {
+  const actor = await requireApiActor('official:manage');
+  const search = new URL(request.url).searchParams;
+  const input = Object.fromEntries(['page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  return okJson(await listOfficialBatches(getDb(), actor.userId, input), { headers: { 'cache-control': 'private, no-store' } });
+}
 async function post(request: Request) {
   const guard = enforceMutatingGuard(request); if (guard) return guard;
   const actor = await requireApiActor('official:manage'); const body = await readJson(request, 64 * 1024); if (!body.ok) return body.response;

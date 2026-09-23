@@ -9,12 +9,12 @@ import type { CommunityRevisionInspection } from '@/lib/community/queries';
 import { getBoardProfile } from '@/lib/boardProfiles';
 import { track } from '@/lib/analytics/client';
 import { zhCN } from '@/messages/zh-CN';
-import { useAdminCollection } from './useAdminCollection';
+import { useAdminPage } from './useAdminPage';
 import { useAdminInspection } from './useAdminInspection';
 import { useAdminCommand } from './useAdminCommand';
 import AdminCommandNotice from './AdminCommandNotice';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
-import { AdminEmpty, AdminSkeleton, ReasonPanel } from './AdminPrimitives';
+import { AdminEmpty, AdminPagination, AdminSkeleton, ReasonPanel } from './AdminPrimitives';
 import Button from '@/components/ui/Button';
 import Disclosure from '@/components/ui/Disclosure';
 import Notice from '@/components/ui/Notice';
@@ -29,7 +29,7 @@ export default function ReviewConsole() {
   const t = zhCN.communityAdmin;
   const r = t.review;
   const c = t.command;
-  const queue = useAdminCollection<ReviewItem>('/api/admin/community/revisions');
+  const queue = useAdminPage<ReviewItem>('/api/admin/community/revisions', 'reviews');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [pendingDecision, setPendingDecision] = useState<'published' | 'rejected' | null>(null);
@@ -63,11 +63,15 @@ export default function ReviewConsole() {
   const reloadQueue = <div className="admin-form-stack"><Notice kind="danger">{queue.error}</Notice><div className="admin-form-actions"><Button variant="secondary" size="sm" icon="refresh" onClick={() => void queue.reload()}>{c.reload}</Button></div></div>;
   return <div className={`review-console${selected ? ' is-inspecting' : ''}`}>
     <section className="review-queue" aria-label={r.queue} tabIndex={-1} ref={queueRef}>
-      <header><h2>{r.title}</h2><span>{queue.items.length}</span></header>
+      <header><h2>{r.title}</h2><span>{zhCN.communityAdmin.pagination.totalCount(queue.total)}</span></header>
       {queue.error ? reloadQueue
-        : queue.loading ? <AdminSkeleton label={r.loading} />
+        : queue.loading && queue.items.length === 0 ? <AdminSkeleton label={r.loading} />
         : queue.items.length === 0 ? <AdminEmpty icon="check" title={r.empty} />
-        : <ul className="stagger">{queue.items.map((item, index) => <li key={item.revisionId} style={{ '--i': index } as CSSProperties}><button type="button" disabled={command.locked} aria-current={selected?.revisionId === item.revisionId} onClick={() => select(item.revisionId)}><CommunityThumbnail revisionId={item.revisionId} width={item.width} height={item.height} label={`${item.title} ${r.preview}`} /><span><strong>{item.title}</strong><small>R{item.revisionNumber} · {item.author.displayName}</small></span></button></li>)}</ul>}
+        : <ul className="stagger">{queue.items.map((item, index) => <li key={item.revisionId} style={{ '--i': index } as CSSProperties}><button type="button" disabled={command.locked} aria-current={selected?.revisionId === item.revisionId} onClick={() => select(item.revisionId)}><CommunityThumbnail scope="admin" revisionId={item.revisionId} width={item.width} height={item.height} label={`${item.title} ${r.preview}`} /><span><strong>{item.title}</strong><small>R{item.revisionNumber} · {item.author.displayName}</small></span></button></li>)}</ul>}
+      <AdminPagination page={queue.page} totalPages={queue.totalPages} size={queue.size} total={queue.total}
+        onPage={(next) => { if (!command.locked) { select(null); queue.setPage(next); } }}
+        onSize={(next) => { if (!command.locked) { select(null); queue.setSize(next); } }}
+        disabled={command.locked || queue.loading} />
     </section>
     <section className="review-preview" aria-label={c.frozenMaterial} tabIndex={-1} ref={detailRef}>
       {selected ? <div className="review-preview-body animate-rise">

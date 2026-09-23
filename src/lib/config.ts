@@ -80,10 +80,56 @@ export interface SiteConfig extends PublicConfig {
     communityWriteRateLimit: number;
     /** 豆社写操作每 IP 每小时上限 */
     communityWriteIpRateLimit: number;
+    /** 管理端缩略图每个管理员每小时上限（兜底，远高于后台实际用量） */
+    adminThumbnailRateLimit: number;
+    /** 管理端官方原图上传每个管理员每小时上限（50 张批次 + 重试留足额度） */
+    adminOriginalRateLimit: number;
     /** sitemap 只列最近 N 天更新的作品 */
     sitemapRecentDays: number;
     /** sitemap 每页作品数 */
     sitemapPageSize: number;
+    /** robots / sitemap 输出（计数与分页列表）的进程内缓存秒数 */
+    sitemapCacheSeconds: number;
+    /** robots / sitemap 响应对共享缓存（CDN）声明的 s-maxage 秒数（由 proxy 下发） */
+    sitemapHttpSMaxAge: number;
+    /** 缩略图进程内缓存的条数上限 */
+    thumbnailCacheEntries: number;
+    /** 缩略图进程内缓存的字节上限 */
+    thumbnailCacheBytes: number;
+    /** 原图 GET 每账号每小时上限 */
+    originalReadRateLimit: number;
+    /** 原图 GET 每 IP 每小时上限 */
+    originalReadIpRateLimit: number;
+    /** 原图字节缓存上限（进程内 LRU，按 cosKey） */
+    originalCacheBytes: number;
+    /** 公开读接口每账号每小时上限（登录后仍可被爬，需按账号兜底） */
+    accountReadRateLimit: number;
+    /** 公开读接口每账号每小时不同作品数上限 */
+    accountReadDistinctWorks: number;
+    /** 新账号（注册未满 newAccountAgeHours）每小时读取上限 */
+    newAccountReadRateLimit: number;
+    /** 新账号每小时不同作品数上限 */
+    newAccountReadDistinctWorks: number;
+    /** 「新账号」判定窗口（小时） */
+    newAccountAgeHours: number;
+    /** 登录失败计数窗口（分钟） */
+    loginFailureWindowMinutes: number;
+    /** 登录失败达到该次数即临时锁定（按邮箱） */
+    loginFailureThreshold: number;
+    /** 登录锁定时长（分钟） */
+    loginLockMinutes: number;
+    /** 邮件预算：新账号 / 未验证账号桶每日上限 */
+    mailNewAccountDailyLimit: number;
+    /** 邮件预算：已建立账号桶每日上限 */
+    mailEstablishedDailyLimit: number;
+    /** 邮件预算：已建立账号的最小注册天数（已验证 + 满该天数） */
+    mailEstablishedMinAgeDays: number;
+    /** GET /api/community/tags 每 IP 每小时上限 */
+    tagsRateLimit: number;
+    /** GET /api/config 每 IP 每小时上限 */
+    configRateLimit: number;
+    /** PUT /api/analytics/consent 每 IP 每小时上限 */
+    consentRateLimit: number;
     sessionTtlSeconds: number;
     maxBodyBytes: number;
   };
@@ -93,6 +139,22 @@ export interface SiteConfig extends PublicConfig {
     statementTimeoutMs: number;
     connectionTimeoutMs: number;
     idleTimeoutMs: number;
+  };
+  /**
+   * 运行可观测（用户第 15 条）：自建日志 / 慢查询 / 连接池信息。
+   * 全部为「改环境变量即生效」的参数，语义与 RATE_* / DB_* 一致。
+   */
+  observability: {
+    /** 慢查询阈值（毫秒）；显式设为 0 表示停用慢查询采集 */
+    slowQueryMs: number;
+    /** 每进程每分钟最多写入的 system_logs 行数（超出后按分钟汇总一条抑制说明） */
+    syslogMaxRowsPerMinute: number;
+    /** system_logs 保留天数（错误与事件） */
+    syslogRetentionDays: number;
+    /** slow_queries 保留天数 */
+    slowQueryRetentionDays: number;
+    /** 浏览器端错误上报每 IP 每小时上限（防伪造刷量） */
+    clientErrorRateLimit: number;
   };
   /** 评论审核（D50）：反刷闸门与腾讯云文本内容安全的成本护栏。 */
   moderation: {
@@ -127,8 +189,42 @@ const DEFAULTS: SiteConfig = {
     publicPageRatePerMinute: 120,
     communityWriteRateLimit: 120,
     communityWriteIpRateLimit: 300,
+    adminThumbnailRateLimit: 20_000,
+    adminOriginalRateLimit: 300,
     sitemapRecentDays: 180,
     sitemapPageSize: 500,
+    // robots/sitemap 是爬虫最爱反复抓的入口：抓到的输出在进程内缓存 5 分钟，
+    // 爬虫的重复抓取不再每次都打数据库（Next 元数据路由自身只发 max-age=0）。
+    sitemapCacheSeconds: 300,
+    // robots/sitemap 响应对共享缓存（CDN）声明的 s-maxage：Next 的元数据路由自己发
+    // `public, max-age=0, must-revalidate`，无法在路由里覆盖，由 proxy 覆盖成 5 分钟。
+    sitemapHttpSMaxAge: 300,
+    // 512 条 ≈ 21 个列表页 × 24 张；64 MiB ≈ 1280 张 50 KB 的 PNG。
+    thumbnailCacheEntries: 512,
+    thumbnailCacheBytes: 64 * 1024 * 1024,
+    // 原图单张上限 20 MB：60 次/时/账号 ≈ 1.2 GB/时，足够作者与引用者正常取回。
+    originalReadRateLimit: 60,
+    originalReadIpRateLimit: 200,
+    originalCacheBytes: 32 * 1024 * 1024,
+    // 人类浏览强度远低于此：1200 次/时 ≈ 每分钟 20 次接口调用。
+    accountReadRateLimit: 1200,
+    accountReadDistinctWorks: 300,
+    // 注册不到 24 小时的账号只用于正常试用：收紧到 120 次/时、60 件作品/时。
+    newAccountReadRateLimit: 120,
+    newAccountReadDistinctWorks: 60,
+    newAccountAgeHours: 24,
+    loginFailureWindowMinutes: 15,
+    loginFailureThreshold: 10,
+    loginLockMinutes: 15,
+    // 两个邮件桶：攻击者烧掉新账号桶不影响已建立账号的找回密码。
+    mailNewAccountDailyLimit: 200,
+    mailEstablishedDailyLimit: 100,
+    mailEstablishedMinAgeDays: 7,
+    // tags 响应本身带 s-maxage=300；config 每个页面加载只拉一次。
+    tagsRateLimit: 600,
+    configRateLimit: 1200,
+    // 同意 / 撤回是低频操作，且必须始终可用：额度按「一小时内反复切换」给足。
+    consentRateLimit: 60,
     sessionTtlSeconds: 30 * 24 * 60 * 60,
     maxBodyBytes: 64 * 1024,
   },
@@ -145,6 +241,16 @@ const DEFAULTS: SiteConfig = {
     tmsDailyBudget: 2000,
     tmsCacheHours: 24 * 7,
     tmsTimeoutMs: 3000,
+  },
+  observability: {
+    // 500ms 是「人已经能感觉到」的门槛；再低会把正常查询也灌进慢查询表。
+    slowQueryMs: 500,
+    // 200 行/分钟 ≈ 3.3 行/秒：突发错误风暴下也不会把库写满，同时保留足够的现场。
+    syslogMaxRowsPerMinute: 200,
+    // 与隐私政策写明的「最长 30 天」保持一致（见 zh-CN 隐私政策第九节）。
+    syslogRetentionDays: 30,
+    slowQueryRetentionDays: 14,
+    clientErrorRateLimit: 60,
   },
 };
 
@@ -202,8 +308,32 @@ function compute(): SiteConfig {
       publicPageRatePerMinute: readInt('RATE_PUBLIC_PAGE_IP_MINUTE', DEFAULTS.security.publicPageRatePerMinute, 1),
       communityWriteRateLimit: readInt('RATE_COMMUNITY_WRITE_USER_HOUR', DEFAULTS.security.communityWriteRateLimit, 1),
       communityWriteIpRateLimit: readInt('RATE_COMMUNITY_WRITE_IP_HOUR', DEFAULTS.security.communityWriteIpRateLimit, 1),
+      adminThumbnailRateLimit: readInt('RATE_ADMIN_THUMBNAIL_USER_HOUR', DEFAULTS.security.adminThumbnailRateLimit, 1),
+      adminOriginalRateLimit: readInt('RATE_ADMIN_ORIGINAL_USER_HOUR', DEFAULTS.security.adminOriginalRateLimit, 1),
       sitemapRecentDays: readInt('SITEMAP_RECENT_DAYS', DEFAULTS.security.sitemapRecentDays, 1, 3650),
       sitemapPageSize: readInt('SITEMAP_PAGE_SIZE', DEFAULTS.security.sitemapPageSize, 10, 5000),
+      sitemapCacheSeconds: readInt('SITEMAP_CACHE_SECONDS', DEFAULTS.security.sitemapCacheSeconds, 0, 86_400),
+      sitemapHttpSMaxAge: readInt('SITEMAP_HTTP_S_MAXAGE', DEFAULTS.security.sitemapHttpSMaxAge, 0, 86_400),
+      thumbnailCacheEntries: readInt('THUMBNAIL_CACHE_ENTRIES', DEFAULTS.security.thumbnailCacheEntries, 1, 1_000_000),
+      thumbnailCacheBytes: readInt('THUMBNAIL_CACHE_BYTES', DEFAULTS.security.thumbnailCacheBytes, 1024, 4 * 1024 * 1024 * 1024),
+      originalReadRateLimit: readInt('RATE_ORIGINAL_READ_USER_HOUR', DEFAULTS.security.originalReadRateLimit, 1),
+      originalReadIpRateLimit: readInt('RATE_ORIGINAL_READ_IP_HOUR', DEFAULTS.security.originalReadIpRateLimit, 1),
+      originalCacheBytes: readInt('ORIGINAL_CACHE_BYTES', DEFAULTS.security.originalCacheBytes, 0, 4 * 1024 * 1024 * 1024),
+      accountReadRateLimit: readInt('RATE_ACCOUNT_READ_USER_HOUR', DEFAULTS.security.accountReadRateLimit, 1),
+      accountReadDistinctWorks: readInt('RATE_ACCOUNT_READ_DISTINCT_WORKS_HOUR', DEFAULTS.security.accountReadDistinctWorks, 1),
+      newAccountReadRateLimit: readInt('RATE_NEW_ACCOUNT_READ_USER_HOUR', DEFAULTS.security.newAccountReadRateLimit, 1),
+      newAccountReadDistinctWorks: readInt('RATE_NEW_ACCOUNT_READ_DISTINCT_WORKS_HOUR', DEFAULTS.security.newAccountReadDistinctWorks, 1),
+      newAccountAgeHours: readInt('NEW_ACCOUNT_AGE_HOURS', DEFAULTS.security.newAccountAgeHours, 1, 24 * 30),
+      loginFailureWindowMinutes: readInt('LOGIN_FAILURE_WINDOW_MINUTES', DEFAULTS.security.loginFailureWindowMinutes, 1, 24 * 60),
+      loginFailureThreshold: readInt('LOGIN_FAILURE_THRESHOLD', DEFAULTS.security.loginFailureThreshold, 1),
+      loginLockMinutes: readInt('LOGIN_LOCK_MINUTES', DEFAULTS.security.loginLockMinutes, 1, 24 * 60),
+      // MAIL_DAILY_SEND_LIMIT 是历史变量名，现在专指「新账号 / 未验证账号」桶。
+      mailNewAccountDailyLimit: readInt('MAIL_DAILY_SEND_LIMIT', DEFAULTS.security.mailNewAccountDailyLimit, 1),
+      mailEstablishedDailyLimit: readInt('MAIL_ESTABLISHED_DAILY_LIMIT', DEFAULTS.security.mailEstablishedDailyLimit, 1),
+      mailEstablishedMinAgeDays: readInt('MAIL_ESTABLISHED_MIN_AGE_DAYS', DEFAULTS.security.mailEstablishedMinAgeDays, 1, 3650),
+      tagsRateLimit: readInt('RATE_TAGS_IP_HOUR', DEFAULTS.security.tagsRateLimit, 1),
+      configRateLimit: readInt('RATE_CONFIG_IP_HOUR', DEFAULTS.security.configRateLimit, 1),
+      consentRateLimit: readInt('RATE_CONSENT_IP_HOUR', DEFAULTS.security.consentRateLimit, 1),
       sessionTtlSeconds: readInt('SESSION_TTL_SECONDS', DEFAULTS.security.sessionTtlSeconds, 60),
       maxBodyBytes: readInt('MAX_BODY_BYTES', DEFAULTS.security.maxBodyBytes, 1024),
     },
@@ -220,6 +350,13 @@ function compute(): SiteConfig {
       tmsDailyBudget: readInt('TMS_DAILY_BUDGET', DEFAULTS.moderation.tmsDailyBudget, 0),
       tmsCacheHours: readInt('TMS_CACHE_HOURS', DEFAULTS.moderation.tmsCacheHours, 0, 24 * 90),
       tmsTimeoutMs: readInt('TMS_TIMEOUT_MS', DEFAULTS.moderation.tmsTimeoutMs, 500, 30_000),
+    },
+    observability: {
+      slowQueryMs: readInt('SLOW_QUERY_MS', DEFAULTS.observability.slowQueryMs, 0, 600_000),
+      syslogMaxRowsPerMinute: readInt('SYSLOG_MAX_ROWS_PER_MINUTE', DEFAULTS.observability.syslogMaxRowsPerMinute, 1, 100_000),
+      syslogRetentionDays: readInt('SYSLOG_RETENTION_DAYS', DEFAULTS.observability.syslogRetentionDays, 1, 3650),
+      slowQueryRetentionDays: readInt('SLOW_QUERY_RETENTION_DAYS', DEFAULTS.observability.slowQueryRetentionDays, 1, 3650),
+      clientErrorRateLimit: readInt('RATE_CLIENT_ERROR_IP_HOUR', DEFAULTS.observability.clientErrorRateLimit, 1),
     },
   };
 }

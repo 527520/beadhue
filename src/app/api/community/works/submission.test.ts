@@ -57,9 +57,9 @@ it('创建、提交及撤回重复请求只执行一次，幂等响应不保存�
   expect(uploaded.status).toBe(201);
   expect(await uploaded.json()).toMatchObject({ revisionId: created.revisionId, mimeType: 'image/png', width: 1, height: 1, byteSize: TEST_PNG.length });
   expect(store.objects.size).toBe(1);
-  // 作者可取回，未登录不可
+  // 作者可取回，未登录不可（admin-round-3 12：原图 GET 改为 private, max-age=300, must-revalidate + ETag）
   const fetched = await readOriginal(new Request(`http://localhost/api/community/revisions/${created.revisionId}/original`), params(created.revisionId));
-  expect(fetched.status).toBe(200); expect(fetched.headers.get('cache-control')).toContain('no-store'); expect(fetched.headers.get('x-original-access')).toBe('author');
+  expect(fetched.status).toBe(200); expect(fetched.headers.get('cache-control')).toBe('private, max-age=300, must-revalidate'); expect(fetched.headers.get('etag')).toBeTruthy(); expect(fetched.headers.get('x-original-access')).toBe('author');
   expect(Buffer.from(await fetched.arrayBuffer()).equals(TEST_PNG)).toBe(true);
   expect((await headOriginal(new Request(`http://localhost/api/community/revisions/${created.revisionId}/original`, { method: 'HEAD' }), params(created.revisionId))).status).toBe(200);
   const saved = token; token = undefined;
