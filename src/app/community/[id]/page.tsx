@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { SiteShell } from '@/components/shell/site-shell';
 import LegacyScope from '@/components/layout/LegacyScope';
 import { MobileTopBack } from '@/components/shell/mobile-topbar';
+import { LoginLink } from '@/components/shell/login-dialog';
 import PatternPreview from '@/components/preview/PatternPreview';
 import Disclosure from '@/components/legacy-ui/Disclosure';
 import Icon from '@/components/legacy-ui/Icon';
@@ -63,7 +64,7 @@ export default async function CommunityDetailPage({ params, searchParams }: { pa
               : <div className="community-pattern-static">
                 {/* eslint-disable-next-line @next/next/no-img-element -- 服务端渲染的 PNG，尺寸已知，不需要 next/image 的优化管线 */}
                 <img src={communityThumbnailUrl(work.revisionId, 'large')} width={large.width} height={large.height} alt={t.staticPatternAlt(work.title)} loading="eager" decoding="async" />
-                <p className="community-pattern-gate"><Icon name="lock" size={15} /><span>{t.loginForCodes} <Link href={`/login?next=${encodeURIComponent(`/community/${work.id}`)}`}>{zhCN.communityAdmin.interaction.loginContinue}</Link></span></p>
+                <p className="community-pattern-gate"><Icon name="lock" size={15} /><span>{t.loginForCodes} <LoginLink href={`/login?next=${encodeURIComponent(`/community/${work.id}`)}`}>{zhCN.communityAdmin.interaction.loginContinue}</LoginLink></span></p>
               </div>}
           </section>
           <aside className="detail-info" aria-labelledby="community-spec-title">

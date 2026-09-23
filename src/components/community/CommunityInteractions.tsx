@@ -22,6 +22,7 @@ import Modal from '@/components/legacy-ui/Modal';
 import Notice from '@/components/legacy-ui/Notice';
 import Textarea from '@/components/legacy-ui/Textarea';
 import { zhCN } from '@/messages/zh-CN';
+import { LoginLink, useLoginLinkClick } from '@/components/shell/login-dialog';
 
 interface CommentItem {
   id: string;
@@ -58,7 +59,7 @@ async function request(url: string, init: RequestInit) {
 function FeedbackNotice({ message, workId }: { message: Feedback; workId: string }) {
   if (!message) return null;
   return <Notice kind={message.error ? 'danger' : 'success'} className="community-feedback"><span>{message.text}
-    {message.auth === 401 && <>{' '}<Link href={`/login?next=${encodeURIComponent(`/community/${workId}`)}`}>{t.loginContinue}</Link></>}
+    {message.auth === 401 && <>{' '}<LoginLink href={`/login?next=${encodeURIComponent(`/community/${workId}`)}`}>{t.loginContinue}</LoginLink></>}
     {message.auth === 403 && <>{' '}<Link href="/me/settings">{t.accountAccess}</Link></>}
   </span></Notice>;
 }
@@ -195,12 +196,13 @@ export function WorkActions({ workId, initialLikes, initialReuses, canInteract =
   });
   const feedback = <FeedbackNotice message={message} workId={workId} />;
   const loginHref = `/login?next=${encodeURIComponent(`/community/${workId}`)}`;
+  const loginClick = useLoginLinkClick();
 
   return <div className="community-actions">
     <div className="community-action-row">
       {canInteract
         ? <Button variant="primary" icon="spark" loading={pending === 'reuse'} disabled={pending !== null} onClick={() => void reuse()}>{pending === 'reuse' ? t.opening : copyReady ? t.openCopy : t.reuse}</Button>
-        : <ButtonLink variant="primary" icon="user" href={loginHref}>{t.loginToReuse}</ButtonLink>}
+        : <ButtonLink variant="primary" icon="user" href={loginHref} onClick={loginClick}>{t.loginToReuse}</ButtonLink>}
       <span className="community-like">
         {/* 点赞状态未返回时不走 disabled 灰态（会在灰亮之间闪一下），只把图标降一点。 */}
         <IconButton icon={liked ? 'heart-filled' : 'heart'} label={liked ? t.unlike : t.like} pressed={liked ?? false} tone="primary" loading={canInteract && liked === null} disabled={!canInteract || pending !== null || liked === null} onClick={() => void like()} />
@@ -300,7 +302,7 @@ export function WorkComments({ workId, commentsLocked, canInteract = true }: { w
       <Textarea label={t.comment} id="community-comment" value={body} maxLength={500} disabled={locked || pending === 'comment'} onValueChange={setBody} rows={4}
         placeholder={locked ? t.locked : t.commentPlaceholder} hint={locked ? t.lockedHint : undefined}
         actions={<Button variant="primary" size="sm" icon="send" loading={pending === 'comment'} disabled={pending !== null || locked || body.trim().length === 0} onClick={() => void comment()}>{t.publishComment}</Button>} />
-    </div> : <Notice kind="info" className="community-login-hint"><span>{t.loginToComment} <Link href={loginHref}>{t.loginContinue}</Link></span></Notice>}
+    </div> : <Notice kind="info" className="community-login-hint"><span>{t.loginToComment} <LoginLink href={loginHref}>{t.loginContinue}</LoginLink></span></Notice>}
     {!reportTarget && feedback}
     {commentsState === 'loading' && <p role="status" className="community-inline-hint">{t.loadingComments}</p>}
     {commentsState === 'error' && <p role="status" className="community-inline-hint">{t.commentsFailed} <Button variant="quiet" size="sm" icon="refresh" onClick={() => void loadComments()}>{zhCN.common.retry}</Button></p>}

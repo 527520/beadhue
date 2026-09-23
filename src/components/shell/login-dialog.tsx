@@ -1,7 +1,8 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import { authPageHref } from '@/lib/auth/returnTo';
 import { ensureAuthStatus } from '@/components/account/useAuthStatus';
@@ -79,4 +80,23 @@ export function useRequireLogin(): (action: () => void) => void {
       else window.location.assign(authPageHref('login', `${window.location.pathname}${window.location.search}`));
     });
   }, [login]);
+}
+
+/**
+ * 登录链接（旧页面的「登录后继续」入口）：普通点击改为弹出登录弹窗，登录后刷新当前页（服务端按新登录态重渲染）；
+ * 中键 / 新标签与没有 Provider 时仍走 /login?next=。
+ */
+export function useLoginLinkClick(): (event: MouseEvent<HTMLAnchorElement>) => void {
+  const login = useLoginDialog();
+  const router = useRouter();
+  return useCallback((event: MouseEvent<HTMLAnchorElement>) => {
+    if (!login || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    login.open({ onSuccess: () => router.refresh() });
+  }, [login, router]);
+}
+
+export function LoginLink(props: ComponentProps<typeof Link>) {
+  const onClick = useLoginLinkClick();
+  return <Link {...props} onClick={onClick} />;
 }
