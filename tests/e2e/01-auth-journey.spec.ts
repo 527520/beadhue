@@ -5,7 +5,8 @@
 import { expect, test } from '@playwright/test';
 import { fillField, uniqueEmail, waitForMailLink } from './helpers';
 
-const errorAlert = (page: import('@playwright/test').Page) => page.locator('p[role="alert"]');
+// 错误挂在字段下（Field.Error）或提交按钮上方（FormAlert），都以 role="alert" 播报。
+const errorAlert = (page: import('@playwright/test').Page) => page.getByRole('alert').filter({ hasText: /\S/ });
 
 test('注册 → 邮箱验证 → 登录 → 首页显示登录态入口', async ({ page }) => {
   const email = uniqueEmail('journey');

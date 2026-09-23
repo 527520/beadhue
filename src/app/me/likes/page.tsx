@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getDb } from '@/lib/auth/db';
 import { getSessionActor } from '@/lib/auth/session';
 import { listLikedCommunityWorks } from '@/lib/community/discovery';
 import { zhCN } from '@/messages/zh-CN';
-import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SimpleWorkGrid } from '@/components/works/simple-work-grid';
-import { LoginButton } from './login-button';
+import { GoDiscoverLink, LoginButton } from './login-button';
 
 const t = zhCN.shell.mePages;
 
@@ -22,7 +20,7 @@ export default async function MeLikesPage() {
       {!liked ? (
         <EmptyState kind="likes" title={t.likesLogin} description={t.likesLoginHint} actions={<LoginButton />} />
       ) : liked.items.length === 0 ? (
-        <EmptyState kind="likes" title={t.likesEmpty} description={t.likesEmptyHint} actions={<Link href="/" className={buttonVariants({ variant: 'secondary' })}>{t.goDiscover}</Link>} />
+        <EmptyState kind="likes" title={t.likesEmpty} description={t.likesEmptyHint} actions={<GoDiscoverLink />} />
       ) : (
         <SimpleWorkGrid items={liked.items} />
       )}
