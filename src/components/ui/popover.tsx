@@ -50,10 +50,12 @@ export interface PopoverContentProps extends Omit<ComponentProps<typeof BasePopo
   side?: 'top' | 'bottom' | 'left' | 'right';
   /** 宽版 560（筛选、搜索建议）。 */
   wide?: boolean;
+  /** 锚定到触发器以外的元素（如搜索框）。 */
+  anchor?: ComponentProps<typeof BasePopover.Positioner>['anchor'];
   children: ReactNode;
 }
 
-export function PopoverContent({ className, align = 'end', side = 'bottom', wide, children, ...props }: PopoverContentProps) {
+export function PopoverContent({ className, align = 'end', side = 'bottom', wide, anchor, children, ...props }: PopoverContentProps) {
   const sheet = useContext(SheetContext);
   if (sheet) {
     return (
@@ -67,7 +69,7 @@ export function PopoverContent({ className, align = 'end', side = 'bottom', wide
   }
   return (
     <BasePopover.Portal>
-      <BasePopover.Positioner align={align} side={side} sideOffset={8} collisionPadding={12} className="z-60" data-ui="">
+      <BasePopover.Positioner anchor={anchor} align={align} side={side} sideOffset={8} collisionPadding={12} className="z-60" data-ui="">
         <BasePopover.Popup data-slot="popover" className={cn(menuPopupClass, wide && 'popover-width-wide max-w-none p-3', className as string)} {...props}>
           {children}
         </BasePopover.Popup>

@@ -188,3 +188,20 @@ export function SheetContent(props: Omit<DialogContentProps, 'variant' | 'size'>
   return <DialogContent {...props} variant="side" />;
 }
 export { DialogHeader as SheetHeader, DialogTitle as SheetTitle, DialogBody as SheetBody, DialogFooter as SheetFooter, DialogClose as SheetClose };
+
+/** 静态样张（组件总览）：与真实弹窗同样的外观，放在页面流里。 */
+export function DialogSample({ title, children, footer, className }: { title: string; children: ReactNode; footer?: ReactNode; className?: string }) {
+  return (
+    <div role="group" aria-label={title} className={cn(popupBase, 'max-w-dialog-static rounded-xl max-md:max-w-none max-md:rounded-b-none', className)}>
+      <div aria-hidden="true" className="mx-auto mt-2 h-1.25 w-9 shrink-0 rounded-full bg-line-strong md:hidden" />
+      <div className="flex items-center gap-3 pt-5 pr-5 pb-3 pl-6 max-md:pt-3 max-md:pr-4 max-md:pb-2 max-md:pl-5">
+        <h2 className="min-w-0 flex-1 text-title-2 text-ink">{title}</h2>
+        <span aria-hidden="true" className={cn(iconButtonVariants({ size: 'sm' }), 'ml-auto')}>
+          <X strokeWidth={1.75} />
+        </span>
+      </div>
+      <div className="px-6 pt-1 pb-5 max-md:px-5 max-md:pb-4">{children}</div>
+      {footer ? <div className="flex justify-end gap-2 border-t border-line px-6 pt-4 pb-5 max-md:px-4 max-md:pt-3 max-md:pb-4 max-md:[&>*]:h-control-lg max-md:[&>*]:flex-1">{footer}</div> : null}
+    </div>
+  );
+}

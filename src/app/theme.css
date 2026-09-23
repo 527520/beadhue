@@ -86,6 +86,9 @@
   --text-footnote: 13px;
   --text-footnote--line-height: 18px;
   --text-footnote--font-weight: 400;
+  --text-topbar: 17px;
+  --text-topbar--line-height: 1;
+  --text-topbar--font-weight: 600;
   --text-micro: 10px;
   --text-micro--line-height: 12px;
   --text-tabbar: 11px;
