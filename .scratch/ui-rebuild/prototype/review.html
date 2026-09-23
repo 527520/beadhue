@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>豆色绘 · 新设计评审</title>
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <style>
+    body.review { background: var(--bg-subtle); min-height: 100dvh; }
+    .rv-head { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 24px; height: 64px; padding: 0 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+    .rv-head .brand-mark { display: grid; grid-template-columns: repeat(2, 10px); gap: 2px; }
+    .rv-head .brand-mark i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); position: relative; }
+    .rv-head .brand-mark i::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: rgb(255 255 255 / 72%); }
+    .rv-title { display: flex; align-items: center; gap: 12px; }
+    .rv-title b { font: 400 18px/1 var(--font-brand); color: var(--ink); letter-spacing: .04em; }
+    .rv-title span { font: var(--text-body-sm); color: var(--ink-3); }
+    .rv-controls { display: flex; align-items: center; gap: 16px; margin-left: auto; font: var(--text-body-sm); color: var(--ink-3); }
+    .rv-controls .swatches { display: flex; gap: 6px; }
+    .rv-controls .swatches button { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 10%); }
+    .rv-controls .swatches button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+    .rv-body { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: calc(100dvh - 64px); }
+    .rv-list { position: sticky; top: 64px; align-self: start; height: calc(100dvh - 64px); overflow: auto; padding: 16px 12px 32px; background: var(--bg); border-right: 1px solid var(--line); }
+    .rv-list h3 { margin: 16px 10px 6px; font: var(--text-caption); color: var(--ink-3); }
+    .rv-list h3:first-child { margin-top: 0; }
+    .rv-list button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 0 10px; border-radius: 10px; color: var(--ink-2); font: 400 14px/1.3 var(--font-sans); text-align: left; }
+    .rv-list button:hover { background: var(--bg-muted); }
+    .rv-list button[aria-current="true"] { background: var(--ink); color: #fff; font-weight: 600; }
+    .rv-main { padding: 24px; min-width: 0; }
+    .rv-stage { display: flex; gap: 24px; align-items: flex-start; }
+    .rv-frame { margin: 0; display: grid; gap: 8px; }
+    .rv-frame figcaption { display: flex; align-items: center; gap: 8px; font: var(--text-caption); color: var(--ink-3); }
+    .rv-frame figcaption b { color: var(--ink); font-weight: 600; }
+    .rv-viewport { position: relative; overflow: hidden; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px var(--line), var(--shadow-float); }
+    .rv-frame.phone .rv-viewport { border-radius: 28px; box-shadow: 0 0 0 8px #1c1c1e, 0 0 0 9px #3a3a3e, var(--shadow-dialog); margin: 8px; }
+    .rv-viewport iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff; }
+    .rv-viewport img.old { position: absolute; inset: 0; width: 100%; height: auto; display: none; }
+    .show-old .rv-viewport img.old { display: block; }
+    .show-old .rv-viewport iframe { visibility: hidden; }
+    .rv-viewport .old-tag { position: absolute; left: 12px; top: 12px; z-index: 2; display: none; }
+    .show-old .rv-viewport .old-tag { display: inline-flex; }
+    .rv-notes { margin-top: 24px; padding: 24px; border-radius: 20px; background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+    .rv-notes header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+    .rv-notes header p { margin-top: 4px; color: var(--ink-3); font: var(--text-body-sm); max-width: 720px; }
+    .rv-states { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .rv-table { width: 100%; border-collapse: collapse; font: var(--text-body-sm); }
+    .rv-table th { text-align: left; padding: 8px 12px; color: var(--ink-3); font-weight: 500; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    .rv-table td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+    .rv-table td:first-child { white-space: nowrap; font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+    .rv-table td.old { color: var(--ink-3); width: 38%; }
+    .rv-table td.new { color: var(--ink); }
+    @media (max-width: 1100px) { .rv-body { grid-template-columns: 1fr; } .rv-list { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 4px; } .rv-list h3 { width: 100%; } .rv-list button { width: auto; } .rv-stage { flex-direction: column; } }
+  </style>
+</head>
+<body class="review">
+  <header class="rv-head">
+    <div class="rv-title"><span class="brand-mark" aria-hidden="true"><i style="--c:#e0473f"></i><i style="--c:#ffd447"></i><i style="--c:#3f7fd9"></i><i style="--c:#47a35b"></i></span><b>豆色绘</b><span>新设计评审 · 桌面 1440 / 手机 390 同步 · 所有数据为模拟</span></div>
+    <div class="rv-controls">
+      <span>主色</span>
+      <div class="swatches" role="group" aria-label="主色">
+        <button data-accent="blue" style="background:#3160e6" aria-pressed="true" aria-label="豆蓝"></button>
+        <button data-accent="ink" style="background:#1c1c1e" aria-pressed="false" aria-label="墨黑"></button>
+        <button data-accent="tomato" style="background:#cf3f29" aria-pressed="false" aria-label="番茄"></button>
+      </div>
+      <div class="seg" role="group" aria-label="登录态"><button class="seg-item" data-guest="0" aria-pressed="true">已登录</button><button class="seg-item" data-guest="1" aria-pressed="false">未登录</button></div>
+      <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" class="switch" id="show-old">对比旧版截图</label>
+      <a class="btn btn-sm btn-outline" id="open-standalone" target="_blank" rel="noreferrer">单独打开</a>
+    </div>
+  </header>
+  <div class="rv-body">
+    <nav class="rv-list" aria-label="页面"></nav>
+    <main class="rv-main">
+      <div class="rv-stage">
+        <figure class="rv-frame desktop"><figcaption><b>桌面</b> 1440 × 900</figcaption><div class="rv-viewport"><span class="badge warning old-tag">旧版</span><iframe title="桌面原型" data-w="1440" data-h="900"></iframe><img class="old" alt="旧版桌面截图"></div></figure>
+        <figure class="rv-frame phone"><figcaption><b>手机</b> 390 × 844</figcaption><div class="rv-viewport"><span class="badge warning old-tag">旧版</span><iframe title="手机原型" data-w="390" data-h="844"></iframe><img class="old" alt="旧版手机截图"></div></figure>
+      </div>
+      <section class="rv-notes" aria-live="polite"></section>
+    </main>
+  </div>
+  <script type="module" src="review.js"></script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+[
+  {
+    "name": "01-discover",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "上传图片"
+    ]
+  },
+  {
+    "name": "02-search",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "上传图片"
+    ]
+  },
+  {
+    "name": "03-search-empty",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "上传图片"
+    ]
+  },
+  {
+    "name": "04-filter",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "显示 6 张图纸"
+    ]
+  },
+  {
+    "name": "05-detail",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "用这张制作"
+    ]
+  },
+  {
+    "name": "06-detail-guest",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "登录后制作"
+    ]
+  },
+  {
+    "name": "07-create",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "选择图片"
+    ]
+  },
+  {
+    "name": "08-create-new",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "生成图纸"
+    ]
+  },
+  {
+    "name": "09-editor",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "导出"
+    ]
+  },
+  {
+    "name": "10-editor-export",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "11-editor-noorig",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "导出"
+    ]
+  },
+  {
+    "name": "12-stitch",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "完成本行"
+    ]
+  },
+  {
+    "name": "13-me",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "新建"
+    ]
+  },
+  {
+    "name": "14-me-empty",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "上传图片"
+    ]
+  },
+  {
+    "name": "15-me-palettes",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "16-me-settings",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "17-author",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "18-login",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "登录"
+    ]
+  },
+  {
+    "name": "19-admin",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "20-admin-works",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "21-admin-reviews",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "通过并发布"
+    ]
+  },
+  {
+    "name": "22-components",
+    "width": 1440,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "01-discover",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "02-search",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "03-search-empty",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "04-filter",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "显示 6 张图纸"
+    ]
+  },
+  {
+    "name": "05-detail",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "用这张制作"
+    ]
+  },
+  {
+    "name": "06-detail-guest",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "登录后制作"
+    ]
+  },
+  {
+    "name": "07-create",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "选择图片"
+    ]
+  },
+  {
+    "name": "08-create-new",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "生成图纸"
+    ]
+  },
+  {
+    "name": "09-editor",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "10-editor-export",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "11-editor-noorig",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "12-stitch",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "完成本行"
+    ]
+  },
+  {
+    "name": "13-me",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "14-me-empty",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "上传图片"
+    ]
+  },
+  {
+    "name": "15-me-palettes",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "16-me-settings",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "17-author",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "18-login",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "登录"
+    ]
+  },
+  {
+    "name": "19-admin",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "20-admin-works",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  },
+  {
+    "name": "21-admin-reviews",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": [
+      "通过并发布"
+    ]
+  },
+  {
+    "name": "22-components",
+    "width": 390,
+    "errors": [],
+    "overflow": 0,
+    "primaries": []
+  }
+]

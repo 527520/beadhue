@@ -1,0 +1,112 @@
+/* 设计令牌：原型与正式实现（Tailwind v4 @theme）共用同一组名称与数值。 */
+:root {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --bg-subtle: #f7f7f8;
+  --bg-muted: #f0f0f2;
+  --bg-emphasis: #e4e4e8;
+  --line: #e7e7ea;
+  --line-strong: #d1d1d6;
+
+  --ink: #1c1c1e;
+  --ink-2: #3f3f46;
+  --ink-3: #6e6e78;
+  --ink-4: #9a9aa3;
+  --on-ink: #ffffff;
+
+  --accent: #3160e6;
+  --accent-hover: #2851cc;
+  --accent-press: #2145b3;
+  --accent-soft: #eef3ff;
+  --on-accent: #ffffff;
+
+  --heart: #e5484d;
+  --featured: #ffc53d;
+  --success: #17804a;
+  --success-soft: #e8f5ee;
+  --warning: #b35c00;
+  --warning-soft: #fff4e5;
+  --danger: #ce2c31;
+  --danger-soft: #fdecec;
+  --info-soft: #eef3ff;
+
+  --font-sans: "BeadHue Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-brand: "BeadHue Round", "BeadHue Text", "PingFang SC", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --text-display: 700 32px/40px var(--font-sans);
+  --text-title-1: 600 24px/32px var(--font-sans);
+  --text-title-2: 600 20px/28px var(--font-sans);
+  --text-title-3: 600 16px/24px var(--font-sans);
+  --text-body: 400 15px/24px var(--font-sans);
+  --text-body-sm: 400 14px/22px var(--font-sans);
+  --text-caption: 500 12px/18px var(--font-sans);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  --shadow-float: 0 1px 2px rgb(28 28 30 / 6%), 0 8px 24px rgb(28 28 30 / 10%);
+  --shadow-dialog: 0 2px 6px rgb(28 28 30 / 8%), 0 24px 64px rgb(28 28 30 / 20%);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  --h-sm: 32px;
+  --h-md: 40px;
+  --h-lg: 48px;
+
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-press: 120ms;
+  --dur-state: 180ms;
+  --dur-enter: 240ms;
+
+  --page-max: 1280px;
+  --gutter: 16px;
+  --topbar-h: 64px;
+  --tabbar-h: 64px;
+}
+
+@media (min-width: 768px) {
+  :root { --gutter: 24px; }
+}
+@media (min-width: 1024px) {
+  :root { --gutter: 32px; }
+}
+@media (max-width: 767px) {
+  :root {
+    --text-display: 700 26px/34px var(--font-sans);
+    --text-title-1: 600 22px/30px var(--font-sans);
+    --text-title-2: 600 18px/26px var(--font-sans);
+    --topbar-h: 56px;
+  }
+}
+@media (pointer: coarse) {
+  :root { --h-md: 44px; }
+}
+
+/* 原型评审用：主色对比切换（正式实现只保留一个）。 */
+:root[data-accent="ink"] {
+  --accent: #1c1c1e;
+  --accent-hover: #2c2c30;
+  --accent-press: #000000;
+  --accent-soft: #f0f0f2;
+}
+:root[data-accent="tomato"] {
+  --accent: #cf3f29;
+  --accent-hover: #b93520;
+  --accent-press: #a02c1a;
+  --accent-soft: #fdeeea;
+}

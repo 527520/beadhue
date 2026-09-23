@@ -88,3 +88,7 @@ next-env.d.ts
 # 旧版私有可选字体目录；新版 assets/ui-fonts 和 public/fonts/ui 必须入库。
 /public/fonts/*.subset.ttf
 /assets/fonts/
+
+# R15 前端重构的截图证据（体积大，只留本地）
+.scratch/ui-rebuild/evidence/*
+!.scratch/ui-rebuild/evidence/prototype-final/
