@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import AccountPage from './page';
+import AccountPage from './AccountSettingsView';
 const state = vi.hoisted(() => ({ me: vi.fn() }));
 vi.mock('@/lib/sync/api', () => ({ createBeadhueApi: () => ({ me: state.me }) }));
-vi.mock('@/components/layout/SiteHeader', () => ({ default: () => <h1>账号</h1> }));
 vi.mock('@/components/account/AccountMenu', () => ({ default: ({ me }: { me: { state?: string } | string }) => <p>{typeof me === 'string' ? me : me.state}</p> }));
 beforeEach(() => state.me.mockReset());
 it('账号读取失败不会伪报游客或仅本机状态，重试后恢复真实账号', async () => {

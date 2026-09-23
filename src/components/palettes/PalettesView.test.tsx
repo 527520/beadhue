@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import PalettesPage from './page';
+import PalettesPage from './PalettesView';
 import { zhCN } from '@/messages/zh-CN';
 import type { PaletteRecord } from '@/components/palettes/api';
 import { getBuiltinPalette, listBuiltinPalettes } from '@/lib/palettes';

@@ -366,7 +366,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={storage} />);
     expect(await screen.findByText('这张设计不在本机，请回到我的设计下载或选择其他图纸。')).toBeVisible();
     expect(screen.queryByDisplayValue('其他作品')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '返回我的设计' })).toHaveAttribute('href', '/designs');
+    expect(screen.getByRole('link', { name: '返回我的设计' })).toHaveAttribute('href', '/me');
     window.history.replaceState(null, '', '/app');
   });
 
@@ -1057,7 +1057,7 @@ describe('Workbench 本地保存', () => {
     fireEvent.change(nameInput, { target: { value: '离开前保存' } });
     fireEvent.click(screen.getAllByRole('link', { name: '我的' })[0]);
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/designs'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/me'));
     expect([...storage.designs.values()][0].name).toBe('离开前保存');
     expect(screen.queryByRole('dialog')).toBeNull();
   });

@@ -6,6 +6,7 @@ vi.mock('next/navigation', () => ({}));
 
 import RegisterPage from './page';
 import { zhCN } from '@/messages/zh-CN';
+vi.mock('@/components/shell/site-shell', () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => children }));
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);

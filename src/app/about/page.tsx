@@ -7,20 +7,16 @@ import {
   ISSUES_URL,
   SOURCE_REPO_URL,
 } from "@/lib/appInfo";
-import SiteHeader from "@/components/layout/SiteHeader";
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
 import Icon from "@/components/legacy-ui/Icon";
 import Link from "next/link";
 
 export default function AboutPage() {
   const t = zhCN.about;
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader
-        title={t.title}
-        hideHeading
-        currentPath="/about"
-        subtitle={zhCN.workspace.localGenerationHint}
-      />
+    <SiteShell nav={null}><LegacyScope><div className="workspace-page">
+      
       <div className="container">
         <section className="form-card beadhue-info-card">
           <span className="studio-eyebrow">
@@ -93,6 +89,6 @@ export default function AboutPage() {
           </div>
         </section>
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

@@ -59,7 +59,7 @@ function FeedbackNotice({ message, workId }: { message: Feedback; workId: string
   if (!message) return null;
   return <Notice kind={message.error ? 'danger' : 'success'} className="community-feedback"><span>{message.text}
     {message.auth === 401 && <>{' '}<Link href={`/login?next=${encodeURIComponent(`/community/${workId}`)}`}>{t.loginContinue}</Link></>}
-    {message.auth === 403 && <>{' '}<Link href="/account">{t.accountAccess}</Link></>}
+    {message.auth === 403 && <>{' '}<Link href="/me/settings">{t.accountAccess}</Link></>}
   </span></Notice>;
 }
 
@@ -208,7 +208,7 @@ export function WorkActions({ workId, initialLikes, initialReuses, canInteract =
       </span>
       <IconButton icon="flag" label={t.reportWork} disabled={!canInteract || pending !== null} onClick={() => { setMessage(null); setReportTarget({ targetType: 'work', targetId: workId }); }} />
       <ActionOverflow label={t.more} actions={<>
-        <Link href="/designs"><Icon name="folder" size={16} />{t.myDesigns}</Link>
+        <Link href="/me"><Icon name="folder" size={16} />{t.myDesigns}</Link>
         <Link href="/community/copyright"><Icon name="shield" size={16} />{t.copyrightNotice}</Link>
       </>} />
     </div>

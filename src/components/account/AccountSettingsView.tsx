@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import SiteHeader from '@/components/layout/SiteHeader';
+import LegacyScope from '@/components/layout/LegacyScope';
+import LegacyPageHeading from '@/components/layout/LegacyPageHeading';
 import AccountMenu from '@/components/account/AccountMenu';
 import Icon from '@/components/legacy-ui/Icon';
 import OriginalStorageUsage from '@/components/beadhue/OriginalStorageUsage';
@@ -10,7 +11,8 @@ import { zhCN } from '@/messages/zh-CN';
 import { notifyAuthStatusChanged } from '@/components/account/useAuthStatus';
 import Link from 'next/link';
 
-export default function AccountPage() {
+/** 账号设置（旧界面内容，/me/settings 过渡期使用；票 06 重做）。 */
+export default function AccountSettingsView() {
   const api = useMemo(() => createBeadhueApi(), []);
   const [me, setMe] = useState<MeInfo | 'loading'>('loading');
   const [error, setError] = useState(false);
@@ -32,8 +34,8 @@ export default function AccountPage() {
   const cloudReady = me !== 'loading' && me.state === 'verified';
 
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader title={zhCN.workspace.account} currentPath="/account" subtitle={zhCN.workspace.accountSubtitle} />
+    <LegacyScope><div className="workspace-page">
+      <LegacyPageHeading title={zhCN.workspace.account} subtitle={zhCN.workspace.accountSubtitle} />
       <div className="container"><div className="form-card account-card">
         {error ? <div role="alert" className="notice notice-danger"><p>{zhCN.account.readFailed}</p><button type="button" className="button" onClick={() => void load()}>{zhCN.common.retry}</button></div> : <AccountMenu api={api} me={me} onAuthChanged={() => { notifyAuthStatusChanged(); void load(); }} />}
         <OriginalStorageUsage key={me === 'loading' ? 'loading' : me.state} account />
@@ -43,8 +45,8 @@ export default function AccountPage() {
           <p><Icon name="lock" />{zhCN.beadhue.withdrawHint}</p>
           <p><Icon name="clock" />{zhCN.beadhue.queueHint}</p>
         </div>
-        <div className="row wrap"><Link href="/designs" className="button">{zhCN.beadhue.manageDesigns}</Link><Link href="/privacy" className="button quiet">{zhCN.account.analyticsPreferences}</Link></div>
+        <div className="row wrap"><Link href="/me" className="button">{zhCN.beadhue.manageDesigns}</Link><Link href="/privacy" className="button quiet">{zhCN.account.analyticsPreferences}</Link></div>
       </div></div>
-    </main>
+    </div></LegacyScope>
   );
 }

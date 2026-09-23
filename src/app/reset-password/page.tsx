@@ -4,9 +4,10 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import AuthShell from '@/components/auth/AuthShell';
-import Button from '@/components/legacy-ui/Button';
-import Notice from '@/components/legacy-ui/Notice';
 import FormError from '@/components/auth/FormError';
+import { Button } from '@/components/ui/button';
+import { Field, FormNotice } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { zhCN } from '@/messages/zh-CN';
 import { passwordSchema } from '@/lib/schemas';
 import { authPageHref } from '@/lib/auth/returnTo';
@@ -26,6 +27,7 @@ function ResetInner() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<{ password?: string; confirm?: string }>({});
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -33,16 +35,17 @@ function ResetInner() {
     e.preventDefault();
     if (requestPending.current) return;
     setError(null);
+    setFieldError({});
     if (!token) {
       setError(zhCN.auth.linkInvalid);
       return;
     }
     if (!passwordSchema.safeParse(password).success) {
-      setError(t.passwordRule);
+      setFieldError({ password: t.passwordRule });
       return;
     }
     if (password !== confirm) {
-      setError(t.passwordMismatch);
+      setFieldError({ confirm: t.passwordMismatch });
       return;
     }
     requestPending.current = true;
@@ -67,48 +70,30 @@ function ResetInner() {
     }
   };
 
-  const field = 'input-field';
-
   if (done) {
     return (
       <AuthShell title={t.resetTitle}>
-        <Notice kind="success" className="mb-4">{t.resetSuccess}</Notice>
-        <Link href={authPageHref('login', returnTo)} className="link-soft block text-center">
-          {t.goLogin}
-        </Link>
+        <div className="grid gap-4">
+          <FormNotice>{t.resetSuccess}</FormNotice>
+          <Link href={authPageHref('login', returnTo)} className="text-center text-body-sm font-medium text-accent hover:underline hover:underline-offset-3">
+            {t.goLogin}
+          </Link>
+        </div>
       </AuthShell>
     );
   }
 
   return (
     <AuthShell title={t.resetTitle}>
-      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
+      <form onSubmit={submit} noValidate className="grid gap-4">
+        <Field label={t.password} hint={t.passwordRule} error={fieldError.password}>
+          <Input type="password" autoComplete="new-password" disabled={pending} value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </Field>
+        <Field label={t.confirmPassword} error={fieldError.confirm}>
+          <Input type="password" autoComplete="new-password" disabled={pending} value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
+        </Field>
         <FormError message={error} />
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-soft">
-          {t.password}
-          <input
-            type="password"
-            autoComplete="new-password"
-            disabled={pending}
-            className={field}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-soft">
-          {t.confirmPassword}
-          <input
-            type="password"
-            autoComplete="new-password"
-            disabled={pending}
-            className={field}
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-          />
-        </label>
-        <Button type="submit" variant="primary" className="w-full" loading={pending}>
+        <Button type="submit" variant="primary" size="lg" block loading={pending}>
           {t.submit}
         </Button>
       </form>

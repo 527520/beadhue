@@ -53,7 +53,7 @@ export default function RecentDesigns({ storage }: { storage?: Pick<StorageAdapt
   }, [attempt, storage]);
 
   return <section className="home-recent" aria-labelledby="recent-designs-title">
-    <header><h2 id="recent-designs-title">{t.recentTitle}</h2><Link href="/designs" className="link-action">{t.allDesigns}</Link></header>
+    <header><h2 id="recent-designs-title">{t.recentTitle}</h2><Link href="/me" className="link-action">{t.allDesigns}</Link></header>
     {failed ? <div className="admin-command-notice"><Notice kind="danger" as="div"><span>{t.recentUnavailable}</span><Button variant="secondary" size="sm" icon="refresh" onClick={() => setAttempt((value) => value + 1)}>{zhCN.common.retry}</Button></Notice></div>
       : items === null ? <p aria-live="polite" aria-busy="true">{t.recentLoading}</p>
         : items.length === 0 ? <p>{t.recentEmpty}</p>

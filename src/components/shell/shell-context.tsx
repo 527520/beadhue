@@ -38,7 +38,7 @@ export function ShellNavigationProvider({ onNavigate, children }: { onNavigate?:
 
 export function useShellNavigation(): ShellNavigation {
   const context = useContext(ShellNavigationContext);
-  if (!context) throw new Error('useShellNavigation 必须在 SiteShell 内使用');
+  if (!context) throw new Error('useShellNavigation must be used inside <SiteShell>');
   return context;
 }
 

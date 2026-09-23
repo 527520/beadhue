@@ -4,9 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import AuthShell from '@/components/auth/AuthShell';
-import Button from '@/components/legacy-ui/Button';
-import Notice from '@/components/legacy-ui/Notice';
 import FormError from '@/components/auth/FormError';
+import { Button } from '@/components/ui/button';
+import { Field, FormNotice } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { zhCN } from '@/messages/zh-CN';
 import { track } from '@/lib/analytics/client';
 import { authPageHref } from '@/lib/auth/returnTo';
@@ -96,43 +97,35 @@ function VerifyInner() {
     }
   };
 
-  const field = 'input-field';
-
   return (
     <AuthShell title={t.verifyTitle}>
       {state === 'loading' && (
-        <p role="status" className="text-center text-ink-soft">
+        <p role="status" className="text-center text-body-sm text-ink-3">
           {t.verifyLoading}
         </p>
       )}
       {state === 'success' && (
-        <>
-          <Notice kind="success" className="mb-4">{t.verifySuccess}</Notice>
-          <Link href={authPageHref('login', returnTo)} className="link-soft block text-center">
+        <div className="grid gap-4">
+          <FormNotice>{t.verifySuccess}</FormNotice>
+          <Link href={authPageHref('login', returnTo)} className="text-center text-body-sm font-medium text-accent hover:underline hover:underline-offset-3">
             {t.goLogin}
           </Link>
-        </>
+        </div>
       )}
       {state === 'error' && (
-        <>
+        <div className="grid gap-5">
           <FormError message={zhCN.auth.linkInvalid} />
-          <form onSubmit={resend} noValidate className="mt-4 flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-ink-soft">{t.resendTitle}</h2>
-            <input
-              type="email"
-              aria-label={t.email}
-              placeholder={t.email}
-              className={field}
-              value={resendEmail}
-              onChange={(e) => setResendEmail(e.target.value)}
-              required
-            />
-            <Button type="submit" variant="primary" className="w-full" disabled={cooldown > 0} loading={resendPending}>
+          <form onSubmit={resend} noValidate className="grid gap-4">
+            <h2 className="text-title-3 text-ink">{t.resendTitle}</h2>
+            <Field label={t.email}>
+              <Input type="email" autoComplete="email" value={resendEmail} onChange={(e) => setResendEmail(e.target.value)} required />
+            </Field>
+            <Button type="submit" variant="primary" size="lg" block disabled={cooldown > 0} loading={resendPending}>
               {cooldown > 0 ? t.cooldown(cooldown) : t.submit}
             </Button>
-            {resendDone && <p className="text-sm text-success">{t.resendSent}</p>}
+            {resendDone && <p className="text-body-sm text-success">{t.resendSent}</p>}
           </form>
-        </>
+        </div>
       )}
     </AuthShell>
   );

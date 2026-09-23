@@ -3,7 +3,8 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import SiteHeader from '@/components/layout/SiteHeader';
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
 import CommunitySubmitForm from '@/components/community/CommunitySubmitForm';
 import { getSessionActor } from '@/lib/auth/session';
 import { getDb } from '@/lib/auth/db';
@@ -30,9 +31,9 @@ export default async function CommunitySubmitPage({ searchParams }: { searchPara
   if (workId && (!z.string().uuid().safeParse(workId).success || !work)) notFound();
   const unavailable = work && (work.lifecycleStatus !== 'active' || work.revisions.some((item) => item.status === 'draft' || item.status === 'pending_review'));
   const t = zhCN.communityAdmin.submission;
-  return <main id="main" className="workspace-page"><SiteHeader title={work ? t.editTitle : t.pageTitle} currentPath="/community" subtitle={t.pageSubtitle} /><div className="workspace-content community-narrow">
-    {!actor.emailVerified ? <section className="community-empty"><h2>{t.verifyTitle}</h2><p>{t.verifyHelp}</p><Link href="/account" className="btn-primary">{t.verifyAction}</Link></section>
-      : unavailable ? <section className="community-empty"><h2>{t.unavailableTitle}</h2><p>{t.unavailableHelp}</p><Link href="/community/mine" className="btn-primary">{t.mine}</Link></section>
+  return <SiteShell nav="me" topbarCta="secondary" tabbar={false}><LegacyScope><div className="workspace-page"><div className="workspace-content community-narrow">
+    {!actor.emailVerified ? <section className="community-empty"><h2>{t.verifyTitle}</h2><p>{t.verifyHelp}</p><Link href="/me/settings" className="btn-primary">{t.verifyAction}</Link></section>
+      : unavailable ? <section className="community-empty"><h2>{t.unavailableTitle}</h2><p>{t.unavailableHelp}</p><Link href="/me/public" className="btn-primary">{t.mine}</Link></section>
         : <CommunitySubmitForm initialDesignId={initialDesignId} workId={workId} displayName={resolvePublicDisplayName(account.username, account.email)} />}
-  </div></main>;
+  </div></div></LegacyScope></SiteShell>;
 }

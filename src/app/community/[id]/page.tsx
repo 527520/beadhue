@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import SiteHeader from '@/components/layout/SiteHeader';
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
+import { MobileTopBack } from '@/components/shell/mobile-topbar';
 import PatternPreview from '@/components/preview/PatternPreview';
 import Disclosure from '@/components/legacy-ui/Disclosure';
 import Icon from '@/components/legacy-ui/Icon';
@@ -44,13 +46,13 @@ export default async function CommunityDetailPage({ params, searchParams }: { pa
   if (!work) notFound();
   const t = zhCN.communityAdmin.detail;
   const candidate = (await searchParams)?.returnTo;
-  const returnTo = typeof candidate === 'string' && candidate.length <= 2000 && candidate.startsWith('/community?') && !/[\\\r\n]/u.test(candidate) ? candidate : '/community';
+  // 回到来时的发现页（含筛选）；旧的 /community?… 地址仍接受，重定向会带着参数回到 /。
+  const returnTo = typeof candidate === 'string' && candidate.length <= 2000 && /^\/(?:community)?\?/u.test(candidate) && !/[\\\r\n]/u.test(candidate) ? candidate : '/';
   const publishedAt = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'long', timeZone: 'Asia/Shanghai' }).format(new Date(work.publishedAt));
   const board = getBoardProfile(isBoardProfileId(work.boardProfile) ? work.boardProfile : DEFAULT_BOARD_PROFILE_ID);
   const large = thumbnailPixelSize(work.width, work.height, 'large');
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader title={t.headerTitle} currentPath="/community" />
+    <SiteShell nav="discover" topbarCta="secondary" tabbar={false} mobileTop={<><MobileTopBack href={returnTo} label={t.backToList} /><span className="flex-1" /></>}><LegacyScope><div className="workspace-page">
       <CommunityDetailImpression />
       <div className="container community-detail">
         <Link className="back" href={returnTo}><Icon name="chevron-left" size={16} />{t.backToList}</Link>
@@ -84,6 +86,6 @@ export default async function CommunityDetailPage({ params, searchParams }: { pa
         </div>
         <WorkComments key={`${work.id}-comments`} workId={work.id} commentsLocked={work.commentsLocked} canInteract={canInteract} />
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

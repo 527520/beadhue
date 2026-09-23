@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { safeAuthReturnTo } from '@/lib/auth/returnTo';
 
 /** SSR 与首次水合保持一致；空初值可让入口等待安全回跳解析后再展示。 */
-export function useAuthReturnTo(initialTarget: '/designs' | '' = '/designs'): string {
+export function useAuthReturnTo(initialTarget: '/me' | '' = '/me'): string {
   const [target, setTarget] = useState<string>(initialTarget);
   useEffect(() => {
     let active = true;

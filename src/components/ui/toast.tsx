@@ -2,7 +2,7 @@
 
 import { Toast as BaseToast } from '@base-ui/react/toast';
 import { CircleCheck } from 'lucide-react';
-import { useCallback, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { zhCN } from '@/messages/zh-CN';
 
@@ -20,10 +20,30 @@ interface ToastData {
   icon?: ReactNode;
 }
 
+type ShowToast = (message: string, options?: ShowToastOptions) => void;
+const ShowToastContext = createContext<ShowToast | null>(null);
+const noop: ShowToast = () => undefined;
+
+function ToastBridge({ children }: { children: ReactNode }) {
+  const manager = BaseToast.useToastManager();
+  const show = useCallback<ShowToast>(
+    (message, options = {}) => {
+      manager.add({
+        title: message,
+        data: { icon: options.icon } satisfies ToastData,
+        actionProps: options.action ? { children: options.action.label, onClick: options.action.onClick } : undefined,
+      });
+    },
+    [manager],
+  );
+  return <ShowToastContext value={show}>{children}</ShowToastContext>;
+}
+
+/** 根布局挂一次（票 03），全站可用。 */
 export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <BaseToast.Provider timeout={4000} limit={3}>
-      {children}
+      <ToastBridge>{children}</ToastBridge>
       <BaseToast.Portal>
         <BaseToast.Viewport
           data-ui=""
@@ -58,18 +78,9 @@ export interface ShowToastOptions {
   action?: { label: string; onClick: () => void };
 }
 
-/** 显示一条提示；动作与按钮用同一个动词（导出 → 已导出）。 */
-export function useToast() {
-  const manager = BaseToast.useToastManager();
-  return useCallback(
-    (message: string, options: ShowToastOptions = {}) =>
-      manager.add({
-        title: message,
-        data: { icon: options.icon } satisfies ToastData,
-        actionProps: options.action ? { children: options.action.label, onClick: options.action.onClick } : undefined,
-      }),
-    [manager],
-  );
+/** 显示一条提示；动作与按钮用同一个动词（导出 → 已导出）。没有 ToastProvider（单独渲染的组件测试）时静默。 */
+export function useToast(): ShowToast {
+  return useContext(ShowToastContext) ?? noop;
 }
 
 /** 静态样张（组件总览）。 */

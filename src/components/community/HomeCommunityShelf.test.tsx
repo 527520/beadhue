@@ -22,7 +22,7 @@ describe('home community data states', () => {
     fetcher.mockImplementation(async () => new Response('{"items":[]}'));
     fireEvent.click(screen.getByRole('button', { name: '重试' }));
     expect(await screen.findByText('还没有已公开作品。')).toBeVisible();
-    expect(screen.getByRole('link', { name: '打开豆社' })).toHaveAttribute('href', '/community');
+    expect(screen.getByRole('link', { name: '打开豆社' })).toHaveAttribute('href', '/');
   });
 
   it('shows selected proofs and independently queried latest works together', async () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import SiteHeader from '@/components/layout/SiteHeader';
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
 import { ButtonLink } from '@/components/legacy-ui/Button';
 import Icon from '@/components/legacy-ui/Icon';
 import CommunityThumbnail from '@/components/community/CommunityThumbnail';
@@ -20,13 +21,13 @@ const POPULAR_TAG_LIMIT = 8;
 
 function InvalidFilters() {
   const t = zhCN.communityAdmin.community;
-  return <main id="main" className="workspace-page"><SiteHeader title={t.headerTitle} currentPath="/community" /><section className="community-empty pegboard"><span className="empty-state-icon" aria-hidden="true"><Icon name="filter" size={26} /></span><h2>{t.invalidFilters}</h2><p>{t.invalidFiltersHint}</p><ButtonLink variant="primary" icon="close" href="/community">{t.clearFilters}</ButtonLink></section></main>;
+  return <SiteShell nav="discover" mobileTop="discover"><LegacyScope><div className="workspace-page"><section className="community-empty pegboard"><span className="empty-state-icon" aria-hidden="true"><Icon name="filter" size={26} /></span><h2>{t.invalidFilters}</h2><p>{t.invalidFiltersHint}</p><ButtonLink variant="primary" icon="close" href="/">{t.clearFilters}</ButtonLink></section></div></LegacyScope></SiteShell>;
 }
 
 export default async function CommunityPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const t = zhCN.communityAdmin.community;
   const params = await searchParams;
-  const url = new URL('http://local/community');
+  const url = new URL('http://local/');
   if (!params.sort) url.searchParams.set('sort', 'featured');
   for (const [key, raw] of Object.entries(params)) if (typeof raw === 'string') url.searchParams.set(key, raw);
   let query: CommunityListQuery;
@@ -40,7 +41,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const activeFilters = ['q', 'author', 'tag', 'boardProfile', 'palette', 'from', 'to'].some((key) => url.searchParams.has(key) && url.searchParams.get(key) !== '');
   const nextParams = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) if (typeof value === 'string') nextParams.set(key, value);
-  const returnTo = `/community?${nextParams}`;
+  const returnTo = `/?${nextParams}`;
   nextParams.delete('cursor');
   if (result.nextCursor) nextParams.set('cursor', result.nextCursor);
   // 当前标签先在完整标签表里解析（合并链的终点可能不在前 8 个热门里），再退回热门表。
@@ -49,8 +50,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
   const activeTag = query.tag ? allTags.find(matchesActive)?.name ?? popularTags.find(matchesActive)?.name ?? query.tag : null;
   const shortcutTags = popularTags.filter((tag) => tag.name !== activeTag);
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader title={t.headerTitle} currentPath="/community" primaryActions={<ButtonLink variant="secondary" size="sm" icon="folder" href="/community/mine">{t.mine}</ButtonLink>} />
+    <SiteShell nav="discover" mobileTop="discover" query={query.q ?? ''}><LegacyScope><div className="workspace-page">
       <CommunityListImpression sort={query.sort} />
       <div className="container discovery-page">
         <section className="intro"><div><div className="eyebrow">{zhCN.beadhue.discoveryEyebrow}</div><h1>{zhCN.beadhue.discoveryTitle}</h1><p>{zhCN.beadhue.discoveryIntro}</p></div><Link href="/app" className="button intro-action"><Icon name="plus" />{zhCN.beadhue.createFromImage}</Link></section>
@@ -68,11 +68,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
         <CommunityFilters key={JSON.stringify(query)} query={query} />
         <TagFilter tags={allTags} query={query} activeTag={activeTag} />
         {<nav className="chip-row" aria-label={t.tagBar}>
-          <Link href="/community" className={`chip${!activeTag ? ' active' : ''}`}>{zhCN.beadhue.all}</Link>
+          <Link href="/" className={`chip${!activeTag ? ' active' : ''}`}>{zhCN.beadhue.all}</Link>
           {shortcutTags.map((tag) => <Link key={tag.id} href={communityTagHref(tag.name)} className="chip">{tag.name}<small>{tag.count}</small></Link>)}
         </nav>}
-        {activeFilters && result.items.length > 0 && <Link href="/community" className="link-soft">{t.clearFilters}</Link>}
-        {result.items.length === 0 ? <section className="community-empty pegboard"><span className="empty-state-icon" aria-hidden="true"><Icon name={activeFilters ? 'search' : 'grid'} size={26} /></span><h2>{activeFilters ? t.noMatch : t.emptyTitle}</h2><p>{activeFilters ? t.noMatchHint : t.emptyBody}</p><ButtonLink variant="primary" icon={activeFilters ? 'close' : 'folder'} href={activeFilters ? '/community' : '/designs'}>{activeFilters ? t.clearFilters : t.chooseDesign}</ButtonLink></section> : (
+        {activeFilters && result.items.length > 0 && <Link href="/" className="link-soft">{t.clearFilters}</Link>}
+        {result.items.length === 0 ? <section className="community-empty pegboard"><span className="empty-state-icon" aria-hidden="true"><Icon name={activeFilters ? 'search' : 'grid'} size={26} /></span><h2>{activeFilters ? t.noMatch : t.emptyTitle}</h2><p>{activeFilters ? t.noMatchHint : t.emptyBody}</p><ButtonLink variant="primary" icon={activeFilters ? 'close' : 'folder'} href={activeFilters ? '/' : '/me'}>{activeFilters ? t.clearFilters : t.chooseDesign}</ButtonLink></section> : (
           <><div className="browse-head"><h2>{zhCN.beadhue.galleryTitle}</h2><small>{result.items.length} {zhCN.beadhue.patternCountSuffix}{result.nextCursor ? zhCN.beadhue.moreAvailable : ''}</small></div>
           <div className="work-grid">{result.items.map((work) => (
             <article key={work.id} className="work-card">
@@ -87,8 +87,8 @@ export default async function CommunityPage({ searchParams }: { searchParams: Pr
           ))}</div></>
 
         )}
-        {result.nextCursor && <div className="community-more"><ButtonLink variant="secondary" size="sm" icon="chevron-down" href={`/community?${nextParams}`}>{t.next}</ButtonLink></div>}
+        {result.nextCursor && <div className="community-more"><ButtonLink variant="secondary" size="sm" icon="chevron-down" href={`/?${nextParams}`}>{t.next}</ButtonLink></div>}
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

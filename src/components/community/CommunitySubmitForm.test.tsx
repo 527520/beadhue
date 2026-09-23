@@ -63,7 +63,7 @@ it('首次投稿必须选择原图并同意上传条款；提交时先建草稿�
   await pickOriginal();
   expect(screen.getByRole('button', { name: '提交审核' })).toBeEnabled();
   fireEvent.click(screen.getByRole('button', { name: '提交审核' }));
-  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/community/mine'));
+  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/me/public'));
   const urls = state.fetch.mock.calls.map((call) => String(call[0]));
   expect(urls).toEqual(['/api/community/works', `/api/community/revisions/${revisionId}/original`, `/api/community/revisions/${revisionId}/submit`]);
   const upload = state.fetch.mock.calls[1][1] as RequestInit;
@@ -89,7 +89,7 @@ it('创建成功而提交失败时保留草稿，重试不创建另一个作品�
   await pickOriginal(); await confirm();
   expect(await screen.findByRole('alert')).toHaveTextContent('草稿已保留');
   fireEvent.click(screen.getByRole('button', { name: '重试提交审核' }));
-  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/community/mine'));
+  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/me/public'));
   expect(state.fetch.mock.calls.filter((call) => call[0] === '/api/community/works')).toHaveLength(1);
   expect(state.fetch.mock.calls.filter((call) => String(call[0]).endsWith('/original'))).toHaveLength(1);
   const submissions = state.fetch.mock.calls.filter((call) => String(call[0]).endsWith('/submit'));
@@ -135,6 +135,6 @@ it('服务端要求原图时保留草稿并提示补选原图，补选后重试�
   expect(screen.getByRole('button', { name: '重试提交审核' })).toBeDisabled();
   await pickOriginal();
   fireEvent.click(screen.getByRole('button', { name: '重试提交审核' }));
-  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/community/mine'));
+  await waitFor(() => expect(state.push).toHaveBeenCalledWith('/me/public'));
   expect(state.fetch.mock.calls.filter((call) => String(call[0]).endsWith('/original'))).toHaveLength(1);
 });

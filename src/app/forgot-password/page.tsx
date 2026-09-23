@@ -4,8 +4,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import AuthShell from '@/components/auth/AuthShell';
-import Button from '@/components/legacy-ui/Button';
-import Notice from '@/components/legacy-ui/Notice';
+import DevMailLink from '@/components/auth/DevMailLink';
+import { Button } from '@/components/ui/button';
+import { Field, FormNotice } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { zhCN } from '@/messages/zh-CN';
 import { emailSchema } from '@/lib/schemas';
 import { DEV_MAIL_LINK_HEADER } from '@/lib/auth/mailMeta';
@@ -58,45 +60,26 @@ export default function ForgotPasswordPage() {
     setCooldown(60);
   };
 
-  const field = 'input-field';
-
   return (
     <AuthShell title={t.forgotTitle}>
-      <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-        {error && <Notice kind="danger">{error}</Notice>}
+      <form onSubmit={submit} noValidate className="grid gap-4">
         {done && (
           <>
-            <Notice kind="success">{t.forgotSent}</Notice>
-            {devMailLink && (
-              <div className="rounded-xl border border-lilac/40 bg-lilac-soft p-3 text-sm">
-                <p className="mb-2 text-ink">{t.devMailHint}</p>
-                <a href={devMailLink} className="break-all text-primary-deep underline underline-offset-2">
-                  {devMailLink}
-                </a>
-              </div>
-            )}
+            <FormNotice>{t.forgotSent}</FormNotice>
+            <DevMailLink href={devMailLink} />
           </>
         )}
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-ink-soft">
-          {t.email}
-          <input
-            type="email"
-            autoComplete="email"
-            disabled={pending}
-            className={field}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </label>
-        <Button type="submit" variant="primary" className="w-full" disabled={cooldown > 0} loading={pending}>
+        <Field label={t.email} error={error}>
+          <Input type="email" autoComplete="email" disabled={pending} value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
+        <Button type="submit" variant="primary" size="lg" block disabled={cooldown > 0} loading={pending}>
           {cooldown > 0 ? t.cooldown(cooldown) : t.submit}
         </Button>
-        <div className="text-center text-sm">
-          <Link href={authPageHref('login', returnTo)} className="link-soft">
+        <p className="text-center text-body-sm">
+          <Link href={authPageHref('login', returnTo)} className="font-medium text-accent hover:underline hover:underline-offset-3">
             {t.hasAccount}
           </Link>
-        </div>
+        </p>
       </form>
     </AuthShell>
   );

@@ -21,9 +21,9 @@ export default function CommunityFilters({ query }: { query: CommunityListQuery 
       if (typeof value === 'string' && value) params.set(key, value);
     }
     params.set('sort', sort);
-    router.push(`/community?${params}`);
+    router.push(`/?${params}`);
   };
-  return <form ref={formRef} action="/community" method="get" className="discovery-filters">
+  return <form ref={formRef} action="/" method="get" className="discovery-filters">
     <div className="search-row">
       <label className="search">
         <Icon name="search" />

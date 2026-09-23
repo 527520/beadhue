@@ -2,9 +2,9 @@
 import { expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import CommunityPage from './page';
+vi.mock('@/components/shell/site-shell', () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => children }));
 
 vi.mock('@/lib/auth/db', () => ({ getDb: () => ({}) }));
-vi.mock('@/components/layout/SiteHeader', () => ({ default: () => <header /> }));
 vi.mock('@/components/community/CommunityImpression', () => ({ CommunityListImpression: () => null }));
 // TagFilter 用 useRouter 做客户端跳转；本文件只验证服务端渲染结果，这里给一个空实现。
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
@@ -46,20 +46,20 @@ it('豆社下一页保留所有有效筛选，重设筛选不带旧游标', asyn
 it('热门标签以名称为筛选键展示在筛选栏下方', async () => {
   query.list.mockResolvedValue({ items: [], nextCursor: null });
   render(await CommunityPage({ searchParams: Promise.resolve({}) }));
-  expect(screen.getByRole('link', { name: /花朵/ })).toHaveAttribute('href', '/community?tag=%E8%8A%B1%E6%9C%B5');
+  expect(screen.getByRole('link', { name: /花朵/ })).toHaveAttribute('href', '/?tag=%E8%8A%B1%E6%9C%B5');
 });
 
 it('没有筛选结果时提供清除筛选，不把失败搜索说成社区没有作品', async () => {
   query.list.mockResolvedValue({ items: [], nextCursor: null });
   render(await CommunityPage({ searchParams: Promise.resolve({ q: '不存在的作品' }) }));
   expect(screen.getByText('没有符合这些条件的作品')).toBeVisible();
-  expect(within(document.querySelector('.community-empty')!).getByRole('link', { name: '清除筛选' })).toHaveAttribute('href', '/community');
+  expect(within(document.querySelector('.community-empty')!).getByRole('link', { name: '清除筛选' })).toHaveAttribute('href', '/');
 });
 
 it('无效日期筛选提供恢复入口，不让整页变为服务器错误', async () => {
   render(await CommunityPage({ searchParams: Promise.resolve({ from: 'invalid-date' }) }));
   expect(screen.getByText('筛选条件无法识别')).toBeVisible();
-  expect(screen.getByRole('link', { name: '清除筛选' })).toHaveAttribute('href', '/community');
+  expect(screen.getByRole('link', { name: '清除筛选' })).toHaveAttribute('href', '/');
 });
 
 it('列表卡片不再显示标签，标签筛选控件接管筛选', async () => {
@@ -71,7 +71,7 @@ it('列表卡片不再显示标签，标签筛选控件接管筛选', async () =
   expect(within(listCard).getAllByRole('link')).toHaveLength(2);
   // 可搜索的单选控件与热门芯片行同时在位。
   expect(screen.getByRole('combobox', { name: '按标签筛选' })).toBeVisible();
-  expect(screen.getByRole('link', { name: /花朵/ })).toHaveAttribute('href', '/community?tag=%E8%8A%B1%E6%9C%B5');
+  expect(screen.getByRole('link', { name: /花朵/ })).toHaveAttribute('href', '/?tag=%E8%8A%B1%E6%9C%B5');
   // SSR 热路径跳过逐作品标签查询；热门芯片只取前 8 个。
   expect(query.list).toHaveBeenCalledWith({}, expect.anything(), { includeTags: false });
   expect(query.tags).toHaveBeenCalledWith({}, 8);

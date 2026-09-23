@@ -24,7 +24,7 @@ it('输入即本地过滤，↑↓ 选择后回车按名称跳转并保留其他
   expect(screen.getAllByRole('option')[0]).toHaveAttribute('aria-selected', 'true');
   fireEvent.keyDown(input, { key: 'Enter' });
   // 只换 tag，游标之外的其他筛选参数原样保留。
-  expect(push).toHaveBeenCalledWith('/community?sort=featured&author=%E7%88%B1%E4%B8%BD%E4%B8%9D&tag=%E8%8A%B1%E6%9C%B5');
+  expect(push).toHaveBeenCalledWith('/?sort=featured&author=%E7%88%B1%E4%B8%BD%E4%B8%9D&tag=%E8%8A%B1%E6%9C%B5');
 });
 
 it('没有匹配项时给提示，Esc 收起候选，当前标签可清除', () => {
@@ -39,7 +39,7 @@ it('没有匹配项时给提示，Esc 收起候选，当前标签可清除', () 
   fireEvent.keyDown(input, { key: 'Escape' });
   expect(screen.queryByText('没有匹配的标签')).toBeNull();
   // 当前标签芯片是服务端可渲染的真实链接：带上除 tag 之外的筛选参数，去掉游标。
-  expect(screen.getByRole('link', { name: '取消标签筛选 猫咪' })).toHaveAttribute('href', '/community?sort=latest');
+  expect(screen.getByRole('link', { name: '取消标签筛选 猫咪' })).toHaveAttribute('href', '/?sort=latest');
   expect(push).not.toHaveBeenCalled();
 });
 

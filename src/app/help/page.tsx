@@ -1,5 +1,7 @@
 import { zhCN } from "@/messages/zh-CN";
-import SiteHeader from "@/components/layout/SiteHeader";
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
+import LegacyPageHeading from '@/components/layout/LegacyPageHeading';
 
 export default function HelpPage() {
   const t = zhCN.help;
@@ -16,12 +18,8 @@ export default function HelpPage() {
     ...t.faqs.map((faq) => [faq.q, faq.a]),
   ];
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader
-        title={zhCN.beadhue.helpTitle}
-        subtitle={zhCN.beadhue.helpSubtitle}
-        currentPath="/help"
-      />
+    <SiteShell nav={null}><LegacyScope><div className="workspace-page">
+      <LegacyPageHeading title={zhCN.beadhue.helpTitle} subtitle={zhCN.beadhue.helpSubtitle} />
       <div className="container">
         <div className="help-list">
           {guides.map(([title, body], index) => (
@@ -32,6 +30,6 @@ export default function HelpPage() {
           ))}
         </div>
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

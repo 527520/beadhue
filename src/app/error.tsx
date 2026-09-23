@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { zhCN } from '@/messages/zh-CN';
 import StateShell from '@/components/system/StateShell';
+import LegacyScope from '@/components/layout/LegacyScope';
 
 export default function PageError({
   error,
@@ -22,13 +23,13 @@ export default function PageError({
 
   const t = zhCN.errorPages;
   return (
-    <StateShell mark="!" eyebrow={t.errorEyebrow} title={t.errorTitle} body={t.errorBody}>
+    <LegacyScope><StateShell mark="!" eyebrow={t.errorEyebrow} title={t.errorTitle} body={t.errorBody}>
         <button type="button" onClick={reset} className="btn-primary">
           {t.retry}
         </button>
         <Link href="/" className="btn-outline">
           {t.backHome}
         </Link>
-    </StateShell>
+    </StateShell></LegacyScope>
   );
 }

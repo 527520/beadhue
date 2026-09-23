@@ -41,7 +41,7 @@ export default function TagFilter({ tags, query, activeTag }: Props) {
     const next = new URLSearchParams(params);
     if (name) next.set('tag', name);
     const search = next.toString();
-    return search ? `/community?${search}` : '/community';
+    return search ? `/?${search}` : '/';
   };
 
   if (tags.length === 0) return null;

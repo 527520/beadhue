@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { SCANNED } from './uiScanned';
 
 const sourceFiles: string[] = [];
 (function walk(dir: string): void {
@@ -43,7 +44,7 @@ describe('设计系统一致性', () => {
   it('圆角只用 full / 2xl / xl / lg 四档（色块 sm 与裁剪画布 none 为记录在案的例外）', () => {
     const exceptions = /rounded-sm|rounded-none/;
     // R15 新组件与新页面用新的五档圆角（theme.css：sm 8 / md 12 / lg 16 / xl 24 / full），由 uiGuardrails.test.ts 约束。
-    const r15 = [join('src', 'components', 'ui') + '/', join('src', 'app', 'dev') + '/'];
+    const r15 = SCANNED.map((path) => (path.endsWith('.ts') ? path : `${path}/`));
     const bad = offenders(/\brounded(?:-(?:md|3xl))?(?=["'\s])/g)
       .filter((entry) => !r15.some((dir) => entry.startsWith(dir)))
       .filter((entry) => !exceptions.test(entry));

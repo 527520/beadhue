@@ -181,7 +181,7 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
       if (!mounted.current) return;
       await discardPendingOriginal(designId).catch(() => undefined);
       track({ name: 'community_submission_submitted', properties: {} });
-      router.push('/community/mine');
+      router.push('/me/public');
     } catch (caught) {
       if (!mounted.current) return;
       const message = caught instanceof Error ? caught.message : t.failed;
@@ -243,7 +243,7 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
         <span>{t.license}<Link href="/community/copyright" className="link-soft">{t.copyright}</Link></span>
       </label>
       {error && <div className="admin-command-notice"><Notice kind="danger" as="div"><span>{error}</span>{!locked && <Button variant="secondary" size="sm" icon="refresh" onClick={() => designId ? void selectSource(designId) : window.location.reload()}>{t.reloadPreview}</Button>}</Notice></div>}
-      <div className="community-form-actions"><ButtonLink variant="quiet" href={hasDraft || locked ? '/community/mine' : '/designs'}>{hasDraft || locked ? t.mine : t.back}</ButtonLink><Button type="submit" variant="primary" icon="send" loading={busy} disabled={busy || loading || (!locked && !canSubmit) || (locked && needsOriginal && !original)}>{busy ? (busyText ?? t.submitting) : hasDraft ? t.retryReview : locked ? t.retryOriginal : t.submit}</Button></div>
+      <div className="community-form-actions"><ButtonLink variant="quiet" href={hasDraft || locked ? '/me/public' : '/me'}>{hasDraft || locked ? t.mine : t.back}</ButtonLink><Button type="submit" variant="primary" icon="send" loading={busy} disabled={busy || loading || (!locked && !canSubmit) || (locked && needsOriginal && !original)}>{busy ? (busyText ?? t.submitting) : hasDraft ? t.retryReview : locked ? t.retryOriginal : t.submit}</Button></div>
     </form>
   );
 }

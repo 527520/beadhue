@@ -77,8 +77,9 @@ import PixelEditorCanvas from "@/components/editor/PixelEditorCanvas";
 import PngExportButton from "@/components/export/PngExportButton";
 import PdfExportButton from "@/components/export/PdfExportButton";
 import ProjectFileButtons from "@/components/export/ProjectFileButtons";
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
+import { SiteShell } from "@/components/shell/site-shell";
+import LegacyScope from "@/components/layout/LegacyScope";
+import LegacyPageHeading from "@/components/layout/LegacyPageHeading";
 import { useMobileLayout } from "@/components/layout/useMobileLayout";
 import DesignNameEditor from "./DesignNameEditor";
 import WorkbenchProjectBar from "./WorkbenchProjectBar";
@@ -2643,6 +2644,14 @@ export default function Workbench({
     ],
   );
 
+  /** 外壳里的站内跳转（顶栏、底栏、搜索）：离开前先保存。 */
+  const leaveTo = useCallback(
+    (href: string): void => {
+      void saveBeforeLeave(() => router.push(href));
+    },
+    [router, saveBeforeLeave],
+  );
+
   const handleNavigationClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>, href: string): void => {
       if (
@@ -2858,8 +2867,19 @@ export default function Workbench({
     if (mobileWorkspaceFromHistory(window.history.state)) window.history.back();
   }, [drainStitchWrites]);
 
+  // 编辑中（非选图入口）：不显示手机顶栏 / 底栏、页脚与统计浮卡；桌面顶栏保留到票 08 的编辑器顶栏上线。
+  const workingLayout = !(step === "upload" || (step === "crop" && !pattern));
   return (
-    <>
+    <SiteShell
+      nav="create"
+      topbarCta={false}
+      tabbar={!workingLayout}
+      footer={step === "upload"}
+      mobileTop={workingLayout ? false : "default"}
+      consent={!workingLayout}
+      onNavigate={leaveTo}
+    >
+    <LegacyScope><div className="workspace-page bg-cream">
       {saveSummaryOpen && (
         <Modal
           label={zhCN.beadhue.saveTitle}
@@ -2909,17 +2929,16 @@ export default function Workbench({
           </div>
         </Modal>
       )}
-      <SiteHeader
-        hideHeading={step === "crop"}
-        title={step === "upload" ? zhCN.beadhue.createTitle : t.title}
-        currentPath="/app"
-        subtitle={
-          step === "upload"
-            ? zhCN.beadhue.createSubtitle
-            : zhCN.workspace.workbenchSubtitle
-        }
-        onNavigate={handleNavigationClick}
-      />
+      {step !== "crop" && (
+        <LegacyPageHeading
+          title={step === "upload" ? zhCN.beadhue.createTitle : t.title}
+          subtitle={
+            step === "upload"
+              ? zhCN.beadhue.createSubtitle
+              : zhCN.workspace.workbenchSubtitle
+          }
+        />
+      )}
       <div
         className={`workspace-content beadhue-workbench flex w-full flex-col gap-4 ${step === "upload" || (step === "crop" && !pattern) ? "is-upload" : "is-working"}`}
       >
@@ -2934,7 +2953,7 @@ export default function Workbench({
                   onClick={() => {
                     if (step === "crop") handleCropCancel();
                     else if (tab !== "preview") exitMobileWorkspace();
-                    else void saveBeforeLeave(() => router.push("/designs"));
+                    else void saveBeforeLeave(() => router.push("/me"));
                   }}
                 >
                   <Icon name="back" />
@@ -3079,7 +3098,7 @@ export default function Workbench({
                 visibleErrorMsg === t.designUnreadable) && (
                 <>
                   {" "}
-                  <Link className="link-soft" href="/designs">
+                  <Link className="link-soft" href="/me">
                     {t.backToDesigns}
                   </Link>
                 </>
@@ -3242,7 +3261,6 @@ export default function Workbench({
           </div>
         )}
 
-        {step === "upload" && <SiteFooter />}
         {step === "crop" &&
           decoded &&
           (pattern ? (
@@ -3615,6 +3633,7 @@ export default function Workbench({
         )}
         {confirmDialog}
       </div>
-    </>
+    </div></LegacyScope>
+    </SiteShell>
   );
 }

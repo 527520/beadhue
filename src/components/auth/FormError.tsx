@@ -1,7 +1,6 @@
-import Notice from '@/components/legacy-ui/Notice';
+import { FormAlert } from '@/components/ui/field';
 
-/** 表单错误提示（role=alert 供无障碍与测试定位）。 */
+/** 表单级错误（role=alert，供无障碍与测试定位）：挂在提交按钮上方。 */
 export default function FormError({ message }: { message: string | null }) {
-  if (!message) return null;
-  return <Notice kind="danger">{message}</Notice>;
+  return <FormAlert>{message}</FormAlert>;
 }

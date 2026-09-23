@@ -16,6 +16,15 @@
 /* 只扫描新界面目录；后续票新建的页面目录要在这里登记（与 tests/unit/uiGuardrails.test.ts 的目录清单同步）。 */
 @source "../components/ui";
 @source "../components/shell";
+@source "../components/auth";
+@source "../components/works";
+@source "./me";
+@source "./u";
+@source "./login";
+@source "./register";
+@source "./forgot-password";
+@source "./reset-password";
+@source "./verify-email";
 @source "./dev";
 @source "../lib/render/beads.ts";
 

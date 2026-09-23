@@ -18,7 +18,8 @@ import { parseShareSnapshot, type ShareSnapshot } from "@/lib/share/snapshot";
 import { computeStats, totalBeadCount } from "@/lib/engine/generate";
 import { zhCN } from "@/messages/zh-CN";
 import SharedPatternView from "@/components/share/SharedPatternView";
-import SiteHeader from "@/components/layout/SiteHeader";
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
 import Icon from "@/components/legacy-ui/Icon";
 
 export const metadata: Metadata = {
@@ -56,8 +57,8 @@ export default async function SharedDesignPage({
   const t = zhCN.share;
 
   return (
-    <main id="main">
-      <SiteHeader title={t.pageTitle} currentPath="/s" hideHeading />
+    <SiteShell nav={null} tabbar={false}><LegacyScope><div>
+      
       <div className="container">
         <div className="page-top">
           <div>
@@ -85,6 +86,6 @@ export default async function SharedDesignPage({
           </Link>
         </div>
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

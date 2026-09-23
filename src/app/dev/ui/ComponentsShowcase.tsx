@@ -30,7 +30,7 @@ import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { SegmentedControl, Tab, Tabs, TabsList } from '@/components/ui/tabs';
-import { ToastProvider, ToastSample, useToast } from '@/components/ui/toast';
+import { ToastSample, useToast } from '@/components/ui/toast';
 import { BeadDots, MetaItem, MetaSep, WorkCard } from '@/components/ui/work-card';
 import { AUTHORS, BEADS, beadName, motifPattern, type Key } from './motifs';
 import { KitSection, Label, Note, Panel, Row, SECTIONS, Spec } from './kit';
@@ -59,11 +59,7 @@ function toHex(color: string): string {
 }
 
 export function ComponentsShowcase() {
-  return (
-    <ToastProvider>
-      <Showcase />
-    </ToastProvider>
-  );
+  return <Showcase />;
 }
 
 function Showcase() {

@@ -9,8 +9,9 @@ import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 
-/** 受护栏约束的目录与文件（可扩展）。 */
-export const SCANNED = ['src/components/ui', 'src/components/shell', 'src/app/dev', 'src/lib/render/beads.ts'];
+import { SCANNED } from './uiScanned';
+
+export { SCANNED };
 
 /** 令牌文件与豆色数据：十六进制色值只允许出现在这里。 */
 const TOKEN_FILES = new Set(['src/lib/render/beadTokens.ts', 'src/app/dev/ui/motifs.ts']);

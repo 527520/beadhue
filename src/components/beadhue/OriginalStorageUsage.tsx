@@ -53,7 +53,7 @@ export default function OriginalStorageUsage({
         )}
       </div>
       {!account && (
-        <Link href="/account" className="button small quiet">
+        <Link href="/me/settings" className="button small quiet">
           {zhCN.beadhue.manageStorage}
           <Icon name="arrow" size={14} />
         </Link>

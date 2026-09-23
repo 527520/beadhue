@@ -17,7 +17,8 @@ import Button, { ButtonLink } from '@/components/legacy-ui/Button';
 import EmptyState from '@/components/legacy-ui/EmptyState';
 import ColorBand from '@/components/palettes/ColorBand';
 import { LIMITS } from '@/lib/appInfo';
-import SiteHeader from '@/components/layout/SiteHeader';
+import LegacyScope from '@/components/layout/LegacyScope';
+import LegacyPageHeading from '@/components/layout/LegacyPageHeading';
 import Modal from '@/components/legacy-ui/Modal';
 import Icon from '@/components/legacy-ui/Icon';
 import ActionOverflow from '@/components/layout/ActionOverflow';
@@ -301,12 +302,11 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
   };
 
   return (
-    <main id="main" className="workspace-page flex flex-col gap-4">
-      <SiteHeader
+    <LegacyScope><div className="workspace-page flex flex-col gap-4">
+      <LegacyPageHeading
         title={t.title}
-        currentPath="/designs"
         subtitle={zhCN.workspace.designsSubtitle}
-        primaryActions={
+        actions={
           <ButtonLink variant="primary" size="sm" icon="plus" href="/app?new=1">
             {t.newDesign}
           </ButtonLink>
@@ -315,7 +315,6 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
 
       <div className="container designs-container">
       <OriginalStorageUsage />
-      <div className="library-tabs"><span className="active">{zhCN.beadhue.privateDesigns}</span><Link href="/community/mine">{zhCN.beadhue.publicDesigns}</Link></div>
 
       {/* 设计数已达上限时先说清楚，而不是等用户新建后在保存阶段才失败（D-4）。 */}
       {activeDesignCount >= LIMITS.designsPerUser && (
@@ -330,7 +329,7 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
         <Notice kind="info">
           <span>
           {t.guestBanner}{' '}
-          <Link href="/login?next=%2Fdesigns" className="link-soft whitespace-nowrap font-medium">
+          <Link href="/login?next=%2Fme" className="link-soft whitespace-nowrap font-medium">
             {t.goLogin}
           </Link>
           {' · '}
@@ -467,6 +466,6 @@ export default function DesignsView({ storageOverride, apiOverride }: Props) {
         </Modal>
       )}
       </div>
-    </main>
+    </div></LegacyScope>
   );
 }

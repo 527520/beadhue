@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import HelpPage from './page';
 import AboutPage from '../about/page';
+vi.mock('@/components/shell/site-shell', () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => children }));
 
 describe('帮助页', () => {
   it('包含全部规定内容章节与 FAQ', () => {

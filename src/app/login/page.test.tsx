@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 
 import LoginPage from './page';
 import { zhCN } from '@/messages/zh-CN';
+vi.mock('@/components/shell/site-shell', () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => children }));
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
@@ -28,7 +29,7 @@ describe('login 页', () => {
 
   it('渲染登录表单', () => {
     render(<LoginPage />);
-    expect(screen.getByRole('heading', { name: zhCN.authPages.loginTitle })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: zhCN.shell.loginDialog.title })).toBeTruthy();
     expect(screen.getByLabelText('邮箱')).toBeTruthy();
     expect(screen.getByLabelText('密码')).toBeTruthy();
   });
@@ -42,8 +43,8 @@ describe('login 页', () => {
     window.history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}`);
     render(<LoginPage />);
     expect(await screen.findByText('管理员账号由现有管理员授权，无法自行注册')).toBeVisible();
-    expect(screen.queryByRole('link', { name: zhCN.authPages.noAccount })).toBeNull();
-    const forgot = screen.getByRole('link', { name: zhCN.authPages.forgotTitle });
+    expect(screen.queryByRole('link', { name: zhCN.shell.loginDialog.register })).toBeNull();
+    const forgot = screen.getByRole('link', { name: zhCN.shell.loginDialog.forgot });
     expect(new URL(forgot.getAttribute('href')!, 'http://local').searchParams.get('next')).toBe(next);
   });
 
@@ -51,9 +52,9 @@ describe('login 页', () => {
     const next = '/community/submit?designId=00000000-0000-4000-a000-000000000001';
     window.history.replaceState(null, '', `/login?next=${encodeURIComponent(next)}`);
     render(<LoginPage />);
-    const register = await screen.findByRole('link', { name: zhCN.authPages.noAccount });
+    const register = await screen.findByRole('link', { name: zhCN.shell.loginDialog.register });
     await waitFor(() => expect(new URL(register.getAttribute('href')!, 'http://local').searchParams.get('next')).toBe(next));
-    const forgot = screen.getByRole('link', { name: zhCN.authPages.forgotTitle });
+    const forgot = screen.getByRole('link', { name: zhCN.shell.loginDialog.forgot });
     expect(new URL(forgot.getAttribute('href')!, 'http://local').searchParams.get('next')).toBe(next);
     expect(push).not.toHaveBeenCalled();
   });
@@ -94,13 +95,13 @@ describe('login 页', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain(zhCN.auth.tooManyRequests));
   });
 
-  it('成功跳转 /designs', async () => {
+  it('成功跳转 /me（我的设计）', async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ email: 'a@b.com', emailVerified: true }), { status: 200 }));
     render(<LoginPage />);
     fill('a@b.com', '12345678');
     fireEvent.click(screen.getByRole('button', { name: '登录' }));
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/designs'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/me'));
   });
 });
 
-vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }) }));
+vi.mock('@/components/account/useAuthStatus', () => ({ useAuthStatus: () => ({ kind: 'guest' }), notifyAuthStatusChanged: () => undefined }));

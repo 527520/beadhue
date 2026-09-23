@@ -32,7 +32,7 @@ it('没有本地设计时不显示示例卡片，只有真实空态与设计库�
   render(<RecentDesigns storage={{ getAll: async () => [], getStitchProgress: async () => null }} />);
   expect(await screen.findByText(/还没有本机设计/)).toBeVisible();
   expect(screen.queryByRole('link', { name: /继续制作：|继续跟拼：/ })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '全部设计' })).toHaveAttribute('href', '/designs');
+  expect(screen.getByRole('link', { name: '全部设计' })).toHaveAttribute('href', '/me');
 });
 
 it('读取失败明确提示，重试成功后恢复真实空态而不是继续报错', async () => {

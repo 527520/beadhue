@@ -8,7 +8,8 @@ import { CSPProvider } from '@base-ui/react/csp-provider';
 import { zhCN } from '@/messages/zh-CN';
 import { APP_NAME } from '@/lib/appInfo';
 import ClientReadyMarker from '@/components/system/ClientReadyMarker';
-import { ConsentPlacement } from '@/components/analytics/ConsentPlacement';
+import { AppProviders } from '@/components/shell/app-providers';
+import { SkipLink } from '@/components/shell/skip-link';
 import PageViewTracker from '@/components/analytics/PageViewTracker';
 
 const appUrl = () => process.env.APP_URL ?? 'http://localhost:3000';
@@ -41,9 +42,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#F7F9FC',
+  themeColor: '#FFFFFF',
   width: 'device-width',
   initialScale: 1,
+  // 手机底栏与浮卡按安全区让位（env(safe-area-inset-bottom)）。
+  viewportFit: 'cover',
 };
 
 export default async function RootLayout({
@@ -64,19 +67,13 @@ export default async function RootLayout({
     <html lang="zh-CN">
       <head>{nonce ? <meta name="csp-nonce" content={nonce} /> : null}</head>
       <body className="antialiased">
-        {/*
-          跳到主内容（D-9）：键盘用户此前必须逐个 Tab 过站内导航（工作台里还有
-          页签与工具条）才能到图纸。链接平时不可见，获得焦点时出现在左上角。
-          各页面的 <main> 都带 id="main"，见 .skip-link 样式。
-        */}
-        <a href="#main" className="skip-link">
-          {zhCN.nav.skipToMain}
-        </a>
+        {/* 跳到主内容（D-9）：各页面的 <main> 都带 id="main"；R15 起由站点外壳提供。 */}
+        <SkipLink />
         <ClientReadyMarker />
         <PageViewTracker />
         {/* Base UI：nonce 给可选的预水合脚本；关闭运行时 <style>，对应规则在 theme.css 静态提供。 */}
         <CSPProvider nonce={nonce ?? undefined} disableStyleElements>
-          <ConsentPlacement>{children}</ConsentPlacement>
+          <AppProviders>{children}</AppProviders>
         </CSPProvider>
       </body>
     </html>

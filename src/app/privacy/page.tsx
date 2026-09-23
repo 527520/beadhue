@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import SiteHeader from "@/components/layout/SiteHeader";
+import { SiteShell } from '@/components/shell/site-shell';
+import LegacyScope from '@/components/layout/LegacyScope';
 import { AnalyticsConsentSettings } from "@/components/analytics/AnalyticsConsent";
 import { zhCN } from "@/messages/zh-CN";
 
@@ -8,13 +9,8 @@ export const metadata: Metadata = { title: zhCN.communityAdmin.privacyTitle };
 export default function PrivacyPage() {
   const t = zhCN.communityAdmin.privacy;
   return (
-    <main id="main" className="workspace-page">
-      <SiteHeader
-        title={t.title}
-        hideHeading
-        currentPath="/privacy"
-        subtitle={t.subtitle}
-      />
+    <SiteShell nav={null}><LegacyScope><div className="workspace-page">
+      
       <div className="container">
         <div className="form-card beadhue-info-card">
           <section>
@@ -44,6 +40,6 @@ export default function PrivacyPage() {
           </section>
         </div>
       </div>
-    </main>
+    </div></LegacyScope></SiteShell>
   );
 }

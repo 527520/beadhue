@@ -5,6 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import VerifyEmailPage from './page';
 import { zhCN } from '@/messages/zh-CN';
+vi.mock('@/components/shell/site-shell', () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => children }));
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
