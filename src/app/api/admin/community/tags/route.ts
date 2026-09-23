@@ -8,7 +8,11 @@ import { createCommunityTag } from '@/lib/community/adminService';
 import { executeIdempotently } from '@/lib/idempotency';
 
 /** 新建标签：理由可选（admin-round-3 08）。用户明确要求新增标签不必填操作理由，缺省写固定审计理由。 */
-const schema = z.object({ name: z.string(), slug: z.string().optional(), sortOrder: z.number().int().optional(), reason: z.string().optional(), expectedVersion: z.literal(0) }).strict();
+const schema = z.object({
+  name: z.string(), slug: z.string().optional(), sortOrder: z.number().int().optional(),
+  icon: z.string().max(400).nullable().optional(), featured: z.boolean().optional(),
+  reason: z.string().optional(), expectedVersion: z.literal(0),
+}).strict();
 
 async function get(request: Request) {
   await requireApiActor('community:moderate');

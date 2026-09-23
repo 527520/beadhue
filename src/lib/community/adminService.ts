@@ -14,6 +14,7 @@ import { sanitizeAuditState } from '@/lib/admin/audit';
 import { AppError } from '@/lib/errors';
 import { blockWorkOriginals, unblockWorkOriginals } from './originals';
 import { deriveTagSlug, isValidTagName, normalizeTagName, WORK_TAG_LIMIT } from './tagNames';
+import { tagIconSchema } from './tagIcon';
 
 const reasonSchema = z.string().trim().min(3).max(500);
 const tagSlugSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u).max(50);
@@ -22,6 +23,10 @@ const tagOrderSchema = z.number().int().min(-2147483648).max(2147483647);
 export const DEFAULT_TAGGING_REASON = '标签调整';
 /** 新建标签同样不强制手填理由（admin-round-3 08）；审计仍留痕，使用这条默认理由。 */
 export const DEFAULT_TAG_CREATE_REASON = '标签管理：新建标签';
+/** 只调图标 / 排序 / 精选时的审计理由（R15-02）。 */
+export const DEFAULT_TAG_PRESENTATION_REASON = '标签管理：调整展示';
+/** 采纳作者建议标签同 D51 免理由，审计写这条固定理由（D68）。 */
+export const DEFAULT_SUGGESTION_ADOPT_REASON = '采纳建议标签';
 
 function tagName(raw: string): string {
   const name = normalizeTagName(raw);
@@ -152,11 +157,25 @@ export async function moderateCommunityWork(db: AnyDatabase, input: {
   });
 }
 
+function tagIcon(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  const parsed = tagIconSchema.safeParse(value);
+  if (!parsed.success) throw new AppError('VALIDATION', '图标需为内置图标键或 8–16 格像素图标编码', 'icon');
+  return parsed.data;
+}
+
+/** 标签审计状态：只记版本、排序、精选与「是否有图标」，不记图标数据本身。 */
+function tagAuditState(tag: { version: number; mergedIntoTagId: string | null; sortOrder: number; featured: boolean; icon: string | null; active?: boolean }) {
+  return { revision: tag.version, mergedIntoTagId: tag.mergedIntoTagId, sortOrder: tag.sortOrder, featured: tag.featured, hasIcon: tag.icon !== null, active: tag.active };
+}
+
 export async function createCommunityTag(db: AnyDatabase, input: {
   actor: Actor;
   name: string;
   slug?: string;
   sortOrder?: number;
+  icon?: string | null;
+  featured?: boolean;
   reason?: string;
   requestId: string;
 }) {
@@ -164,10 +183,11 @@ export async function createCommunityTag(db: AnyDatabase, input: {
   const slug = input.slug === undefined || input.slug === '' ? deriveTagSlug(name) : tagSlugSchema.parse(input.slug);
   const why = input.reason?.trim() ? reason(input.reason) : DEFAULT_TAG_CREATE_REASON;
   const sortOrder = tagOrderSchema.parse(input.sortOrder ?? 0);
+  const icon = tagIcon(input.icon) ?? null;
   return db.transaction(async (tx) => {
-    const [tag] = await tx.insert(communityTags).values({ name, slug, sortOrder }).onConflictDoNothing().returning();
+    const [tag] = await tx.insert(communityTags).values({ name, slug, sortOrder, icon, featured: input.featured ?? false }).onConflictDoNothing().returning();
     if (!tag) throw new AppError('STATE_CONFLICT', '标签名称已存在，请直接使用现有标签');
-    await audit(tx, { actor: input.actor, action: 'community.tag_created', targetType: 'community_tag', targetId: tag.id, reason: why, requestId: input.requestId, beforeState: null, afterState: { revision: tag.version } });
+    await audit(tx, { actor: input.actor, action: 'community.tag_created', targetType: 'community_tag', targetId: tag.id, reason: why, requestId: input.requestId, beforeState: null, afterState: tagAuditState(tag) });
     return tag;
   });
 }
@@ -305,24 +325,29 @@ export async function updateCommunityTag(db: AnyDatabase, input: {
   name?: string;
   slug?: string;
   sortOrder?: number;
+  icon?: string | null;
+  featured?: boolean;
   active?: boolean;
-  reason: string;
+  reason?: string;
   requestId: string;
 }) {
-  const why = reason(input.reason);
+  // 改名 / 改标识 / 启停仍需手填理由（D59）；只调图标、排序、精选属于展示调整，缺省写固定理由。
+  const identityChange = input.name !== undefined || input.slug !== undefined || input.active !== undefined;
+  const why = identityChange || input.reason?.trim() ? reason(input.reason ?? '') : DEFAULT_TAG_PRESENTATION_REASON;
   const name = input.name === undefined ? undefined : tagName(input.name);
   const slug = input.slug === undefined ? undefined : tagSlugSchema.parse(input.slug);
   const sortOrder = input.sortOrder === undefined ? undefined : tagOrderSchema.parse(input.sortOrder);
+  const icon = tagIcon(input.icon);
   return db.transaction(async (tx) => {
     const [tag] = await tx.select().from(communityTags).where(eq(communityTags.id, input.tagId)).for('update');
     if (!tag) throw new AppError('NOT_FOUND', '标签不存在');
     if (tag.version !== input.expectedVersion || tag.mergedIntoTagId) throw new AppError('STATE_CONFLICT', '标签状态已变化');
     const [updated] = await tx.update(communityTags).set({
-      name, slug, sortOrder, active: input.active,
+      name, slug, sortOrder, icon, featured: input.featured, active: input.active,
       version: tag.version + 1, updatedAt: new Date(),
     }).where(and(eq(communityTags.id, tag.id), eq(communityTags.version, tag.version))).returning();
     if (!updated) throw new AppError('STATE_CONFLICT', '标签状态已变化');
-    await audit(tx, { actor: input.actor, action: 'community.tag_updated', targetType: 'community_tag', targetId: tag.id, reason: why, requestId: input.requestId, beforeState: { revision: tag.version, mergedIntoTagId: tag.mergedIntoTagId }, afterState: { revision: updated.version, mergedIntoTagId: updated.mergedIntoTagId } });
+    await audit(tx, { actor: input.actor, action: 'community.tag_updated', targetType: 'community_tag', targetId: tag.id, reason: why, requestId: input.requestId, beforeState: tagAuditState(tag), afterState: tagAuditState(updated) });
     return updated;
   }).catch(rethrowTagConflict);
 }
@@ -367,5 +392,56 @@ export async function mergeCommunityTag(db: AnyDatabase, input: {
     if (!updated) throw new AppError('STATE_CONFLICT', '源标签状态已变化');
     await audit(tx, { actor: input.actor, action: 'community.tag_merged', targetType: 'community_tag', targetId: source.id, reason: why, requestId: input.requestId, beforeState: { revision: source.version, mergedIntoTagId: null }, afterState: { revision: updated.version, mergedIntoTagId: target.id } });
     return updated;
+  });
+}
+
+/**
+ * 采纳作者建议标签（D68）：把修订上选中的建议标签加入作品正式标签（名称不存在即创建，沿合并链落到终点），
+ * 已有的跳过；只能采纳该修订确实建议过的标签。免手填理由同 D51，写一条审计。
+ * `tags` 缺省表示采纳全部建议。
+ */
+export async function adoptSuggestedTags(db: AnyDatabase, input: {
+  actor: Actor;
+  revisionId: string;
+  tags?: string[];
+  requestId: string;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+  return db.transaction(async (tx) => {
+    const [target] = await tx.select({ workId: communityRevisions.workId }).from(communityRevisions).where(eq(communityRevisions.id, input.revisionId));
+    if (!target) throw new AppError('NOT_FOUND', '修订不存在');
+    const [work] = await tx.select({ id: communityWorks.id, version: communityWorks.version }).from(communityWorks)
+      .where(eq(communityWorks.id, target.workId)).for('update');
+    const [revision] = await tx.select({ suggestedTags: communityRevisions.suggestedTags }).from(communityRevisions).where(eq(communityRevisions.id, input.revisionId));
+    if (!work || !revision) throw new AppError('NOT_FOUND', '修订不存在');
+    const suggested = new Map(revision.suggestedTags.map((name) => [normalizeTagName(name).toLocaleLowerCase('zh-CN'), name]));
+    const requested = input.tags ?? revision.suggestedTags;
+    if (requested.length === 0) throw new AppError('VALIDATION', '没有可采纳的建议标签', 'tags');
+    const selected = requested.map((name) => suggested.get(normalizeTagName(name).toLocaleLowerCase('zh-CN')));
+    if (selected.some((name) => name === undefined)) throw new AppError('VALIDATION', '只能采纳作者建议过的标签', 'tags');
+    const resolved = await resolveTagIdsByName(tx, input.actor, selected as string[], input.requestId);
+    const existing = await tx.select({ tagId: communityWorkTags.tagId }).from(communityWorkTags).where(eq(communityWorkTags.workId, work.id));
+    const existingIds = new Set(existing.map((row) => row.tagId));
+    const additions = resolved.filter((tag) => !existingIds.has(tag.id));
+    if (existingIds.size + additions.length > WORK_TAG_LIMIT) throw new AppError('VALIDATION', `作品标签超过 ${WORK_TAG_LIMIT} 个上限`, 'tags');
+    let version = work.version;
+    if (additions.length > 0) {
+      await tx.insert(communityWorkTags).values(additions.map((tag) => ({ workId: work.id, tagId: tag.id, assignedByUserId: input.actor.userId, createdAt: now }))).onConflictDoNothing();
+      const [updated] = await tx.update(communityWorks).set({ version: work.version + 1, updatedAt: now })
+        .where(and(eq(communityWorks.id, work.id), eq(communityWorks.version, work.version))).returning();
+      if (!updated) throw new AppError('STATE_CONFLICT', '作品状态已变化，请刷新后重试');
+      version = updated.version;
+      await audit(tx, {
+        actor: input.actor, action: 'community.suggested_tags_adopted', targetType: 'community_work', targetId: work.id,
+        reason: DEFAULT_SUGGESTION_ADOPT_REASON, requestId: input.requestId,
+        beforeState: { revision: work.version, count: existingIds.size },
+        afterState: { revision: version, count: existingIds.size + additions.length },
+      });
+    }
+    const tags = await tx.select({ id: communityTags.id, name: communityTags.name }).from(communityWorkTags)
+      .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
+      .where(eq(communityWorkTags.workId, work.id)).orderBy(communityTags.sortOrder, communityTags.name);
+    return { workId: work.id, version, adopted: additions.map((tag) => tag.name), tags };
   });
 }

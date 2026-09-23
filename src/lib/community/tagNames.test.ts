@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveTagSlug, isValidTagName, normalizeTagName } from './tagNames';
+import { deriveTagSlug, isValidTagName, normalizeSuggestedTags, normalizeTagName } from './tagNames';
 
 describe('tag names', () => {
   it('normalizes width, whitespace and trims', () => {
@@ -21,5 +21,15 @@ describe('tag names', () => {
     expect(deriveTagSlug('星星人')).toMatch(/^t-[0-9a-f]{12}$/u);
     expect(deriveTagSlug('星星人')).toBe(deriveTagSlug('星星人'));
     expect(deriveTagSlug('星星人')).not.toBe(deriveTagSlug('海绵宝宝'));
+  });
+
+  it('normalizes suggested tags: ≤5 items, ≤8 characters, case-insensitive dedupe', () => {
+    expect(normalizeSuggestedTags(undefined)).toEqual([]);
+    expect(normalizeSuggestedTags([' 猫咪 ', 'Cat', 'cat', '　星星人'])).toEqual(['猫咪', 'Cat', '星星人']);
+    expect(normalizeSuggestedTags(['一二三四五六七八'])).toEqual(['一二三四五六七八']);
+    expect(normalizeSuggestedTags(['一二三四五六七八九'])).toBeNull();
+    expect(normalizeSuggestedTags(['a', 'b', 'c', 'd', 'e', 'f'])).toBeNull();
+    expect(normalizeSuggestedTags(['<b>'])).toBeNull();
+    expect(normalizeSuggestedTags([' '])).toBeNull();
   });
 });

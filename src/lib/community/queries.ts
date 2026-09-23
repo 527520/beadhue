@@ -563,6 +563,7 @@ export async function listOwnCommunityWorks(db: AnyDatabase, userId: string) {
     status: communityRevisions.status,
     version: communityRevisions.version,
     preview: communityRevisions.preview,
+    suggestedTags: communityRevisions.suggestedTags,
     submittedAt: communityRevisions.submittedAt,
     reviewReason: communityRevisions.reviewReason,
     createdAt: communityRevisions.createdAt,
@@ -604,6 +605,7 @@ export async function listCommunityReviewQueue(db: AnyDatabase, input: unknown =
       height: communityRevisions.height,
       colorCount: communityRevisions.colorCount,
       boardProfile: communityRevisions.boardProfile,
+      suggestedTags: communityRevisions.suggestedTags,
       submittedAt: communityRevisions.submittedAt,
       accountStatus: users.accountStatus,
     }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
@@ -634,6 +636,7 @@ export async function inspectCommunityRevision(db: AnyDatabase, revisionId: stri
     id: communityRevisions.id, workId: communityRevisions.workId, title: communityRevisions.title,
     version: communityRevisions.version, revisionNumber: communityRevisions.revisionNumber, status: communityRevisions.status,
     snapshot: communityRevisions.snapshot, licenseVersion: communityRevisions.licenseVersion,
+    suggestedTags: communityRevisions.suggestedTags,
     licenseConfirmedAt: communityRevisions.licenseConfirmedAt, currentPublishedRevisionId: communityWorks.currentPublishedRevisionId,
     lifecycleStatus: communityWorks.lifecycleStatus,
   }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
@@ -645,8 +648,12 @@ export async function inspectCommunityRevision(db: AnyDatabase, revisionId: stri
     ? await db.select({ title: communityRevisions.title, revisionNumber: communityRevisions.revisionNumber, snapshot: communityRevisions.snapshot })
       .from(communityRevisions).where(eq(communityRevisions.id, row.currentPublishedRevisionId)) : [];
   const previousSnapshot = parseCommunitySnapshot(old?.snapshot);
+  // 作品当前正式标签（含停用的，便于审核员看出哪些建议已被采纳）。
+  const workTags = await db.select({ id: communityTags.id, name: communityTags.name }).from(communityWorkTags)
+    .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
+    .where(eq(communityWorkTags.workId, row.workId)).orderBy(communityTags.sortOrder, communityTags.name);
   const { currentPublishedRevisionId: _privatePointer, ...safe } = row;
-  return { ...safe, snapshot, licenseConfirmedAt: row.licenseConfirmedAt.toISOString(), previous: old && previousSnapshot ? { ...old, snapshot: previousSnapshot } : null };
+  return { ...safe, snapshot, workTags, licenseConfirmedAt: row.licenseConfirmedAt.toISOString(), previous: old && previousSnapshot ? { ...old, snapshot: previousSnapshot } : null };
 }
 
 export type CommunityRevisionInspection = Awaited<ReturnType<typeof inspectCommunityRevision>>;

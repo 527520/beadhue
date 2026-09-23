@@ -25,6 +25,7 @@ export async function listCommunityTagsAdmin(db: AnyDatabase, input: unknown = {
   const [rows, totalRows] = await Promise.all([
     db.select({
       id: communityTags.id, name: communityTags.name, slug: communityTags.slug, sortOrder: communityTags.sortOrder,
+      icon: communityTags.icon, featured: communityTags.featured,
       active: communityTags.active, mergedIntoTagId: communityTags.mergedIntoTagId, version: communityTags.version,
       createdAt: communityTags.createdAt, updatedAt: communityTags.updatedAt,
       workCount, publicWorkCount,
