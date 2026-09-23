@@ -15,6 +15,8 @@ Blocked by: 01、02
 5. **登录弹窗**：站内需要登录的操作（点赞、下载、举报、评论、公开等）弹出登录弹窗（手机底部面板），字段级错误；登录成功后留在原页面并继续原操作。`/login` 等账号页按同一视觉改版（居中卡片），注册、找回密码、重置、邮箱验证流程与文案逻辑不变。
 6. **路由（D66）**：新增 `/me` 布局与子路由骨架（内容由票 06 填）、`/u/[publicAuthorId]` 骨架（票 05 填）；重定向 `/community` → `/`、`/designs` → `/me`、`/community/mine` → `/me/public`、`/account` → `/me/settings`、`/create` → `/app`（保留查询参数）；更新站内所有链接、sitemap、robots、`proxy.ts` 的节流路径表。
 7. 旧 `SiteHeader`、`HomeAuthNav`、侧栏等外壳组件不再被引用（文件留给票 13 删除）。
+8. **Toast 容器**移到根布局（票 01 目前只包在 `/dev/ui`），全站可用。
+9. **E2E 端口可配置**：`tests/e2e/serverProcess.ts`、`globalSetup.ts`、`playwright.config.mts` 支持环境变量 `E2E_PORT`（默认 3100），以便后续票在隔离工作树里并行跑 E2E；补一条单元测试。
 
 ## 验收
 

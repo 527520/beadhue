@@ -48,6 +48,17 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 4. 视觉对照：起应用，用 Playwright 在 1440 / 1024 / 768 / 390 / 350 截取你负责的页面和状态，与原型同状态截图并排检查（可参考 `tools/shoot-prototype.mjs`、`tools/shoot-final.mjs` 的写法），用 Read 工具亲自看图，修到一致。截图放 `.scratch/ui-rebuild/evidence/impl/<票号>/`。
 5. 在票文件末尾 `## Comments` 下写实施记录：做了什么、验证结果（命令与数字）、与原型的有意偏差及原因、遗留问题。把票头 `Completion:` 改为 `complete`。
 
+## 后续票须知（票 01、02 完成后补充）
+
+- **新组件**在 `src/components/ui/`（shadcn 风格，Base UI 原语）；**旧组件**已整体移到 `src/components/legacy-ui/`，只供尚未重做的页面使用，票 13 删除。新代码不要 import `legacy-ui`。
+- **令牌与样式**：`src/app/theme.css` 是新的 Tailwind 构建（最后一层 `ui`）。新建页面或组件目录时，必须同时登记到 `theme.css` 的 `@source` 和护栏测试 `tests/unit/uiGuardrails.test.ts` 的 `SCANNED` 清单。
+- **`data-ui`**：只加在新界面区域的根元素上（开启新基础排版并隔离旧全局规则）；不要包住旧内容。
+- **组件总览** `/dev/ui`（仅非生产）是视觉对照基准；豆粒渲染在 `src/lib/render/beads.ts`（`<BeadImage>`、`<PixelIcon>`），画布颜色在 `beadTokens.ts`。
+- **CSP**：Base UI 的运行时样式已由根布局的 CSPProvider 关闭并由 `theme.css` 静态提供；新增 Base UI 组件时确认不插入 `<style>` / `<script>`（Tabs.Indicator、Slider.Thumb 不要开 `renderBeforeHydration`）。
+- **接口**：票 02 的全部新接口与变更接口的请求 / 响应示例在 `issues/02-backend-apis.md` 的 Comments；缩略图地址带 `?v=2`；详情 `colorUsage` 未登录为 null；列表登录时每项带 `liked`。
+- **E2E 基线**：合入 01、02 后 Chromium 上有 6 条 E2E 在基线就失败（旧工作台选择器与 `/app` 的 axe 问题），重做对应页面的票负责修复；不要把它们当成你的回归，也不要跳过。
+- **并行**：部分票会在隔离工作树里并行。E2E 端口用环境变量 `E2E_PORT`（票 03 起支持，默认 3100），开发服务端口自选（3101+），避免和别的代理冲突。
+
 ## 提交
 
 每张票完成后本地提交一次（可分几个提交），信息用中文，如 `feat(ui): R15-01 设计令牌与组件底座`。只 `git add` 与本票相关的文件；**不要**提交 `.scratch/site-ux/*.png`、`.scratch/ui-polish-2026/evidence/`（用户已有改动）和 `.scratch/ui-rebuild/evidence/` 下的截图（体积大）。不 push，不建 PR。
