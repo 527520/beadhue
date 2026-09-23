@@ -1,4 +1,4 @@
-import Notice from '@/components/ui/Notice';
+import Notice from '@/components/legacy-ui/Notice';
 import { zhCN } from '@/messages/zh-CN';
 import { AdminEmpty } from './AdminPrimitives';
 

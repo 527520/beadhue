@@ -3,8 +3,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import ColorBand from './ColorBand';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import Disclosure from '@/components/ui/Disclosure';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import Disclosure from '@/components/legacy-ui/Disclosure';
 
 export interface PalettePickerOption {
   /** 稳定色板选择值；只作为表单值，不进入可见主文案。 */

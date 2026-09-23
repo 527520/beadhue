@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import type { UserRole } from '@/lib/auth/authorization';
 import type { AdminOverview } from '@/lib/admin/overview';
-import Icon, { type IconName } from '@/components/ui/Icon';
+import Icon, { type IconName } from '@/components/legacy-ui/Icon';
 import { zhCN } from '@/messages/zh-CN';
 
 type Module = readonly [href: string, label: string, minimum: 'moderator' | 'admin', icon: IconName, badge?: keyof AdminOverview];

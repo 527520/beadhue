@@ -3,7 +3,7 @@
 /** 项目文件导出/导入按钮组（spec §F7 项目文件）：导出下载 JSON；导入校验并处理名称冲突。 */
 import { useRef, useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import Notice from '@/components/ui/Notice';
+import Notice from '@/components/legacy-ui/Notice';
 import { LIMITS } from '@/lib/appInfo';
 import { conflictName, importProjectFile } from '@/lib/project/parse';
 import { projectFileName, serializeProject, type ProjectSource } from '@/lib/project/serialize';

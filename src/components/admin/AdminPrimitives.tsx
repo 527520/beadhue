@@ -5,14 +5,14 @@
  * 九个模块九种写法。这里把它们收成小组件，样式仍走 globals.css 的 .admin-* 类。
  */
 import { Children, useState, type FormEvent, type ReactNode } from 'react';
-import Badge, { type BadgeTone } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import Checkbox from '@/components/ui/Checkbox';
-import EmptyState from '@/components/ui/EmptyState';
-import NumberField from '@/components/ui/NumberField';
-import SegmentedControl from '@/components/ui/SegmentedControl';
-import Textarea from '@/components/ui/Textarea';
-import type { IconName } from '@/components/ui/Icon';
+import Badge, { type BadgeTone } from '@/components/legacy-ui/Badge';
+import Button from '@/components/legacy-ui/Button';
+import Checkbox from '@/components/legacy-ui/Checkbox';
+import EmptyState from '@/components/legacy-ui/EmptyState';
+import NumberField from '@/components/legacy-ui/NumberField';
+import SegmentedControl from '@/components/legacy-ui/SegmentedControl';
+import Textarea from '@/components/legacy-ui/Textarea';
+import type { IconName } from '@/components/legacy-ui/Icon';
 import { PAGE_SIZES, type PageSize } from '@/lib/admin/pagination';
 import { zhCN } from '@/messages/zh-CN';
 

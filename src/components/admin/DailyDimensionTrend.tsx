@@ -1,5 +1,5 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 import { useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import AnalyticsTrendChart from './AnalyticsTrendChart';

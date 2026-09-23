@@ -1,5 +1,5 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 
 import { useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
@@ -7,9 +7,9 @@ import { USER_ROLES, type UserRole, type AccountStatus } from '@/lib/auth/author
 import AdminCommandNotice from './AdminCommandNotice';
 import AdminQueueState from './AdminQueueState';
 import { AdminEmpty, AdminPagination, FilterBar, ReasonPanel, StatusBadge } from './AdminPrimitives';
-import Button from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
-import TextField from '@/components/ui/TextField';
+import Button from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
+import TextField from '@/components/legacy-ui/TextField';
 import { useAdminPage } from './useAdminPage';
 import { useAdminCommand } from './useAdminCommand';
 import { useAdminTaskFocus } from './useAdminTaskFocus';

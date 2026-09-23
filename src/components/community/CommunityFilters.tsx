@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Icon from '@/components/ui/Icon';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import DatePicker from '@/components/ui/DatePicker';
+import Icon from '@/components/legacy-ui/Icon';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import DatePicker from '@/components/legacy-ui/DatePicker';
 import { zhCN } from '@/messages/zh-CN';
 import type { CommunityListQuery } from '@/lib/community/queries';
 import { BOARD_PROFILE_IDS, getBoardProfile } from '@/lib/boardProfiles';

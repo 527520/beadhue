@@ -8,7 +8,7 @@ import {
   SOURCE_REPO_URL,
 } from "@/lib/appInfo";
 import SiteHeader from "@/components/layout/SiteHeader";
-import Icon from "@/components/ui/Icon";
+import Icon from "@/components/legacy-ui/Icon";
 import Link from "next/link";
 
 export default function AboutPage() {

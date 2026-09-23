@@ -311,20 +311,21 @@
    例外：行内文字链接（.link-soft，句子中间的「去登录」）不该被撑成 44px 方块，
    否则会把段落行距顶开。 */
 @media (pointer: coarse) {
-  button,
-  [role='button'],
-  summary,
+  /* R15 过渡期：:where(:not([data-slot], [data-ui] *)) 零特异性地排除新组件（data-slot）与新界面区域（data-ui），票 13 随旧样式删除。 */
+  button:where(:not([data-slot], [data-ui] *)),
+  [role='button']:where(:not([data-slot], [data-ui] *)),
+  summary:where(:not([data-slot], [data-ui] *)),
   /* 文件选择等「长得像按钮的 label」不是原生控件，命中区要单独兜住（FileButton）。 */
-  label[class*='btn-'],
-  a:not(.link-soft),
-  input[type='checkbox'],
-  input[type='radio'] {
+  label[class*='btn-']:where(:not([data-slot], [data-ui] *)),
+  a:not(.link-soft):where(:not([data-slot], [data-ui] *)),
+  input[type='checkbox']:where(:not([data-slot], [data-ui] *)),
+  input[type='radio']:where(:not([data-slot], [data-ui] *)) {
     min-height: 44px;
     min-width: 44px;
   }
   /* 表单里的复选框本身很小，靠 label 提供命中区即可，不要把方框撑大 */
-  input[type='checkbox'],
-  input[type='radio'] {
+  input[type='checkbox']:where(:not([data-slot], [data-ui] *)),
+  input[type='radio']:where(:not([data-slot], [data-ui] *)) {
     min-height: 24px;
     min-width: 24px;
   }
@@ -2866,7 +2867,7 @@ body {
 }
 
 /* Shared tactile controls and responsive detail surfaces. */
-input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]), textarea { font-size: var(--field-font-size); }
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):where(:not([data-slot], [data-ui] *)), textarea:where(:not([data-slot], [data-ui] *)) { font-size: var(--field-font-size); }
 /*
   原生按钮命中区下限。
   高度：必须排除按钮体系自身的类（.btn-* / .chip / .disclosure-trigger）——这条规则不分层，
@@ -2876,8 +2877,8 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color])
   nowrap 按钮按 min-content 撑开），200% 布局放大下同意横幅这类窄容器会直接横向溢出。
   触屏（pointer: coarse）另有统一 44px 下限，手机上三档都会回到 44，命中区不回退。
 */
-button:not([tabindex="-1"]) { min-width: 44px; }
-button:not([tabindex="-1"]):not([class*="btn-"]):not(.chip):not(.disclosure-trigger) { min-height: 44px; }
+button:not([tabindex="-1"]):where(:not([data-slot], [data-ui] *)) { min-width: 44px; }
+button:not([tabindex="-1"]):not([class*="btn-"]):not(.chip):not(.disclosure-trigger):where(:not([data-slot], [data-ui] *)) { min-height: 44px; }
 .editor-tool-button, .desktop-mode-button { min-height: 44px; }
 /*
   分段选择（ui-polish-2026）：下沉轨道 + 一枚滑动的白色豆片。

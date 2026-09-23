@@ -6,7 +6,7 @@ import { getSessionActor } from '@/lib/auth/session';
 import { countRecentServerErrors, getSystemInfo } from '@/lib/admin/queries';
 import { summarizeModerationToday } from '@/lib/moderation/commentModeration';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import { zhCN } from '@/messages/zh-CN';
 
 export default async function AdminSystemPage() {

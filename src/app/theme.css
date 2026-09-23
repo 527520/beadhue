@@ -1,0 +1,252 @@
+/*
+  R15 设计令牌与新组件的 Tailwind 构建（D64 / D65）。数值取自 .scratch/ui-rebuild/prototype/styles/tokens.css
+  与 components.css，名称与原型一致：bg-accent、text-ink-3、rounded-lg、shadow-float、h-control-md …
+
+  过渡期（票 01–12）与旧 globals.css 的 Tailwind 构建并存，约束如下，票 13 删除旧样式时一并收回：
+  1. 工具类放进最后一层 `ui`，无论样式表先后都压过旧构建里同名的工具类（如旧的 rounded-lg = 8px）。
+  2. 不引入 preflight（旧构建已有，重复引入会改写旧输入框字号）。
+  3. 与旧 :root 变量同名的令牌（ink、状态色、圆角、字体…）写在 `@theme inline`：工具类内联数值、
+     不输出变量，避免被旧样式或 `:root:has(.beadhue-ui)` 改写。其余令牌照常输出变量。
+  4. 新界面的基础排版只作用于 `[data-ui]` 区域（新页面根与弹层根），不影响旧页面。
+*/
+@layer theme, base, components, utilities, ui;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(ui) source(none);
+
+/* 只扫描新界面目录；后续票新建的页面目录要在这里登记（与 tests/unit/uiGuardrails.test.ts 的目录清单同步）。 */
+@source "../components/ui";
+@source "./dev";
+@source "../lib/render/beads.ts";
+
+@theme {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-*: initial;
+  --font-*: initial;
+  --animate-*: initial;
+  --ease-*: initial;
+  --container-*: initial;
+  --blur-*: initial;
+  --perspective-*: initial;
+  --aspect-*: initial;
+
+  /* 颜色 */
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f7f7f8;
+  --color-bg-muted: #f0f0f2;
+  --color-bg-emphasis: #e4e4e8;
+  --color-line: #e7e7ea;
+  --color-line-strong: #d1d1d6;
+  --color-ink-2: #3f3f46;
+  --color-ink-3: #6e6e78;
+  --color-ink-4: #9a9aa3;
+  --color-on-ink: #ffffff;
+  --color-accent: #3160e6;
+  --color-accent-hover: #2851cc;
+  --color-accent-press: #2145b3;
+  --color-accent-soft: #eef3ff;
+  --color-on-accent: #ffffff;
+  --color-heart: #e5484d;
+  --color-featured: #ffc53d;
+  --color-info-soft: #eef3ff;
+  --color-danger-hover: #b3262a;
+  --color-scrim: rgb(18 18 20 / 42%);
+
+  /* 字体 */
+  --font-brand: "BeadHue Round", "BeadHue Text", "PingFang SC", sans-serif;
+
+  /* 七级字阶（手机端见下方媒体查询） */
+  --text-display: 32px;
+  --text-display--line-height: 40px;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.02em;
+  --text-title-1: 24px;
+  --text-title-1--line-height: 32px;
+  --text-title-1--font-weight: 600;
+  --text-title-1--letter-spacing: -0.01em;
+  --text-title-2: 20px;
+  --text-title-2--line-height: 28px;
+  --text-title-2--font-weight: 600;
+  --text-title-3: 16px;
+  --text-title-3--line-height: 24px;
+  --text-title-3--font-weight: 600;
+  --text-body: 15px;
+  --text-body--line-height: 24px;
+  --text-body--font-weight: 400;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 22px;
+  --text-body-sm--font-weight: 400;
+  --text-caption: 12px;
+  --text-caption--line-height: 18px;
+  --text-caption--font-weight: 500;
+  /* 控件内字号（原型 components.css：小按钮、芯片、字段标签、分段、页码用 13px；导航底栏 11px） */
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-footnote--font-weight: 400;
+  --text-micro: 10px;
+  --text-micro--line-height: 12px;
+  --text-tabbar: 11px;
+  --text-tabbar--line-height: 12px;
+  --text-avatar-sm: 10px;
+  --text-avatar-md: 13px;
+  --text-avatar-lg: 20px;
+  --text-avatar-xl: 30px;
+
+  /* 控件高度与版式尺寸（间距 4px 基数沿用 Tailwind --spacing） */
+  --spacing-control-sm: 32px;
+  --spacing-control-md: 40px;
+  --spacing-control-lg: 48px;
+  --spacing-topbar: 64px;
+  --spacing-tabbar: 64px;
+  --spacing-gutter: 16px;
+
+  /* 宽度 */
+  --container-page: 1280px;
+  --container-wide: 1440px;
+  --container-dialog-sm: 480px;
+  --container-dialog-md: 640px;
+  --container-dialog-lg: 880px;
+  --container-dialog-static: 440px;
+  --container-sheet: 480px;
+  --container-popover-min: 200px;
+  --container-popover: 360px;
+  --container-popover-wide: 560px;
+  --container-measure: 360px;
+  --container-prose: 640px;
+  --container-rule: 760px;
+  --container-card-sm: 200px;
+  --container-card-md: 270px;
+
+  /* 阴影：只有浮起与弹窗两级，其余为控件自身的细节阴影 */
+  --shadow-float: 0 1px 2px rgb(28 28 30 / 6%), 0 8px 24px rgb(28 28 30 / 10%);
+  --shadow-dialog: 0 2px 6px rgb(28 28 30 / 8%), 0 24px 64px rgb(28 28 30 / 20%);
+  --shadow-on-image: 0 1px 3px rgb(28 28 30 / 18%);
+  --shadow-badge: 0 1px 2px rgb(0 0 0 / 12%);
+  --shadow-thumb: 0 1px 2px rgb(0 0 0 / 20%);
+  --shadow-seg: 0 1px 3px rgb(28 28 30 / 12%);
+  --shadow-field-focus: 0 0 0 3px rgb(49 96 230 / 18%);
+  --shadow-field-invalid: 0 0 0 3px rgb(206 44 49 / 16%);
+
+  /* 动效 */
+  --ease-standard: cubic-bezier(.2, .8, .2, 1);
+  --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
+  --animate-spinner: ui-spin 800ms linear infinite;
+  --animate-shimmer: ui-shimmer 1.4s infinite;
+  --animate-bead-pop: ui-bead-pop 320ms cubic-bezier(.34, 1.56, .64, 1);
+  --animate-pop-in: ui-pop-in 240ms cubic-bezier(.2, .8, .2, 1);
+  --animate-fade-in: ui-fade-in 240ms cubic-bezier(.2, .8, .2, 1);
+  --animate-tip-in: ui-fade-in 120ms cubic-bezier(.2, .8, .2, 1);
+  --animate-dialog-in: ui-dialog-in 240ms cubic-bezier(.2, .8, .2, 1);
+  --animate-sheet-in: ui-sheet-in 280ms cubic-bezier(.2, .8, .2, 1);
+  --animate-toast-in: ui-toast-in 240ms cubic-bezier(.2, .8, .2, 1);
+
+  @keyframes ui-spin { to { transform: rotate(360deg); } }
+  @keyframes ui-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  @keyframes ui-bead-pop { 0% { transform: scale(.6); } 60% { transform: scale(1.22); } 100% { transform: scale(1); } }
+  @keyframes ui-pop-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+  @keyframes ui-fade-in { from { opacity: 0; } }
+  @keyframes ui-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+  @keyframes ui-sheet-in { from { transform: translateY(100%); } }
+  @keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } }
+
+  /* 断点（与 Tailwind 默认一致） */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* 与旧样式同名的令牌：内联，不输出 :root 变量（见文件头第 3 条）。 */
+@theme inline {
+  --spacing: 0.25rem;
+  --color-ink: #1c1c1e;
+  --color-success: #17804a;
+  --color-success-soft: #e8f5ee;
+  --color-warning: #b35c00;
+  --color-warning-soft: #fff4e5;
+  --color-danger: #ce2c31;
+  --color-danger-soft: #fdecec;
+  --font-sans: "BeadHue Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --radius-checkbox: 5px;
+  --radius-kbd: 6px;
+  --radius-sm: 8px;
+  --radius-menu-item: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(.2, .8, .2, 1);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --text-display: 26px;
+    --text-display--line-height: 34px;
+    --text-title-1: 22px;
+    --text-title-1--line-height: 30px;
+    --text-title-2: 18px;
+    --text-title-2--line-height: 26px;
+    --spacing-topbar: 56px;
+  }
+}
+@media (min-width: 768px) {
+  :root { --spacing-gutter: 24px; }
+}
+@media (min-width: 1024px) {
+  :root { --spacing-gutter: 32px; }
+}
+/* 触屏上默认控件高度 40 → 44。 */
+@media (pointer: coarse) {
+  :root { --spacing-control-md: 44px; }
+}
+
+/* 动效时长令牌：按下 120 / 状态 180 / 进出场 240。 */
+@utility duration-press { --tw-duration: 120ms; transition-duration: 120ms; }
+@utility duration-state { --tw-duration: 180ms; transition-duration: 180ms; }
+@utility duration-enter { --tw-duration: 240ms; transition-duration: 240ms; }
+/* 焦点环：2px 白色间隔 + 2px 主色（design.md §5.7）。 */
+@utility focus-ring {
+  outline-style: none;
+  --tw-ring-offset-width: 2px;
+  --tw-ring-offset-color: var(--color-bg);
+  --tw-ring-offset-shadow: 0 0 0 2px var(--color-bg);
+  --tw-ring-shadow: 0 0 0 4px var(--color-accent);
+  box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+/* 弹窗 / 底部面板的尺寸与手势（Base UI Drawer 通过 CSS 变量给出拖动位移与进度）。 */
+@utility max-h-dialog { max-height: min(88dvh, 860px); }
+@utility max-h-sheet { max-height: 92dvh; }
+@utility h-sheet { height: 92dvh; }
+@utility pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+@utility bottom-safe-toast { bottom: calc(var(--spacing-tabbar) + 16px + env(safe-area-inset-bottom, 0px)); }
+@utility sheet-swipe-y { transform: translateY(var(--drawer-swipe-movement-y, 0px)); }
+@utility sheet-backdrop { opacity: calc(1 - var(--drawer-swipe-progress, 0)); }
+@utility popover-width { min-width: var(--container-popover-min); max-width: min(var(--container-popover), calc(100vw - 24px)); }
+@utility popover-width-wide { width: min(var(--container-popover-wide), calc(100vw - 24px)); }
+@utility border-control { border-width: 1.5px; }
+
+/* Base UI 在 CSPProvider disableStyleElements 下不再注入 <style>，隐藏滚动条的规则由这里静态提供。 */
+.base-ui-disable-scrollbar { scrollbar-width: none; }
+.base-ui-disable-scrollbar::-webkit-scrollbar { display: none; }
+
+@layer base {
+  [data-ui] {
+    font-family: --theme(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    color: var(--color-ink-2);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  [data-ui] :is(h1, h2, h3, h4) { color: --theme(--color-ink); text-wrap: balance; }
+  [data-ui] p { text-wrap: pretty; }
+  [data-ui] ::selection { background: rgb(49 96 230 / 22%); color: inherit; }
+  [data-ui] :focus-visible { outline: none; }
+}

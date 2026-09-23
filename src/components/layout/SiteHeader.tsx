@@ -3,7 +3,7 @@ import { zhCN } from "@/messages/zh-CN";
 
 import Link from "next/link";
 import { type MouseEvent, type ReactNode } from "react";
-import Icon, { type IconName } from "@/components/ui/Icon";
+import Icon, { type IconName } from "@/components/legacy-ui/Icon";
 import ActionOverflow from "@/components/layout/ActionOverflow";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
 import { ConsentSlot } from "@/components/analytics/ConsentPlacement";

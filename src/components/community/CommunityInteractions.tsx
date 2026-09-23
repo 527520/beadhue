@@ -1,5 +1,5 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,14 +13,14 @@ import { createBeadhueApi } from '@/lib/sync/api';
 import { ApiError, createSyncClient } from '@/lib/sync/clientAdapter';
 import { withDesignStorageLock } from '@/lib/sync/queue';
 import ActionOverflow from '@/components/layout/ActionOverflow';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
-import EmptyState from '@/components/ui/EmptyState';
-import Icon from '@/components/ui/Icon';
-import IconButton from '@/components/ui/IconButton';
-import Modal from '@/components/ui/Modal';
-import Notice from '@/components/ui/Notice';
-import Textarea from '@/components/ui/Textarea';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import { useConfirm } from '@/components/legacy-ui/ConfirmDialog';
+import EmptyState from '@/components/legacy-ui/EmptyState';
+import Icon from '@/components/legacy-ui/Icon';
+import IconButton from '@/components/legacy-ui/IconButton';
+import Modal from '@/components/legacy-ui/Modal';
+import Notice from '@/components/legacy-ui/Notice';
+import Textarea from '@/components/legacy-ui/Textarea';
 import { zhCN } from '@/messages/zh-CN';
 
 interface CommentItem {

@@ -18,7 +18,8 @@ export function ConsentPlacement({ children }: { children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
   const pathname = usePathname();
   // 管理后台是工作人员的工作区，不在每页底部反复弹统计同意；同意仍可在前台任意页面或账号页处理。
-  const suppressed = pathname?.startsWith('/admin') ?? false;
+  // /dev/ui 是新组件总览页（R15-01），不套旧 .beadhue-ui 外壳与页脚。
+  const suppressed = (pathname?.startsWith('/admin') || pathname?.startsWith('/dev/')) ?? false;
   return <Placement value={setSlot}><AnalyticsConsentInitialization />{suppressed ? children : <div className="beadhue-ui" data-theme="candy">{children}{pathname !== '/app' && <div className="container"><SiteFooter /></div>}</div>}{!suppressed && <AnalyticsConsentBanner target={slot} />}</Placement>;
 }
 

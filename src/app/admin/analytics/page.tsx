@@ -1,10 +1,10 @@
 import { forbidden } from 'next/navigation';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import DateRangePicker from '@/components/ui/DateRangePicker';
-import Disclosure from '@/components/ui/Disclosure';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
-import TextField from '@/components/ui/TextField';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import DateRangePicker from '@/components/legacy-ui/DateRangePicker';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
+import TextField from '@/components/legacy-ui/TextField';
 import { AdminEmpty } from '@/components/admin/AdminPrimitives';
 import { getDb } from '@/lib/auth/db';
 import { authorize } from '@/lib/auth/authorization';

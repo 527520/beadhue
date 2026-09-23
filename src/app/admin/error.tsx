@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import Button, { ButtonLink } from '@/components/ui/Button';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
 import { zhCN } from '@/messages/zh-CN';
 
 /**

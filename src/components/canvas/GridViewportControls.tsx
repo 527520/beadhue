@@ -1,6 +1,6 @@
 'use client';
 
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import { zhCN } from '@/messages/zh-CN';
 
 interface Props {

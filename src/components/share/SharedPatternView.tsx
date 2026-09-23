@@ -7,7 +7,7 @@
  * 但不提供任何编辑入口。用色清单直接列全，因为看分享链接的人下一步就是照着买豆子。
  */
 import Link from "next/link";
-import Icon from "@/components/ui/Icon";
+import Icon from "@/components/legacy-ui/Icon";
 import PatternPreview from "@/components/preview/PatternPreview";
 import ColorBand from "@/components/palettes/ColorBand";
 import { zhCN } from "@/messages/zh-CN";

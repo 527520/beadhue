@@ -2,8 +2,8 @@
 import OriginalReferenceWindow from './OriginalReferenceWindow';
 import { transformOriginal, type OriginalReference } from '@/lib/originals/geometry';
 import { createPortal } from 'react-dom';
-import Icon from '@/components/ui/Icon';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import Icon from '@/components/legacy-ui/Icon';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 
 /* eslint-disable react-hooks/refs -- pointer/camera state must stay synchronous during gestures. */
 
@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import FingerLoupe, { type LoupeTarget } from '@/components/canvas/FingerLoupe';
 import GridViewportControls from '@/components/canvas/GridViewportControls';
 import useGridViewport from '@/components/canvas/useGridViewport';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/legacy-ui/Modal';
 import EditorToolbar from './EditorToolbar';
 import { zhCN } from '@/messages/zh-CN';
 import type { PaletteColor, Pattern, PatternStatsItem } from '@/lib/types';

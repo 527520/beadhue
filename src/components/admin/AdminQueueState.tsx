@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import Button from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 import { zhCN } from '@/messages/zh-CN';
 import { AdminEmpty, AdminSkeleton } from './AdminPrimitives';
 

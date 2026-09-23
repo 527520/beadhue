@@ -9,10 +9,10 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import ColorBand from '@/components/palettes/ColorBand';
-import Disclosure from '@/components/ui/Disclosure';
-import Icon from '@/components/ui/Icon';
-import NumberField from '@/components/ui/NumberField';
-import Notice from '@/components/ui/Notice';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import Icon from '@/components/legacy-ui/Icon';
+import NumberField from '@/components/legacy-ui/NumberField';
+import Notice from '@/components/legacy-ui/Notice';
 import { zhCN } from '@/messages/zh-CN';
 import {
   DEFAULT_BEADS_PER_PACK,

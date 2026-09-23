@@ -1,6 +1,6 @@
 'use client';
 
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import { zhCN } from '@/messages/zh-CN';
 import type { BrushSize, ToolId, TransformOp } from '@/lib/editor/ops';
 import type { PaletteColor } from '@/lib/types';

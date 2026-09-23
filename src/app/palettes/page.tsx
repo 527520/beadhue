@@ -14,11 +14,11 @@ import {
 import { compatibleBoardProfilesForPalette } from '@/lib/boardProfiles';
 import PaletteEditor from '@/components/palettes/PaletteEditor';
 import PaletteSwatches from '@/components/palettes/PaletteSwatches';
-import Modal from '@/components/ui/Modal';
-import IconButton from '@/components/ui/IconButton';
-import Disclosure from '@/components/ui/Disclosure';
-import Notice from '@/components/ui/Notice';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
+import Modal from '@/components/legacy-ui/Modal';
+import IconButton from '@/components/legacy-ui/IconButton';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import Notice from '@/components/legacy-ui/Notice';
+import { useConfirm } from '@/components/legacy-ui/ConfirmDialog';
 import SiteHeader from '@/components/layout/SiteHeader';
 import {
   deletePalette,

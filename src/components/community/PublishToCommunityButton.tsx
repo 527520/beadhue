@@ -12,8 +12,8 @@ import { useRouter } from 'next/navigation';
 import type { ImageType } from '@/lib/image/sniff';
 import { putPendingOriginal } from '@/lib/storage/pendingOriginals';
 import { zhCN } from '@/messages/zh-CN';
-import Button from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 
 interface Props {
   designId: string;

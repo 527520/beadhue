@@ -3,7 +3,7 @@ import { zhCN } from "@/messages/zh-CN";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Icon from "@/components/ui/Icon";
+import Icon from "@/components/legacy-ui/Icon";
 export default function OriginalStorageUsage({
   account = false,
 }: {

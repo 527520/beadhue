@@ -3,9 +3,9 @@
 import { useState, type CSSProperties } from 'react';
 import type { AdminAuditEntry } from '@/lib/admin/queries';
 import { zhCN } from '@/messages/zh-CN';
-import DateRangePicker from '@/components/ui/DateRangePicker';
-import Button from '@/components/ui/Button';
-import TextField from '@/components/ui/TextField';
+import DateRangePicker from '@/components/legacy-ui/DateRangePicker';
+import Button from '@/components/legacy-ui/Button';
+import TextField from '@/components/legacy-ui/TextField';
 import AdminQueueState from './AdminQueueState';
 import { AdminEmpty, AdminPagination, FilterBar } from './AdminPrimitives';
 import { useAdminPage } from './useAdminPage';

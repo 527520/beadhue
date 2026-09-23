@@ -7,9 +7,9 @@ import type { Pattern, PatternCell } from '@/lib/types';
 import { CANVAS_UI } from '@/lib/appInfo';
 import { drawPattern } from '@/lib/render/draw';
 import { BOARD_SIZE, clampZoom, fitCellSize, pointToCell } from '@/lib/render/layout';
-import Chip from '@/components/ui/Chip';
-import IconButton from '@/components/ui/IconButton';
-import Switch from '@/components/ui/Switch';
+import Chip from '@/components/legacy-ui/Chip';
+import IconButton from '@/components/legacy-ui/IconButton';
+import Switch from '@/components/legacy-ui/Switch';
 
 export interface CellHoverInfo {
   row: number;

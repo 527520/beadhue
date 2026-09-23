@@ -14,8 +14,8 @@
  */
 import { useCallback, useState } from 'react';
 import { encodeQR } from 'qr';
-import Modal from '@/components/ui/Modal';
-import Notice from '@/components/ui/Notice';
+import Modal from '@/components/legacy-ui/Modal';
+import Notice from '@/components/legacy-ui/Notice';
 import { zhCN } from '@/messages/zh-CN';
 import { track } from '@/lib/analytics/client';
 

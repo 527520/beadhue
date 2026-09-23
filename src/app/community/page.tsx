@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteHeader from '@/components/layout/SiteHeader';
-import { ButtonLink } from '@/components/ui/Button';
-import Icon from '@/components/ui/Icon';
+import { ButtonLink } from '@/components/legacy-ui/Button';
+import Icon from '@/components/legacy-ui/Icon';
 import CommunityThumbnail from '@/components/community/CommunityThumbnail';
 import { CommunityListImpression } from '@/components/community/CommunityImpression';
 import { getDb } from '@/lib/auth/db';

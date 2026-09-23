@@ -2,7 +2,7 @@
 import { zhCN } from "@/messages/zh-CN";
 
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import Icon from "@/components/ui/Icon";
+import Icon from "@/components/legacy-ui/Icon";
 import {
   inverseMatrix,
   referenceFrame,

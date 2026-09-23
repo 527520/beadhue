@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { forbidden } from 'next/navigation';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import Icon, { type IconName } from '@/components/ui/Icon';
+import Icon, { type IconName } from '@/components/legacy-ui/Icon';
 import { getDb } from '@/lib/auth/db';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';

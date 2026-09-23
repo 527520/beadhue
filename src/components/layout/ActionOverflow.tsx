@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 
 interface Props {
   actions: ReactNode;

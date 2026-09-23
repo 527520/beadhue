@@ -1,11 +1,11 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 
 /** 自定义色板编辑器（spec §F6 / 边界 E20）：逐行录入 + 即时校验 + 粘贴/文件导入 + 复制内置色板。 */
 import { Fragment, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
-import IconButton from '@/components/ui/IconButton';
+import { useConfirm } from '@/components/legacy-ui/ConfirmDialog';
+import IconButton from '@/components/legacy-ui/IconButton';
 import { getBuiltinPalette, isBuiltinPaletteId, listBuiltinPalettes } from '@/lib/palettes';
 import { parseCustomPaletteImport } from '@/lib/palettes/customImport';
 import { customPaletteColorsSchema, designNameSchema } from '@/lib/schemas';

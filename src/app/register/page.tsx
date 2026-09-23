@@ -4,8 +4,8 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import AuthShell from '@/components/auth/AuthShell';
-import Button from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 import FormError from '@/components/auth/FormError';
 import { zhCN } from '@/messages/zh-CN';
 import { registerSchema } from '@/lib/schemas';

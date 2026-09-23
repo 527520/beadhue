@@ -19,7 +19,7 @@ import { computeStats, totalBeadCount } from "@/lib/engine/generate";
 import { zhCN } from "@/messages/zh-CN";
 import SharedPatternView from "@/components/share/SharedPatternView";
 import SiteHeader from "@/components/layout/SiteHeader";
-import Icon from "@/components/ui/Icon";
+import Icon from "@/components/legacy-ui/Icon";
 
 export const metadata: Metadata = {
   title: zhCN.share.pageTitle,

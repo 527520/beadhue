@@ -9,8 +9,8 @@ import { isProgressCompatible, isStitchableCell, summarizeProgress } from '@/lib
 import ColorBand from '@/components/palettes/ColorBand';
 import { zhCN } from '@/messages/zh-CN';
 import type { CSSProperties } from 'react';
-import Button from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 
 interface RecentDesign {
   id: string; name: string; thumbnail: string | null; width: number; height: number;

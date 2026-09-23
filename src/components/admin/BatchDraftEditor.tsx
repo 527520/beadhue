@@ -19,11 +19,11 @@ import { isBuiltinPaletteId, listBuiltinPalettes } from '@/lib/palettes';
 import type { CommunitySnapshotV1 } from '@/lib/community/snapshot';
 import type { PaletteColor, Pattern } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
-import Button from '@/components/ui/Button';
-import { useConfirm } from '@/components/ui/ConfirmDialog';
-import Modal from '@/components/ui/Modal';
-import Notice from '@/components/ui/Notice';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
+import Button from '@/components/legacy-ui/Button';
+import { useConfirm } from '@/components/legacy-ui/ConfirmDialog';
+import Modal from '@/components/legacy-ui/Modal';
+import Notice from '@/components/legacy-ui/Notice';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
 import { AdminSkeleton } from './AdminPrimitives';
 import type { BatchItem, BatchSession } from './batchSession';
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import Modal from '@/components/ui/Modal';
-import Notice from '@/components/ui/Notice';
+import Modal from '@/components/legacy-ui/Modal';
+import Notice from '@/components/legacy-ui/Notice';
 import { zhCN } from '@/messages/zh-CN';
 import { ImageCropper, type ImageCropperProps } from './ImageCropper';
 

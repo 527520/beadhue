@@ -4,9 +4,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import { emailSchema, passwordSchema, usernameSchema } from '@/lib/schemas';
-import Modal from '@/components/ui/Modal';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Modal from '@/components/legacy-ui/Modal';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 import { LIMITS } from '@/lib/appInfo';
 import { track } from '@/lib/analytics/client';

@@ -11,8 +11,8 @@ import { useAdminCommand } from './useAdminCommand';
 import AdminCommandNotice from './AdminCommandNotice';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
 import { AdminEmpty, AdminPagination, AdminSkeleton, ReasonPanel, StatusBadge } from './AdminPrimitives';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 
 type Mode = 'comments' | 'reports';
 interface ModerationCheck { provider: string; suggestion: string | null; label: string | null; subLabel: string | null; score: number | null; keywords: string[]; reason: string; checkedAt: string }

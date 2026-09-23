@@ -7,8 +7,8 @@ import { communityPreviewSchema } from '@/lib/community/snapshot';
 import CommunityThumbnail from './CommunityThumbnail';
 import { zhCN } from '@/messages/zh-CN';
 import type { CSSProperties } from 'react';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Notice from '@/components/ui/Notice';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Notice from '@/components/legacy-ui/Notice';
 
 const shelfResponse = z.object({ items: z.array(z.object({
   id: z.string().min(1), revisionId: z.string().min(1), title: z.string(), featured: z.boolean(),

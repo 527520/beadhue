@@ -1,10 +1,10 @@
 'use client';
 import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import Button, { ButtonLink, buttonClassName } from '@/components/ui/Button';
-import Icon from '@/components/ui/Icon';
-import Notice from '@/components/ui/Notice';
-import TextField from '@/components/ui/TextField';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import Button, { ButtonLink, buttonClassName } from '@/components/legacy-ui/Button';
+import Icon from '@/components/legacy-ui/Icon';
+import Notice from '@/components/legacy-ui/Notice';
+import TextField from '@/components/legacy-ui/TextField';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';

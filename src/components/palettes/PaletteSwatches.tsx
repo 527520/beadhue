@@ -12,7 +12,7 @@ import ColorBand from './ColorBand';
 import { zhCN } from '@/messages/zh-CN';
 import type { BuiltinPaletteExclusionReason } from '@/lib/palettes';
 import type { PaletteColor } from '@/lib/types';
-import DetailPanel from '@/components/ui/DetailPanel';
+import DetailPanel from '@/components/legacy-ui/DetailPanel';
 import { Button } from 'react-aria-components';
 
 export interface PaletteSwatchColor extends PaletteColor {

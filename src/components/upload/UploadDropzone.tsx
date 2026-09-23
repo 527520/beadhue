@@ -6,10 +6,10 @@
  */
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import Notice from '@/components/ui/Notice';
+import Notice from '@/components/legacy-ui/Notice';
 import { validateImageFile, type ImageErrorCode } from '@/lib/image/validation';
 import type { ImageType } from '@/lib/image/sniff';
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import { track } from '@/lib/analytics/client';
 import { fileSizeBucket } from '@/lib/analytics/buckets';
 import { perfMark } from '@/lib/perf/mark';

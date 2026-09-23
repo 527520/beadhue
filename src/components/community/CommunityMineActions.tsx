@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
-import Button, { ButtonLink } from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
-import Notice from '@/components/ui/Notice';
+import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Modal from '@/components/legacy-ui/Modal';
+import Notice from '@/components/legacy-ui/Notice';
 import { track } from '@/lib/analytics/client';
 import { randomId } from '@/lib/ids';
 import { zhCN } from '@/messages/zh-CN';

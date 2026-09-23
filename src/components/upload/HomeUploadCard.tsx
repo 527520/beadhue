@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { UploadDropzone, type ValidImageFile } from '@/components/upload/UploadDropzone';
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import { setPendingUpload } from '@/lib/upload/pendingUpload';
 import { zhCN } from '@/messages/zh-CN';
 

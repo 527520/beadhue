@@ -1578,6 +1578,32 @@ export const zhCN = {
       '图片在浏览器内生成；登录并满足同步资格后，完整原图随设计自动存入私人对象存储。账号信息、图纸与色板、投稿及互动记录按对应功能保存。公开时冻结原图版本，撤回公开不删除私人原图，已成功引用者的副本独立保留；评论文本经腾讯云文本内容安全服务判定并保留判定记录；匿名使用统计须经明确同意且可随时撤回。注销账号将删除登录凭证与私人数据，公开作品、引用事实及必要治理记录以去除身份信息的形式保留；注销不会删除您设备上的本地文件。完整内容请参阅隐私政策页面。',
     // 备案（D31）：海外服务器无需 ICP；迁回国内时在此加回 icp 字段并在页脚渲染
   },
+  /** R15 组件库（src/components/ui）的内置文案。 */
+  ui: {
+    close: '关闭',
+    clear: '清除',
+    loading: '加载中',
+    searchPlaceholder: '搜索图纸、标签或作者',
+    searchLabel: '搜索',
+    prevPage: '上一页',
+    nextPage: '下一页',
+    pageStatus: (page: number, total: number) => `${page} / ${total}`,
+    pageTotalPrefix: '共',
+    pageTotalSuffix: '条',
+    perPage: '每页',
+    perPageOption: (size: number) => `${size} 条`,
+    jumpTo: '跳至',
+    jumpToLabel: '跳到第几页',
+    pageUnit: '页',
+    pagination: '分页',
+    goToPage: (page: number) => `第 ${page} 页`,
+    increment: '增加',
+    decrement: '减少',
+    likeOn: (title: string) => `取消喜欢「${title}」`,
+    likeOff: (title: string) => `喜欢「${title}」`,
+    removeChip: (label: string) => `移除：${label}`,
+    toastRegion: '通知',
+  },
 } as const;
 
 export type Messages = typeof zhCN;

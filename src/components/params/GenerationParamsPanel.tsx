@@ -1,15 +1,15 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import SegmentedControl from '@/components/ui/SegmentedControl';
-import Switch from '@/components/ui/Switch';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import SegmentedControl from '@/components/legacy-ui/SegmentedControl';
+import Switch from '@/components/legacy-ui/Switch';
 
 /** 生成参数面板（spec §F3）：核心参数 + 高级折叠；300ms 防抖上抛；UI 层无法输入非法值。 */
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import Notice from '@/components/ui/Notice';
-import Chip from '@/components/ui/Chip';
-import Disclosure from '@/components/ui/Disclosure';
-import NumberField from '@/components/ui/NumberField';
+import Notice from '@/components/legacy-ui/Notice';
+import Chip from '@/components/legacy-ui/Chip';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import NumberField from '@/components/legacy-ui/NumberField';
 import PalettePicker, { type PalettePickerOption } from '@/components/palettes/PalettePicker';
 import type { BoardProfileId, GenerationParams } from '@/lib/types';
 import { LIMITS } from '@/lib/appInfo';

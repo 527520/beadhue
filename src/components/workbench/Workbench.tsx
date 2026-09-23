@@ -13,9 +13,9 @@ import {
   type OriginalReference,
 } from "@/lib/originals/geometry";
 import { sniffImageType } from "@/lib/image/sniff";
-import ResponsiveSelect from "@/components/ui/ResponsiveSelect";
-import SegmentedControl from "@/components/ui/SegmentedControl";
-import Button from "@/components/ui/Button";
+import ResponsiveSelect from "@/components/legacy-ui/ResponsiveSelect";
+import SegmentedControl from "@/components/legacy-ui/SegmentedControl";
+import Button from "@/components/legacy-ui/Button";
 
 /**
  * 工作台（T12）：选图→整图首版→可选裁剪 + 生成管线 + 编辑器/预览 + 导出 + 本地保存。
@@ -41,8 +41,8 @@ import {
   type ValidImageFile,
 } from "@/components/upload/UploadDropzone";
 import { takePendingUpload } from "@/lib/upload/pendingUpload";
-import Notice from "@/components/ui/Notice";
-import Icon from "@/components/ui/Icon";
+import Notice from "@/components/legacy-ui/Notice";
+import Icon from "@/components/legacy-ui/Icon";
 import ShoppingListPanel from "@/components/export/ShoppingListPanel";
 import StitchView from "@/components/stitch/StitchView";
 import ShareButton from "@/components/share/ShareButton";
@@ -63,10 +63,10 @@ import {
 } from "@/lib/progress/stitchProgress";
 import StepIndicator from "@/components/workbench/StepIndicator";
 import GenerationCancelControl from "@/components/workbench/GenerationCancelControl";
-import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { useConfirm } from "@/components/legacy-ui/ConfirmDialog";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
 import { ImageCropper } from "@/components/crop/ImageCropper";
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/legacy-ui/Modal";
 import CropDialog from "@/components/crop/CropDialog";
 import GenerationParamsPanel from "@/components/params/GenerationParamsPanel";
 import PalettePicker, {

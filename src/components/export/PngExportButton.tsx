@@ -1,6 +1,6 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import Switch from '@/components/ui/Switch';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import Switch from '@/components/legacy-ui/Switch';
 
 /** PNG 导出按钮（spec §F7 + 优化票 10）：空图纸禁用并提示；选项面板（格子大小/裁边/图例）。 */
 import { useId, useMemo, useRef, useState } from 'react';

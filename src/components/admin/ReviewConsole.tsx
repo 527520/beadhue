@@ -15,9 +15,9 @@ import { useAdminCommand } from './useAdminCommand';
 import AdminCommandNotice from './AdminCommandNotice';
 import { useAdminTaskFocus } from './useAdminTaskFocus';
 import { AdminEmpty, AdminPagination, AdminSkeleton, ReasonPanel } from './AdminPrimitives';
-import Button from '@/components/ui/Button';
-import Disclosure from '@/components/ui/Disclosure';
-import Notice from '@/components/ui/Notice';
+import Button from '@/components/legacy-ui/Button';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import Notice from '@/components/legacy-ui/Notice';
 
 interface ReviewItem {
   revisionId: string; workId: string; revisionNumber: number; title: string; version: number;

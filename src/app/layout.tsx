@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import './globals.css';
 import './beadhue.css';
 import '../../public/fonts/ui/fonts.css';
+import './theme.css';
+import { CSPProvider } from '@base-ui/react/csp-provider';
 import { zhCN } from '@/messages/zh-CN';
 import { APP_NAME } from '@/lib/appInfo';
 import ClientReadyMarker from '@/components/system/ClientReadyMarker';
@@ -72,7 +74,10 @@ export default async function RootLayout({
         </a>
         <ClientReadyMarker />
         <PageViewTracker />
-        <ConsentPlacement>{children}</ConsentPlacement>
+        {/* Base UI：nonce 给可选的预水合脚本；关闭运行时 <style>，对应规则在 theme.css 静态提供。 */}
+        <CSPProvider nonce={nonce ?? undefined} disableStyleElements>
+          <ConsentPlacement>{children}</ConsentPlacement>
+        </CSPProvider>
       </body>
     </html>
   );

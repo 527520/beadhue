@@ -1,4 +1,4 @@
-import Notice from '@/components/ui/Notice';
+import Notice from '@/components/legacy-ui/Notice';
 
 /** 表单错误提示（role=alert 供无障碍与测试定位）。 */
 export default function FormError({ message }: { message: string | null }) {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SiteHeader from '@/components/layout/SiteHeader';
 import AccountMenu from '@/components/account/AccountMenu';
-import Icon from '@/components/ui/Icon';
+import Icon from '@/components/legacy-ui/Icon';
 import OriginalStorageUsage from '@/components/beadhue/OriginalStorageUsage';
 import { createBeadhueApi, type MeInfo } from '@/lib/sync/api';
 import { zhCN } from '@/messages/zh-CN';

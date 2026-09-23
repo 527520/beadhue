@@ -1,18 +1,18 @@
 'use client';
-import ResponsiveSelect from '@/components/ui/ResponsiveSelect';
-import Switch from '@/components/ui/Switch';
+import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
+import Switch from '@/components/legacy-ui/Switch';
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import AdminCommandNotice from './AdminCommandNotice';
 import AdminQueueState from './AdminQueueState';
 import { AdminEmpty, AdminPagination, FilterBar, ReasonPanel } from './AdminPrimitives';
-import Button from '@/components/ui/Button';
-import Checkbox from '@/components/ui/Checkbox';
-import Disclosure from '@/components/ui/Disclosure';
-import TextField from '@/components/ui/TextField';
-import NumberField from '@/components/ui/NumberField';
-import Badge from '@/components/ui/Badge';
+import Button from '@/components/legacy-ui/Button';
+import Checkbox from '@/components/legacy-ui/Checkbox';
+import Disclosure from '@/components/legacy-ui/Disclosure';
+import TextField from '@/components/legacy-ui/TextField';
+import NumberField from '@/components/legacy-ui/NumberField';
+import Badge from '@/components/legacy-ui/Badge';
 import { useAdminPage } from './useAdminPage';
 import TagWorkPicker from './TagWorkPicker';
 import { useAdminCommand } from './useAdminCommand';

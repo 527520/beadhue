@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useMobileLayout } from '@/components/layout/useMobileLayout';
-import Modal from '@/components/ui/Modal';
+import Modal from '@/components/legacy-ui/Modal';
 import { zhCN } from '@/messages/zh-CN';
 
 /** One settings tree: sidebar on desktop, accessible bottom sheet on narrow screens. */
