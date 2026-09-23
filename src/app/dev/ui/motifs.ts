@@ -268,3 +268,13 @@ export function motifPattern(id: string, size: number, swap: Partial<Record<Key,
 export function beadName(code: string | null): string {
   return Object.values(BEADS).find((bead) => bead.code === code)?.name ?? '';
 }
+
+/** 原型 data.js 的示例作者（头像底色为豆色数据）。 */
+export const AUTHORS = {
+  official: { id: 'official', name: '豆色绘官方', color: '#1c1c1e' },
+  lu: { id: 'lu', name: '小鹿拼豆', color: '#e0473f' },
+  cheng: { id: 'cheng', name: '橙子手作', color: '#f28b2c' },
+  xing: { id: 'xing', name: '星星收集者', color: '#3f7fd9' },
+  abu: { id: 'abu', name: '阿布的豆盒', color: '#47a35b' },
+  tang: { id: 'tang', name: '半糖工作室', color: '#8b6cc9' },
+} as const;

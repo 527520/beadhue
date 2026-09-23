@@ -20,16 +20,12 @@ export interface BeadImageProps extends PatternCanvasOptions {
  */
 export function BeadImage({ pattern, alt, className, lazy = true, ...options }: BeadImageProps) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const [visible, setVisible] = useState(!lazy);
+  const [visible, setVisible] = useState(() => !lazy || typeof IntersectionObserver === 'undefined');
   const optionsKey = JSON.stringify(options);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || visible) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      setVisible(true);
-      return;
-    }
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
         setVisible(true);
