@@ -27,12 +27,13 @@ function notify(message: string | null = null, error = false) {
   window.dispatchEvent(new CustomEvent(preferenceEvent, { detail: { message, error } }));
 }
 
-async function choose(status: AnalyticsConsent | 'withdrawn'): Promise<void> {
-  if (requestPending || (status === 'granted' && readPreference() === 'withdrawn')) return;
+/** 保存统计偏好；返回是否成功（站点外壳的同意浮卡据此提示「偏好已保存」）。 */
+export async function chooseAnalyticsConsent(status: AnalyticsConsent | 'withdrawn'): Promise<boolean> {
+  if (requestPending || (status === 'granted' && readPreference() === 'withdrawn')) return false;
   if (status === 'granted' && !navigator.locks?.request) {
     setAnalyticsInitialized(false);
     notify(recovery.unsupported, true);
-    return;
+    return false;
   }
   requestPending = true;
   setAnalyticsInitialized(false);
@@ -75,9 +76,11 @@ async function choose(status: AnalyticsConsent | 'withdrawn'): Promise<void> {
     requestPending = false;
     notify(message, error);
   }
+  return !error;
 }
+const choose = chooseAnalyticsConsent;
 
-function usePreference() {
+export function useAnalyticsPreference() {
   const [state, setState] = useState<{ preference: Preference; ready: boolean; saving: boolean; message: string | null; error: boolean }>({
     preference: null, ready: false, saving: false, message: null, error: false,
   });
@@ -115,7 +118,7 @@ export function AnalyticsConsentInitialization() {
 
 export function AnalyticsConsentBanner({ target }: { target?: HTMLElement | null } = {}) {
   const t = zhCN.communityAdmin.analytics;
-  const { preference, ready, saving, message, error } = usePreference();
+  const { preference, ready, saving, message, error } = useAnalyticsPreference();
   if (!ready || (preference === 'granted' && !error) || preference === 'denied') return null;
   const pending = preference === 'withdrawn';
   const banner = (
@@ -139,7 +142,7 @@ export function AnalyticsConsentBanner({ target }: { target?: HTMLElement | null
 
 export function AnalyticsConsentSettings() {
   const t = zhCN.communityAdmin.analytics;
-  const { preference, ready, saving, message, error } = usePreference();
+  const { preference, ready, saving, message, error } = useAnalyticsPreference();
   const pending = preference === 'withdrawn';
   return (
     <section className="info-card analytics-settings" aria-labelledby="analytics-settings-title">

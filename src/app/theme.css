@@ -15,6 +15,7 @@
 
 /* 只扫描新界面目录；后续票新建的页面目录要在这里登记（与 tests/unit/uiGuardrails.test.ts 的目录清单同步）。 */
 @source "../components/ui";
+@source "../components/shell";
 @source "./dev";
 @source "../lib/render/beads.ts";
 
@@ -130,6 +131,11 @@
   --shadow-badge: 0 1px 2px rgb(0 0 0 / 12%);
   --shadow-thumb: 0 1px 2px rgb(0 0 0 / 20%);
   --shadow-seg: 0 1px 3px rgb(28 28 30 / 12%);
+
+  /* 顶栏 / 底栏的毛玻璃（原型 blur(12px)） */
+  --blur-md: 12px;
+  /* 手机底栏中间的「＋」主色圆钮（原型 layout.css .tabbar .create） */
+  --shadow-fab: 0 6px 16px rgb(49 96 230 / 35%);
   --shadow-field-focus: 0 0 0 3px rgb(49 96 230 / 18%);
   --shadow-field-invalid: 0 0 0 3px rgb(206 44 49 / 16%);
 
@@ -229,6 +235,13 @@
 @utility h-sheet { height: 92dvh; }
 @utility pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 @utility bottom-safe-toast { bottom: calc(var(--spacing-tabbar) + 16px + env(safe-area-inset-bottom, 0px)); }
+/* 站点外壳（票 03）：页面容器（原型 .container / .container.wide）、手机底栏高度与让位。 */
+@utility page-container { width: 100%; max-width: calc(var(--container-page) + var(--spacing-gutter) * 2); margin-inline: auto; padding-inline: var(--spacing-gutter); }
+@utility page-container-wide { width: 100%; max-width: calc(var(--container-wide) + var(--spacing-gutter) * 2); margin-inline: auto; padding-inline: var(--spacing-gutter); }
+@utility h-tabbar-safe { height: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom, 0px)); }
+@utility pb-tabbar-safe { padding-bottom: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom, 0px) + 24px); }
+@utility bottom-above-tabbar { bottom: calc(var(--spacing-tabbar) + 12px + env(safe-area-inset-bottom, 0px)); }
+@utility min-h-page { min-height: calc(100dvh - var(--spacing-topbar)); }
 @utility sheet-swipe-y { transform: translateY(var(--drawer-swipe-movement-y, 0px)); }
 @utility sheet-backdrop { opacity: calc(1 - var(--drawer-swipe-progress, 0)); }
 @utility popover-width { min-width: var(--container-popover-min); max-width: min(var(--container-popover), calc(100vw - 24px)); }

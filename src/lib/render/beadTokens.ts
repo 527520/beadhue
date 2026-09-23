@@ -19,6 +19,9 @@ export const BEAD_TOKENS = {
   codeOnDark: 'rgba(255,255,255,0.92)',
 } as const;
 
+/** 标志的 2×2 四颗豆（原型 app.js brand()）：红、黄、蓝、绿。 */
+export const BRAND_BEAD_COLORS = ['#E0473F', '#FFD447', '#3F7FD9', '#47A35B'] as const;
+
 /** 无头像时的首字底色：按 ID 从这几颗豆色里取（白字对比度均 ≥3:1，取自原型 data.js 的作者色）。 */
 export const AVATAR_BEAD_COLORS = ['#1C1C1E', '#E0473F', '#F28B2C', '#3F7FD9', '#47A35B', '#8B6CC9'] as const;
 

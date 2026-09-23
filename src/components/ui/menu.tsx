@@ -56,6 +56,22 @@ export function MenuItem({ className, icon, trail, danger, children, ...props }:
   );
 }
 
+export interface MenuLinkItemProps extends Omit<ComponentProps<typeof BaseMenu.LinkItem>, 'closeOnClick'> {
+  icon?: ReactNode;
+  /** 点击后关闭菜单（默认关闭；同页跳转时菜单也要收起）。 */
+  closeOnClick?: boolean;
+}
+
+/** 链接项：导航用 <a>（可中键 / 新标签打开），外观同 MenuItem；Next 路由用 render={<Link href=… />}。 */
+export function MenuLinkItem({ className, icon, closeOnClick = true, children, ...props }: MenuLinkItemProps) {
+  return (
+    <BaseMenu.LinkItem data-slot="menu-link-item" closeOnClick={closeOnClick} className={cn(menuItemClass, className as string)} {...props}>
+      {icon}
+      <span className="min-w-0 flex-1">{children as ReactNode}</span>
+    </BaseMenu.LinkItem>
+  );
+}
+
 export const MenuRadioGroup = BaseMenu.RadioGroup;
 
 export function MenuRadioItem({ className, icon, children, ...props }: ComponentProps<typeof BaseMenu.RadioItem> & { icon?: ReactNode }) {

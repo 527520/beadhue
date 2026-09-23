@@ -13,7 +13,7 @@ export interface SearchFieldProps extends Omit<ComponentProps<'input'>, 'type' |
   onClear?: () => void;
   /** 顶栏里用 44 高的紧凑版。 */
   compact?: boolean;
-  /** 右侧快捷键提示（如 <Kbd>/</Kbd>），有值时让位给清除按钮。 */
+  /** 右侧快捷键提示（如 <Kbd>/</Kbd>）；有值时清除按钮出现在它左边（原型 .search.has-value）。 */
   shortcut?: ReactNode;
   wrapperClassName?: string;
 }
@@ -66,8 +66,11 @@ export function SearchField({ value, defaultValue = '', onValueChange, onClear, 
         >
           <X aria-hidden="true" strokeWidth={1.75} />
         </IconButton>
-      ) : shortcut ? (
-        <span className="mr-1.5 flex">{shortcut}</span>
+      ) : null}
+      {shortcut ? (
+        <span data-slot="search-shortcut" className="mr-1.5 flex">
+          {shortcut}
+        </span>
       ) : null}
     </div>
   );
