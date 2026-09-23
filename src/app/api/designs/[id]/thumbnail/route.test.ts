@@ -93,7 +93,7 @@ describe('GET /api/designs/:id/thumbnail', () => {
     token = (await createSession(db, userId)).token;
     expect((await request('not-a-uuid')).status).toBe(404);
     expect((await request('00000000-0000-4000-8000-0000000000ff')).status).toBe(404);
-    await db.update(designs).set({ deletedAt: new Date(), project: null }).where(eq(designs.id, designId));
+    await db.update(designs).set({ deletedAt: new Date(), project: null, name: '', payloadBytes: 0 }).where(eq(designs.id, designId));
     expect((await request(designId, '?rev=3')).status).toBe(404);
   });
 
