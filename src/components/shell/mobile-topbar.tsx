@@ -65,9 +65,9 @@ export function MobileTopBack({ href, label = t.back }: { href?: string; label?:
   const router = useRouter();
   if (href) {
     return (
-      <IconButton label={label} tooltip={false} nativeButton={false} render={<ShellLink href={href} />}>
+      <ShellLink href={href} aria-label={label} className={cn(iconButtonVariants(), 'hover:bg-bg-muted')}>
         <ArrowLeft aria-hidden="true" strokeWidth={1.75} />
-      </IconButton>
+      </ShellLink>
     );
   }
   return (

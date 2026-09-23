@@ -4,7 +4,7 @@ import { Upload } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { zhCN } from '@/messages/zh-CN';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/components/ui/use-media-query';
 import { AccountMenu } from './account-menu';
@@ -43,16 +43,10 @@ function UploadButton({ variant }: { variant: 'primary' | 'secondary' }) {
   const compact = useMediaQuery('(max-width: 1023px)');
   return (
     <Tooltip content={t.upload} disabled={!compact}>
-      <Button
-        variant={variant === 'primary' ? 'primary' : 'outline'}
-        nativeButton={false}
-        render={<ShellLink href="/app" />}
-        aria-label={t.upload}
-        className="max-lg:w-10 max-lg:gap-0 max-lg:px-0"
-      >
+      <ShellLink href="/app" aria-label={t.upload} className={cn(buttonVariants({ variant: variant === 'primary' ? 'primary' : 'outline' }), 'max-lg:w-10 max-lg:gap-0 max-lg:px-0')}>
         <Upload aria-hidden="true" strokeWidth={1.75} />
         <span className="max-lg:hidden">{t.upload}</span>
-      </Button>
+      </ShellLink>
     </Tooltip>
   );
 }

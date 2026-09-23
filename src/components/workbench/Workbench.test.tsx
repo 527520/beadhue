@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
@@ -18,6 +18,9 @@ import { zhCN } from '@/messages/zh-CN';
 import { runGenerate, type GenerateTask } from '@/lib/engine/runGenerate';
 import type { EngineOutput } from '@/lib/engine/types';
 import { resetAuthStatusCache } from '@/components/account/useAuthStatus';
+
+// 登录态快照是页面级共享的（切页不闪），用例之间要清掉，避免上一个用例的登录态串到下一个。
+afterEach(() => resetAuthStatusCache());
 
 const {
   pushMock,

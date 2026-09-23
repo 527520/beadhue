@@ -4,7 +4,7 @@ import { getDb } from '@/lib/auth/db';
 import { getSessionActor } from '@/lib/auth/session';
 import { listLikedCommunityWorks } from '@/lib/community/discovery';
 import { zhCN } from '@/messages/zh-CN';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SimpleWorkGrid } from '@/components/works/simple-work-grid';
 import { LoginButton } from './login-button';
@@ -22,7 +22,7 @@ export default async function MeLikesPage() {
       {!liked ? (
         <EmptyState kind="likes" title={t.likesLogin} description={t.likesLoginHint} actions={<LoginButton />} />
       ) : liked.items.length === 0 ? (
-        <EmptyState kind="likes" title={t.likesEmpty} description={t.likesEmptyHint} actions={<Button variant="secondary" nativeButton={false} render={<Link href="/" />}>{t.goDiscover}</Button>} />
+        <EmptyState kind="likes" title={t.likesEmpty} description={t.likesEmptyHint} actions={<Link href="/" className={buttonVariants({ variant: 'secondary' })}>{t.goDiscover}</Link>} />
       ) : (
         <SimpleWorkGrid items={liked.items} />
       )}

@@ -4,7 +4,7 @@ import { Settings } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import { IconButton } from '@/components/ui/icon-button';
+import { iconButtonVariants } from '@/components/ui/icon-button';
 import { TabLink, TabLinks } from '@/components/ui/tabs';
 import { MobileTopBack, MobileTopSpacer, MobileTopTitle } from '@/components/shell/mobile-topbar';
 import { ShellLink } from '@/components/shell/shell-context';
@@ -32,9 +32,9 @@ function MeMobileTop({ settings }: { settings: boolean }) {
     <>
       <MobileTopSpacer size="sm" />
       <MobileTopTitle>{t.title}</MobileTopTitle>
-      <IconButton label={t.settings} tooltip={false} nativeButton={false} render={<ShellLink href="/me/settings" />}>
+      <ShellLink href="/me/settings" aria-label={t.settings} className={iconButtonVariants()}>
         <Settings aria-hidden="true" strokeWidth={1.75} />
-      </IconButton>
+      </ShellLink>
     </>
   );
 }
