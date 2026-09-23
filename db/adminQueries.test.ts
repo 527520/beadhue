@@ -30,7 +30,7 @@ describe('admin query privacy and system evidence', () => {
     expect(user).not.toHaveProperty('passwordHash');
     const info = await getSystemInfo(db);
     expect(info.backup).toEqual({ status: 'not_integrated', label: '未接入' });
-    expect(info.migrationJournalLatest).toBe('0019_ops_observability');
+    expect(info.migrationJournalLatest).toBe('0020_discovery_notifications');
     expect(info.databaseMigration.id).not.toBeNull();
     expect(info.databaseMigration.appliedAt).toBeNull();
     expect(info.databaseMigration.journalTimestamp).not.toBeNull();

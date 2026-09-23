@@ -3,12 +3,12 @@ import { getDb } from '@/lib/auth/db';
 import { requireApiActor } from '@/lib/auth/dal';
 import { checkRateLimit } from '@/lib/auth/rateLimit';
 import { withApiErrors } from '@/lib/auth/http';
-import { getBoardProfile } from '@/lib/boardProfiles';
 import { loadRevisionForThumbnail } from '@/lib/community/queries';
 import { config } from '@/lib/config';
 import { AppError } from '@/lib/errors';
 import { renderPatternThumbnail } from '@/lib/render/thumbnail';
 import { getThumbnailCache } from '@/lib/render/thumbnailCache';
+import { THUMBNAIL_RENDER_VERSION } from '@/lib/render/thumbnailSize';
 
 /**
  * 管理端缩略图（admin-round-3 10）：后台此前直接请求豆社公开缩略图，
@@ -25,10 +25,10 @@ async function get(request: Request, { params }: { params: Promise<{ id: string 
   const revision = await loadRevisionForThumbnail(db, revisionId);
   if (!revision) throw new AppError('NOT_FOUND', '图纸不存在');
   const cache = getThumbnailCache();
-  const cacheKey = `${revision.id}:${size}`;
+  const cacheKey = `${revision.id}:${size}:v${THUMBNAIL_RENDER_VERSION}`;
   let png = cache.get(cacheKey);
   if (!png) {
-    png = renderPatternThumbnail(revision.pattern, { boardSize: getBoardProfile(revision.boardProfile).boardCols, size });
+    png = renderPatternThumbnail(revision.pattern, { size });
     cache.set(cacheKey, png);
   }
   return new Response(new Uint8Array(png), {
@@ -36,7 +36,7 @@ async function get(request: Request, { params }: { params: Promise<{ id: string 
     headers: {
       'content-type': 'image/png',
       'content-length': String(png.length),
-      // 修订不可变（ADR-0015）：同一修订的缩略图永不改变，私有缓存可长期复用。
+      // 修订不可变（ADR-0015）：同一修订、同一渲染版本的缩略图永不改变，私有缓存可长期复用。
       'cache-control': 'private, max-age=31536000, immutable',
       'x-content-type-options': 'nosniff',
     },

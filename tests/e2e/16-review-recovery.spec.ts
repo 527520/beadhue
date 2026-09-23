@@ -52,7 +52,7 @@ test('首页精选与最新同时可见，五宽度无横向溢出且可访问',
     await route.fulfill({ json: { items: [work(featured ? '00000000-0000-4000-8000-000000000001' : '00000000-0000-4000-8000-000000000002', featured)] } });
   });
   // 夹具修订不存在于数据库；用一张 1×1 PNG 代替缩略图，避免断图影响无障碍与截图。
-  await page.route('**/api/community/revisions/*/thumbnail', async (route) => {
+  await page.route('**/api/community/revisions/*/thumbnail*', async (route) => {
     await route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAgAB/wdYqHkAAAAASUVORK5CYII=', 'base64') });
   });
   await page.goto('/');
