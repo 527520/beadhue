@@ -20,7 +20,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input, Textarea } from '@/components/ui/input';
-import { Kbd } from '@/components/ui/kbd';
 import { LikeButton } from '@/components/ui/like-button';
 import { Menu, MenuContent, MenuItem, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuSample, MenuSampleItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { Pagination } from '@/components/ui/pagination';
@@ -330,7 +329,7 @@ function SearchSection() {
     <KitSection id="search" title="搜索" rule="胶囊，高 48（桌面顶栏 44）；默认 --bg-muted 底，聚焦变白底 + 浮起阴影；左放大镜、右清除；桌面聚焦展开建议面板，手机进入全屏搜索页。">
       <Panel>
         <div className="grid grid-cols-2 gap-x-8 gap-y-6 max-md:grid-cols-1">
-          <Spec caption="默认 · 高 48" block><SearchField shortcut={<Kbd>/</Kbd>} /></Spec>
+          <Spec caption="默认 · 高 48" block><SearchField /></Spec>
           <Spec caption="有值 · 右侧清除" block><SearchField defaultValue="猫" aria-label="搜索" /></Spec>
           <Spec caption="聚焦 · 白底浮起（顶栏 44）" block>
             <div ref={anchor}>
@@ -881,7 +880,7 @@ function CardsSection() {
                 href="#kit-cards"
                 linkLabel={`查看「${work.title}」`}
                 title={work.title}
-                media={<BeadImage pattern={work.pattern} alt={`${work.title}，${work.pattern.width}×${work.pattern.height} 拼豆图纸`} />}
+                media={<BeadImage lazy={false} pattern={work.pattern} alt={`${work.title}，${work.pattern.width}×${work.pattern.height} 拼豆图纸`} />}
                 badges={work.badge}
                 action={<LikeButton title={work.title} pressed={!!liked[work.id]} onPressedChange={(next) => setLiked((prev) => ({ ...prev, [work.id]: next }))} />}
                 meta={<><MetaItem grow>{work.author}</MetaItem><MetaSep wide /><MetaItem wide>{work.pattern.width}×{work.pattern.height}</MetaItem><MetaSep /><MetaItem>{usage.length} 色</MetaItem><BeadDots colors={usage.map((item) => item.hex)} /></>}
@@ -894,7 +893,7 @@ function CardsSection() {
               href="#kit-cards"
               linkLabel={`打开「${design.title}」`}
               title={design.title}
-              media={<BeadImage pattern={design.pattern} alt="" />}
+              media={<BeadImage lazy={false} pattern={design.pattern} alt="" />}
               badges={design.badge}
               actionHoverOnly
               action={<IconButton variant="on-image" label={`「${design.title}」的更多操作`} tooltip={false}><Ellipsis aria-hidden="true" strokeWidth={1.75} /></IconButton>}

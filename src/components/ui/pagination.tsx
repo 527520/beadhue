@@ -9,7 +9,7 @@ import { Select } from './select';
 
 /** 页码列表：首尾常驻、当前页前后各一页，其余用省略号。 */
 export function pageItems(page: number, pageCount: number): Array<number | 'gap'> {
-  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, index) => index + 1);
+  if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1);
   const pages = new Set([1, pageCount, page - 1, page, page + 1].filter((value) => value >= 1 && value <= pageCount));
   if (page <= 3) [2, 3].forEach((value) => pages.add(value));
   if (page >= pageCount - 2) [pageCount - 2, pageCount - 1].forEach((value) => pages.add(value));

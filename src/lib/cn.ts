@@ -10,6 +10,7 @@ const merge = extendTailwindMerge({
     classGroups: {
       'font-size': [{ text: ['display', 'title-1', 'title-2', 'title-3', 'body', 'body-sm', 'caption', 'footnote', 'topbar', 'micro', 'tabbar', 'avatar-sm', 'avatar-md', 'avatar-lg', 'avatar-xl'] }],
       duration: ['duration-press', 'duration-state', 'duration-enter'],
+      'border-w': ['border-control'],
     },
   },
 });

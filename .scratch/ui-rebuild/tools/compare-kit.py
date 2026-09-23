@@ -31,8 +31,28 @@ def crop(image, meta, top, height):
     return image.crop((0, top * dpr, image.width, min(image.height, (top + height) * dpr)))
 
 
+stack = '--stack' in flags
+left_cut = next((int(f.split('=')[1]) for f in flags if f.startswith('--x=')), 0)
+
+
 def emit(name, left, right):
     gap = 24
+    if left_cut:
+        left = left.crop((left_cut, 0, left.width, left.height))
+        right = right.crop((left_cut, 0, right.width, right.height)) if right else None
+    if stack:
+        w = max(left.width, right.width if right else 0)
+        h = left.height + (right.height + gap if right else 0)
+        canvas = Image.new('RGB', (w, h), (255, 64, 160))
+        canvas.paste(left, (0, 0))
+        if right:
+            canvas.paste(right, (0, left.height + gap))
+        if scale != 1.0:
+            canvas = canvas.resize((round(canvas.width * scale), round(canvas.height * scale)), Image.LANCZOS)
+        path = OUT / f'cmp-{width}-{name}.png'
+        canvas.save(path)
+        print(path, canvas.size)
+        return
     w = left.width + (right.width + gap if right else 0)
     h = max(left.height, right.height if right else 0)
     canvas = Image.new('RGB', (w, h), (255, 64, 160))
