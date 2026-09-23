@@ -152,7 +152,7 @@ test('字体实际加载，首屏选择图片完整可见，五宽度无溢出',
   page.on('response',response=>{if(response.url().includes('/fonts/ui/')&&response.status()>=400)failures.push(response.url());});
   await page.setViewportSize({width:390,height:844});
   await page.goto('/'); await waitHydrated(page);
-  await expect(page.getByRole('complementary',{name:'匿名使用数据偏好'})).toBeVisible();
+  await expect(page.getByRole('complementary',{name:'匿名使用统计'})).toBeVisible();
   const button=page.getByRole('button',{name:'选择图片文件',exact:true});
   const box=await button.boundingBox(); expect(box).not.toBeNull(); expect(box!.y+box!.height).toBeLessThan(770);
   const loaded=await page.evaluate(async()=>{

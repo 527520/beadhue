@@ -185,9 +185,10 @@ test("B: user pages retain the approved palette and fit phone/tablet/desktop", a
               .map((el) => el.textContent),
           ),
       ).toEqual([]);
-      expect(await page.locator(".beadhue-ui").getAttribute("data-theme")).toBe(
-        "candy",
-      );
+      // 旧内容仍在 .beadhue-ui（candy）作用域；已重做的页面（账号页）只有新界面区域。
+      const legacy = page.locator(".beadhue-ui");
+      if (await legacy.count()) expect(await legacy.first().getAttribute("data-theme")).toBe("candy");
+      else expect(await page.locator("[data-ui]").count()).toBeGreaterThan(0);
       await page.screenshot({
         path: info.outputPath(`${route.slice(1)}-${width}.png`),
         fullPage: true,

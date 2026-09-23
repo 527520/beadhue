@@ -37,11 +37,13 @@ describe('loginRedirectTarget（?next= 回跳与开放重定向防护）', () =>
     expect(loginRedirectTarget()).toBe('/me');
   });
 
-  it('拒绝反斜杠变体与仅斜杠', () => {
+  it('拒绝反斜杠变体；允许回到发现页 /（D66）', () => {
     setSearch('/login?next=/\\evil.example.com');
     expect(loginRedirectTarget()).toBe('/me');
     setSearch('/login?next=/');
-    expect(loginRedirectTarget()).toBe('/me');
+    expect(loginRedirectTarget()).toBe('/');
+    setSearch(`/login?next=${encodeURIComponent('/?q=猫&sort=new')}`);
+    expect(loginRedirectTarget()).toBe('/?q=%E7%8C%AB&sort=new');
   });
 
   it('多参数场景：只取 next', () => {

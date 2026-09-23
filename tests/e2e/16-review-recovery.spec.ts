@@ -13,11 +13,11 @@ test('HTTPS 同意初始化失败仍可看到错误并重试，失败期间不�
     await page.route('**/api/analytics/consent', async (route) => { grants++; await route.fulfill({ status: 503, json: { error: { code: 'UNKNOWN' } } }); });
     await page.route('**/api/analytics/events', async (route) => { events++; await route.fulfill({ status: 204 }); });
     await page.goto('/');
-    const banner = page.getByRole('complementary', { name: '匿名使用数据偏好' });
-    await banner.getByRole('button', { name: '同意匿名统计' }).click();
+    const banner = page.getByRole('complementary', { name: '匿名使用统计' });
+    await banner.getByRole('button', { name: '同意统计' }).click();
     await expect(banner.getByRole('alert')).toContainText('初始化');
     expect(grants).toBe(1); expect(events).toBe(0);
-    await banner.getByRole('button', { name: '同意匿名统计' }).click();
+    await banner.getByRole('button', { name: '同意统计' }).click();
     await expect.poll(() => grants).toBe(2);
     await expect(banner.getByRole('alert')).toBeVisible(); expect(events).toBe(0);
   } finally { await context.close(); await proxy.close(); }

@@ -1,9 +1,12 @@
-/** Bounded same-origin navigation only; authentication never replays a mutation. */
+/**
+ * Bounded same-origin navigation only; authentication never replays a mutation.
+ * R15（D66）起发现页就是 /，允许回到 /（含筛选参数）；// 与反斜杠变体仍拒绝。
+ */
 export function safeAuthReturnTo(value: string | null | undefined): string {
-  if (!value || value.length > 2048 || !/^\/[^/]/u.test(value) || /[\\\u0000-\u001f\u007f]/u.test(value)) return '/me';
+  if (!value || value.length > 2048 || !/^\/(?:[^/\\]|$)/u.test(value) || /[\\\u0000-\u001f\u007f]/u.test(value)) return '/me';
   try {
     const url = new URL(value, 'https://beadhue.invalid');
-    if (url.origin !== 'https://beadhue.invalid' || !/^\/[^/]/u.test(url.pathname) || /%(?:2f|5c|0[0-9a-f]|7f|25)/iu.test(url.pathname)) return '/me';
+    if (url.origin !== 'https://beadhue.invalid' || !/^\/(?:[^/]|$)/u.test(url.pathname) || /%(?:2f|5c|0[0-9a-f]|7f|25)/iu.test(url.pathname)) return '/me';
     return `${url.pathname}${url.search}${url.hash}`;
   } catch { return '/me'; }
 }
