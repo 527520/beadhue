@@ -356,7 +356,7 @@ test('手机直接恢复跟拼时焦点留在沉浸层，Escape 恢复页面', a
   await enterWorkbenchWithProject(page, testInfo, 29, 29);
   await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByText('本地：已保存', { exact: true }).first()).toBeVisible();
-  await page.goto('/designs');
+  await page.goto('/me');
   await page.locator('.design-card').first().getByRole('button', { name: /继续制作/ }).click();
   await expect(page).toHaveURL(/\/app\?id=/);
   const direct = new URL(page.url()); direct.searchParams.set('mode', 'stitch');

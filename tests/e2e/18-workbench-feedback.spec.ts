@@ -5,7 +5,7 @@ import { waitHydrated } from './helpers';
 async function createPattern(page: Page) {
   await page.goto('/app?new=1');
   await waitHydrated(page);
-  const reject = page.getByRole('button', { name: '拒绝', exact: true });
+  const reject = page.getByRole('button', { name: '不同意', exact: true });
   if (await reject.isVisible()) await reject.click();
   await page.getByLabel('图片文件选择器').setInputFiles(resolve('tests/fixtures/photo-gradient-64.png'));
   await page.getByRole('button', { name: '生成图纸', exact: true }).click();
@@ -16,18 +16,18 @@ test('feedback: consent and headings use content width; portrait crop has no int
   await page.setViewportSize({ width: 1920, height: 960 });
   await page.goto('/app?new=1');
   await waitHydrated(page);
-  const consent = page.locator('.analytics-consent');
+  const consent = page.getByRole('complementary', { name: '匿名使用统计' });
   await expect(consent).toBeVisible();
   expect.soft((await consent.boundingBox())!.width).toBeLessThanOrEqual(1200);
   await page.screenshot({ animations: 'disabled', path: info.outputPath('consent-desktop.png') });
-  await page.getByRole('button', { name: '拒绝', exact: true }).click();
+  await page.getByRole('button', { name: '不同意', exact: true }).click();
   await page.setViewportSize({ width: 560, height: 960 });
   await page.getByLabel('图片文件选择器').setInputFiles(resolve('tests/fixtures/max-100x8000.png'));
   const crop = page.locator('.crop-canvas-wrap');
   await expect(crop).toBeVisible();
   await expect.soft.poll(() => crop.evaluate(e => e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth)).toBe(true);
   await page.screenshot({ animations: 'disabled', path: info.outputPath('portrait-crop.png'), fullPage: true });
-  await page.goto('/designs');
+  await page.goto('/me');
   for (const width of [350, 390, 560, 768, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     const heading = await page.locator('.beadhue-page-heading').boundingBox();
@@ -69,7 +69,7 @@ test('feedback: settings drawer is flush, dismissible and centered; name focus i
   await expect(page.getByRole('button', { name: '参数', exact: true })).toBeFocused();
   await page.getByRole('button', { name: '返回预览', exact: true }).click();
   await page.getByRole('button', { name: '返回我的设计', exact: true }).click();
-  await expect(page).toHaveURL(/\/designs$/);
+  await expect(page).toHaveURL(/\/me$/);
   await expect(page.getByText('修改后的设计', { exact: true }).first()).toBeVisible();
 });
 

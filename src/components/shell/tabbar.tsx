@@ -16,6 +16,7 @@ export function Tabbar({ nav }: { nav: SiteNav }) {
   return (
     <nav
       data-ui=""
+      data-slot="tabbar"
       aria-label={t.mainNav}
       className="fixed inset-x-0 bottom-0 z-45 grid h-tabbar-safe grid-cols-3 items-center border-t border-line bg-bg/96 pb-safe backdrop-blur-md md:hidden"
     >

@@ -101,7 +101,7 @@ test('后台待审、批次和人员队列五宽度排版与无障碍',async({pa
     await author.getByRole('checkbox',{name:/合法发布权/}).check();
     await attachSubmissionOriginal(author, resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png'));
     await author.getByRole('button',{name:'提交审核'}).click();
-    await expect.poll(()=>new URL(author.url()).pathname).toBe('/community/mine');
+    await expect.poll(()=>new URL(author.url()).pathname).toBe('/me/public');
   }finally{await authorContext.close();}
   await page.goto('/login?next=/admin/reviews');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/reviews');

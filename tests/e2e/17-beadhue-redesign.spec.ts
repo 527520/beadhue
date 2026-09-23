@@ -45,7 +45,7 @@ test("B: discover → crop → neutral editor/reference → save/export → rest
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
   await waitHydrated(page);
-  const consent = page.getByRole("button", { name: "拒绝", exact: true });
+  const consent = page.getByRole("button", { name: "不同意", exact: true });
   if (await consent.isVisible()) await consent.click();
   await expect(
     page.getByRole("heading", { name: "下一份喜欢，从这里开始。" }),
@@ -54,7 +54,7 @@ test("B: discover → crop → neutral editor/reference → save/export → rest
     path: info.outputPath("discover-desktop.png"),
     fullPage: true,
   });
-  await page.locator(".main-nav").getByRole("link", { name: "创作" }).click();
+  await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "创作" }).click();
   await waitHydrated(page);
   await expect(
     page.getByRole("heading", { name: "创作一张图纸" }),
@@ -151,10 +151,10 @@ test("B: user pages retain the approved palette and fit phone/tablet/desktop", a
   for (const width of [1440, 390, 350, 768]) {
     await page.setViewportSize({ width, height: width > 600 ? 1000 : 844 });
     for (const route of [
-      "/designs",
+      "/me",
       "/palettes",
       "/help",
-      "/account",
+      "/me/settings",
       "/privacy",
       "/about",
       "/login",
@@ -214,7 +214,7 @@ test("B: private full original sync restores in a separate browser context witho
   await fillField(page, "邮箱", email);
   await fillField(page, "密码", password, { exact: true });
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await page.waitForURL(/\/designs|\/app/);
+  await page.waitForURL(/\/me|\/app/);
   await page.goto("/app?new=1");
   await waitHydrated(page);
   await page
@@ -327,7 +327,7 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
     await expect(
       page.getByRole("heading", { name: "一颗一颗，拼成喜欢。" }),
     ).toBeVisible();
-    expect(await page.locator("footer.footer").count()).toBe(1);
+    expect(await page.getByRole("contentinfo").count()).toBe(1);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

@@ -56,7 +56,7 @@ test('首页精选与最新同时可见，五宽度无横向溢出且可访问',
     await route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAgAB/wdYqHkAAAAASUVORK5CYII=', 'base64') });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: '拒绝', exact: true }).click();
+  await page.getByRole('button', { name: '不同意', exact: true }).click();
   await expect(page.getByRole('heading', { name: '本期精选作品' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '最近公开作品' })).toBeVisible();
   for (const width of [350, 390, 768, 1280, 1440]) {

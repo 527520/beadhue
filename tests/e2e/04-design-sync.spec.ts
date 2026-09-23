@@ -33,7 +33,7 @@ async function login(page: import('@playwright/test').Page, email: string, passw
   await fillField(page, '邮箱', email);
   await fillField(page, '密码', password);
   await page.getByRole('button', { name: '登录' }).click();
-  await page.waitForURL(/\/designs|\/app/, { timeout: 15_000 });
+  await page.waitForURL(/\/me|\/app/, { timeout: 15_000 });
 }
 
 /** 读取本机 IndexedDB 中第一条设计的 id（用于构造 /app?id=… 直链）。 */
@@ -98,13 +98,13 @@ test('双设备同步：设备 A 保存 → 设备 B 登录后可见同一设计
   await expect(pageA.getByText(/已保存/).first()).toBeVisible({ timeout: 15_000 });
 
   // 设备 A 的设计列表出现该设计
-  await pageA.goto('/designs');
+  await pageA.goto('/me');
   await expect(pageA.getByText('云端同步测试设计').first()).toBeVisible({ timeout: 15_000 });
 
   // 设备 B：登录 → 设计列表可见同一设计
   const pageB = await contextB.newPage();
   await login(pageB, email, password);
-  await pageB.goto('/designs');
+  await pageB.goto('/me');
   await expect(pageB.getByText('云端同步测试设计').first()).toBeVisible({ timeout: 15_000 });
 
   await contextA.close();
@@ -129,7 +129,7 @@ test('删除跨设备收敛：A 删除后列表消失、刷新仍在、直链打
   expect(designId).toBeTruthy();
 
   // A：删除（此前 DELETE 被守卫 400 拦截导致删除失败——本用例守护该回归）
-  await pageA.goto('/designs');
+  await pageA.goto('/me');
   await expect(pageA.getByText('待删除设计').first()).toBeVisible({ timeout: 15_000 });
   await expect.poll(async () => (await localSyncSnapshot(pageA)).records.find((record) => record.id === designId)).toMatchObject({
     revision: 1,
@@ -152,7 +152,7 @@ test('删除跨设备收敛：A 删除后列表消失、刷新仍在、直链打
   // 设备 B：删除已同步——列表为空，直链同样打不开
   const pageB = await contextB.newPage();
   await login(pageB, email, password);
-  await pageB.goto('/designs');
+  await pageB.goto('/me');
   await expect(pageB.getByText('待删除设计')).toHaveCount(0, { timeout: 15_000 });
   await pageB.goto(`/app?id=${designId}`);
   await expect(pageB.getByRole('button', { name: '选择图片文件' })).toBeVisible({ timeout: 15_000 });

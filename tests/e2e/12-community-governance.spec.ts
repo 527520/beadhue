@@ -11,7 +11,7 @@ function dateOffset(days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-async function login(page: Page, email: string, next = '/community') {
+async function login(page: Page, email: string, next = '/') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await fillField(page, '邮箱', email);
   await fillField(page, '密码', 'E2e-pass-123!');

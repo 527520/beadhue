@@ -28,7 +28,7 @@ async function registerAndLogin(page: Page): Promise<string> {
   await fillField(page, '邮箱', email);
   await fillField(page, '密码', password);
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await page.waitForURL(/\/designs|\/app/, { timeout: 15_000 });
+  await page.waitForURL(/\/me|\/app/, { timeout: 15_000 });
   return email;
 }
 
@@ -117,10 +117,9 @@ for (const width of widths) {
         ...unexpectedConsoleErrors.map(({ text, url }) => `${text}${url ? ` (${url})` : ''}`),
       ];
       expect(errors, errors.join('\n')).toEqual([]);
-      const mobileNav = page.getByTestId('workspace-mobile-nav');
+      const mobileNav = page.getByRole('navigation', { name: '主导航' });
       for (const [name, href] of [
-        ['首页', '/'], ['工作台', '/app'], ['设计', '/designs'],
-        ['豆社', '/community'], ['账号', '/account'],
+        ['发现', '/'], ['创作', '/app'], ['我的', '/me'],
       ] as const) {
         const link = mobileNav.getByRole('link', { name, exact: true });
         await expect(link).toBeVisible();
@@ -140,7 +139,7 @@ test('桌面设计库与色板页不被固定侧栏撑出视口', async ({ page 
 
   for (const width of [944, 1280, 1440] as const) {
     await page.setViewportSize({ width, height: 800 });
-    for (const route of ['/designs', '/palettes'] as const) {
+    for (const route of ['/me', '/palettes'] as const) {
       await page.goto(route);
       const dimensions = await page.evaluate(() => ({
         viewport: document.documentElement.clientWidth,
@@ -239,7 +238,7 @@ test('移动工作台可切换编辑、用色与导出工具', async ({ page }, 
   await expect(page.getByRole('button', { name: '下载 PNG' })).toBeVisible();
 });
 
-for (const route of ['/', '/app', '/designs', '/palettes', '/community', '/community/rules', '/privacy', '/account', '/help', '/about'] as const) {
+for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official'] as const) {
   test(`${route} 无 axe 严重或关键问题`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(route);

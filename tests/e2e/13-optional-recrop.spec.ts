@@ -111,7 +111,7 @@ for (const width of [350, 390]) {
           viewport: innerWidth,
           scrollWidth: document.documentElement.scrollWidth,
           modalZ: Number(getComputedStyle(element.parentElement!).zIndex),
-          navigationZ: Number(getComputedStyle(document.querySelector('.workspace-mobile-nav')!).zIndex),
+          navigationZ: Number(getComputedStyle(document.querySelector('[data-slot=tabbar]')!).zIndex),
           buttons: [...element.querySelectorAll('button')].map((button) => {
             const { x, y, width, height } = button.getBoundingClientRect();
             return { x, y, width, height };
