@@ -20,7 +20,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   let pages = 1;
   try { pages = sitemapPageCount(await countSitemapWorks(getDb()), sitemapWindow().pageSize); } catch { /* 数据库不可用时仍给出第一页 */ }
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/s/', '/admin/', '/api/', '/community/mine', '/community/submit'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/s/', '/admin/', '/api/', '/me', '/community/submit'] },
     sitemap: Array.from({ length: pages }, (_, id) => `${base}/sitemap/${id}.xml`),
   };
 }

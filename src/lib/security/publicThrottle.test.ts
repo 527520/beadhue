@@ -27,8 +27,13 @@ describe('页面级进程内节流', () => {
     expect(throttle.size()).toBeLessThanOrEqual(100);
   });
 
-  it('只节流豆社列表 / 详情、sitemap 分页与 robots.txt', () => {
-    expect(isThrottledPublicPath('/community')).toBe(true);
+  it('只节流发现页（/）、作品详情、作者主页、sitemap 分页与 robots.txt', () => {
+    expect(isThrottledPublicPath('/')).toBe(true);
+    expect(isThrottledPublicPath('/u/5d7a4ccc-5aa1-405c-a6c5-3471e3b4f0d6')).toBe(true);
+    expect(isThrottledPublicPath('/u/beadhue-official')).toBe(true);
+    expect(isThrottledPublicPath('/u/a/b')).toBe(false);
+    // /community 已由 next.config 重定向到 /（在 proxy 之前），不再单独节流。
+    expect(isThrottledPublicPath('/community')).toBe(false);
     expect(isThrottledPublicPath('/community/5d7a4ccc-5aa1-405c-a6c5-3471e3b4f0d6')).toBe(true);
     expect(isThrottledPublicPath('/sitemap/0.xml')).toBe(true);
     expect(isThrottledPublicPath('/sitemap/12.xml')).toBe(true);
@@ -37,6 +42,7 @@ describe('页面级进程内节流', () => {
     // 死分支已删：爬虫拿到的是 404，不会触达数据库。
     expect(isThrottledPublicPath('/sitemap.xml')).toBe(false);
     expect(isThrottledPublicPath('/community/mine')).toBe(false);
+    expect(isThrottledPublicPath('/me')).toBe(false);
     expect(isThrottledPublicPath('/app')).toBe(false);
   });
 });

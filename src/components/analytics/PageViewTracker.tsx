@@ -9,7 +9,10 @@ export type AnalyticsSurface = 'home' | 'workbench' | 'designs' | 'palettes' | '
 export function surfaceForPath(path: string): AnalyticsSurface {
   if (path === '/') return 'home';
   if (path.startsWith('/app')) return 'workbench';
-  if (path.startsWith('/designs')) return 'designs';
+  if (path.startsWith('/me/settings')) return 'account';
+  if (path.startsWith('/me/palettes')) return 'palettes';
+  if (path.startsWith('/me/public') || path.startsWith('/me/likes') || path.startsWith('/u/')) return 'community';
+  if (path === '/me' || path.startsWith('/designs')) return 'designs';
   if (path.startsWith('/palettes')) return 'palettes';
   if (path.startsWith('/s/')) return 'share';
   if (path.startsWith('/community')) return 'community';

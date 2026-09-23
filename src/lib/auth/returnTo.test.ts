@@ -3,7 +3,7 @@ import { authPageHref, isAdminReturnTo, safeAuthReturnTo } from './returnTo';
 
 describe('safe auth return navigation', () => {
   it.each(['//evil.example', '/%2e%2e//evil.example', '/a/%2e%2e//evil.example', '/%2f%2fevil.example', '/\\evil.example', '/\nevil.example'])('rejects normalized external navigation %s', (value) => {
-    expect(safeAuthReturnTo(value)).toBe('/designs');
+    expect(safeAuthReturnTo(value)).toBe('/me');
     expect(authPageHref('register', value)).toBe('/register');
   });
   it('preserves a bounded local context including query and fragment', () => {
@@ -22,6 +22,6 @@ describe('safe auth return navigation', () => {
   it.each(['/administrator', '/admin-guide', '/community?next=/admin', '//evil.example/admin'])('不将非后台路径 %s 误认为后台', (value) => {
     expect(isAdminReturnTo(value)).toBe(false);
     const expected = safeAuthReturnTo(value);
-    expect(new URL(authPageHref('register', value), 'http://local').searchParams.get('next')).toBe(expected === '/designs' ? null : expected);
+    expect(new URL(authPageHref('register', value), 'http://local').searchParams.get('next')).toBe(expected === '/me' ? null : expected);
   });
 });

@@ -21,11 +21,11 @@ export default async function sitemap({ id }: { id: Promise<string> | string | n
   //（内容重复且永远拿不到第 1 页之后的作品，爬虫还要多抓 N 倍）。
   const page = normalizeSitemapId(await id);
   const now = new Date();
-  const staticEntries: MetadataRoute.Sitemap = page !== 0 ? [] : ['', '/app', '/palettes', '/community', '/community/rules', '/community/copyright', '/privacy', '/help', '/about'].map((route) => ({
+  const staticEntries: MetadataRoute.Sitemap = page !== 0 ? [] : ['', '/app', '/palettes', '/community/rules', '/community/copyright', '/privacy', '/help', '/about'].map((route) => ({
     url: `${base}${route}`,
     lastModified: now,
-    changeFrequency: route === '' || route === '/community' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : route === '/app' || route === '/community' ? 0.9 : 0.6,
+    changeFrequency: route === '' ? 'weekly' : 'monthly',
+    priority: route === '' ? 1 : route === '/app' ? 0.9 : 0.6,
   }));
   let works: Array<{ id: string; updatedAt: Date }> = [];
   try { works = await listSitemapWorks(getDb(), page, now); } catch { works = []; }

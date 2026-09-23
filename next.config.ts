@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { networkInterfaces } from "node:os";
 import { collectAllowedDevOrigins } from "./src/lib/config/devOrigins";
+import { legacyRedirects } from "./src/lib/routes/legacyRedirects";
 
 // macOS 15+ 在终端没有「本地网络」权限时会让 os.networkInterfaces() 以 EPERM 失败；
 // 这只影响「自动放行局域网 IPv4」这一便利项，不该把 dev 服务器整个拖垮。
@@ -18,6 +19,10 @@ const nextConfig: NextConfig = {
   // 当前机器的局域网 IPv4 会自动加入；DEV_LAN_ORIGIN 保留给域名或隧道来源。
   // 仅影响 next dev，不改变生产环境的来源策略。
   allowedDevOrigins,
+  // 旧路由永久重定向（D66）：/community → /、/designs → /me、/community/mine → /me/public、/account → /me/settings、/create → /app。
+  async redirects() {
+    return legacyRedirects();
+  },
   async headers() {
     return [
       {

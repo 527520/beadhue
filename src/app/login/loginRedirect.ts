@@ -5,7 +5,7 @@
 import { safeAuthReturnTo } from '@/lib/auth/returnTo';
 
 export function loginRedirectTarget(): string {
-  if (typeof window === 'undefined') return '/designs';
+  if (typeof window === 'undefined') return '/me';
   const next = new URLSearchParams(window.location.search).get('next');
   return safeAuthReturnTo(next);
 }
