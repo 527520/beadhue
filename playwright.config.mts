@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_ORIGIN } from './tests/e2e/serverProcess';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -13,7 +14,8 @@ export default defineConfig({
     ? [['list'], ['html', { open: 'never' }], ['./tests/e2e/progressReporter.ts']]
     : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3100',
+    // 端口由 E2E_PORT 决定（缺省 3100），隔离工作树里可并行运行。
+    baseURL: E2E_ORIGIN,
     trace: 'retain-on-failure',
     acceptDownloads: true,
   },

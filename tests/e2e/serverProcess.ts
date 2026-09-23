@@ -1,7 +1,30 @@
 import { spawnSync } from 'node:child_process';
 import { createConnection } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-export const E2E_PORT = 3100;
+export const DEFAULT_E2E_PORT = 3100;
+
+/**
+ * E2E dev 服务端口：环境变量 E2E_PORT，缺省 3100。
+ * 隔离工作树里并行跑 E2E 时各自指定端口（如 E2E_PORT=3110），互不抢占；非法值直接报错，不静默回退到别人的端口。
+ */
+export function resolveE2ePort(value: string | undefined = process.env.E2E_PORT): number {
+  if (value === undefined || value.trim() === '') return DEFAULT_E2E_PORT;
+  const port = Number(value.trim());
+  if (!Number.isInteger(port) || port < 1024 || port > 65535) {
+    throw new Error(`E2E_PORT 必须是 1024–65535 之间的整数，收到：${value}`);
+  }
+  return port;
+}
+
+export const E2E_PORT = resolveE2ePort();
+export const E2E_ORIGIN = `http://127.0.0.1:${E2E_PORT}`;
+
+/** dev 服务日志按端口分文件：并行的几轮 E2E 各读各的邮件链接。放系统临时目录，避免触发 dev 服务的文件监听。 */
+export function e2eDevLogPath(port: number = E2E_PORT, dir: string = tmpdir()): string {
+  return join(dir, `beadhue-e2e-dev-${port}.log`);
+}
 
 interface SpawnResult {
   status: number | null;

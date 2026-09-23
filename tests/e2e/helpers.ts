@@ -5,8 +5,9 @@
  */
 import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page } from '@playwright/test';
+import { E2E_ORIGIN } from './serverProcess';
 
-export const BASE_URL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3100';
+export const BASE_URL = process.env.E2E_BASE_URL ?? E2E_ORIGIN;
 
 /** Exercise the visible selection surface, never its hidden native form bridge. */
 export async function selectChoice(page: Page, label: string, option: string) {

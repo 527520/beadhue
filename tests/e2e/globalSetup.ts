@@ -5,14 +5,12 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { writeFileSync, createWriteStream } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { assertPlaywrightBrowsersInstalled } from './checkBrowsers.cjs';
-import { E2E_PORT, stopProcessTree } from './serverProcess';
+import { E2E_ORIGIN, E2E_PORT, e2eDevLogPath, stopProcessTree } from './serverProcess';
 
-// 日志放系统临时目录：dev 服务器监听项目内文件，日志写入会触发 Fast Refresh 全量重载
-const LOG_PATH = join(tmpdir(), 'beadhue-e2e-dev.log');
-const READY_URL = `http://127.0.0.1:${E2E_PORT}/api/auth/me`;
+// 日志放系统临时目录：dev 服务器监听项目内文件，日志写入会触发 Fast Refresh 全量重载；按端口分文件，并行运行互不串读
+const LOG_PATH = e2eDevLogPath();
+const READY_URL = `${E2E_ORIGIN}/api/auth/me`;
 
 let server: ChildProcess | null = null;
 
@@ -91,7 +89,7 @@ export default async function globalSetup(): Promise<void> {
   server.stderr!.pipe(logStream);
 
   process.env.E2E_DEV_LOG = LOG_PATH;
-  process.env.E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
+  process.env.E2E_BASE_URL = E2E_ORIGIN;
   process.env.E2E_SERVER_PID = String(server.pid);
 
   try {
@@ -102,10 +100,10 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // 预热：逐个请求关键路由，触发 Turbopack 编译，避免测试期首次编译争用
-  const warmRoutes = ['/', '/app', '/register', '/login', '/verify-email', '/forgot-password', '/designs', '/palettes', '/community', '/admin/reviews', '/help', '/about'];
+  const warmRoutes = ['/', '/app', '/register', '/login', '/verify-email', '/forgot-password', '/me', '/me/settings', '/palettes', '/admin/reviews', '/help', '/about'];
   for (const route of warmRoutes) {
     try {
-      await fetch(`http://127.0.0.1:${E2E_PORT}${route}`, { method: 'GET' });
+      await fetch(`${E2E_ORIGIN}${route}`, { method: 'GET' });
     } catch {
       // 忽略预热失败（路由缺失等）
     }

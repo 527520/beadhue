@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import {
+  BASE_URL,
   fillField,
   uniqueEmail,
   waitForMailLink,
@@ -238,10 +239,10 @@ test("B: private full original sync restores in a separate browser context witho
   });
   try {
     const other = await context.newPage();
-    await other.goto("http://127.0.0.1:3100/designs");
+    await other.goto(`${BASE_URL}/me`);
     await waitHydrated(other);
     await expect(other.getByText("跨上下文原图恢复").first()).toBeVisible();
-    await other.goto(`http://127.0.0.1:3100/app?id=${saved!.id}`);
+    await other.goto(`${BASE_URL}/app?id=${saved!.id}`);
     await expect(other.getByLabel("图纸编辑画布")).toBeVisible();
     await expect
       .poll(
@@ -315,7 +316,7 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
   await expect(page.getByLabel("图纸编辑画布")).toBeVisible();
   const id = new URL(page.url()).searchParams.get("id");
   const shared = await page.request.post(`/api/designs/${id}/share`, {
-    headers: { origin: "http://127.0.0.1:3100" },
+    headers: { origin: BASE_URL },
   });
   expect(shared.status()).toBe(201);
   const body = await shared.json();
