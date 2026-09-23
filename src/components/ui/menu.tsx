@@ -90,6 +90,7 @@ export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
   return <BaseMenu.Group {...props} />;
 }
 
+/** 分组标签：必须放在 MenuGroup 或 MenuRadioGroup 里。 */
 export function MenuLabel({ className, ...props }: ComponentProps<typeof BaseMenu.GroupLabel>) {
   return <BaseMenu.GroupLabel data-slot="menu-label" className={cn('px-2.5 pt-2 pb-1 text-caption text-ink-3', className as string)} {...props} />;
 }

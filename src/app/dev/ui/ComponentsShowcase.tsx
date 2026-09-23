@@ -484,8 +484,8 @@ function MenusSection() {
                 {SORTS.find(([value]) => value === sort)?.[1]}
               </MenuTrigger>
               <MenuContent aria-label="排序">
-                <MenuLabel>排序</MenuLabel>
                 <MenuRadioGroup value={sort} onValueChange={(value) => setSort(String(value))}>
+                  <MenuLabel>排序</MenuLabel>
                   {SORTS.map(([value, text]) => <MenuRadioItem key={value} value={value}>{text}</MenuRadioItem>)}
                 </MenuRadioGroup>
               </MenuContent>
