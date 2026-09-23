@@ -15,6 +15,7 @@ import { AppError } from '@/lib/errors';
 import { blockWorkOriginals, unblockWorkOriginals } from './originals';
 import { deriveTagSlug, isValidTagName, normalizeTagName, WORK_TAG_LIMIT } from './tagNames';
 import { tagIconSchema } from './tagIcon';
+import { notifyWorkAuthor } from '@/lib/notifications/service';
 
 const reasonSchema = z.string().trim().min(3).max(500);
 const tagSlugSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u).max(50);
@@ -153,6 +154,10 @@ export async function moderateCommunityWork(db: AnyDatabase, input: {
       beforeState: { lifecycleStatus: work.lifecycleStatus, revision: work.version, featured: Boolean(work.featuredAt), commentsLocked: work.commentsLocked },
       afterState: { lifecycleStatus: updated.lifecycleStatus, revision: updated.version, featured: Boolean(updated.featuredAt), commentsLocked: updated.commentsLocked },
     });
+    // D70：下架 / 恢复通知个人作者；下架理由是治理备注，不进通知。
+    if (input.action === 'remove' || input.action === 'restore') {
+      await notifyWorkAuthor(tx, { work: updated, type: input.action === 'remove' ? 'work_removed' : 'work_restored', now });
+    }
     return updated;
   });
 }

@@ -20,6 +20,7 @@ import {
   snapshotColorCount,
   snapshotPaletteIdentity,
 } from './snapshot';
+import { notifyWorkAuthor } from '@/lib/notifications/service';
 import { normalizeSuggestedTags, SUGGESTED_TAG_LIMIT, SUGGESTED_TAG_MAX_LENGTH } from './tagNames';
 import { assertRevisionHasOriginal, inheritRevisionOriginal, markOriginalsDeleted, retireSupersededOriginal } from './originals';
 
@@ -334,6 +335,12 @@ export async function reviewCommunityRevision(
       requestId: input.requestId,
       beforeState: sanitizeAuditState({ revisionStatus: revision.status, revision: revision.version }),
       afterState: sanitizeAuditState({ revisionStatus: updated.status, revision: updated.version }),
+    });
+    await notifyWorkAuthor(tx, {
+      work,
+      type: input.decision === 'published' ? 'revision_approved' : 'revision_rejected',
+      payload: { revisionId: revision.id, title: revision.title, ...(input.decision === 'rejected' ? { reason: reason.data } : {}) },
+      now,
     });
     return { ...updated, purgeKeys };
   });
