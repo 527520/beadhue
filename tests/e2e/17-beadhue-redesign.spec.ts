@@ -327,7 +327,8 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
     await expect(
       page.getByRole("heading", { name: "一颗一颗，拼成喜欢。" }),
     ).toBeVisible();
-    expect(await page.getByRole("contentinfo").count()).toBe(1);
+    // 页脚只有一个（桌面显示、手机隐藏）。
+    expect(await page.locator("footer").count()).toBe(1);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

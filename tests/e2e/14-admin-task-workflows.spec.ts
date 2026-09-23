@@ -140,7 +140,7 @@ test('被内容安全拦截的评论不公开但进入治理队列，可复核�
   try {
     const author = await authorContext.newPage();
     // 专用账号：共用的 e2e-user 在整轮里评论过多会触发突发限流（转人工），掩盖这里要验证的拦截判定。
-    await author.goto('/login?next=/'); await fillField(author, '邮箱', `e2e-comment-${info.project.name}@example.com`); await fillField(author, '密码', 'E2e-pass-123!');
+    await author.goto('/login?next=%2F%3Fsort%3Dnew'); await fillField(author, '邮箱', `e2e-comment-${info.project.name}@example.com`); await fillField(author, '密码', 'E2e-pass-123!');
     await author.getByRole('button', { name: '登录', exact: true }).click(); await expect.poll(() => new URL(author.url()).pathname).toBe('/');
     const response = await author.evaluate(async ({ workId, body }) => {
       const reply = await fetch(`/api/community/works/${workId}/comments`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body }) });
@@ -202,7 +202,7 @@ test('举报先核查当前评论，隐藏内容和案件结案分别留痕', as
   const comment = await post(page, `/api/community/works/${workId}/comments`, { body: `E2E人工核查评论${info.project.name}` });
   const reporter = await browser.newContext({ baseURL });
   try {
-    const reporterPage = await reporter.newPage(); await login(reporterPage, '/', 'e2e-user@example.com');
+    const reporterPage = await reporter.newPage(); await login(reporterPage, '/?sort=new', 'e2e-user@example.com');
     await post(reporterPage, '/api/community/reports', { targetType: 'comment', targetId: comment.id, category: 'spam', details: `E2E案件${info.project.name}` });
     await page.reload();
     const entry = page.locator('.review-queue button').filter({ hasText: '评论 / 垃圾推广' }).first();

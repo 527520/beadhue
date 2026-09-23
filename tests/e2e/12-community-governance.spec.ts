@@ -11,12 +11,13 @@ function dateOffset(days: number) {
   return date.toISOString().slice(0, 10);
 }
 
-async function login(page: Page, email: string, next = '/') {
+async function login(page: Page, email: string, next = '/?sort=new') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await fillField(page, '邮箱', email);
   await fillField(page, '密码', 'E2e-pass-123!');
   await page.getByRole('button', { name: '登录' }).click();
-  await page.waitForURL(new RegExp(next.replace('/', '\\/')));
+  const target = new URL(next, 'http://local').pathname;
+  await page.waitForURL((url) => url.pathname === target);
 }
 
 test('游客只能看到已发布版本，后台要求登录', async ({ page }) => {
@@ -77,7 +78,7 @@ test('投稿从可信云端预览确认，失败保留草稿并可撤回重提',
   await page.getByRole('button', { name: '重试原投稿' }).click();
   await expect(page.locator('.community-submit-form').getByRole('alert')).toContainText('草稿已保留');
   await page.getByRole('button', { name: '重试提交审核' }).click();
-  await expect(page).toHaveURL(/\/community\/mine$/);
+  await expect(page).toHaveURL(/\/me\/public$/);
   expect(creationRequests).toHaveLength(2); expect(creationRequests[1]).toEqual(creationRequests[0]);
   const item = page.locator('.community-mine-list > li').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(item).toHaveCount(1);
