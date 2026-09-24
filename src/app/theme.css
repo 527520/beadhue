@@ -271,6 +271,7 @@
 }
 @utility drop-halo { background: radial-gradient(closest-side, var(--color-bg) 70%, transparent); }
 @utility drop-halo-active { background: radial-gradient(closest-side, var(--color-accent-soft) 70%, transparent); }
+@utility max-w-create { max-width: calc(var(--container-dialog-lg) + var(--spacing-gutter) * 2); }
 @utility grid-cols-new-drawing {
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   @media (max-width: 1023px) { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }

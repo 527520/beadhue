@@ -13,9 +13,6 @@ import {
   type OriginalReference,
 } from "@/lib/originals/geometry";
 import { sniffImageType } from "@/lib/image/sniff";
-import ResponsiveSelect from "@/components/legacy-ui/ResponsiveSelect";
-import SegmentedControl from "@/components/legacy-ui/SegmentedControl";
-import Button from "@/components/legacy-ui/Button";
 
 /**
  * 工作台（T12）：选图→整图首版→可选裁剪 + 生成管线 + 编辑器/预览 + 导出 + 本地保存。
@@ -30,16 +27,14 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
 import { perfMark } from "@/lib/perf/mark";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  UploadDropzone,
-  type ValidImageFile,
-} from "@/components/upload/UploadDropzone";
+import type { ValidImageFile } from "@/components/upload/UploadDropzone";
 import { takePendingUpload } from "@/lib/upload/pendingUpload";
 import Notice from "@/components/legacy-ui/Notice";
 import Icon from "@/components/legacy-ui/Icon";
@@ -65,19 +60,29 @@ import StepIndicator from "@/components/workbench/StepIndicator";
 import GenerationCancelControl from "@/components/workbench/GenerationCancelControl";
 import { useConfirm } from "@/components/legacy-ui/ConfirmDialog";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
-import { ImageCropper } from "@/components/crop/ImageCropper";
 import Modal from "@/components/legacy-ui/Modal";
 import CropDialog from "@/components/crop/CropDialog";
 import GenerationParamsPanel from "@/components/params/GenerationParamsPanel";
-import PalettePicker, {
-  type PalettePickerOption,
-} from "@/components/palettes/PalettePicker";
+import type { PalettePickerOption } from "@/components/palettes/PalettePicker";
 import PatternPreview from "@/components/preview/PatternPreview";
 import PixelEditorCanvas from "@/components/editor/PixelEditorCanvas";
 import PngExportButton from "@/components/export/PngExportButton";
 import PdfExportButton from "@/components/export/PdfExportButton";
 import ProjectFileButtons from "@/components/export/ProjectFileButtons";
 import { SiteShell } from "@/components/shell/site-shell";
+import { CreateEntry } from "@/components/create/create-entry";
+import {
+  NewDrawingDialog,
+  type NewDrawingSettings,
+} from "@/components/create/new-drawing-dialog";
+import {
+  BlankCanvasDialog,
+  type BlankCanvasSettings,
+} from "@/components/create/blank-canvas-dialog";
+import {
+  buildPaletteChoices,
+  findPaletteChoice,
+} from "@/components/create/palette-choices";
 import LegacyScope from "@/components/layout/LegacyScope";
 import LegacyPageHeading from "@/components/layout/LegacyPageHeading";
 import { useMobileLayout } from "@/components/layout/useMobileLayout";
@@ -123,9 +128,6 @@ import {
   isBoardProfileId,
 } from "@/lib/boardProfiles";
 
-/** 空白起稿的尺寸档（H-2）：按当前制作规格的整板倍数提供。 */
-const BLANK_PRESETS = [1, 2, 3] as const;
-type BlankBoards = (typeof BLANK_PRESETS)[number];
 import {
   disposeGenerateWorker,
   prepareGenerationSource,
@@ -227,11 +229,28 @@ function paletteColorsMatch(
   });
 }
 
-/** 清除 URL 上的 ?id= 参数（开始新设计后，刷新不应再恢复旧设计）。 */
+/** 清除 URL 上的 ?id= 参数：回到创作入口（/app 无 id 不恢复任何设计）。 */
 function clearDesignQuery(): void {
   if (typeof window !== "undefined") {
     window.history.replaceState(null, "", "/app");
   }
+}
+
+/** 新设计进入编辑器后把 id 写进地址（/app?id=），刷新即恢复这一份。 */
+function showDesignQuery(id: string): void {
+  if (typeof window !== "undefined") {
+    window.history.replaceState(null, "", `/app?id=${encodeURIComponent(id)}`);
+  }
+}
+
+/** 原型 ?drag=1：创作入口强制显示拖入态（视觉对照用）。 */
+const subscribeNothing = () => () => {};
+function useForcedDragging(): boolean {
+  return useSyncExternalStore(
+    subscribeNothing,
+    () => new URLSearchParams(window.location.search).get("drag") === "1",
+    () => false,
+  );
 }
 
 interface WorkbenchProps {
@@ -325,6 +344,8 @@ export default function Workbench({
     null,
   );
   const cropRectsRef = useRef(new WeakMap<ImageDataLike, Rect>());
+  /** 「新建图纸」弹窗里点了生成、首版图纸尚未提交：弹窗保持打开，成功后才进入编辑器。 */
+  const firstDrawingRef = useRef(false);
   /** 当前选中的云端自定义色板 id（null = 导入项目自带的色板或内置品牌）。 */
   const [customPaletteId, setCustomPaletteId] = useState<string | null>(null);
   /**
@@ -538,7 +559,6 @@ export default function Workbench({
   const [storageReady, setStorageReady] = useState(false);
   const [tab, setTab] = useState<Tab>("edit");
   const [blankOpen, setBlankOpen] = useState(false);
-  const [blankBoards, setBlankBoards] = useState<BlankBoards>(1);
   const [mobilePanel, setMobilePanel] = useState<
     "params" | "colors" | "export"
   >("params");
@@ -854,6 +874,11 @@ export default function Workbench({
           },
         });
         markDirty();
+        if (firstDrawingRef.current) {
+          firstDrawingRef.current = false;
+          setStep("workspace");
+          showDesignQuery(designIdRef.current);
+        }
         // D-1：生成完成的可感知反馈（播报 + 三段编排 + 数字滚动）
         setDoneToken((token) => token + 1);
         perfMark("workbench-generation-commit");
@@ -864,6 +889,7 @@ export default function Workbench({
           properties: { errorCode: "GENERATION_FAILED" },
         });
         if (stableDraft) restoreDraftControls(stableDraft);
+        firstDrawingRef.current = false;
         const failedCrop = pendingCropRef.current !== null;
         if (!generationSession.committed) clearOriginalSource();
         else {
@@ -910,6 +936,9 @@ export default function Workbench({
     if (!cancelled) return;
     const epoch = cancelEpochRef.current;
     pendingCropRef.current = null;
+    // 新建图纸弹窗里取消：停止生成、留在弹窗，图片与取景都保留（D35）。
+    const keepDialog = firstDrawingRef.current;
+    firstDrawingRef.current = false;
     track({ name: "generation_cancelled", properties: {} });
     window.setTimeout(() => {
       if (epoch !== cancelEpochRef.current) return;
@@ -919,7 +948,10 @@ export default function Workbench({
         restoreReplacement();
       }
       setShowProgress(false);
-      if (!cancelled.hadCommit) {
+      if (!cancelled.hadCommit && keepDialog) {
+        pendingGenerationSourceRef.current = undefined;
+        uploadGenerationSource(null, cancelled.stableDraft ?? initialGenerationDraft);
+      } else if (!cancelled.hadCommit) {
         clearOriginalSource();
         pendingGenerationSourceRef.current = undefined;
         uploadGenerationSource(null, initialGenerationDraft);
@@ -952,6 +984,7 @@ export default function Workbench({
       image: DecodedImage,
       initial: boolean,
       operation: number,
+      draftOverride?: GenerationDraft,
     ): Promise<void> => {
       let cropped: ImageDataLike;
       const legacyDecoder = Boolean(decodeFn || decodeRegionFn);
@@ -965,6 +998,7 @@ export default function Workbench({
         if (!result.ok) {
           if (!generationSession.committed) clearOriginalSource();
           else restoreReplacement();
+          firstDrawingRef.current = false;
           setStep(generationSession.committed ? "workspace" : "upload");
           setErrorMsg(zhCN.errors[result.code]);
           return;
@@ -981,6 +1015,7 @@ export default function Workbench({
         if (!result.ok) {
           if (!generationSession.committed) clearOriginalSource();
           else restoreReplacement();
+          firstDrawingRef.current = false;
           setStep(generationSession.committed ? "workspace" : "upload");
           setErrorMsg(zhCN.errors[result.code]);
           return;
@@ -1023,11 +1058,13 @@ export default function Workbench({
       // 原图压缩源仍只在当前解码会话中；整图/选区缩小后的缓冲才允许本地保存。
       const rebindRestoredSource = rebindRestoredSourceRef.current || !initial;
       if (!rebindRestoredSource) setCreatedAt(new Date().toISOString());
-      const draft = { boardProfile, params, paletteSelection };
+      const draft = draftOverride ?? { boardProfile, params, paletteSelection };
       if (rebindRestoredSource) {
         replaceGenerationSourceForCrop(cropped, draft);
       } else uploadGenerationSource(cropped, draft);
-      setStep("workspace");
+      // 首版在「新建图纸」弹窗里生成，提交后才进入编辑器（regenerate 的 onSuccess）。
+      if (firstDrawingRef.current) firstDrawingRef.current = !rebindRestoredSource;
+      if (!firstDrawingRef.current) setStep("workspace");
       regenerate();
       rebindRestoredSourceRef.current = false;
       if (!rebindRestoredSource) {
@@ -1171,7 +1208,7 @@ export default function Workbench({
   }, [handleUpload]);
 
   const handleCropConfirm = useCallback(
-    async (rect: Rect): Promise<void> => {
+    async (rect: Rect, draftOverride?: GenerationDraft): Promise<void> => {
       if (!decoded || imageBusyRef.current) return;
       imageBusyRef.current = true;
       const operation = ++imageOperationRef.current;
@@ -1195,8 +1232,10 @@ export default function Workbench({
             decoded,
             !generationSession.committed,
             operation,
+            draftOverride,
           );
       } catch {
+        firstDrawingRef.current = false;
         if (imageOperationRef.current !== operation) return;
         if (!generationSession.committed) clearOriginalSource();
         else restoreReplacement();
@@ -1224,7 +1263,58 @@ export default function Workbench({
     ],
   );
 
+  const paletteChoices = useMemo(
+    () => buildPaletteChoices(cloudPalettes),
+    [cloudPalettes],
+  );
+
+  /** 弹窗里选的色板值 → 生成草稿的色板（套装档位回到全色）与自定义色板 id。 */
+  const draftFromChoice = useCallback(
+    (
+      paletteValue: string,
+      nextBoardProfile: GenerationDraft["boardProfile"],
+      nextParams: GenerationParams,
+    ): { draft: GenerationDraft; customId: string | null } | null => {
+      const choice = findPaletteChoice(paletteChoices, paletteValue);
+      if (!choice) return null;
+      const boardProfileId = defaultBoardProfileForPalette(
+        choice.palette,
+        nextBoardProfile,
+      );
+      return {
+        draft: {
+          boardProfile: boardProfileId,
+          params: nextParams,
+          paletteSelection: { palette: choice.palette, kitTier: 0 },
+        },
+        customId: paletteValue.startsWith("custom:")
+          ? paletteValue.slice("custom:".length)
+          : null,
+      };
+    },
+    [paletteChoices],
+  );
+
+  /** 「新建图纸」弹窗的「生成图纸」：带着弹窗里的设置走同一条裁剪 → 生成管线。 */
+  const handleNewDrawing = useCallback(
+    (settings: NewDrawingSettings): void => {
+      const resolved = draftFromChoice(settings.paletteValue, settings.boardProfile, {
+        ...params,
+        targetWidth: settings.width,
+        targetColorCount: settings.colors,
+        backgroundRemoval: settings.removeBackground,
+      });
+      if (!resolved) return;
+      setCustomPaletteId(resolved.customId);
+      updateGenerationDraft(resolved.draft);
+      firstDrawingRef.current = true;
+      void handleCropConfirm(settings.rect, resolved.draft);
+    },
+    [draftFromChoice, handleCropConfirm, params, updateGenerationDraft],
+  );
+
   const handleCropCancel = useCallback((): void => {
+    firstDrawingRef.current = false;
     imageOperationRef.current += 1;
     imageBusyRef.current = false;
     setBusy(false);
@@ -1432,22 +1522,15 @@ export default function Workbench({
    * 空白起稿（H-2）：不经过上传与生成，直接把一张全透明图纸提交进会话。
    * 没有生成源，因此参数面板保持锁定（改参数需要原图），但可以修补、换色板、导出。
    */
-  const blankSummary = useMemo(() => {
-    const spec = getBoardProfile(boardProfile);
-    return t.blankSummary
-      .replaceAll("{size}", String(blankBoards * spec.boardCols))
-      .replace("{palette}", paletteDisplayName)
-      .replace("{spec}", spec.displayName);
-  }, [blankBoards, boardProfile, paletteDisplayName, t]);
   const startBlank = useCallback(
-    (width: number, height: number): void => {
+    (width: number, height: number, draft?: GenerationDraft): void => {
       if (rebindRestoredSourceRef.current) return;
       clearOriginalSource();
       const blank = createBlankPattern(width, height);
+      const base = draft ?? { boardProfile, params, paletteSelection };
       restoreGeneration({
-        boardProfile,
-        params: { ...params, targetWidth: width },
-        paletteSelection,
+        ...base,
+        params: { ...base.params, targetWidth: width },
         pattern: blank,
         stats: [],
         total: 0,
@@ -1456,6 +1539,7 @@ export default function Workbench({
       setStep("workspace");
       setTab("edit"); // 空白图纸的第一步一定是画，直接落在修补页签
       markDirty();
+      showDesignQuery(designIdRef.current);
     },
     [
       boardProfile,
@@ -1465,6 +1549,17 @@ export default function Workbench({
       params,
       restoreGeneration,
     ],
+  );
+
+  const handleBlankCreate = useCallback(
+    (settings: BlankCanvasSettings): void => {
+      const resolved = draftFromChoice(settings.paletteValue, settings.boardProfile, params);
+      if (!resolved) return;
+      setCustomPaletteId(resolved.customId);
+      setBlankOpen(false);
+      startBlank(settings.width, settings.height, resolved.draft);
+    },
+    [draftFromChoice, params, startBlank],
   );
 
   /**
@@ -2416,20 +2511,18 @@ export default function Workbench({
           setSaveState("unavailable");
           return;
         }
-        // 恢复策略：
-        // - ?new=1（「新建设计」入口）：不恢复任何历史设计，从空白上传开始；
-        // - ?id=X：仅当本地存在该设计时恢复；不存在则保持上传页（绝不回落打开其他设计）；
-        // - 无参数（刷新恢复）：恢复最近编辑的设计。
+        // 恢复策略（D66）：/app 无 id 是创作入口，不恢复任何历史设计（?new=1 同义，兼容旧链接）；
+        // ?id=X 仅当本地存在该设计时恢复，不存在则留在入口并说明（绝不回落打开其他设计）。
+        // 新设计进入编辑器时会把 id 写进地址，所以刷新仍回到同一份。
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get("new") === "1") return;
         const requestedId = urlParams.get("id");
         const records = await adapter.getAll();
         if (cancelled || imageOperationRef.current !== restoreOperation) return;
-        const last = requestedId
-          ? records.find((r) => r.id === requestedId)
-          : records[0];
+        setSavedNames(records.map((r) => r.name));
+        if (!requestedId) return;
+        const last = records.find((r) => r.id === requestedId);
         if (!last) {
-          if (requestedId) setErrorMsg(t.designNotLocal);
+          setErrorMsg(t.designNotLocal);
           return;
         }
         const project = parseStoredProject(last.projectJson);
@@ -2574,7 +2667,7 @@ export default function Workbench({
       setErrorMsg(null);
       markDirty();
       setStep("workspace");
-      clearDesignQuery(); // 新设计不再对应 URL ?id= 的旧设计（否则刷新会恢复错对象）
+      showDesignQuery(designIdRef.current); // 导入即新设计：地址换成它自己的 id
     },
     [
       clearOriginalSource,
@@ -2686,6 +2779,7 @@ export default function Workbench({
     saveBeforeLeave,
   ]);
 
+  const forceDragging = useForcedDragging();
   const mobileWorkspaceOpen =
     mobileLayout && step === "workspace" && tab !== "preview";
   const requestOriginal = (): void => {
@@ -2869,14 +2963,102 @@ export default function Workbench({
 
   // 编辑中（非选图入口）：不显示手机顶栏 / 底栏、页脚与统计浮卡；桌面顶栏保留到票 08 的编辑器顶栏上线。
   const workingLayout = !(step === "upload" || (step === "crop" && !pattern));
+  if (!workingLayout) {
+    const entryError = visibleErrorMsg ? (
+      <>
+        {visibleErrorMsg}
+        {(visibleErrorMsg === t.designNotLocal ||
+          visibleErrorMsg === t.designUnreadable) && (
+          <>
+            {" "}
+            <Link
+              className="text-accent underline"
+              href="/me"
+              onClick={(event) => handleNavigationClick(event, "/me")}
+            >
+              {t.backToDesigns}
+            </Link>
+          </>
+        )}
+      </>
+    ) : (
+      (syncNotice ??
+      (saveState === "unavailable"
+        ? t.unavailable
+        : saveState === "quota"
+          ? t.quotaError
+          : null))
+    );
+    return (
+      <SiteShell
+        nav="create"
+        topbarCta={false}
+        onNavigate={leaveTo}
+      >
+        <CreateEntry
+          onImage={(file) => void handleUpload(file)}
+          onBlank={() => setBlankOpen(true)}
+          onImport={handleImport}
+          existingNames={savedNames}
+          busy={busy || (step === "crop" && !pattern)}
+          busyText={busy ? busyText : undefined}
+          error={step === "upload" ? entryError : null}
+          forceDragging={forceDragging}
+          storage={storage}
+          onNavigate={handleNavigationClick}
+          reselect={
+            pattern
+              ? {
+                  backLabel: t.cancelSelectOriginal,
+                  onBack: () => {
+                    restoreReplacement();
+                    rebindRestoredSourceRef.current = false;
+                    setStep("workspace");
+                  },
+                }
+              : undefined
+          }
+        />
+        {step === "crop" && decoded && !pattern && (
+          <NewDrawingDialog
+            image={decoded}
+            params={params}
+            paletteValue={selectedPalette}
+            boardProfile={boardProfile}
+            paletteChoices={paletteChoices}
+            colorRange={{
+              min: 2,
+              max: Math.max(64, params.targetColorCount),
+            }}
+            working={busy || generating}
+            progress={generating ? generationSession.progress : null}
+            error={visibleErrorMsg}
+            onGenerate={handleNewDrawing}
+            onCancelGeneration={handleCancelGenerate}
+            onClose={handleCropCancel}
+          />
+        )}
+        {blankOpen && !pattern && (
+          <BlankCanvasDialog
+            paletteChoices={paletteChoices}
+            paletteValue={selectedPalette.startsWith("__") ? "builtin:MARD" : selectedPalette}
+            boardProfile={boardProfile}
+            onCreate={handleBlankCreate}
+            onClose={() => setBlankOpen(false)}
+          />
+        )}
+        <LegacyScope>{confirmDialog}</LegacyScope>
+      </SiteShell>
+    );
+  }
   return (
     <SiteShell
       nav="create"
       topbarCta={false}
-      tabbar={!workingLayout}
-      footer={step === "upload"}
-      mobileTop={workingLayout ? false : "default"}
-      consent={!workingLayout}
+      tabbar={false}
+      footer={false}
+      mobileTop={false}
+      consent={false}
       onNavigate={leaveTo}
     >
     <LegacyScope><div className="workspace-page bg-cream">
@@ -2931,18 +3113,14 @@ export default function Workbench({
       )}
       {step !== "crop" && (
         <LegacyPageHeading
-          title={step === "upload" ? zhCN.beadhue.createTitle : t.title}
-          subtitle={
-            step === "upload"
-              ? zhCN.beadhue.createSubtitle
-              : zhCN.workspace.workbenchSubtitle
-          }
+          title={t.title}
+          subtitle={zhCN.workspace.workbenchSubtitle}
         />
       )}
       <div
-        className={`workspace-content beadhue-workbench flex w-full flex-col gap-4 ${step === "upload" || (step === "crop" && !pattern) ? "is-upload" : "is-working"}`}
+        className={`workspace-content beadhue-workbench flex w-full flex-col gap-4 is-working`}
       >
-        {step !== "upload" && pattern && (
+        {pattern && (
           <WorkbenchProjectBar
             context={
               <div className="beadhue-editor-title">
@@ -3115,184 +3293,18 @@ export default function Workbench({
           />
         )}
 
-        {step === "upload" && (
-          <div className="form-card beadhue-create-card">
-            {/* 不加 capture：移动端带 capture 只能开摄像头、选不了相册（真机验收回归）。 */}
-            <UploadDropzone
-              onValid={(file) => void handleUpload(file)}
-              disabled={busy}
-            />
-            {pattern && (
-              <button
-                type="button"
-                className="btn-outline self-start"
-                onClick={() => {
-                  restoreReplacement();
-                  rebindRestoredSourceRef.current = false;
-                  setStep("workspace");
-                }}
-              >
-                {t.cancelSelectOriginal}
-              </button>
-            )}
-            {/*
-            空白起稿（H-2）：此前进工作台的唯一入口是「上传一张图」，
-            想从零摆一个像素图案（照着别人的图纸摆、画图标或文字）没有任何入口。
-          */}
-            <p className="note">
-              <Icon name="lock" size={16} />
-              {zhCN.beadhue.uploadPrivacy}
-            </p>
-            <div className="divider">{zhCN.beadhue.tryExamples}</div>
-            <div className="example-strip">
-              {[
-                { id: "rabbit", name: zhCN.beadhue.exampleRabbit },
-                { id: "tulips", name: zhCN.beadhue.exampleTulips },
-                { id: "cat", name: zhCN.beadhue.exampleCat },
-              ].map((example) => (
-                <button
-                  key={example.id}
-                  type="button"
-                  disabled={busy}
-                  aria-label={zhCN.beadhue.useExample(example.name)}
-                  onClick={() => {
-                    void fetch(`/examples/${example.id}.png`)
-                      .then((r) => r.arrayBuffer())
-                      .then((bytes) =>
-                        handleUpload({
-                          bytes: new Uint8Array(bytes),
-                          type: "png",
-                          name: example.name,
-                        }),
-                      )
-                      .catch(() => setErrorMsg(zhCN.beadhue.exampleError));
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/examples/${example.id}.png`}
-                    alt={example.name}
-                    width={88}
-                    height={88}
-                  />
-                </button>
-              ))}
-            </div>
-            {!pattern && (
-              <div className="row blank-toggle">
-                <button
-                  type="button"
-                  className="button quiet"
-                  aria-expanded={blankOpen}
-                  onClick={() => setBlankOpen((v) => !v)}
-                >
-                  <Icon name="grid" />
-                  {zhCN.beadhue.startBlank}
-                </button>
-              </div>
-            )}
-            {!pattern && blankOpen && (
-              <section
-                id="blank-start"
-                aria-label={t.blankTitle}
-                className="studio-panel blank-start"
-              >
-                <header className="blank-start-heading">
-                  <span className="home-blank-icon" aria-hidden="true">
-                    <Icon name="blank" size={18} />
-                  </span>
-                  <div>
-                    <h2>{t.blankTitle}</h2>
-                    <p>{t.blankHint}</p>
-                  </div>
-                </header>
-                {/* 一行四个 44 高的字段：色板品牌 / 系列 / 制作规格 / 板数；色板信息卡在下一行整行展开。 */}
-                <div className="form-row blank-start-controls">
-                  <PalettePicker
-                    options={paletteOptions}
-                    value={selectedPalette}
-                    disabled={busy || generating}
-                    onSelect={handlePaletteSelect}
-                    className="blank-palette-picker"
-                  />
-                  <ResponsiveSelect
-                    label={zhCN.params.boardProfile}
-                    id="blank-board-profile"
-                    value={boardProfile}
-                    disabled={busy || generating}
-                    onValueChange={handleBoardProfileSelect}
-                    options={boardProfileOptions}
-                  />
-                  <SegmentedControl
-                    showLabel
-                    label={t.blankBoards}
-                    value={String(blankBoards)}
-                    disabled={busy}
-                    onValueChange={(value) =>
-                      setBlankBoards(Number(value) as BlankBoards)
-                    }
-                    options={BLANK_PRESETS.map((boards) => ({
-                      value: String(boards),
-                      label: t.blankBoardsOption(boards),
-                    }))}
-                  />
-                </div>
-                {/* 摘要说清将要创建什么，主按钮只有一个：之前三个尺寸 chip 都是次级样式，没人知道点哪个才是「开始」。 */}
-                <div className="blank-start-foot">
-                  <p className="blank-start-summary" role="status">
-                    {blankSummary}
-                  </p>
-                  <Button
-                    variant="primary"
-                    icon="blank"
-                    disabled={busy}
-                    onClick={() =>
-                      startBlank(
-                        blankBoards * boardSpec.boardCols,
-                        blankBoards * boardSpec.boardRows,
-                      )
-                    }
-                  >
-                    {t.blankCreate}
-                  </Button>
-                </div>
-              </section>
-            )}
-          </div>
+        {step === "crop" && decoded && pattern && (
+          <CropDialog
+            image={decoded}
+            initialRect={lastCropRect}
+            disabled={busy}
+            error={visibleErrorMsg}
+            onConfirm={(rect) => handleCropConfirm(rect)}
+            onCancel={handleCropCancel}
+          />
         )}
 
-        {step === "crop" &&
-          decoded &&
-          (pattern ? (
-            <CropDialog
-              image={decoded}
-              initialRect={lastCropRect}
-              disabled={busy}
-              error={visibleErrorMsg}
-              onConfirm={handleCropConfirm}
-              onCancel={handleCropCancel}
-            />
-          ) : (
-            <>
-              <button
-                type="button"
-                className="back beadhue-crop-back"
-                onClick={handleCropCancel}
-              >
-                <Icon name="back" />
-                {zhCN.beadhue.reselectImage}
-              </button>
-              <ImageCropper
-                presentation="beadhue"
-                image={decoded}
-                disabled={busy}
-                onConfirm={handleCropConfirm}
-                onCancel={handleCropCancel}
-              />
-            </>
-          ))}
-
-        {step !== "upload" && pattern && (
+        {pattern && (
           <div
             className={`beadhue-editor-layout${settingsOpen ? " settings-open" : ""}${mobileWorkspaceOpen ? " mobile-editing" : ""}`}
           >
