@@ -18,6 +18,7 @@
 @source "../components/shell";
 @source "../components/auth";
 @source "../components/works";
+@source "../components/create";
 @source "./me";
 @source "./u";
 @source "./login";
@@ -256,6 +257,26 @@
 @utility popover-width { min-width: var(--container-popover-min); max-width: min(var(--container-popover), calc(100vw - 24px)); }
 @utility popover-width-wide { width: min(var(--container-popover-wide), calc(100vw - 24px)); }
 @utility border-control { border-width: 1.5px; }
+/* 创作（票 07）：取景框外的压暗、落区钉板纹理、长列表弹出层高度、裁剪舞台高度。 */
+@utility crop-hole { box-shadow: 0 0 0 9999px rgb(28 28 30 / 48%); }
+@utility pegboard-dots {
+  background-image: radial-gradient(circle, var(--color-line-strong) 1.6px, transparent 2.2px);
+  background-size: 20px 20px;
+  background-position: 10px 10px;
+}
+@utility pegboard-dots-active {
+  background-image: radial-gradient(circle, rgb(49 96 230 / 55%) 1.8px, transparent 2.4px);
+  background-size: 20px 20px;
+  background-position: 10px 10px;
+}
+@utility drop-halo { background: radial-gradient(closest-side, var(--color-bg) 70%, transparent); }
+@utility drop-halo-active { background: radial-gradient(closest-side, var(--color-accent-soft) 70%, transparent); }
+@utility grid-cols-new-drawing {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  @media (max-width: 1023px) { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+}
+@utility max-h-popover-list { max-height: min(60dvh, 440px); }
+@utility h-crop-stage { height: min(300px, 40dvh); @media (min-width: 768px) { height: 360px; } @media (min-width: 1024px) { height: 400px; } }
 
 /* Base UI 在 CSPProvider disableStyleElements 下不再注入 <style>，隐藏滚动条的规则由这里静态提供。 */
 .base-ui-disable-scrollbar { scrollbar-width: none; }
