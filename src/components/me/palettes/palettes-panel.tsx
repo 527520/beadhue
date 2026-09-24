@@ -1,19 +1,21 @@
 'use client';
 
-import { ArrowLeft, Check, CircleAlert, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, CircleAlert, Copy, FileUp, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { LIMITS } from '@/lib/appInfo';
 import { getBuiltinPalette, isBuiltinPaletteId, listBuiltinPalettes, type BuiltinPaletteId } from '@/lib/palettes';
+import { parseCustomPaletteImport, type CustomPaletteImportResult } from '@/lib/palettes/customImport';
+import type { CustomPaletteColor } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Field, FormAlert } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { Input, Textarea } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
@@ -47,16 +49,76 @@ function SectionHead({ id, title, children }: { id: string; title: string; child
   );
 }
 
+/** 粘贴或从文件读取颜色列表；解析失败整批不导入，逐行列出原因。 */
+function ImportColorsDialog({ existing, onClose, onImported }: { existing: readonly CustomPaletteColor[]; onClose: () => void; onImported: (result: Extract<CustomPaletteImportResult, { ok: true }>) => void }) {
+  const [text, setText] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const run = (value: string) => {
+    const result = parseCustomPaletteImport(value, { existingColors: existing });
+    if (result.ok) onImported(result);
+    else setErrors(result.errors);
+  };
+  const readFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const value = await file.text();
+      setText(value);
+      run(value);
+    } catch {
+      setErrors([s.importReadFailed]);
+    }
+  };
+  const shown = errors.slice(0, 5);
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>{s.importTitle}</DialogTitle>
+        </DialogHeader>
+        <DialogBody className="grid gap-3">
+          <Field
+            label={s.importLabel}
+            hint={s.importHint}
+            error={shown.length ? <span className="whitespace-pre-line">{[...shown, ...(errors.length > shown.length ? [s.importMore(errors.length - shown.length)] : [])].join('\n')}</span> : null}
+          >
+            <Textarea autoFocus rows={6} value={text} spellCheck={false} placeholder={s.importPlaceholder} className="font-mono text-body-sm" onChange={(event) => { setText(event.target.value); setErrors([]); }} />
+          </Field>
+          <div>
+            <input ref={fileRef} type="file" accept=".csv,.txt,text/csv,text/plain" hidden aria-label={s.importFile} onChange={(event) => { void readFile(event.target.files?.[0]); event.target.value = ''; }} />
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>{icon(FileUp)}{s.importFile}</Button>
+          </div>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>{zhCN.me.cancel}</Button>
+          <Button variant="primary" disabled={!text.trim()} onClick={() => run(text)}>{s.importSubmit}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | null; onClose: () => void; onSaved: (record: PaletteRecord) => void }) {
+  const toast = useToast();
   const [name, setName] = useState(record?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [baseId, setBaseId] = useState<BuiltinPaletteId>(FALLBACK_DEFAULT_PALETTE);
   const [selected, setSelected] = useState<Set<string>>(() => new Set((record?.colors ?? []).map(colorKey)));
+  const [imported, setImported] = useState<CustomPaletteColor[]>([]);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const base = useMemo(() => builtinSwatches(baseId).filter((swatch) => !swatch.displayOnly && swatch.code), [baseId]);
   const baseKeys = useMemo(() => new Set(base.map(colorKey)), [base]);
-  const extras = useMemo(() => customSwatches((record?.colors ?? []).filter((color) => !baseKeys.has(colorKey(color)))), [record, baseKeys]);
+  const extras = useMemo(() => {
+    const seen = new Set<string>();
+    return customSwatches([...(record?.colors ?? []), ...imported].filter((color) => {
+      const key = colorKey(color);
+      if (baseKeys.has(key) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }));
+  }, [record, imported, baseKeys]);
   const baseName = listBuiltinPalettes().find((item) => item.id === baseId)?.label ?? '';
   const toggle = (swatch: Swatch) => setSelected((current) => {
     const next = new Set(current);
@@ -66,6 +128,38 @@ function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | n
     return next;
   });
   const colors = [...base, ...extras].filter((swatch) => selected.has(colorKey(swatch))).map((swatch) => ({ code: swatch.code ?? '', hex: swatch.hex }));
+  const importColors = ({ format, colors: added }: Extract<CustomPaletteImportResult, { ok: true }>) => {
+    // 逐行 HEX 没有色号：当前色板里同色的直接选中那一颗，其余按 C001 起顺延编号（避开已有色号）。
+    const byHex = new Map(base.map((swatch) => [swatch.hex.slice(0, 7).toUpperCase(), swatch]));
+    const taken = new Set([...base, ...extras].map((swatch) => (swatch.code ?? '').toUpperCase()));
+    let serial = 0;
+    const nextCode = () => {
+      for (;;) {
+        serial += 1;
+        const code = `C${String(serial).padStart(3, '0')}`;
+        if (!taken.has(code)) {
+          taken.add(code);
+          return code;
+        }
+      }
+    };
+    const fresh: CustomPaletteColor[] = [];
+    const keys: string[] = [];
+    for (const color of added) {
+      const match = format === 'hex-list' ? byHex.get(color.hex.toUpperCase()) : undefined;
+      if (match) {
+        keys.push(colorKey(match));
+        continue;
+      }
+      const next = format === 'hex-list' ? { code: nextCode(), hex: color.hex } : color;
+      fresh.push(next);
+      keys.push(colorKey(next));
+    }
+    setImported((current) => [...current, ...fresh]);
+    setSelected((current) => new Set([...current, ...keys]));
+    setImporting(false);
+    toast(s.imported(added.length));
+  };
   const save = async () => {
     if (busy) return;
     const trimmed = name.trim();
@@ -95,8 +189,9 @@ function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | n
             <Input autoFocus={!record} value={name} maxLength={LIMITS.designNameLength} autoComplete="off" onChange={(event) => { setName(event.target.value); setNameError(null); }} />
           </Field>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="min-w-0 flex-1 text-body-sm text-ink-3">{s.baseHint(baseName, base.length)}</p>
+            <p className="min-w-0 flex-1 text-body-sm text-ink-3 max-md:basis-full">{s.baseHint(baseName, base.length)}</p>
             <Select label={s.baseLabel} size="sm" value={baseId} onValueChange={(value) => { if (isBuiltinPaletteId(value)) setBaseId(value); }} options={listBuiltinPalettes().map((item) => ({ value: item.id, label: item.label }))} />
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => setImporting(true)}>{icon(FileUp)}{s.importButton}</Button>
           </div>
           <SwatchPanel
             swatches={base}
@@ -126,6 +221,7 @@ function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | n
           <Button variant="secondary" disabled={busy} onClick={onClose}>{zhCN.me.cancel}</Button>
           <Button variant="primary" loading={busy} disabled={colors.length === 0} onClick={() => void save()}>{zhCN.me.save}</Button>
         </DialogFooter>
+        {importing ? <ImportColorsDialog existing={colors} onClose={() => setImporting(false)} onImported={importColors} /> : null}
       </DialogContent>
     </Dialog>
   );

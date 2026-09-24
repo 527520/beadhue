@@ -136,7 +136,11 @@ export async function createCommunityWork(db: AnyDatabase, input: CreateRevision
 
 export async function createCommunityRevision(
   db: AnyDatabase,
-  input: CreateRevisionInput & { workId: string },
+  input: CreateRevisionInput & {
+    workId: string;
+    /** 作者这次不上传新原图、依赖沿用上一版：沿用不了时整笔回滚，不留下挡住重投的草稿。 */
+    requireInheritedOriginal?: boolean;
+  },
 ) {
   const now = input.now ?? new Date();
   return db.transaction(async (tx) => {
@@ -180,6 +184,9 @@ export async function createCommunityRevision(
     }).returning();
     // 修改再投稿默认沿用上一版原图；作者仍可在提交前替换。
     const inherited = previous ? await inheritRevisionOriginal(tx, { fromRevisionId: previous.id, toRevisionId: revision.id, workId: work.id, actorUserId: input.actor.userId, now }) : null;
+    if (input.requireInheritedOriginal && !inherited) {
+      throw new AppError('ORIGINAL_REQUIRED', '上一版的原图和这次修改对不上，请先重新选择原图再提交');
+    }
     return { ...revision, originalInherited: inherited !== null };
   });
 }

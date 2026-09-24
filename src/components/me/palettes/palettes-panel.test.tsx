@@ -84,4 +84,37 @@ describe('色板页', () => {
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')!;
     expect(JSON.parse(String(put[1]!.body))).toMatchObject({ name: '夏日水果', colors: [{ code: 'A01', hex: '#FAF4C8' }], baseRevision: 0 });
   });
+
+  it('新建色板可导入颜色：坏行整批拒绝并给行号；当前色板里有的直接选中，其余加到「其他颜色」', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body)) as { name: string; colors: unknown[] };
+        return new Response(JSON.stringify({ id: url.split('/').pop(), name: body.name, colors: body.colors, updatedAt: new Date().toISOString(), revision: 1 }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ items: [], nextCursor: null }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(provide(<PalettesPanel />));
+    await user.click(await screen.findByRole('button', { name: '新建色板' }));
+    const editor = await screen.findByRole('dialog', { name: '新建色板' });
+    await user.type(within(editor).getByLabelText('名称'), '导入测试');
+    await user.click(within(editor).getByRole('button', { name: '导入颜色…' }));
+    const importer = await screen.findByRole('dialog', { name: '导入颜色' });
+    const list = within(importer).getByLabelText('颜色列表');
+    await user.type(list, '#faf4c8{Enter}oops');
+    await user.click(within(importer).getByRole('button', { name: '导入' }));
+    expect(within(importer).getByRole('alert')).toHaveTextContent('第 2 行：颜色必须是 #RRGGBB');
+    await user.clear(list);
+    await user.type(list, '#faf4c8{Enter}#123456');
+    await user.click(within(importer).getByRole('button', { name: '导入' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '导入颜色' })).toBeNull());
+    expect(within(editor).getByText('已选 2 色')).toBeVisible();
+    expect(within(editor).getByText('其他颜色（1）')).toBeVisible();
+    expect(within(editor).getByRole('button', { name: /^C001 / })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(editor).getByRole('button', { name: '保存' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')!;
+    expect(JSON.parse(String(put[1]!.body))).toMatchObject({ name: '导入测试', colors: [{ code: 'A01', hex: '#FAF4C8' }, { code: 'C001', hex: '#123456' }] });
+  });
 });

@@ -179,8 +179,9 @@ add('me-public', 'me', { full: true, proto: { route: '#/me/public' }, impl: { ro
 add('me-likes', 'me', { proto: { route: '#/me/likes' }, impl: { route: '/me/likes' } });
 add('me-likes-empty', 'me', { who: 'moderator', note: '实现侧用版主账号（没有喜欢）', proto: { route: '#/me/likes?empty=1' }, impl: { route: '/me/likes' } });
 add('me-palettes', 'me', { tags: ['final-15'], full: true, proto: { route: '#/me/palettes' }, impl: { route: '/me/palettes' } });
-add('me-palette-view', 'me', { proto: { route: '#/me/palettes', steps: [click('[data-open-palette="mard-291"]')] }, impl: { route: '/me/palettes', steps: [click('button[aria-label^="查看「MARD（豆色绘经典"]')] } });
+add('me-palette-view', 'me', { proto: { route: '#/me/palettes', steps: [click('[data-open-palette="mard-291"]')] }, impl: { route: '/me/palettes', steps: [click('button[aria-label^="查看「MARD 豆色绘经典"]')] } });
 add('me-palette-edit', 'me', { proto: { route: '#/me/palettes', steps: [click('[data-new-palette]')] }, impl: { route: '/me/palettes', steps: [click(vis('button:has-text("新建色板")'))] } });
+add('me-palette-import', 'me', { note: '新建色板 → 导入颜色（原型无此弹窗，补回票 13 删掉的导入）', proto: { route: '#/me/palettes', steps: [click('[data-new-palette]')] }, impl: { route: '/me/palettes', steps: [click(vis('button:has-text("新建色板")')), btn('导入颜色…'), waitFor({ role: 'dialog', name: '导入颜色' }), typeIn({ label: '颜色列表' }, '#FAF4C8\n#12345'), btn('导入', { wait: 300 })] } });
 add('me-settings', 'me', { tags: ['final-16'], full: true, proto: { route: '#/me/settings' }, impl: { route: '/me/settings' } });
 add('me-settings-full', 'me', { note: '原图空间已满的设置页：实现侧造不出，只截原型', proto: { route: '#/me/settings?storage=full&section=storage' }, impl: null });
 add('me-password', 'me', { note: '修改密码弹窗的校验错误', proto: { route: '#/me/settings', steps: [click('[data-change-password]'), fill('#pw-next', 'abc'), fill('#pw-confirm', 'abcd'), click('[data-submit]')] }, impl: { route: '/me/settings', steps: [click(vis('button:has-text("修改密码")')), fill('input[autocomplete=new-password] >> nth=0', 'abc'), fill('input[autocomplete=new-password] >> nth=1', 'abcd', { optional: '只有一个新密码输入框' }), click('[role=dialog] button[type=submit]')] } });

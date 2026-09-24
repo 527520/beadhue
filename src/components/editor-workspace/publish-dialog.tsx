@@ -103,6 +103,8 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
   const [consentOriginal, setConsentOriginal] = useState(false);
   const [consentRights, setConsentRights] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 修改后重投：服务端说上一版原图沿用不了，要先重新选择原图。 */
+  const [needOriginal, setNeedOriginal] = useState(false);
   const attemptRef = useRef<{ key: string; submitKey: string; draft?: { revisionId: string; version: number }; uploaded?: boolean } | null>(null);
 
   const addTag = (raw: string) => {
@@ -153,6 +155,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
           title: trimmed,
           licenseVersion: COMMUNITY_LICENSE_VERSION,
           suggestedTags: tags,
+          ...(workId ? { inheritOriginal: !original } : {}),
         });
         attempt.draft = { revisionId: String(created.revisionId), version: Number(created.version) };
         track({ name: 'community_submission_created', properties: {} });
@@ -171,6 +174,14 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
       onSubmitted();
       onClose();
     } catch (caught) {
+      if (caught instanceof ApiError && caught.code === 'ORIGINAL_REQUIRED' && !original) {
+        // 草稿已建好才在提交时被拒：撤回它，否则换好原图回来重投会被「已有草稿」挡住。
+        const draft = attempt.draft;
+        attemptRef.current = null;
+        if (draft) await postCommunityCommand(`/api/community/revisions/${draft.revisionId}/withdraw`, randomId(), { expectedVersion: draft.version }).catch(() => undefined);
+        setNeedOriginal(true);
+        return;
+      }
       if (!attempt.draft && isDefiniteCommunityRejection(caught)) attemptRef.current = null;
       const message = caught instanceof OriginalUploadError || caught instanceof ApiError ? caught.message : t.failed;
       setError(message || t.failed);
@@ -179,7 +190,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
     }
   };
 
-  const canSubmit = (hasOriginal ? consentOriginal : Boolean(workId)) && consentRights && !busy;
+  const canSubmit = (hasOriginal ? consentOriginal : Boolean(workId) && !needOriginal) && consentRights && !busy;
   return (
     <DialogContent size="md">
       <DialogHeader>
@@ -240,7 +251,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
               <Link href="/community/copyright" target="_blank" className="justify-self-start text-caption text-accent underline-offset-2 hover:underline">{t.rules}</Link>
             </div>
           </>
-        ) : workId ? (
+        ) : workId && !needOriginal ? (
           <div className="grid gap-3">
             <Note icon={<Lock aria-hidden="true" strokeWidth={1.75} />}>{t.reviseOriginal}</Note>
             <Checkbox checked={consentRights} disabled={busy} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
@@ -248,7 +259,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
           </div>
         ) : (
           <Note tone="warning" icon={<TriangleAlert aria-hidden="true" strokeWidth={1.75} />}>
-            <p>{t.originalMissing}</p>
+            <p role={needOriginal ? 'alert' : undefined}>{needOriginal ? t.reviseNeedsOriginal : t.originalMissing}</p>
             <Button size="sm" className="mt-2" onClick={() => { onClose(); onChooseSource(); }}>
               <ImageIcon aria-hidden="true" strokeWidth={1.75} />
               {zhCN.editorWorkspace.reference.choose}

@@ -81,6 +81,20 @@ it('创建、提交及撤回重复请求只执行一次，幂等响应不保存�
   expect(store.objects.size).toBe(1);
   expect((await readOriginal(new Request(`http://localhost/api/community/revisions/${created.revisionId}/original`), params(created.revisionId))).status).toBe(404);
 });
+it('修改后重投要求沿用上一版原图而沿用不了时直接拒绝，不留下挡路的草稿', async () => {
+  const created = await (await create(request(input(), 'inherit-first'))).json();
+  // 上一版已公开但没有原图记录（例如历史数据）：没有可沿用的原图。
+  await db.update(communityRevisions).set({ status: 'published' }).where(eq(communityRevisions.id, created.revisionId));
+  const refused = await revise(request({ ...input(), inheritOriginal: true }, 'inherit-refused'), params(created.workId));
+  expect(refused.status).toBe(409);
+  expect(await refused.json()).toMatchObject({ error: { code: 'ORIGINAL_REQUIRED' } });
+  expect(await db.select().from(communityRevisions)).toHaveLength(1);
+  // 带新原图重投（不要求沿用）照常建草稿，并如实告知没有沿用。
+  const draft = await revise(request(input(), 'inherit-upload'), params(created.workId));
+  expect(draft.status).toBe(201);
+  expect(await draft.json()).toMatchObject({ status: 'draft', originalInherited: false });
+});
+
 it('版本过期、非本人设计和缺少许可都不创建作品', async () => {
   await db.update(designs).set({ revision: 2 }).where(eq(designs.id, designId));
   expect((await create(request(input()))).status).toBe(409);

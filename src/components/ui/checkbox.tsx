@@ -9,7 +9,9 @@ import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 /** 选中统一深墨。复选 18px 方框、单选 18px 圆、开关 36×22。 */
-const labelClass = 'inline-flex cursor-pointer items-center gap-2.5 text-body-sm text-ink has-data-disabled:cursor-not-allowed has-data-disabled:text-ink-4';
+const labelClass = 'inline-flex cursor-pointer items-start gap-2.5 text-body-sm text-ink has-data-disabled:cursor-not-allowed has-data-disabled:text-ink-4';
+/** 带文字时控件与首行居中对齐（行高 22、控件 18），标签折行也不跟着整段居中。 */
+const firstLine = 'mt-0.5';
 
 export interface CheckboxProps extends ComponentProps<typeof BaseCheckbox.Root> {
   children?: ReactNode;
@@ -23,6 +25,7 @@ export function Checkbox({ className, children, ...props }: CheckboxProps) {
         'grid size-4.5 shrink-0 place-items-center rounded-checkbox border-control border-line-strong bg-bg text-on-ink',
         'transition-colors duration-state focus-visible:focus-ring data-checked:border-ink data-checked:bg-ink',
         'data-disabled:border-line data-disabled:bg-bg-subtle',
+        children ? firstLine : null,
         className as string,
       )}
       {...props}
@@ -52,6 +55,7 @@ export function Radio({ className, children, ...props }: ComponentProps<typeof B
       className={cn(
         'grid size-4.5 shrink-0 place-items-center rounded-full border-control border-line-strong bg-bg',
         'transition-colors duration-state focus-visible:focus-ring data-checked:border-ink data-disabled:border-line',
+        children ? firstLine : null,
         className as string,
       )}
       {...props}
