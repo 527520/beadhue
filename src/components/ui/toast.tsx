@@ -67,7 +67,7 @@ function ToastList() {
       className={cn(toastClass, 'transition-[opacity,translate] duration-enter ease-standard data-ending-style:opacity-0 data-starting-style:translate-y-2 data-starting-style:opacity-0')}
     >
       {(toast.data as ToastData | undefined)?.icon ?? <CircleCheck aria-hidden="true" strokeWidth={1.75} />}
-      <BaseToast.Title className="py-3" />
+      <BaseToast.Title className="py-3 text-on-ink" />
       {toast.actionProps ? <BaseToast.Action className={toastActionClass} /> : null}
     </BaseToast.Root>
   ));
