@@ -238,7 +238,7 @@ test('移动工作台可切换编辑、用色与导出工具', async ({ page }, 
   await expect(page.getByRole('button', { name: '下载 PNG' })).toBeVisible();
 });
 
-for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official'] as const) {
+for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/community/copyright', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official', '/missing-beadhue'] as const) {
   test(`${route} 无 axe 严重或关键问题`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(route);

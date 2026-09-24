@@ -6,7 +6,7 @@ import { StateLink, StatePage } from '@/components/pages/state-page';
 export default function NotFound() {
   const t = zhCN.errorPages;
   return (
-    <SiteShell topbarCta="secondary">
+    <SiteShell topbarCta="secondary" tabbar={false}>
       <StatePage
         kind="lost"
         title={t.notFoundTitle}

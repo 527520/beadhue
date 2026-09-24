@@ -32,13 +32,15 @@ export function HelpSteps() {
     <div className="grid gap-6">
       <ol className="grid gap-4 sm:grid-cols-3">
         {steps.map((step, index) => (
-          <li key={step.title} className="grid min-w-0 content-start gap-3 rounded-lg border border-line p-4">
-            <div className="grid aspect-square place-items-center rounded-md bg-bg-subtle p-4">
-              <BeadImage pattern={patterns[index]} mode={ART[index].mode} alt={labels[index]} className="size-full" />
+          <li key={step.title} className="grid min-w-0 content-start gap-3 rounded-lg border border-line p-4 max-sm:grid-cols-[88px_minmax(0,1fr)] max-sm:gap-x-4">
+            <div className="grid aspect-square place-items-center self-start rounded-md bg-bg-subtle p-4 max-sm:p-2">
+              <BeadImage pattern={patterns[index]} mode={ART[index].mode} alt={labels[index]} lazy={false} className="size-full" />
             </div>
-            <p className="text-caption text-ink-3 tabular-nums">{`0${index + 1}`}</p>
-            <h3 className="-mt-2 text-title-3 text-balance text-ink">{step.title}</h3>
-            <p className="text-body-sm text-pretty text-ink-3">{step.body}</p>
+            <div className="grid min-w-0 content-start gap-1">
+              <p className="text-caption text-ink-3 tabular-nums">{`0${index + 1}`}</p>
+              <h3 className="text-title-3 text-balance text-ink">{step.title}</h3>
+              <p className="mt-1 text-body-sm text-pretty text-ink-3">{step.body}</p>
+            </div>
           </li>
         ))}
       </ol>

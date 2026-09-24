@@ -6,7 +6,7 @@ import { StateLink, StatePage } from '@/components/pages/state-page';
 export default function ShareGone() {
   const t = zhCN.pages.share;
   return (
-    <SiteShell topbarCta="secondary">
+    <SiteShell topbarCta="secondary" tabbar={false}>
       <StatePage
         kind="lost"
         title={t.goneTitle}

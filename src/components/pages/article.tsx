@@ -46,7 +46,7 @@ export function ArticlePage({ eyebrow, title, lead, toc, children }: ArticlePage
             </div>
           </nav>
         ) : null}
-        <article className={cn('min-w-0', items && 'xl:col-start-2 xl:row-start-1')}>
+        <article className={cn('min-w-0 wrap-anywhere', items && 'xl:col-start-2 xl:row-start-1')}>
           <header className="grid gap-3 border-b border-line pb-8 max-md:pb-6">
             {eyebrow ? <p className="text-caption text-ink-3">{eyebrow}</p> : null}
             <h1 className="text-title-1 text-balance text-ink">{title}</h1>
@@ -83,4 +83,5 @@ export function ArticleText({ children, className }: { children: ReactNode; clas
   return <p className={cn('text-body text-pretty text-ink-2', className)}>{children}</p>;
 }
 
-export const articleLink = 'rounded-sm text-accent underline-offset-3 hover:underline focus-visible:focus-ring';
+/** 正文里的链接必须有下划线（axe link-in-text-block），不能只靠颜色区分。 */
+export const articleLink = 'rounded-sm text-accent underline decoration-accent/40 underline-offset-3 transition-colors duration-state hover:decoration-accent focus-visible:focus-ring';

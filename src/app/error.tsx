@@ -18,7 +18,7 @@ export default function PageError({ error, retry }: { error: Error & { digest?: 
     reportClientError(error, zhCN.communityAdmin.readError.reportFallback);
   }, [error]);
   return (
-    <SiteShell topbarCta="secondary">
+    <SiteShell topbarCta="secondary" tabbar={false}>
       <StatePage
         kind="broken"
         title={t.errorTitle}
