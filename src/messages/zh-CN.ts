@@ -1715,6 +1715,17 @@ export const zhCN = {
       filters: { level: '级别', source: '来源', duration: '耗时' }, durations: { '500': '≥ 500 ms', '1000': '≥ 1 秒', '3000': '≥ 3 秒' },
       copy: '复制请求编号', exportFile: '豆色绘-运行日志.csv', emptyTitle: '没有日志记录', slowEmpty: '没有慢查询记录', ms: (n: number) => `${n} ms`,
     },
+    analytics: {
+      ranges: { '7': '近 7 天', '30': '近 30 天', '90': '近 90 天' }, rangeLabel: '统计时间范围', custom: '自定义范围',
+      kpis: { visitors: '访客', sessions: '访问次数', events: '事件数', converted: '完成转化' }, rangeNote: (start: string, end: string) => `${start} – ${end}`,
+      trend: '每日趋势', trendLabel: '每日事件数与访客数', series: { events: '事件数', visitors: '访客' },
+      funnel: '转化路径', dimension: '分类统计', filters: '筛选', apply: '查询', reset: '重置', noData: '所选时间范围内还没有数据。',
+    },
+    system: {
+      facts: { version: '应用版本', migration: '数据库迁移', errors: '24 小时 5xx', backup: '数据库备份' },
+      services: '依赖服务', moderation: '评论内容安全服务（腾讯云）', jobs: '定时任务', history: '运行历史', openLogs: '打开运行日志',
+      columns: { task: '任务', latest: '最近运行', success: '最近成功', failure: '最近失败', status: '状态', started: '开始', completed: '完成', error: '错误代码' },
+    },
     reports: {
       label: '举报列表', columns: { target: '对象', reason: '原因', details: '举报说明', status: '状态', time: '时间' },
       filters: { status: '状态', kind: '类型' }, kinds: { work: '作品', comment: '评论' },
