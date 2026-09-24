@@ -25,7 +25,7 @@
 | 09 跟拼与手机编辑器 | 进行中（09-24 15:58，主工作区，端口 3100/3101） | a363837e-3b86-4736-83ac-207580577b4c | 基于 d352c9d |
 | 10 后台 | 完成 09-24 12:06，已合并 | 8267c9b7-e49b-4f0a-bbbd-e5db5ed88e60 | 6cf9234 … 262453f（21 个）；合并 656e9b0 |
 | 11 通知 | 完成 09-24 15:4x，已合并 | 4509e2fe-b099-4182-95d5-c7880803ee2b | 5925e44 … 1bee41e（5 个）；合并 d352c9d |
-| 12 分享与静态页 | 进行中（09-24 16:03 重启，工作树 `~/.codex/worktrees/beadhue-r15-12b/doupu`，分支 `feat/beadhue-r15-12-pages-v2`，端口 3150/3151） | 558f1e92-ec0c-487d-abe4-1049c4e938b0 | 基于 d352c9d。旧代理 8293cc7e 用错模型，作废：旧分支 `feat/beadhue-r15-12-pages`（a3cdd70 + 未提交改动）不合并 |
+| 12 分享与静态页 | 进行中（09-24 15:25，工作树 `~/.codex/worktrees/beadhue-r15-12/doupu`，分支 `feat/beadhue-r15-12-pages`，端口 3140/3141） | 8293cc7e-586f-4d37-8578-58cecbc193eb | 基于 05 的 665ddf8；已提交 a3cdd70。16:03 误开的重启版 558f1e92（`beadhue-r15-12b`，分支 `feat/beadhue-r15-12-pages-v2`）作废，停掉后删工作树与分支 |
 | 13 清理与文档 | 待办 | | |
 | 14 全量验收 | 待办 | | |
 
@@ -95,3 +95,4 @@
 - 15:52–15:58 合并：05（e8d6aa3，冲突：指南各节并存、`@source` 与 uiScanned 取并集、`beadTokens` 的 `EDITOR_CANVAS` 与 `VIEWER_TOKENS` 两段都保留）、06（9a49124，zh-CN 保留 `editorWorkspace` 并追加 `me` 段）、11（d352c9d）。typecheck / lint / brand:check 通过；全量 vitest 在票 05 的旧工作树里（切到 d352c9d 的分离头）后台运行。
 - 15:58 在主工作区派发 09（a363837e，基于 d352c9d）。16:00 监视器重启（PID 98113，终端 48157，序号从 #1 起）。
 - 16:00 用户指出票 12 的代理用错了模型，要求停掉重启。从编排侧打断两次都被拒（「Sub-agent is currently running」），需要用户在界面上手动停止 8293cc7e。16:03 用当前模型（inherit）重新派发 12（558f1e92），新工作树 `beadhue-r15-12b`，基于 d352c9d，端口 3150/3151；旧分支与工作树保留不动、不合并。
+- 16:14 核实模型：状态库 `composerData` 里 8293cc7e 与主会话都是 `claude-opus-5-5`（子代理参数为 300k 上下文、medium 推理），工具调用编号全是 `toolu_`（Anthropic 格式）；用户确认模型正确。改为：8293cc7e 继续做 12，558f1e92 作废（它只在 `evidence/impl/12/` 建了一个 `dev.sh`）。两者从编排侧都打断不了，558f1e92 需用户在界面上停止，停掉后删除 `beadhue-r15-12b` 工作树与 `feat/beadhue-r15-12-pages-v2` 分支。注意：状态库的 `status: aborted` 可能是旧状态（8293cc7e 显示 aborted 但 Task 仍报运行中）；16:16 误把 8293cc7e 正在跑的全量单测（PID 1960）当成孤儿进程结束了，它需要重跑。
