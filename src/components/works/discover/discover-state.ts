@@ -2,6 +2,7 @@
  * 发现页的地址状态（D66：`/?q=&cat=&sort=&size=&colors=&spec=&since=`），服务端页面与客户端组件共用。
  * 缺省值（cat=all、sort=rec）不写进地址；游标不属于状态，只在「加载更多」时临时拼上。
  */
+import type { TagIcon } from '@/lib/community/tagIcon';
 import { zhCN } from '@/messages/zh-CN';
 
 const t = zhCN.discover;
@@ -98,4 +99,19 @@ export function activeChips(state: DiscoverState): ActiveChip[] {
   if (state.author) chips.push({ key: 'author', label: t.authorFilter(state.author) });
   if (state.palette) chips.push({ key: 'palette', label: t.paletteFilter(state.palette) });
   return chips;
+}
+
+/** 类目条上的一个类目：id 为地址里的 cat 值（all / featured / 标签名）。 */
+export interface DiscoverCategory {
+  id: string;
+  label: string;
+  /** 标签图标（服务端已解析）；null 用默认豆粒。 */
+  icon: TagIcon | null;
+}
+
+export function builtinCategories(): DiscoverCategory[] {
+  return [
+    { id: 'all', label: t.all, icon: null },
+    { id: 'featured', label: t.featured, icon: null },
+  ];
 }

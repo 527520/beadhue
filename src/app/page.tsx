@@ -6,8 +6,7 @@ import { countPublicCommunityWorks, listPopularCommunityTags, listPublicCommunit
 import { parseTagIcon } from '@/lib/community/tagIcon';
 import { AppError } from '@/lib/errors';
 import { zhCN } from '@/messages/zh-CN';
-import { builtinCategories, type DiscoverCategory } from '@/components/works/discover/category-bar';
-import { discoverSearchParams, readDiscoverState } from '@/components/works/discover/discover-state';
+import { builtinCategories, discoverSearchParams, readDiscoverState, type DiscoverCategory } from '@/components/works/discover/discover-state';
 import { DiscoverView } from '@/components/works/discover/discover-view';
 
 const t = zhCN.discover;

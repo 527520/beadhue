@@ -6,7 +6,7 @@ import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { BEADS, MOTIF_IDS, motifTitle, rasterize } from '../prototype/motifs.js';
 
-const BASE = 'http://127.0.0.1:3100';
+const BASE = process.env.BASE ?? 'http://127.0.0.1:3100';
 const OUT = resolve('.scratch/ui-rebuild/evidence/current');
 const PASSWORD = 'E2e-pass-123!';
 const ONLY = new Set(process.argv.slice(2));

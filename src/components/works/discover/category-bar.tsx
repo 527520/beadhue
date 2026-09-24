@@ -2,30 +2,14 @@
 
 import Link from 'next/link';
 import { useMemo, type ReactNode } from 'react';
-import type { TagIcon } from '@/lib/community/tagIcon';
 import { cn } from '@/lib/cn';
 import { ALL_CATEGORY_ICON, FEATURED_CATEGORY_ICON, tagIconPattern } from '@/lib/render/tagIconArt';
 import { zhCN } from '@/messages/zh-CN';
 import { PixelIcon } from '@/components/ui/bead-image';
 import { useScrolled } from '@/components/shell/use-scrolled';
-import { discoverHref, type DiscoverState } from './discover-state';
+import { discoverHref, type DiscoverCategory, type DiscoverState } from './discover-state';
 
 const t = zhCN.discover;
-
-/** 类目条上的一个类目：id 为地址里的 cat 值（all / featured / 标签名）。 */
-export interface DiscoverCategory {
-  id: string;
-  label: string;
-  /** 标签图标（服务端已解析）；null 用默认豆粒。 */
-  icon: TagIcon | null;
-}
-
-export function builtinCategories(): DiscoverCategory[] {
-  return [
-    { id: 'all', label: t.all, icon: null },
-    { id: 'featured', label: t.featured, icon: null },
-  ];
-}
 
 function categoryPattern(category: DiscoverCategory) {
   if (category.id === 'all') return ALL_CATEGORY_ICON;
