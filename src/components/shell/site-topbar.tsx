@@ -7,6 +7,7 @@ import { useAuthStatus } from '@/components/account/useAuthStatus';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useMediaQuery } from '@/components/ui/use-media-query';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { AccountMenu } from './account-menu';
 import { Brand } from './brand';
 import { useLoginDialog } from './login-dialog';
@@ -71,6 +72,7 @@ export function SiteTopbar({ nav, cta, account, query }: { nav: SiteNav; cta: To
         </nav>
         <SearchBox key={query} query={query} className="ml-2 min-w-0 flex-[0_1_440px] max-lg:ml-0 max-lg:flex-auto" />
         <div className="ml-auto flex items-center gap-2">
+          {account ? <NotificationBell /> : null}
           {cta ? <UploadButton variant={cta} /> : null}
           {account ? <AccountSlot /> : null}
         </div>

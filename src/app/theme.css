@@ -37,6 +37,7 @@
 @source "../lib/render/poster.ts";
 @source "../components/me";
 @source "./palettes";
+@source "../components/notifications";
 
 @theme {
   --color-*: initial;

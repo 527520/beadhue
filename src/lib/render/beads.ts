@@ -255,7 +255,7 @@ export function keysPattern(rows: readonly string[], palette: Readonly<Record<st
 }
 
 /** 空状态插画：空钉板上散落几颗豆（原型 ui.js ART）。 */
-export type EmptyArtKind = 'empty' | 'search' | 'designs' | 'comments' | 'likes';
+export type EmptyArtKind = 'empty' | 'search' | 'designs' | 'comments' | 'likes' | 'notifications';
 
 const ART: Record<EmptyArtKind, string> = {
   search: '.........|..KKK....|.K...K...|.K...K...|.K...K...|..KKKK...|......K..|.......K.|.........',
@@ -263,6 +263,7 @@ const ART: Record<EmptyArtKind, string> = {
   comments: '.........|.BBBBBBB.|.B.....B.|.B.Y.Y.B.|.B.....B.|.BBBBBBB.|..BB.....|..B......|.........',
   likes: '.........|..RR.RR..|.RRRRRRR.|.RRRRRRR.|..RRRRR..|...RRR...|....R....|.........|.........',
   empty: '.........|.........|.........|...Y.....|.........|.....R...|..B......|.........|.........',
+  notifications: '.........|....O....|...YYY...|..YYYYY..|..YYYYY..|..YYYYY..|.OOOOOOO.|....K....|.........',
 };
 
 export function emptyArtPattern(kind: EmptyArtKind = 'empty'): Pattern {

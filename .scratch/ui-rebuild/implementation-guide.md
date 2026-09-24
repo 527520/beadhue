@@ -121,3 +121,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **设计缩略图**：已同步设计直接用 `designThumbnailUrl(id, revision)`（`lib/community/thumbnailUrl.ts`，浏览器可用），不必改同步层结构；未同步用本机图纸 `<BeadImage>`。
 - **E2E 选择器**：设计卡 `[data-slot="design-card"]`，整卡链接名「打开「名称」（状态）」；公开作品卡 `[data-slot="own-work-card"]`；更多操作按钮名「「名称」的更多操作」，菜单项为 `menuitem`。
 - **新接口**：`GET /api/me/sessions`、`POST /api/me/sessions/revoke-others`、`GET /api/originals/designs`（示例见票 06 Comments）。
+
+## 后续票须知（票 11 完成后补充）
+
+- **通知铃铛**：`NotificationBell`（`src/components/notifications/`）由外壳自己放：桌面顶栏「上传图片」左侧（`account` 为真且已登录），发现页手机顶栏（`mobileTop="discover"`，`sheet` 变体开底部面板）。游客不渲染铃铛，发现页手机顶栏的铃铛位回落为「登录」。页面不要再自己放铃铛；别的手机顶栏要铃铛时用 `<NotificationBell sheet />`。
+- **未读数**：`useUnreadCount(email)` 是页面级共享仓库（两个铃铛只发一次请求），挂载（每页各自渲染 SiteShell，换页即重新挂载；不用 `usePathname`，免得各测试的 `next/navigation` mock 都要补）、窗口聚焦 / 标签页回到前台时刷新，3 秒内的重复触发合并；别处改了通知状态可调 `setUnreadCount(n)` / `refreshUnreadCount({ force: true })`。单测连续渲染要 `resetUnreadStore()`（和 `resetAuthStatusCache()` 一起）。
+- **跳转约定**：通过 / 恢复 → `/community/<workId>`；新评论 → `/community/<workId>#comment-<commentId>`（与后台举报「公开页」同一锚点）；未通过 / 下架 → `/me/public`。**票 05 重做详情时评论项保留 `id="comment-<id>"`，评论是客户端加载的话，加载完按地址里的 hash 滚到那一条**；票 06 的 `/me/public` 要能看到驳回原因。
+- **空状态插画**：`EmptyState kind="notifications"`（豆粒金铃铛，`beads.ts` 的 ART）。
+- **E2E**：铃铛可访问名称是「通知」或「有 N 条未读通知」，徽标 `[data-slot="unread-badge"]`，面板是名为「通知」的 dialog；打开即把露出的条目标为已读，断言未读数要在打开之前做。用例 `tests/e2e/19-notifications.spec.ts` 经接口投稿、后台界面审核。
+- **开发服务**：隔离工作树里长时间运行的 `next dev` 偶尔会对已存在的 API 路由返回 HTML 404（路由表过期），重启即恢复；看到「路由存在却 404、响应是 HTML」先重启再排查。

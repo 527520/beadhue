@@ -12,7 +12,7 @@ import { IconButton, iconButtonVariants } from '@/components/ui/icon-button';
 import { avatarIdOf, displayNameOf } from './account-menu';
 import { Brand } from './brand';
 import { useLoginDialog } from './login-dialog';
-import { NotificationBell } from './notification-bell';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { ShellLink } from './shell-context';
 import { useScrolled } from './use-scrolled';
 
@@ -46,8 +46,9 @@ function MobileAccount() {
   return <Button size="sm" variant="outline" data-login="" onClick={() => login?.open()}>{t.login}</Button>;
 }
 
-/** 默认手机顶栏：标志 + 搜索 + 头像 / 登录；发现页为标志 + 搜索 + 通知铃铛。 */
+/** 默认手机顶栏：标志 + 搜索 + 头像 / 登录；发现页为标志 + 搜索 + 通知铃铛（游客仍是「登录」）。 */
 export function DefaultMobileTop({ variant, account, onSearch }: { variant: 'default' | 'discover'; account: boolean; onSearch: () => void }) {
+  const signedIn = useAuthStatus().kind === 'user';
   return (
     <>
       <Brand compact />
@@ -55,7 +56,7 @@ export function DefaultMobileTop({ variant, account, onSearch }: { variant: 'def
       <IconButton label={t.search.open} tooltip={false} data-mobile-search="" onClick={onSearch}>
         <Search aria-hidden="true" strokeWidth={1.75} />
       </IconButton>
-      {variant === 'discover' ? <NotificationBell /> : account ? <MobileAccount /> : null}
+      {variant === 'discover' && signedIn ? <NotificationBell sheet /> : account ? <MobileAccount /> : null}
     </>
   );
 }
