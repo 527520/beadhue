@@ -26,7 +26,7 @@
 | 10 后台 | 完成 09-24 12:06，已合并 | 8267c9b7-e49b-4f0a-bbbd-e5db5ed88e60 | 6cf9234 … 262453f（21 个）；合并 656e9b0 |
 | 11 通知 | 完成 09-24 15:4x，已合并 | 4509e2fe-b099-4182-95d5-c7880803ee2b | 5925e44 … 1bee41e（5 个）；合并 d352c9d |
 | 12 分享与静态页 | 完成 09-24 16:44，已合并（0907e18） | 8293cc7e-586f-4d37-8578-58cecbc193eb | a3cdd70、4813a68、c3b359d；集成分支 `integrate/r15-12`（ef3ab0f = 主分支 5b0dc6a + 12，冲突已解，typecheck / lint / brand 通过）。重启版 558f1e92 作废，停掉后删 `beadhue-r15-12b` 与 `feat/beadhue-r15-12-pages-v2` |
-| 13 清理与文档 | 拆成两段。13a 文档进行中（09-24 17:25，工作树 `~/.codex/worktrees/beadhue-r15-13/doupu`，分支 `feat/beadhue-r15-13-docs`，只改 CONTEXT / ADR-0027 / CHANGELOG）；13b 清理（删旧样式 / 组件 / 依赖、护栏扩展、README 截图、spec Completion）进行中（09-24 17:33，主工作区） | 13a：8edbd2c9-0fef-4256-aa13-b19953fb7653；13b：fca364f1-6bc1-4c04-bf49-4dcbfd4ac1bb | 13a 基于 ef3ab0f；13b 基于 0907e18 |
+| 13 清理与文档 | 完成 09-24 19:10。13a 文档（合并 530edc9）；13b 清理（主工作区 c12776d … 9780d94，10 个提交，`src` 净删约 2.6 万行） | 13a：8edbd2c9-0fef-4256-aa13-b19953fb7653；13b：fca364f1-6bc1-4c04-bf49-4dcbfd4ac1bb | 13a 基于 ef3ab0f；13b 基于 0907e18 |
 | 14 全量验收 | 待办 | | |
 
 ## 派发顺序
@@ -116,3 +116,5 @@
 进度：
 - 18:21 13b 因 NGHTTP2 中断（已提交 c12776d … 7f342fd：删旧组件与旧后台模块、后台裁剪 / 草稿编辑 / 投稿页 / 403 改新组件、删旧同意横幅与旧 PDF 按钮、删 `beadhue.css` 与旧组件类并合成单一 Tailwind 构建、移除 `react-aria-components` 与 `@internationalized/date`、README 截图），18:23 续跑并追加：D72 深链（`/community/submit` 跳 `/app?id=&publish=1`，含 `workId` 重投）、单位「颗」替换剩余「粒」，然后跑全量门禁与写记录。
 - 18:3x 派发对照工具代理 c8415b50（只写 `tools/audit-seed.mjs`、`audit-matrix.mjs`、`audit-compose.py` 与 `evidence/audit/`，不改应用代码、不提交；调试服务在票 05 的旧工作树起 3160）。
+- 19:05 13b 完成：门禁全绿（`npm test` 206 文件 1547 通过，旧组件测试随组件删除；性能 7/7；build 成功且产物无旧类名；Chromium E2E 75 通过、7 失败均为 17-visual-refinement 已知项）。追加项完成：D72 深链（68b7b6c，编辑器公开弹窗补上 `workId` 重投）、「颗」（4587a12）。遗留给终审：自定义色板「导入」入口随旧编辑器删除（功能倒退，需按新界面补回）、重投时服务端要求新原图只显示错误、`Checkbox` 多行标签未顶对齐。
+- 19:08 合并 13a 文档（530edc9）；CONTEXT「待定」更新、票 13 与 spec 进度（b88930c）。下一步：对照工具完成后，在主分支最终代码上跑终审走查。
