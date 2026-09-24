@@ -173,6 +173,14 @@ function fakeDecode(_bytes: Uint8Array, _type: unknown): Promise<DecodeResult> {
   return Promise.resolve({ ok: true, image: fakeImage });
 }
 
+/** 8×6 横图：重新裁剪选「1:1」得到 6×6 取景（与整图不同），整图生成 100×75。 */
+const wideImage: DecodedImage = { data: new Uint8ClampedArray(8 * 6 * 4).fill(255), width: 8, height: 6, mime: 'image/png' };
+function wideDecode(): Promise<DecodeResult> {
+  return Promise.resolve({ ok: true, image: wideImage });
+}
+/** 重新裁剪弹窗（取景舞台 + 比例 + 确认并更新）。 */
+const cropDialog = (): HTMLElement => screen.getByRole('dialog', { name: zhCN.crop.title });
+
 /** UI flow adapter: generation algorithms and their performance are covered by
  * engine oracle/performance projects, so Workbench tests keep only the async
  * task contract and deterministic dimensions. */
@@ -298,6 +306,8 @@ async function chooseMenu(trigger: string, item: string | RegExp): Promise<void>
   fireEvent.click(await screen.findByRole('menuitem', { name: item }));
 }
 const canvas = (): HTMLElement => screen.getByLabelText(/^图纸编辑画布/);
+/** 跟拼面板的「已拼 N / M 颗」（数字在 <b> / <span> 里，按整段文字匹配）。 */
+const stitchCount = (pattern: RegExp) => screen.findByText((_, element) => element?.tagName === 'P' && pattern.test(element.textContent ?? ''));
 const ARTKAL = 'builtin:pcd:artkal-c-197-official@178dafbc9e77d3de556550dbd058270200129186';
 const expectPalette = (value: string) => expect(paletteButton()).toHaveAccessibleName(`色板：${paletteName(value)}`);
 const expectSpec = (label: string) => expect(specButton()).toHaveAccessibleName(`${tw.adjust.spec}：${label}`);
@@ -333,6 +343,14 @@ async function renderRestored(storage: FakeStorage): Promise<HTMLInputElement> {
   window.history.replaceState(null, '', '/app?id=id-last');
   render(<Workbench storage={storage} />);
   return (await screen.findAllByDisplayValue('初始'))[0] as HTMLInputElement;
+}
+
+/** 手机宽度下恢复一份设计：手机顶栏没有设计名输入框，等底部工具栏出现即可。 */
+async function renderRestoredMobile(storage: FakeStorage): Promise<void> {
+  storage.designs.set('id-last', record('id-last', savedProject('初始', '2026-08-14T12:00:00.000Z')));
+  window.history.replaceState(null, '', '/app?id=id-last');
+  render(<Workbench storage={storage} />);
+  await screen.findByRole('toolbar', { name: tw.tools });
 }
 
 function mockMobileViewport(): () => void {
@@ -399,19 +417,23 @@ describe('Workbench 全流程', () => {
     expect(screen.queryByText(zhCN.workbench.cropSourceMissing)).not.toBeInTheDocument();
   });
 
-  it('手机画布不会在配额错误时显示绿色已保存', async () => {
+  it('手机编辑器在配额错误时不显示已保存', async () => {
     const restoreViewport = mockMobileViewport();
     try {
       const storage = new FakeStorage();
-      const name = await renderRestored(storage);
+      await renderRestoredMobile(storage);
       storage.quotaExceeded = true;
-      fireEvent.change(name, { target: { value: '尚未写入' } });
-      fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
+      // 手机顶栏没有设计名输入框：在「…」面板里重命名。
+      fireEvent.click(screen.getByRole('button', { name: tw.more }));
+      fireEvent.click(await screen.findByRole('button', { name: tw.mobile.rename }));
+      fireEvent.change(await screen.findByRole('textbox', { name: tw.nameLabel }), { target: { value: '尚未写入' } });
+      fireEvent.click(screen.getByRole('button', { name: tw.mobile.renameSave }));
+      saveNow();
       await screen.findByText(zhCN.workbench.quotaError);
-      const header = document.querySelector('.workspace-project-bar')!;
-      // 手机仍是旧工作台布局（票 09 重做）：手动保存沿用旧按钮。
-      expect(header).toHaveTextContent(zhCN.workbench.saveFailed);
-      expect(header).not.toHaveTextContent(zhCN.workbench.saved);
+      fireEvent.click(screen.getByRole('button', { name: tw.more }));
+      const sheet = await screen.findByRole('dialog', { name: '尚未写入' });
+      expect(within(sheet).getByText(tw.save.failed)).toBeVisible();
+      expect(within(sheet).queryByText(tw.save.saved)).toBeNull();
     } finally { restoreViewport(); }
   });
 
@@ -478,17 +500,17 @@ describe('Workbench 全流程', () => {
       void instantGenerate(input, progress).promise.then((output) => { cropOutput = output; });
       return { promise: new Promise((resolve, reject) => { finish = resolve; fail = reject; }), cancel: vi.fn() };
     };
-    render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={generate} />);
+    render(<Workbench storage={storage} decodeFn={wideDecode} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(7500));
     saveNow();
     await screen.findByText(tw.save.localOnly);
     const id = [...storage.designs.keys()][0];
     const original = storage.sources.get(id)!;
     fireEvent.click(recropButton());
-    fireEvent.keyDown(screen.getByLabelText(zhCN.crop.ariaCropCanvas), { key: 'ArrowLeft', altKey: true });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.confirm }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.create.ratioSquare }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
     await waitFor(() => expect(calls).toBe(2));
     expect(storage.sources.get(id)).toEqual(original);
     if (ending === 'failure') await act(async () => fail(new Error('failed')));
@@ -496,17 +518,17 @@ describe('Workbench 全流程', () => {
     else {
       await act(async () => finish(cropOutput));
       saveNow();
-      await waitFor(() => expect(storage.sources.get(id)?.width).toBe(7));
+      await waitFor(() => expect(storage.sources.get(id)?.width).toBe(6));
       fireEvent.click(undoButton());
       fireEvent.click(recropButton());
-      expect(screen.getByText(zhCN.crop.sizeLabel(8, 8))).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: zhCN.crop.cancel }));
+      expect(within(cropDialog()).getByText(zhCN.create.cropStatus(8, 6))).toBeInTheDocument();
+      fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     }
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(7500));
     saveNow();
     await screen.findByText(tw.save.localOnly);
     expect(storage.sources.get(id)).toEqual(original);
-    expect(JSON.parse(storage.designs.get(id)!.projectJson).pattern.height).toBe(100);
+    expect(JSON.parse(storage.designs.get(id)!.projectJson).pattern.height).toBe(75);
   });
   it('首次自动生成失败释放原图并返回可重新选图的状态', async () => {
     const decoder: ImageDecoder = {
@@ -554,11 +576,11 @@ describe('Workbench 全流程', () => {
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(beads(10000));
     fireEvent.click(recropButton());
-    const apply = screen.getByRole('button', { name: zhCN.crop.confirm });
+    const apply = within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm });
     fireEvent.click(apply);
     fireEvent.click(apply);
     expect(decoder.region).toHaveBeenCalledTimes(2);
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.cancel }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     await act(async () => resolveCrop({ ok: true, image: fakeImage }));
     expect(generate).toHaveBeenCalledOnce();
     expect(screen.getByText(beads(10000))).toBeInTheDocument();
@@ -573,14 +595,15 @@ describe('Workbench 全流程', () => {
     await screen.findByText(beads(10000));
     paintCenter();
     fireEvent.click(recropButton());
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.confirm }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
     const warning = await screen.findByRole('dialog', { name: zhCN.workbench.confirmRegenerateTitle });
     fireEvent.click(within(warning).getByRole('button', { name: zhCN.common.cancel }));
     expect(generate).toHaveBeenCalledOnce();
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.cancel }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: zhCN.workbench.confirmRegenerateTitle })).toBeNull());
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     expect(screen.getByText(beads(10000))).toBeInTheDocument();
     fireEvent.click(recropButton());
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.confirm }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
     await waitFor(() => expect(undoButton()).toBeEnabled(), { timeout: 5_000 });
     expect(generate).toHaveBeenCalledTimes(2);
@@ -601,12 +624,13 @@ describe('Workbench 全流程', () => {
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await screen.findByText(beads(10000));
     fireEvent.click(recropButton());
-    expect(screen.getByLabelText(zhCN.crop.ariaCropCanvas)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.cancel }));
+    expect(cropDialog()).toBeInTheDocument();
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     expect(screen.getByText(beads(10000))).toBeInTheDocument();
     expect(decoder.region).toHaveBeenCalledOnce();
     fireEvent.click(recropButton());
-    fireEvent.click(screen.getByRole('button', { name: zhCN.crop.useWholeImage }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.create.ratioOriginal }));
+    fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
     await screen.findByText(beads(10000));
     expect(decoder.load).toHaveBeenCalledOnce();
     expect(decoder.region).toHaveBeenCalledTimes(2);
@@ -782,8 +806,8 @@ describe('Workbench 全流程', () => {
     expect(vi.mocked(decoder.clear).mock.calls.length).toBe(clears);
     expect(recropButton()).toBeEnabled();
     fireEvent.click(recropButton());
-    expect(screen.getByLabelText(zhCN.crop.ariaCropCanvas)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button',{name:zhCN.crop.cancel}));
+    expect(cropDialog()).toBeInTheDocument();
+    fireEvent.click(within(cropDialog()).getByRole('button',{name:zhCN.crop.cancel}));
     expect(widthField()).not.toBeDisabled();
     saveNow();
     await screen.findByText(tw.save.localOnly);
@@ -1106,7 +1130,7 @@ describe('Workbench 本地保存', () => {
 
     chooseSourceFile();
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
-    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.useWholeImage}));
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.confirm}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
 
     await waitFor(() => expect(widthField()).toBeEnabled());
@@ -1132,7 +1156,7 @@ describe('Workbench 本地保存', () => {
 
     chooseSourceFile();
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
-    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.useWholeImage}));
+    fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.confirm}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
 
@@ -1152,9 +1176,9 @@ describe('Workbench 本地保存', () => {
     const nameInput = await renderRestored(storage);
     expect(nameInput).toBeTruthy();
 
-    // 切到跟拼页签，整行标记已拼
+    // 切到跟拼，整行标记已拼
     fireEvent.click(modeButton(tw.modeStitch));
-    const markRow = await screen.findByRole('button', { name: zhCN.stitch.markRowDone });
+    const markRow = await screen.findByRole('button', { name: tw.stitch.complete });
     fireEvent.click(markRow);
 
     // 串行 latest 队列会异步落盘
@@ -1167,10 +1191,7 @@ describe('Workbench 本地保存', () => {
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('初始');
     fireEvent.click(modeButton(tw.modeStitch));
-    await waitFor(() => {
-      const status = screen.getByText(/^已拼 \d+ \/ \d+ 粒/);
-      expect(status.textContent).not.toMatch(/^已拼 0 \//);
-    });
+    expect(await stitchCount(/^已拼 1 \/ 1 颗/)).toBeTruthy();
   });
 
   it('图纸尺寸变了就重置跟拼进度，不把「已拼」错位到新格子上（G-1）', async () => {
@@ -1189,7 +1210,7 @@ describe('Workbench 本地保存', () => {
     await screen.findByDisplayValue('尺寸变化');
     fireEvent.click(modeButton(tw.modeStitch));
     // 旧进度被丢弃 → 已拼 0
-    await waitFor(() => expect(screen.getByText(/已拼 0 \//)).toBeTruthy());
+    expect(await stitchCount(/^已拼 0 \/ 1 颗/)).toBeTruthy();
   });
 
   it('同尺寸换色板不重读存储，也不覆盖页面内最新跟拼进度', async () => {
@@ -1200,8 +1221,8 @@ describe('Workbench 本地保存', () => {
     const readsAfterRestore = readProgress.mock.calls.length;
 
     fireEvent.click(modeButton(tw.modeStitch));
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.stitch.markRowDone }));
-    await screen.findByText(/^已拼 1 \/ 1 粒/);
+    fireEvent.click(await screen.findByRole('button', { name: tw.stitch.complete }));
+    await stitchCount(/^已拼 1 \/ 1 颗/);
 
     // 换色板在编辑模式的颜色面板里；回到跟拼后进度还在。
     fireEvent.click(modeButton(tw.modeEdit));
@@ -1211,7 +1232,7 @@ describe('Workbench 本地保存', () => {
 
     expect(readProgress).toHaveBeenCalledTimes(readsAfterRestore);
     fireEvent.click(modeButton(tw.modeStitch));
-    expect(await screen.findByText(/^已拼 1 \/ 1 粒/)).toBeTruthy();
+    expect(await stitchCount(/^已拼 1 \/ 1 颗/)).toBeTruthy();
   });
 
   it('跟拼进度串行写入且只保留等待期间的最新快照', async () => {
@@ -1219,9 +1240,9 @@ describe('Workbench 本地保存', () => {
     await renderRestored(storage);
     fireEvent.click(modeButton(tw.modeStitch));
 
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.stitch.markRowDone }));
+    fireEvent.click(await screen.findByRole('button', { name: tw.stitch.complete }));
     await waitFor(() => expect(storage.writes).toHaveLength(1));
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.stitch.markRowUndone }));
+    fireEvent.click(await screen.findByRole('button', { name: tw.stitch.undoComplete }));
 
     // 第一笔还在途时，第二个状态只进入 latest 槽，不会并发写库。
     expect(storage.writes).toHaveLength(1);
@@ -1240,10 +1261,10 @@ describe('Workbench 本地保存', () => {
     await renderRestored(storage);
     fireEvent.click(modeButton(tw.modeStitch));
     storage.quotaExceeded = true;
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.stitch.markRowDone }));
+    fireEvent.click(await screen.findByRole('button', { name: tw.stitch.complete }));
 
     await screen.findByText(zhCN.workbench.stitchSaveFailed);
-    expect(screen.getByText(/^已拼 1 \/ 1 粒/)).toBeTruthy();
+    expect(await stitchCount(/^已拼 1 \/ 1 颗/)).toBeTruthy();
     expect(storage.progress.has('id-last')).toBe(false);
 
     storage.quotaExceeded = false;
@@ -1257,7 +1278,7 @@ describe('Workbench 本地保存', () => {
     await renderRestored(storage);
     fireEvent.click(modeButton(tw.modeStitch));
     storage.quotaExceeded = true;
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.stitch.markRowDone }));
+    fireEvent.click(await screen.findByRole('button', { name: tw.stitch.complete }));
     await screen.findByText(zhCN.workbench.stitchSaveFailed);
 
     storage.quotaExceeded = false;
@@ -1526,26 +1547,36 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   });
 });
 
-describe('Workbench B 移动工作区', () => {
-  it('跟拼和编辑共用内联工作台，系统返回恢复预览并保持路由', async () => {
-    const restoreViewport=mockMobileViewport();
-    window.history.replaceState(null,'','/app');
+describe('Workbench 手机编辑器（票 09）', () => {
+  it('手机与桌面是同一个编辑器：底部工具栏、跟拼底栏、「…」面板里清空进度要确认', async () => {
+    const restoreViewport = mockMobileViewport();
     try {
-      await renderRestored(new FakeStorage());
-      expect(screen.getByRole('tab',{name:zhCN.workbench.editTab})).toHaveAttribute('aria-selected','true');
-      expect(screen.queryByRole('dialog')).toBeNull();
-      fireEvent.click(screen.getByRole('tab',{name:zhCN.stitch.tab}));
-      await screen.findByRole('button',{name:zhCN.stitch.markRowDone});
-      expect(window.history.state).toBeTruthy();
-      act(()=>window.dispatchEvent(new PopStateEvent('popstate',{state:null})));
-      await waitFor(()=>expect(screen.getByRole('tab',{name:zhCN.workbench.previewTab})).toHaveAttribute('aria-selected','true'));
+      const storage = new FakeStorage();
+      await renderRestoredMobile(storage);
+      // 手机没有旧工作台的「预览」页签，也没有桌面顶栏的设计名。
+      expect(screen.queryByRole('tab', { name: zhCN.workbench.previewTab })).toBeNull();
+      expect(screen.queryByRole('textbox', { name: tw.nameLabel })).toBeNull();
+      expect(within(screen.getByRole('toolbar', { name: tw.tools })).getByRole('button', { name: tw.tool.brush })).toHaveAttribute('aria-pressed', 'true');
+
+      fireEvent.click(modeButton(tw.modeStitch));
+      // 手机跟拼默认浏览：拖动与轻点都不写进度（D39）。
+      expect(within(screen.getByRole('group', { name: tw.stitch.gesture })).getByRole('button', { name: tw.stitch.browse })).toHaveAttribute('aria-pressed', 'true');
+      fireEvent.click(await screen.findByRole('button', { name: tw.stitch.complete }));
+      await waitFor(() => expect(storage.progress.has('id-last')).toBe(true));
+      expect([...storage.progress.get('id-last')!.done].some(Boolean)).toBe(true);
+      expect(screen.getByRole('button', { name: tw.stitch.undoCompleteShort })).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: tw.undo }));
+      await waitFor(() => expect([...storage.progress.get('id-last')!.done].some(Boolean)).toBe(false));
+      fireEvent.click(screen.getByRole('button', { name: tw.redo }));
+
+      fireEvent.click(screen.getByRole('button', { name: tw.more }));
+      const sheet = await screen.findByRole('dialog', { name: '初始' });
+      fireEvent.click(within(sheet).getByRole('button', { name: tw.stitch.clear }));
+      const confirm = await screen.findByRole('dialog', { name: tw.stitch.clearTitle });
+      fireEvent.click(within(confirm).getByRole('button', { name: tw.stitch.clearOk }));
+      await waitFor(() => expect([...storage.progress.get('id-last')!.done].some(Boolean)).toBe(false));
       expect(window.location.pathname).toBe('/app');
-      fireEvent.click(screen.getByRole('tab',{name:zhCN.workbench.editTab}));
-      const back=vi.spyOn(window.history,'back').mockImplementation(()=>undefined);
-      fireEvent.click(screen.getByRole('button',{name:'返回预览'}));
-      expect(back).toHaveBeenCalledOnce(); back.mockRestore();
-      expect(screen.getByRole('tab',{name:zhCN.workbench.previewTab})).toHaveAttribute('aria-selected','true');
-    } finally {restoreViewport();cleanup();}
+    } finally { restoreViewport(); }
   });
 });
 
