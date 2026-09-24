@@ -1715,6 +1715,14 @@ export const zhCN = {
       filters: { level: '级别', source: '来源', duration: '耗时' }, durations: { '500': '≥ 500 ms', '1000': '≥ 1 秒', '3000': '≥ 3 秒' },
       copy: '复制请求编号', exportFile: '豆色绘-运行日志.csv', emptyTitle: '没有日志记录', slowEmpty: '没有慢查询记录', ms: (n: number) => `${n} ms`,
     },
+    batches: {
+      label: '批次列表', create: '新建批次', back: '返回批次列表', studio: '批量生成官方作品', continue: '继续处理',
+      columns: { batch: '批次', count: '数量', progress: '进度', status: '状态', created: '创建时间' },
+      name: (date: string) => `批次 ${date}`, countValue: (n: number) => `${n} 张`, progress: (done: number, total: number) => `${done} / ${total}`,
+      drawer: { status: '状态', id: '批次编号', created: '创建时间', saved: '已保存', failed: '失败', drafts: '草稿预览', noDrafts: '这个批次还没有保存的草稿。', draftStatus: { draft: '待发布', pending_review: '待审', published: '已发布', withdrawn: '已撤回' } as Record<string, string> },
+      published: '已发布', emptyTitle: '还没有官方批次', emptyText: '点「新建批次」选择图片，在本机生成官方草稿，核对后统一发布。',
+      preview: (title: string) => `${title} 的图纸预览`, dropReplace: '重新选图', percent: (n: number) => `${n}%`,
+    },
     analytics: {
       ranges: { '7': '近 7 天', '30': '近 30 天', '90': '近 90 天' }, rangeLabel: '统计时间范围', custom: '自定义范围',
       kpis: { visitors: '访客', sessions: '访问次数', events: '事件数', converted: '完成转化' }, rangeNote: (start: string, end: string) => `${start} – ${end}`,
