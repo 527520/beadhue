@@ -104,3 +104,11 @@
 - 17:2x 09 完成（0becbef … 6104f60）：所有宽度不再渲染旧工作台，重新裁剪换成新取景组件；列出给 13 的可删清单（后台仍用旧 `CropDialog`、`PixelEditorCanvas`、`canvas/*`、`PatternPreview`、`OriginalUploadStatus`）。留给 14：17-visual-refinement 7 条、18-workbench 第 4 条、04 删除跨设备收敛的旧失败，03 大图长任务冷启动偶发 259ms。
 - 17:31 `integrate/r15-12` 合入主分支（0907e18，只有指南一处冲突，两节并存）；typecheck / lint / brand 通过；全量 vitest 在票 05 的旧工作树（分离头 0907e18）后台运行。17:33 在主工作区派发 13b（fca364f1），不碰 CONTEXT / ADR / CHANGELOG。
 - 17:3x 13a 完成（`feat/beadhue-r15-13-docs`：7ef3b63 CONTEXT、9924c06 ADR-0027、bb0fce3 CHANGELOG），等 13b 结束后再合入主分支（避免在 13b 工作时动主工作区）。13a 发现两处缺口，13b 结束后续跑它追加处理：① D72 深链——`/community/submit` 仍渲染旧 `CommunitySubmitForm`，应改为跳到 `/app?id=<designId>&publish=1`（编辑器侧票 08 已支持；带 `workId` 的「修改后重投」要一并考虑）并删除旧表单；② `zh-CN.ts` 还有 13 处「粒」（D71 统一为「颗」）。CONTEXT「待定」里的 R15 条目在 13b / 14 后更新状态。
+- 17:45 用户要求：13 完成后、14 之前或期间，由编排代理**亲自**对全系统所有页面与组件做 UI/UX 检查并与原型逐一比对、修正。原因：子代理实际按 medium 推理强度运行（状态库 `composerData` 可见：子代理 300k / medium，主会话 1m / max），又频繁中断续跑，质量可能下降。做法见下方「R15 终审走查」。
+
+## R15 终审走查（编排代理亲自做，13 完成后开始）
+
+1. **对照矩阵**：把各票的截图脚本（`tools/shoot-*.mjs`）合成一个 `tools/audit-matrix.mjs`，对原型（4180）与实现取同一状态、同一宽度（1440 / 1024 / 768 / 390 / 350）截图，存 `evidence/audit/<状态>-<宽度>-{proto,impl}.png`；`tools/audit-compose.py` 拼成左右对照图（带标签）。覆盖 `prototype-final` 的 22 屏、`evidence/prototype/ce-*` 的编辑器状态、我的 / 后台各子页；原型没有的页面（分享页、静态页、404 / 错误页、通知、后台其余模块）按设计语言审。
+2. **逐张审**：编排代理逐张看对照图，把差异记进 `.scratch/ui-rebuild/audit-r15.md`（级别：P0 布局错乱 / 功能不可用，P1 与原型明显不一致，P2 细节打磨；写明页面、宽度、组件文件、应改成什么）。同时检查交互状态（悬停、焦点、禁用、加载、空、错误）、文案（单位「颗」、动词一致）、键盘与读屏。
+3. **修正**：编排代理自己改；量大且机械的修正才交子代理，但给出逐条的精确修改说明，改完由编排代理复查截图。
+4. 修完再跑票 14 的全量门禁（三浏览器 E2E、生产构建、性能、axe），结果写 `verification.md`。
