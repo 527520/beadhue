@@ -1,7 +1,6 @@
 /**
- * R15 设计令牌护栏（spec 质量门禁 5）：新组件与新页面只用 theme.css 里的令牌。
- * 禁止十六进制 / rgb 色值字面量、Tailwind 调色板颜色，以及任意字号 / 圆角 / 阴影写法。
- * 后续各票新建的页面目录登记到 SCANNED（同时登记到 src/app/theme.css 的 @source）。
+ * R15 设计令牌护栏（spec 质量门禁 5）：全部页面与组件只用 theme.css 里的令牌。
+ * 禁止十六进制 / rgb 色值字面量、Tailwind 调色板颜色、任意字号 / 圆角 / 阴影写法，以及已删除的旧样式类名。
  */
 import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -9,7 +8,7 @@ import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 
-import { SCANNED } from './uiScanned';
+import { SCANNED, UNSCANNED } from './uiScanned';
 
 export { SCANNED };
 
@@ -29,11 +28,24 @@ function collect(path: string, out: string[]): string[] {
 
 const files = SCANNED.flatMap((path) => collect(path, []))
   .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.(ts|tsx)$/.test(file))
-  .map((file) => relative(ROOT, join(ROOT, file)));
+  .map((file) => relative(ROOT, join(ROOT, file)))
+  .filter((file) => !UNSCANNED.some((path) => file.startsWith(path)));
 
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
+
+/**
+ * 已删除的旧样式类（beadhue.css / 旧 globals.css 组件层）与旧 @theme 令牌工具类（新主题里不存在，写了也不生效）。
+ */
+const OLD_CLASS = new RegExp('^(?:[a-z0-9-]+:)*(?:' + [
+  'btn-[a-z-]+', 'beadhue-(?:ui|workbench|canvas|crop)[a-z-]*', 'workspace-[a-z-]+', 'community-(?:card|page|narrow|empty|filters|grid|form|license)[a-z-]*',
+  'admin-(?:shell|panel|card|form|page|nav|table|proof|command|queue|reason)[a-z-]*', 'modal-(?:panel|backdrop|title|copy|actions|form)',
+  'notice(?:-[a-z]+)?', 'card-surface', 'info-card', 'link-(?:soft|action)', 'page-title', 'studio-eyebrow', 'input-(?:field|compact)', 'field-input',
+  'sync-box', 'site-header', 'skip-link',
+  '(?:text|bg|border|ring|from|to|via|decoration|outline|fill|stroke)-(?:ink-(?:soft|muted)|primary(?:-[a-z]+)?|lilac(?:-[a-z]+)?|cream(?:-[a-z]+)?|honey|hairline(?:-strong)?|surface(?:-[a-z]+)?)(?:/\\d+)?',
+  'text-(?:xs|sm|base|lg|[2-9]?xl)', 'rounded-(?:2xl|3xl)', 'shadow-(?:soft|card|primary|[1-3])', 'font-display', 'ease-(?:gentle|spring|out)',
+].join('|') + ')$');
 
 const RULES: Array<[string, RegExp]> = [
   ['十六进制色值', /#[0-9a-fA-F]{3,8}\b(?![-\w])/g],
@@ -69,16 +81,30 @@ describe('R15 设计令牌护栏', () => {
     expect('text-title-1 rounded-lg shadow-float bg-accent href="#kit-cards"'.match(RULES[0][1])).toBeNull();
   });
 
-  it('新代码不依赖旧组件目录与旧样式类', () => {
-    const bad = files.filter((file) => /legacy-ui|['"`\s](?:btn-primary|btn-outline|btn-quiet|beadhue-ui)['"`\s]/.test(readFileSync(join(ROOT, file), 'utf8')));
+  it('不再出现旧组件目录与旧样式类名（票 13 已删除 beadhue.css 与旧组件类）', () => {
+    const bad: string[] = [];
+    for (const file of files) {
+      const source = stripComments(readFileSync(join(ROOT, file), 'utf8'));
+      if (/legacy-ui|LegacyScope/.test(source)) bad.push(`${file}: 旧组件`);
+      const tokens = (source.match(/(["'`])(?:(?!\1)[^\n])*\1/g) ?? []).flatMap((literal) => literal.slice(1, -1).split(/[\s{}$]+/));
+      const hits = tokens.filter((token) => OLD_CLASS.test(token));
+      if (hits.length) bad.push(`${file}: ${[...new Set(hits)].join(', ')}`);
+    }
     expect(bad).toEqual([]);
   });
 
-  it('theme.css 不引入 preflight，工具类在最后一层 ui', () => {
+  it('旧类名规则能拦住旧写法、放过新令牌', () => {
+    for (const old of ['btn-primary', 'btn-sm', 'beadhue-ui', 'workspace-page', 'modal-panel', 'notice-danger', 'link-soft', 'text-ink-soft', 'bg-primary-soft', 'border-lilac/40', 'text-sm', 'text-2xl', 'rounded-2xl', 'shadow-soft', 'bg-cream']) expect(OLD_CLASS.test(old), old).toBe(true);
+    for (const current of ['text-body-sm', 'text-ink-3', 'bg-accent-soft', 'rounded-lg', 'shadow-float', 'text-caption', 'bg-bg-subtle']) expect(OLD_CLASS.test(current), current).toBe(false);
+  });
+
+  it('globals.css 是唯一样式入口，theme.css 扫描全部页面与组件', () => {
     const css = readFileSync(join(ROOT, 'src/app/theme.css'), 'utf8');
-    expect(css).toMatch(/@layer theme, base, components, utilities, ui;/);
-    expect(css).toMatch(/@import "tailwindcss\/utilities\.css" layer\(ui\)/);
-    expect(css).not.toMatch(/@import "tailwindcss(?:\/preflight(?:\.css)?)?"/);
-    for (const path of SCANNED) expect(css, `theme.css 需要 @source 登记 ${path}`).toContain(`@source "${path.replace(/^src\/(app\/)?/, (_, app) => (app ? './' : '../'))}"`);
+    const layout = readFileSync(join(ROOT, 'src/app/layout.tsx'), 'utf8');
+    expect(layout).toMatch(/import '\.\/globals\.css';/);
+    expect(layout).not.toMatch(/import '[^']*(?:beadhue|theme)\.css'/);
+    expect(existsSync(join(ROOT, 'src/app/beadhue.css'))).toBe(false);
+    expect(css).toMatch(/@import "tailwindcss\/utilities\.css" layer\(utilities\) source\(none\)/);
+    for (const path of SCANNED) expect(css, `theme.css 需要 @source 登记 ${path}`).toContain(`@source "${path.replace(/^src\//, '../')}"`);
   });
 });

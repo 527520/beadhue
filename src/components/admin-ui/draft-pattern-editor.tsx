@@ -49,47 +49,49 @@ export function DraftPatternEditor({ pattern, palette, boardSize, onPatternChang
   }, [doc, onTap]);
 
   return (
-    <div className="grid h-140 max-h-dialog min-h-96 grid-cols-[auto_minmax(0,1fr)_18rem] overflow-hidden rounded-lg border border-line max-lg:h-auto max-lg:max-h-none max-lg:grid-cols-[auto_minmax(0,1fr)] max-lg:grid-rows-[24rem_auto]">
-      <ToolRail tool={doc.tool} onTool={doc.setTool} brushSize={doc.brushSize} onBrushSize={doc.setBrushSize} color={doc.color} showColor={false} onShowColors={() => undefined} />
-      <div className="editor-stage-dots @container relative min-h-0 overflow-hidden bg-bg-subtle">
-        <EditorCanvas
-          doc={doc}
-          viewport={viewport}
-          showGrid={showGrid}
-          showSeams={showSeams}
-          showCodes={showCodes}
-          boardSize={boardSize}
-          highlight={highlight && stats.some((item) => sameColor({ hex: item.hex, code: item.code }, highlight)) ? highlight : null}
-          locked={false}
-          spaceHeld={false}
-          cursor={cursor}
-          onCursorChange={setCursor}
-          onHover={() => undefined}
-          onTap={onTap}
-          onApply={onApply}
-        />
-        <div className="absolute top-3 left-3 z-10 flex gap-0.5 rounded-full bg-bg p-1 shadow-float ring-1 ring-line">
-          <IconButton size="sm" label={t.undo} tooltip={`${t.undo} ${modKey()}Z`} disabled={!doc.canUndo} onClick={doc.undo}>
-            <Undo2 aria-hidden="true" strokeWidth={1.75} />
-          </IconButton>
-          <IconButton size="sm" label={t.redo} tooltip={`${t.redo} ${shiftModKey()}Z`} disabled={!doc.canRedo} onClick={doc.redo}>
-            <Redo2 aria-hidden="true" strokeWidth={1.75} />
-          </IconButton>
+    <div className="grid gap-3 lg:h-140 lg:max-h-[62dvh] lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="flex min-h-0 overflow-hidden rounded-lg border border-line max-lg:h-96">
+        <ToolRail tool={doc.tool} onTool={doc.setTool} brushSize={doc.brushSize} onBrushSize={doc.setBrushSize} color={doc.color} showColor={false} onShowColors={() => undefined} />
+        <div className="editor-stage-dots @container relative min-h-0 min-w-0 flex-1 overflow-hidden bg-bg-subtle">
+          <EditorCanvas
+            doc={doc}
+            viewport={viewport}
+            showGrid={showGrid}
+            showSeams={showSeams}
+            showCodes={showCodes}
+            boardSize={boardSize}
+            highlight={highlight && stats.some((item) => sameColor({ hex: item.hex, code: item.code }, highlight)) ? highlight : null}
+            locked={false}
+            spaceHeld={false}
+            cursor={cursor}
+            onCursorChange={setCursor}
+            onHover={() => undefined}
+            onTap={onTap}
+            onApply={onApply}
+          />
+          <div className="absolute top-3 left-3 z-10 flex gap-0.5 rounded-full bg-bg p-1 shadow-float ring-1 ring-line">
+            <IconButton size="sm" label={t.undo} tooltip={`${t.undo} ${modKey()}Z`} disabled={!doc.canUndo} onClick={doc.undo}>
+              <Undo2 aria-hidden="true" strokeWidth={1.75} />
+            </IconButton>
+            <IconButton size="sm" label={t.redo} tooltip={`${t.redo} ${shiftModKey()}Z`} disabled={!doc.canRedo} onClick={doc.redo}>
+              <Redo2 aria-hidden="true" strokeWidth={1.75} />
+            </IconButton>
+          </div>
+          <ZoomPill
+            percent={zoomPercent(viewport.camera.cellPx)}
+            cellPx={viewport.camera.cellPx}
+            onZoomIn={() => viewport.zoomStep(1)}
+            onZoomOut={() => viewport.zoomStep(-1)}
+            onFit={viewport.fit}
+            onPreset={viewport.zoomToPercent}
+            showGrid={showGrid}
+            showSeams={showSeams}
+            showCodes={showCodes}
+            onToggle={(key) => (key === 'grid' ? setShowGrid((value) => !value) : key === 'seams' ? setShowSeams((value) => !value) : setShowCodes((value) => !value))}
+          />
         </div>
-        <ZoomPill
-          percent={zoomPercent(viewport.camera.cellPx)}
-          cellPx={viewport.camera.cellPx}
-          onZoomIn={() => viewport.zoomStep(1)}
-          onZoomOut={() => viewport.zoomStep(-1)}
-          onFit={viewport.fit}
-          onPreset={viewport.zoomToPercent}
-          showGrid={showGrid}
-          showSeams={showSeams}
-          showCodes={showCodes}
-          onToggle={(key) => (key === 'grid' ? setShowGrid((value) => !value) : key === 'seams' ? setShowSeams((value) => !value) : setShowCodes((value) => !value))}
-        />
       </div>
-      <aside aria-label={t.panel} className="min-h-0 overflow-y-auto border-l border-line bg-bg max-lg:col-span-2 max-lg:max-h-80 max-lg:border-t max-lg:border-l-0">
+      <aside aria-label={t.panel} className="min-h-0 overflow-y-auto overscroll-contain rounded-lg border border-line bg-bg px-4 max-lg:max-h-80">
         <ColorsPanel
           color={doc.color}
           onColor={doc.setColor}

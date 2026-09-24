@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
-import './globals.css';
-import './beadhue.css';
 import '../../public/fonts/ui/fonts.css';
-import './theme.css';
+import './globals.css';
 import { CSPProvider } from '@base-ui/react/csp-provider';
 import { zhCN } from '@/messages/zh-CN';
 import { APP_NAME } from '@/lib/appInfo';
+import { THEME_COLOR } from '@/lib/render/beadTokens';
 import ClientReadyMarker from '@/components/system/ClientReadyMarker';
 import { AppProviders } from '@/components/shell/app-providers';
 import { SkipLink } from '@/components/shell/skip-link';
@@ -42,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#FFFFFF',
+  themeColor: THEME_COLOR,
   width: 'device-width',
   initialScale: 1,
   // 手机底栏与浮卡按安全区让位（env(safe-area-inset-bottom)）。
@@ -57,15 +56,10 @@ export default async function RootLayout({
   // Reading request headers opts the entire tree into dynamic rendering. This
   // is required for Next.js to attach the request-scoped CSP nonce to its RSC
   // and framework scripts.
-  // 同一个 nonce 还要给 React Aria 用：它的 usePress / usePreventScroll 会在
-  // 客户端注入静态 <style>，并去文档里找 meta[name="csp-nonce"] 取 nonce
-  // （react-aria/dist/private/utils/getMetaValue.js）。少了这个 meta，生产
-  // style-src-elem 的 nonce 策略会拦掉这两条规则（E2E 08 生产冒烟可捕获）。
   const nonce = (await headers()).get('x-nonce');
 
   return (
     <html lang="zh-CN">
-      <head>{nonce ? <meta name="csp-nonce" content={nonce} /> : null}</head>
       <body className="antialiased">
         {/* 跳到主内容（D-9）：各页面的 <main> 都带 id="main"；R15 起由站点外壳提供。 */}
         <SkipLink />

@@ -62,3 +62,6 @@ export const BEAD_SAMPLE_COLORS = {
   T: '#D49A5E',
   C: '#8FDCC8',
 } as const;
+
+/** 浏览器主题色（viewport themeColor，--bg）。 */
+export const THEME_COLOR = '#ffffff';

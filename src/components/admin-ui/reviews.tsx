@@ -173,11 +173,12 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
           {items.map((entry, position) => (
             <li key={entry.revisionId} className="max-lg:shrink-0 max-lg:basis-60 max-lg:snap-start max-md:basis-55">
               <button type="button" aria-current={position === index ? 'true' : undefined} onClick={() => select(position)}
-                className="flex w-full items-center gap-3 rounded-md p-2.5 text-left transition-colors duration-state hover:bg-bg-subtle focus-visible:focus-ring aria-[current=true]:bg-bg-muted aria-[current=true]:inset-ring-1 aria-[current=true]:inset-ring-line-strong">
+                className="group flex w-full items-center gap-3 rounded-md p-2.5 text-left transition-colors duration-state hover:bg-bg-subtle focus-visible:focus-ring aria-[current=true]:bg-bg-muted aria-[current=true]:inset-ring-1 aria-[current=true]:inset-ring-line-strong">
                 <Thumb revisionId={entry.revisionId} size="lg" />
                 <span className="grid min-w-0 flex-1 gap-0.5">
                   <span className="flex min-w-0 items-center gap-2 text-body-sm font-semibold text-ink"><span className="truncate">{entry.title}</span>{entry.revisionNumber > 1 ? <Badge>R{entry.revisionNumber}</Badge> : null}</span>
-                  <span className="truncate text-caption font-normal text-ink-3">{entry.author.displayName} · {fmtAgo(entry.submittedAt)}</span>
+                  {/* 选中底（bg-muted）上 ink-3 只有 4.43:1，次要文字加深到 ink-2。 */}
+                  <span className="truncate text-caption font-normal text-ink-3 group-aria-[current=true]:text-ink-2">{entry.author.displayName} · {fmtAgo(entry.submittedAt)}</span>
                 </span>
               </button>
             </li>

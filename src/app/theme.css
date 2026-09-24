@@ -1,52 +1,18 @@
 /*
-  R15 设计令牌与新组件的 Tailwind 构建（D64 / D65）。数值取自 .scratch/ui-rebuild/prototype/styles/tokens.css
+  R15 设计令牌与全站 Tailwind 构建（D64 / D65），由 globals.css 引入。数值取自 .scratch/ui-rebuild/prototype/styles/tokens.css
   与 components.css，名称与原型一致：bg-accent、text-ink-3、rounded-lg、shadow-float、h-control-md …
-
-  过渡期（票 01–12）与旧 globals.css 的 Tailwind 构建并存，约束如下，票 13 删除旧样式时一并收回：
-  1. 工具类放进最后一层 `ui`，无论样式表先后都压过旧构建里同名的工具类（如旧的 rounded-lg = 8px）。
-  2. 不引入 preflight（旧构建已有，重复引入会改写旧输入框字号）。
-  3. 与旧 :root 变量同名的令牌（ink、状态色、圆角、字体…）写在 `@theme inline`：工具类内联数值、
-     不输出变量，避免被旧样式或 `:root:has(.beadhue-ui)` 改写。其余令牌照常输出变量。
-  4. 新界面的基础排版只作用于 `[data-ui]` 区域（新页面根与弹层根），不影响旧页面。
+  新界面的基础排版作用于 [data-ui] 区域（页面根与各弹层根）。
 */
-@layer theme, base, components, utilities, ui;
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(ui) source(none);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
 
-/* 只扫描新界面目录；后续票新建的页面目录要在这里登记（与 tests/unit/uiGuardrails.test.ts 的目录清单同步）。 */
-@source "../components/ui";
-@source "../components/shell";
-@source "../components/auth";
-@source "../components/works";
-@source "../components/create";
-@source "./me";
-@source "./u";
-@source "./login";
-@source "./register";
-@source "./forgot-password";
-@source "./reset-password";
-@source "./verify-email";
-@source "./dev";
-@source "../components/admin-ui";
-@source "./admin";
+/* 扫描全部页面与组件（tests/unit/uiScanned.ts 同一份清单，护栏会核对）。 */
+@source "../app";
+@source "../components";
 @source "../lib/render/beads.ts";
 @source "../lib/render/tagIconArt.ts";
-@source "./page.tsx";
-@source "../components/editor-workspace";
 @source "../lib/render/viewer.ts";
 @source "../lib/render/poster.ts";
-@source "../components/me";
-@source "./palettes";
-@source "../components/notifications";
-@source "../components/pages";
-@source "./s";
-@source "./help";
-@source "./about";
-@source "./privacy";
-@source "./community/rules";
-@source "./community/copyright";
-@source "./not-found.tsx";
-@source "./error.tsx";
 
 @theme {
   --color-*: initial;
@@ -202,10 +168,8 @@
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
-}
 
-/* 与旧样式同名的令牌：内联，不输出 :root 变量（见文件头第 3 条）。 */
-@theme inline {
+  /* 墨色、状态色、字体、圆角与默认过渡 */
   --spacing: 0.25rem;
   --color-ink: #1c1c1e;
   --color-success: #17804a;
