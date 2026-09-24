@@ -129,28 +129,34 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
 
 test('无补充说明的举报仍显示图纸或评论内容和定位入口', async ({ page }) => {
   await login(page, 'e2e-moderator@example.com', '/admin/reports');
-  const workCase = page.locator('.review-queue button', { hasText: '作品 / 其他' }).first();
-  await workCase.click();
-  await expect(page.getByText('被举报对象编号')).toBeVisible();
-  await expect(page.locator('.report-material h3')).toHaveText('E2E 已公开作品');
-  await expect(page.locator('.report-material canvas').first()).toBeVisible();
-  await expect(page.getByRole('link', { name: '公开页' })).toBeVisible();
-  await page.locator('.review-queue button', { hasText: '评论 / 其他' }).first().click();
-  await expect(page.locator('.report-material')).toContainText('E2E 被举报评论');
-  await expect(page.getByRole('link', { name: '公开页' })).toHaveAttribute('href', /#comment-/);
-  await expect(page.getByRole('button', { name: '受理', exact: true })).toBeDisabled();
+  const open = async (text: string) => {
+    await page.locator('tbody tr').filter({ hasText: text }).first().locator('[data-open]').click();
+    return page.getByRole('dialog', { name: '举报 · 其他' });
+  };
+  let drawer = await open('作品 / 其他');
+  await expect(drawer.getByText('被举报对象编号')).toBeVisible();
+  await expect(drawer.getByText('E2E 已公开作品', { exact: true })).toBeVisible();
+  await expect(drawer.locator('canvas').first()).toBeVisible();
+  await expect(drawer.getByRole('link', { name: '公开页' })).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
+  drawer = await open('评论 / 其他');
+  await expect(drawer).toContainText('E2E 被举报评论');
+  await expect(drawer.getByRole('link', { name: '公开页' })).toHaveAttribute('href', /#comment-/);
 });
 
 test('moderator 只能进入治理模块，管理员模块不出现在导航', async ({ page }, testInfo) => {
   await login(page, 'e2e-moderator@example.com', '/admin/reviews');
-  await expect(page.getByRole('heading', { name: '作品审核' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '作品审核', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: '匿名分析' })).toHaveCount(0);
   if (testInfo.project.name === 'chromium') {
-    await expect(page.getByText('E2E 待审修改版').first()).toBeVisible();
-    await page.getByText('E2E 待审修改版').first().click();
-    await page.getByLabel('审核理由').fill('E2E 人工审核通过修改版');
-    await page.getByRole('button', { name: '批准发布' }).click();
-    await expect(page.getByText('暂无等待审核的投稿。')).toBeVisible();
+    await page.getByRole('button', { name: /E2E 待审修改版/ }).first().click();
+    const checklist = page.getByRole('group', { name: '原创与许可核对' });
+    for (const box of await checklist.getByRole('checkbox').all()) await box.click();
+    await page.getByRole('button', { name: '通过并发布' }).click();
+    const dialog = page.getByRole('dialog', { name: /通过并发布「/ });
+    await dialog.getByLabel('审核理由').fill('E2E 人工审核通过修改版');
+    await dialog.getByRole('button', { name: '通过并发布' }).click();
+    await expect(page.getByText('审核队列已清空')).toBeVisible();
   }
   await page.goto('/admin/users');
   await expect(page.getByRole('heading', { name: '这里需要更高权限' })).toBeVisible();
@@ -158,19 +164,16 @@ test('moderator 只能进入治理模块，管理员模块不出现在导航', a
 
 test('admin 可读取人员、审计和系统证据；规则页已退役', async ({ page }) => {
   await login(page, 'e2e-admin@example.com', '/admin/users');
-  await expect(page.getByRole('heading', { name: '人员管理' })).toBeVisible();
-  // 账号列表默认每页 10 条（admin-round-3 06）：先搜自己，夹具才一定在第一页。
-  await page.getByLabel('搜索账号').fill('E2E Admin');
-  await page.getByRole('button', { name: '查询', exact: true }).click();
-  await expect(page.getByText('E2E Admin').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: '人员管理', level: 1 })).toBeVisible();
+  await page.getByRole('searchbox', { name: '搜索用户名、邮箱或编号' }).fill('E2E Admin');
+  await expect(page.locator('tbody tr').filter({ hasText: 'E2E Admin' }).first()).toBeVisible();
   await expect(page.getByText('e2e-admin@example.com')).toHaveCount(0);
-  // API 侧同样带 q：默认分页下「最近 10 个账号」不含最早创建的夹具账号。
   const people = await page.evaluate(async () => (await fetch(`/api/admin/users?q=${encodeURIComponent('E2E Admin')}`)).json());
   expect(people.items.find((item: { username: string }) => item.username === 'E2E Admin')).toMatchObject({ maskedEmail: 'e***n@example.com' });
   expect(JSON.stringify(people)).not.toContain('e2e-admin@example.com');
   expect((await page.request.get('/admin/rules')).status()).toBe(404);
   await page.goto('/admin/audit');
-  await expect(page.getByRole('heading', { name: '操作记录', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '审计记录', exact: true, level: 1 })).toBeVisible();
   await page.goto('/admin/system');
   await expect(page.getByText('未接入').first()).toBeVisible();
   await expect(page.getByText('评论内容安全服务（腾讯云）')).toBeVisible();
@@ -180,41 +183,42 @@ test('admin 可读取人员、审计和系统证据；规则页已退役', async
 test('分析后台在精确与长期聚合范围间明确切换能力', async ({ page }) => {
   await login(page, 'e2e-admin@example.com', '/admin/analytics');
   await page.goto(`/admin/analytics?start=${dateOffset(-10)}&end=${dateOffset(0)}&device=desktop&actor=user&dimension=device&funnel=communityReuse`);
-  await expect(page.getByRole('heading', { name: '使用统计' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '匿名分析', level: 1 })).toBeVisible();
   await expect(page.getByText('当前为精确统计（最近 90 天）：可查看去重访客数、组合筛选和转化路径。')).toBeVisible();
-  await expect(page.locator('select[name="device"]')).toHaveValue('desktop');
-  await expect(page.locator('select[name="actor"]')).toHaveValue('user');
-  await expect(page.locator('select[name="funnel"]')).toHaveValue('communityReuse');
-  await expect(page.getByRole('table')).toHaveCount(1);
+  await page.getByRole('button', { name: /^筛选/ }).click();
+  await expect(page.getByRole('combobox', { name: '设备类型' })).toHaveText('电脑');
+  await expect(page.getByRole('combobox', { name: '访客身份' })).toHaveText('已登录用户');
+  await expect(page.getByRole('combobox', { name: '转化路径' })).toContainText('豆社引用');
+  await page.keyboard.press('Escape');
 
   await page.goto(`/admin/analytics?start=${dateOffset(-140)}&end=${dateOffset(0)}&device=desktop&dimension=device&funnel=communityReuse`);
-  await expect(page.getByText('当前为长期趋势（按日汇总）：只提供每日总量和单一分类趋势，不显示跨日去重访客数和转化路径。')).toBeVisible();
+  await expect(page.getByText(/当前为长期趋势（按日汇总）/)).toBeVisible();
   await expect(page.getByText('长期范围不支持组合筛选，已忽略日期和事件名称以外的筛选条件。')).toBeVisible();
   await expect(page.getByText('转化路径只能在最近 90 天的精确统计范围内查看。')).toBeVisible();
 });
 
 test('官方批次允许单项失败、保留成功草稿并只发布勾选项', async ({ page }) => {
   await login(page, 'e2e-admin@example.com', '/admin/batches');
-  await page.locator('input[type="file"]').setInputFiles([
+  await page.getByRole('button', { name: '新建批次' }).click();
+  await page.getByLabel('选择图片', { exact: true }).setInputFiles([
     { name: 'photo-gradient-64.png', mimeType: 'image/png', buffer: readFileSync(BATCH_PHOTO) },
     { name: 'second-photo.png', mimeType: 'image/png', buffer: readFileSync(BATCH_PHOTO) },
     { name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not-an-image') },
   ]);
   await expect(page.getByText('photo-gradient-64.png')).toBeVisible();
   await expect(page.getByText('broken.png')).toBeVisible();
-  const pendingItem = page.locator('.batch-cards li', { hasText: 'photo-gradient-64.png' });
-  // 统一参数是样式化折叠（按钮 + aria-expanded），数字输入失焦提交；逐项覆盖按需展开。
+  const card = (name: string) => page.locator('[data-batch-card]', { hasText: name });
   const params = page.getByRole('button', { name: /统一生成参数 ·/ });
   if ((await params.getAttribute('aria-expanded')) !== 'true') await params.click();
-  const width = page.getByRole('textbox', { name: '目标宽度' }); await width.fill('30'); await width.blur();
+  const width = page.getByRole('textbox', { name: '目标宽度' }).first(); await width.fill('30'); await width.blur();
   await expect(params).toContainText('30 格宽');
-  await pendingItem.getByRole('button', { name: /逐项参数覆盖/ }).click();
-  const itemWidth = pendingItem.getByRole('textbox', { name: '目标宽度' }); await itemWidth.fill('24'); await itemWidth.blur();
+  await card('photo-gradient-64.png').getByRole('button', { name: /逐项参数覆盖/ }).click();
+  const itemWidth = card('photo-gradient-64.png').getByRole('textbox', { name: '目标宽度' }); await itemWidth.fill('24'); await itemWidth.blur();
 
   await page.getByRole('button', { name: '开始生成' }).click();
-  await expect(page.getByRole('status')).toContainText('生成完成，1 项失败', { timeout: 30_000 });
-  const savedItem = page.locator('.batch-cards li', { hasText: 'photo-gradient-64.png' });
-  const failedItem = page.locator('.batch-cards li', { hasText: 'broken.png' });
+  await expect(page.getByRole('status').filter({ hasText: '生成完成，1 项失败' })).toBeVisible({ timeout: 30_000 });
+  const savedItem = card('photo-gradient-64.png');
+  const failedItem = card('broken.png');
   await expect(savedItem).toContainText('已保存');
   await expect(savedItem.getByRole('img')).toBeVisible();
   await expect(failedItem).toContainText('失败');
@@ -223,27 +227,24 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   expect(completedBatch).toMatchObject({ status: 'completed', successCount: 2, failureCount: 1 });
   expect(completedBatch.completedAt).not.toBeNull();
 
-  await savedItem.getByRole('checkbox').check();
+  await savedItem.getByRole('checkbox').click();
   await page.getByRole('button', { name: /发布已勾选草稿/ }).click();
-  await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).check();
+  await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).click();
   await page.getByRole('button', { name: '确认公开' }).click();
-  await expect(page.getByRole('status')).toHaveText('已发布 1 个官方作品。');
+  await expect(page.getByRole('status').filter({ hasText: '已发布 1 个官方作品。' })).toBeVisible();
   await expect(savedItem.getByRole('checkbox')).toHaveCount(0);
-  const remaining = page.locator('.batch-cards li', { hasText: 'second-photo.png' });
-  await expect(remaining.getByRole('checkbox')).toBeEnabled();
+  await expect(card('second-photo.png').getByRole('checkbox')).toBeEnabled();
   page.once('dialog', (dialog) => dialog.accept());
   await page.reload();
-  await page.getByText('恢复已保存批次（最近 50 批）').click();
-  await page.locator('.batch-history li').filter({ hasText: completedBatch.id }).getByRole('button').click();
-  const restored = page.locator('.batch-cards li').filter({ has: page.locator('input[value="官方作品 02"]') });
-  await restored.getByRole('checkbox').check();
+  await page.locator('tbody tr').filter({ hasText: completedBatch.id.slice(0, 8) }).locator('[data-open]').click();
+  await page.getByRole('button', { name: '继续处理' }).click();
+  const restored = page.locator('[data-batch-card]').filter({ has: page.locator('input[value="官方作品 02"]') });
+  await restored.getByRole('checkbox').click();
   await page.getByRole('button', { name: /发布已勾选草稿/ }).click();
-  await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).check();
+  await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).click();
   await page.getByRole('button', { name: '确认公开' }).click();
-  await expect(page.getByRole('status')).toHaveText('已发布 1 个官方作品。');
-  await expect(page.locator('.batch-cards input[type="checkbox"]')).toHaveCount(0);
-  await page.goto('/community');
-  await expect(page.getByRole('heading', { name: '官方作品 01' }).first()).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: '已发布 1 个官方作品。' })).toBeVisible();
+  await expect(page.locator('[data-batch-card]').getByRole('checkbox')).toHaveCount(0);
   const detail = await page.evaluate(async () => {
     const list = await (await fetch('/api/community/works?q=' + encodeURIComponent('官方作品 01'))).json();
     return (await fetch(`/api/community/works/${list.items[0].id}`)).json();
@@ -251,7 +252,7 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   expect(detail.snapshot.params.targetWidth).toBe(24);
 });
 
-test('豆社与审核后台覆盖目标宽度且无严重可访问性问题', async ({ page }, testInfo) => {
+test('豆社覆盖目标宽度且无严重可访问性问题', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   const widths = [350, 390, 768, 1280, 1440] as const;
   await page.goto('/community');
@@ -267,11 +268,15 @@ test('豆社与审核后台覆盖目标宽度且无严重可访问性问题', as
   const communityAxe = await new AxeBuilder({ page }).include('main')
     .withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(communityAxe.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+});
 
+test('审核后台覆盖目标宽度且无严重可访问性问题', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium');
+  const widths = [350, 390, 768, 1280, 1440] as const;
   await login(page, 'e2e-moderator@example.com', '/admin/reviews');
   for (const width of widths) {
     await page.setViewportSize({ width, height: 844 });
-    await expect(page.getByRole('heading', { name: '作品审核' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '作品审核', level: 1 })).toBeVisible();
     const geometry = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       page: document.documentElement.scrollWidth,
