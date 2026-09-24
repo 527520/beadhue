@@ -26,6 +26,8 @@
 @source "./reset-password";
 @source "./verify-email";
 @source "./dev";
+@source "../components/admin-ui";
+@source "./admin";
 @source "../lib/render/beads.ts";
 
 @theme {
@@ -63,6 +65,9 @@
   --color-featured: #ffc53d;
   --color-info-soft: #eef3ff;
   --color-danger-hover: #b3262a;
+  /* 后台折线图第二、三条线（原型 admin/data.js：豆色 O 橘橙、B 晴空蓝；第一条用 ink） */
+  --color-chart-2: #f28b2c;
+  --color-chart-3: #3f7fd9;
   --color-scrim: rgb(18 18 20 / 42%);
 
   /* 字体 */
