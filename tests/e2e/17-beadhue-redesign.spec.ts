@@ -5,7 +5,9 @@ import {
   fillField,
   uniqueEmail,
   waitForMailLink,
+  uploadFile,
   waitHydrated,
+  waitSaved,
 } from "./helpers";
 
 async function savedProject(page: Page) {
@@ -48,102 +50,57 @@ test("B: discover → crop → neutral editor/reference → save/export → rest
   const consent = page.getByRole("button", { name: "不同意", exact: true });
   if (await consent.isVisible()) await consent.click();
   await expect(page.getByRole("navigation", { name: "类目" })).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "作品" }).getByRole("link", { name: /^查看「/ }).first(),
-  ).toBeVisible();
-  await page.screenshot({
-    path: info.outputPath("discover-desktop.png"),
-    fullPage: true,
-  });
   await page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "创作" }).click();
   await waitHydrated(page);
-  await expect(
-    page.getByRole("heading", { name: "创作一张图纸" }),
-  ).toBeVisible();
-  await page
-    .getByLabel("图片文件选择器")
-    .setInputFiles(resolve("tests/fixtures/photo-gradient-64.png"));
-  await expect(
-    page.getByRole("heading", { name: "留住你想拼的部分" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "创作一张拼豆图纸" })).toBeVisible();
+  await uploadFile(page, resolve("tests/fixtures/photo-gradient-64.png"));
+  await expect(page.getByRole("dialog", { name: "新建图纸" })).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: info.outputPath("crop-desktop.png") });
   await page.getByRole("button", { name: "生成图纸", exact: true }).click();
-  const canvas = page.getByLabel("图纸编辑画布");
+  const canvas = page.getByLabel(/^图纸编辑画布/);
   await expect(canvas).toBeVisible();
-  const camera = page.locator(".editor-canvas-viewport[data-camera]").first();
-  const reference = page.getByRole("complementary", { name: "原图参照" });
-  await expect(reference).toBeVisible();
-  await expect(reference.getByText("完整原图尚未载入。")).toHaveCount(0);
+  const camera = page.locator("[data-camera][data-viewport]").first();
   await page.getByLabel("设计名称").fill("B 原型验收");
-  await page.getByRole("button", { name: "保存", exact: true }).click();
-  await expect(
-    page.getByRole("dialog", { name: "你的设计已保存" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "继续编辑" }).click();
+  await waitSaved(page);
   const before = await savedProject(page);
   expect(before?.project.original).toBeTruthy();
   for (const width of [1440, 768, 390, 350]) {
     await page.setViewportSize({ width, height: width > 600 ? 1000 : 844 });
-    await expect
-      .poll(() =>
-        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
-      )
-      .toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    // 原图参照：桌面浮窗、手机上下分屏，都单向跟随画布的同一范围。
+    await page.getByRole("button", { name: "打开原图参照" }).click();
+    const reference = page.locator('[aria-label="原图 · 跟随画布"][data-camera]');
     await expect(reference).toBeVisible();
-    const current = await camera.getAttribute("data-camera");
-    await expect(reference).toHaveAttribute("data-camera", current!);
-    await page.getByRole("button", { name: "放大原图", exact: true }).click();
-    await expect(camera).toHaveAttribute("data-camera", current!);
-    await page.screenshot({
-      path: info.outputPath(`editor-expanded-${width}.png`),
-    });
-    await page.getByRole("button", { name: "收起原图", exact: true }).click();
+    await expect(reference).toHaveAttribute("data-camera", (await camera.getAttribute("data-camera"))!);
+    await page.screenshot({ path: info.outputPath(`editor-reference-${width}.png`) });
+    await reference.getByRole("button", { name: "关闭原图参照" }).click();
     await page.screenshot({ path: info.outputPath(`editor-${width}.png`) });
   }
-  // A pan changes the shared camera, never pattern cells.
-  const bounds = await canvas.boundingBox();
-  expect(bounds).toBeTruthy();
-  await page.mouse.move(
-    bounds!.x + bounds!.width / 2,
-    bounds!.y + bounds!.height / 2,
-  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  // 手形平移只改视图，从不写图纸。
+  await page.getByRole("button", { name: "手形", exact: true }).click();
+  const bounds = (await canvas.boundingBox())!;
+  const cameraBefore = await camera.getAttribute("data-camera");
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
   await page.mouse.down();
-  await page.mouse.move(
-    bounds!.x + bounds!.width / 2 + 25,
-    bounds!.y + bounds!.height / 2 + 20,
-  );
+  await page.mouse.move(bounds.x + bounds.width / 2 + 25, bounds.y + bounds.height / 2 + 20);
   await page.mouse.up();
-  await expect(reference).toHaveAttribute(
-    "data-camera",
-    (await camera.getAttribute("data-camera"))!,
-  );
-  expect((await savedProject(page))?.project.pattern).toEqual(
-    before?.project.pattern,
-  );
+  await expect(camera).not.toHaveAttribute("data-camera", cameraBefore!);
+  expect((await savedProject(page))?.project.pattern).toEqual(before?.project.pattern);
   await page.reload();
   await expect(canvas).toBeVisible();
   await expect(page.getByLabel("设计名称")).toHaveValue("B 原型验收");
-  expect((await savedProject(page))?.project.original).toEqual(
-    before?.project.original,
-  );
-  expect((await savedProject(page))?.project.pattern).toEqual(
-    before?.project.pattern,
-  );
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await page
-    .locator(".workspace-project-actions")
-    .getByRole("button", { name: "导出", exact: true })
-    .click();
+  expect((await savedProject(page))?.project.original).toEqual(before?.project.original);
+  expect((await savedProject(page))?.project.pattern).toEqual(before?.project.pattern);
   const download = page.waitForEvent("download");
-  await page.getByRole("button", { name: /导出项目|下载项目/ }).click();
+  await page.getByRole("button", { name: "导出", exact: true }).click();
+  await page.getByRole("menuitem", { name: /导出项目文件/ }).click();
   const exported = await download;
   expect(exported.suggestedFilename()).toBe("豆色绘-B 原型验收.json");
   const stream = await exported.createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  expect(JSON.parse(Buffer.concat(chunks).toString()).format).toBe(
-    "beadhue-project",
-  );
+  expect(JSON.parse(Buffer.concat(chunks).toString()).format).toBe("beadhue-project");
 });
 
 test("B: user pages retain the approved palette and fit phone/tablet/desktop", async ({
