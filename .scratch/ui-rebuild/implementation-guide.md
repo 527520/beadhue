@@ -95,3 +95,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。
 - **E2E 与手动开发服务不能同目录并存**：Next 16 检测到同一目录已有 `next dev` 会拒绝再起（E2E 报「dev server did not become ready」），跑 E2E 前先停掉手动服务。开发服务首次编译某个 API 路由可能整页重载并打断进行中的请求，E2E 里第一次调用前可先 GET 预热。
 - **手机顶栏**：`MobileTopbarFrame` 现在是 `<header>`（banner 地标，与桌面顶栏按宽度二选一显示），页面自定义的手机顶栏内容无需再包地标。
+
+## 后续票须知（票 06 完成后补充）
+
+- **「我的」上下文**：`/me` 布局在服务端读登录者与统计，页面里用 `useMe()`（`src/components/me/me-context.tsx`）拿 `viewer`、`stats`、`refreshStats()`；没有 Provider 时按游客处理。
+- **更多操作菜单**：`ActionMenu`（`src/components/me/action-menu.tsx`）桌面锚定菜单、手机底部面板（标题为对象名），动作延后一拍执行，弹窗关闭时焦点能回到「…」；单选菜单用 `ChoiceMenu`，确认弹窗用 `ConfirmDialog`（`locked` 用于结果未确认、只能重试的写操作）。
+- **按需挂载的弹窗**（`{open ? <Dialog open /> : null}`）关闭即卸载，Base UI 来不及归还焦点：打开时记下入口元素，关闭后手动 focus（见色板页 `remember` / `restore`）。
+- **设计缩略图**：已同步设计直接用 `designThumbnailUrl(id, revision)`（`lib/community/thumbnailUrl.ts`，浏览器可用），不必改同步层结构；未同步用本机图纸 `<BeadImage>`。
+- **E2E 选择器**：设计卡 `[data-slot="design-card"]`，整卡链接名「打开「名称」（状态）」；公开作品卡 `[data-slot="own-work-card"]`；更多操作按钮名「「名称」的更多操作」，菜单项为 `menuitem`。
+- **新接口**：`GET /api/me/sessions`、`POST /api/me/sessions/revoke-others`、`GET /api/originals/designs`（示例见票 06 Comments）。
