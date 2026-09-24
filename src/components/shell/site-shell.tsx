@@ -77,7 +77,13 @@ function ShellFrame({ nav = null, topbarCta = 'primary', tabbar = true, footer =
       <main id="main" tabIndex={-1} className={cn('min-h-page focus:outline-none', tabbar && 'max-md:pb-tabbar-safe')}>
         {searching ? (
           <section data-ui="" aria-label={zhCN.shell.search.panel} className="page-container md:hidden">
-            <SearchSuggestions query="" layout="page" onPick={() => setSearching(false)} extras={searchExtras} />
+            <SearchSuggestions
+              query=""
+              layout="page"
+              onPick={() => setSearching(false)}
+              // 附加区块里的链接（按类目看看）多半跳回同一页面，外壳不会重挂载，点了就收起搜索页。
+              extras={searchExtras ? <div className="contents" onClickCapture={(event) => { if ((event.target as HTMLElement).closest('a')) setSearching(false); }}>{searchExtras}</div> : undefined}
+            />
           </section>
         ) : null}
         <div className={searching ? 'max-md:hidden' : 'contents'}>{children}</div>

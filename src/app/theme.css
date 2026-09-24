@@ -27,6 +27,8 @@
 @source "./verify-email";
 @source "./dev";
 @source "../lib/render/beads.ts";
+@source "../lib/render/tagIconArt.ts";
+@source "./page.tsx";
 
 @theme {
   --color-*: initial;
@@ -140,6 +142,8 @@
   --shadow-badge: 0 1px 2px rgb(0 0 0 / 12%);
   --shadow-thumb: 0 1px 2px rgb(0 0 0 / 20%);
   --shadow-seg: 0 1px 3px rgb(28 28 30 / 12%);
+  /* 吸顶类目条滚动后的底部投影（原型 layout.css .cats-bar.is-stuck） */
+  --shadow-stuck: 0 6px 12px -12px rgb(0 0 0 / 30%);
 
   /* 顶栏 / 底栏的毛玻璃（原型 blur(12px)） */
   --blur-md: 12px;

@@ -215,3 +215,14 @@ export async function suggestCommunitySearch(db: AnyDatabase, rawQuery: string) 
     })),
   };
 }
+
+// ---- 发现页类目条 ----
+
+export interface DiscoverCategoryDto { id: string; name: string; icon: string | null }
+
+/** 类目条（R15-04）：后台设为 featured 的启用标签（未被合并），按 sortOrder、名称排序。 */
+export async function listDiscoverCategories(db: AnyDatabase): Promise<DiscoverCategoryDto[]> {
+  return db.select({ id: communityTags.id, name: communityTags.name, icon: communityTags.icon }).from(communityTags)
+    .where(and(eq(communityTags.active, true), eq(communityTags.featured, true), isNull(communityTags.mergedIntoTagId)))
+    .orderBy(communityTags.sortOrder, communityTags.name);
+}
