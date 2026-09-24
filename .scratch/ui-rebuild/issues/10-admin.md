@@ -1,7 +1,7 @@
 # 10 管理后台
 
 Status: ready-for-agent
-Completion: not-started
+Completion: complete
 Blocked by: 01、02、03
 
 先读 [实施指南](../implementation-guide.md)。原型：`prototype/js/screens/admin.js`、`admin/*.js` + `styles/screens/admin.css`；截图 `prototype-final/19–21`、`evidence/prototype/admin-*`、`s-*`。
@@ -60,5 +60,5 @@ Blocked by: 01、02、03
 - E2E 12 的 4 条豆社页面用例（游客浏览、引用与评论、评论删除、豆社五宽度）与 E2E 16 的首页货架用例在本分支失败：它们依赖旧 `/community` 页面（`.community-card`、「豆社」标题、旧货架），票 03 已把 `/community` 重定向到发现页，与后台改动无关（未单独在 c10dbe2 上复跑确认），由票 04 / 05 重做页面时更新。
 - Firefox / WebKit 未跑（按票要求只跑 Chromium；票 14 全量）。
 - `CONTEXT.md` 未改（票 13 统一写入）。
-- `tag-icon.tsx` 从 `app/dev/ui/motifs.ts` 取内置图标图案；票 04 的类目条若另建图案模块，合并时统一到一处。
+- `tag-icon.tsx` 从 `app/dev/ui/motifs.ts` 取内置图标图案；票 04 的类目条若另建图案模块，合并时统一到一处。（合并时已处理：改用 `lib/render/tagIconArt.ts`，见 5029d6d。）
 
