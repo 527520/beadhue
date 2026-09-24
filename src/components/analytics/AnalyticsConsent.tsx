@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { ANALYTICS_CONSENT_COOKIE, serializeConsentCookie, serializePendingWithdrawalCookie, type AnalyticsConsent } from '@/lib/analytics/cookies';
 import { clearAnalyticsQueue, track, setAnalyticsInitialized } from '@/lib/analytics/client';
 import { surfaceForPath } from './PageViewTracker';
@@ -114,50 +112,4 @@ export function AnalyticsConsentInitialization() {
     return () => window.clearTimeout(timer);
   }, []);
   return null;
-}
-
-export function AnalyticsConsentBanner({ target }: { target?: HTMLElement | null } = {}) {
-  const t = zhCN.communityAdmin.analytics;
-  const { preference, ready, saving, message, error } = useAnalyticsPreference();
-  if (!ready || (preference === 'granted' && !error) || preference === 'denied') return null;
-  const pending = preference === 'withdrawn';
-  const banner = (
-    <aside className="analytics-consent" aria-label={t.bannerLabel}>
-      <div>
-        <strong>{pending ? recovery.stoppedTitle : t.bannerTitle}</strong>
-        <p>{pending ? stoppedMessage : t.bannerBody}</p>
-        <Link href="/privacy" className="link-soft">{t.learnMore}</Link>
-        {error && <p role="alert" className="analytics-consent-error">{message}</p>}
-      </div>
-      <div className="analytics-consent-actions">
-        {pending ? <button type="button" className="btn-outline" disabled={saving} onClick={() => void choose('withdrawn')}>{recovery.retry}</button> : <>
-          <button type="button" className="btn-outline" disabled={saving} onClick={() => void choose('denied')}>{t.reject}</button>
-          <button type="button" className="btn-primary" disabled={saving} onClick={() => void choose('granted')}>{t.grant}</button>
-        </>}
-      </div>
-    </aside>
-  );
-  return target ? createPortal(banner,target) : banner;
-}
-
-export function AnalyticsConsentSettings() {
-  const t = zhCN.communityAdmin.analytics;
-  const { preference, ready, saving, message, error } = useAnalyticsPreference();
-  const pending = preference === 'withdrawn';
-  return (
-    <section className="info-card analytics-settings" aria-labelledby="analytics-settings-title">
-      <h2 id="analytics-settings-title">{t.settingsTitle}</h2>
-      <p>{ready ? t.currentStatus(preference === 'granted' ? t.granted : pending ? recovery.pending : preference === 'denied' ? t.denied : t.unset) : t.loading}</p>
-      {pending && !message && <p>{stoppedMessage}</p>}
-      <div>
-        <button type="button" className="btn-primary" disabled={!ready || saving || pending || (preference === 'granted' && !error)} onClick={() => void choose('granted')}>{t.agree}</button>
-        {preference === 'granted' || pending ? (
-          <button type="button" className="btn-danger-outline" disabled={!ready || saving} onClick={() => void choose('withdrawn')}>{pending ? recovery.retry : t.withdraw}</button>
-        ) : (
-          <button type="button" className="btn-outline" disabled={!ready || saving || preference === 'denied'} onClick={() => void choose('denied')}>{t.reject}</button>
-        )}
-      </div>
-      {message && <p role={error ? 'alert' : 'status'}>{message}</p>}
-    </section>
-  );
 }

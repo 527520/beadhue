@@ -11,7 +11,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { FormAlert } from '@/components/ui/field';
 import { useToast } from '@/components/ui/toast';
 import { usePublicConfig } from '@/components/config/usePublicConfig';
-import { triggerDownload } from '@/components/export/PdfExportButton';
+import { triggerDownload } from '@/lib/export/download';
 import { track } from '@/lib/analytics/client';
 import { DEFAULT_BOARD_SIZE } from '@/lib/boardProfiles';
 import { EXPORT_CELL_PX_CHOICES, patternHasPaintedCells } from '@/lib/export/layout';
