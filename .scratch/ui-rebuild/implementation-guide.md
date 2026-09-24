@@ -130,3 +130,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **空状态插画**：`EmptyState kind="notifications"`（豆粒金铃铛，`beads.ts` 的 ART）。
 - **E2E**：铃铛可访问名称是「通知」或「有 N 条未读通知」，徽标 `[data-slot="unread-badge"]`，面板是名为「通知」的 dialog；打开即把露出的条目标为已读，断言未读数要在打开之前做。用例 `tests/e2e/19-notifications.spec.ts` 经接口投稿、后台界面审核。
 - **开发服务**：隔离工作树里长时间运行的 `next dev` 偶尔会对已存在的 API 路由返回 HTML 404（路由表过期），重启即恢复；看到「路由存在却 404、响应是 HTML」先重启再排查。
+
+## 后续票须知（票 12 完成后补充）
+
+- **文章版式**：静态说明类页面用 `src/components/pages/article.tsx` 的 `ArticlePage`（720px 窄栏 `max-w-article`、eyebrow + title-1 + 导语、三项以上自动出目录：≥1280 左侧吸顶，更窄为可展开「本页目录」）+ `ArticleSection`（锚点 id、title-2、让出吸顶顶栏）+ `ArticleText`；正文链接用 `articleLink`（常显下划线，axe `link-in-text-block` 要求）。长串（哈希、邮箱）已由 `wrap-anywhere` 兜住。
+- **整页空状态**：404、错误边界、失效链接用 `StatePage`（`src/components/pages/state-page.tsx`，内部是 `EmptyState page`：h1 + title-2 + 大号豆粒插画）；链接按钮用 `StateLink`（服务端页面可直接渲染）。豆粒插画新增 `lost`（问号）、`broken`（叹号）。这类二级整页 `tabbar={false}`、`topbarCta="secondary"`，视区只留一个主按钮。段级 `not-found.tsx` 仿 `src/app/s/[token]/not-found.tsx`。
+- **错误边界**：Next 16.3 起用 `retry` 属性（会重新取数），不要再用 `reset`；上报运行日志统一调 `reportClientError(error, fallback)`（`src/components/pages/report-client-error.ts`），站点与后台错误边界都已接入。`global-error.tsx` 拿不到样式表，只能内联样式（不在护栏扫描内）。
+- **只读分享页**：`ShareView` 复用详情页 `PatternViewer`（完整图纸，色号 / 方格不锁）与制作卡导出的 `Stat`、`ColorList`；清单用 `summarizePatternColors`（与详情同口径，单位「颗」）。分享时间取 `design_shares.created_at`（服务端格式化）。令牌校验、浏览计数、noindex 未改。
+- **统计偏好**：隐私页的新控件 `ConsentPreferences` 复用 `useAnalyticsPreference` / `chooseAnalyticsConsent`，同意按钮文案「同意匿名统计」（E2E 08 依赖）；账号设置页若也要放偏好，直接复用它。旧 `AnalyticsConsentSettings` 已无页面引用，票 13 删除。
+- **首次引导**：`OnboardingGuide` 已删除，三步内容并入帮助页「三步上手」（`HelpSteps`，豆粒示例图）；`zhCN.onboarding.dismiss` 已无引用。

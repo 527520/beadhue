@@ -1,37 +1,38 @@
 /**
- * 只读分享页 /s/[token]（批次 K，决策 D38）。
+ * 只读分享页 /s/[token]（批次 K，决策 D38；R15 票 12 换成详情页查看器与制作卡的只读版）。
  *
  * 服务端渲染，不需要登录、不暴露作者信息、不可编辑。给的是「看图 + 照着拼」需要的东西：
- * 图纸预览、尺寸、用色清单（含每色粒数），以及把它复制到自己账号继续编辑的入口说明。
+ * 可缩放的图纸、尺寸与颗数、完整色号清单，以及做一张自己的图纸的入口。
  *
  * robots：分享链接是私密的（拿到链接才能看），所以 noindex——
  * 用户把链接发给朋友，不代表愿意被搜索引擎收录。
  */
-import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { eq, sql } from "drizzle-orm";
-import { getDb } from "@/lib/auth/db";
-import { designShares } from "@/../db/schema";
-import { hashToken } from "@/lib/auth/tokens";
-import { parseShareSnapshot, type ShareSnapshot } from "@/lib/share/snapshot";
-import { computeStats, totalBeadCount } from "@/lib/engine/generate";
-import { zhCN } from "@/messages/zh-CN";
-import SharedPatternView from "@/components/share/SharedPatternView";
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { eq, sql } from 'drizzle-orm';
+import { getDb } from '@/lib/auth/db';
+import { designShares } from '@/../db/schema';
+import { hashToken } from '@/lib/auth/tokens';
+import { parseShareSnapshot, type ShareSnapshot } from '@/lib/share/snapshot';
+import { summarizePatternColors } from '@/lib/community/queries';
+import { getBoardProfile } from '@/lib/boardProfiles';
+import { getBuiltinPalette } from '@/lib/palettes';
+import { boardCount } from '@/lib/render/viewer';
+import { longDate } from '@/components/works/detail/detail-format';
 import { SiteShell } from '@/components/shell/site-shell';
-import LegacyScope from '@/components/layout/LegacyScope';
-import Icon from "@/components/legacy-ui/Icon";
+import { ShareView } from '@/components/pages/share-view';
+import { zhCN } from '@/messages/zh-CN';
 
 export const metadata: Metadata = {
   title: zhCN.share.pageTitle,
   robots: { index: false, follow: false },
 };
 
-async function loadShare(token: string): Promise<ShareSnapshot | null> {
+async function loadShare(token: string): Promise<{ snapshot: ShareSnapshot; sharedAt: Date } | null> {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const db = getDb();
   const rows = await db
-    .select({ id: designShares.id, snapshot: designShares.snapshot })
+    .select({ id: designShares.id, snapshot: designShares.snapshot, createdAt: designShares.createdAt })
     .from(designShares)
     .where(eq(designShares.tokenHash, hashToken(token)));
   if (rows.length === 0) return null;
@@ -40,52 +41,37 @@ async function loadShare(token: string): Promise<ShareSnapshot | null> {
     .update(designShares)
     .set({ viewCount: sql`${designShares.viewCount} + 1` })
     .where(eq(designShares.id, rows[0].id));
-  return parseShareSnapshot(rows[0].snapshot);
+  const snapshot = parseShareSnapshot(rows[0].snapshot);
+  return snapshot ? { snapshot, sharedAt: rows[0].createdAt } : null;
 }
 
-export default async function SharedDesignPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default async function SharedDesignPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const snapshot = await loadShare(token);
-  if (!snapshot) notFound();
-
-  const stats = computeStats(snapshot.pattern.cells);
-  const total = totalBeadCount(stats);
-  const t = zhCN.share;
+  const share = await loadShare(token);
+  if (!share) notFound();
+  const { snapshot } = share;
+  const { pattern, palette } = snapshot;
+  const board = getBoardProfile(snapshot.boardProfile);
+  const { beadCount, colorUsage } = summarizePatternColors(pattern);
+  const paletteLabel = palette.kind === 'builtin' ? getBuiltinPalette(palette.brand).label : zhCN.share.customPalette(palette.colors.length);
+  const sharedAt = share.sharedAt.toISOString();
 
   return (
-    <SiteShell nav={null} tabbar={false}><LegacyScope><div>
-      
-      <div className="container">
-        <div className="page-top">
-          <div>
-            <div className="eyebrow">{t.pageKicker}</div>
-            <h1>{snapshot.name.trim() || zhCN.project.unnamed}</h1>
-          </div>
-          <span className="pill">{t.readonlyBadge}</span>
-        </div>
-        <SharedPatternView
-          pattern={snapshot.pattern}
-          stats={stats}
-          boardProfile={snapshot.boardProfile}
-          palette={snapshot.palette}
-          summary={t.summary(
-            snapshot.pattern.width,
-            snapshot.pattern.height,
-            total,
-            stats.length,
-          )}
-        />
-        <div className="share-create-link">
-          <Link href="/app?new=1" className="button">
-            {t.makeYourOwn}
-            <Icon name="arrow" size={15} />
-          </Link>
-        </div>
-      </div>
-    </div></LegacyScope></SiteShell>
+    <SiteShell topbarCta="secondary" tabbar={false}>
+      <ShareView
+        name={snapshot.name.trim() || zhCN.project.unnamed}
+        pattern={pattern}
+        colorCount={colorUsage.length}
+        beadCount={beadCount}
+        colorUsage={colorUsage}
+        beadSize={`${board.beadDiameterMm}mm`}
+        boards={boardCount(pattern.width, pattern.height, board.boardCols, board.boardRows)}
+        boardCols={board.boardCols}
+        boardRows={board.boardRows}
+        paletteLabel={paletteLabel}
+        sharedAt={sharedAt}
+        sharedLabel={longDate(sharedAt)}
+      />
+    </SiteShell>
   );
 }

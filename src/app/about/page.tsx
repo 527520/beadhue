@@ -1,94 +1,55 @@
-import { zhCN } from "@/messages/zh-CN";
-import {
-  APP_VERSION,
-  AUTHOR_GITHUB_URL,
-  AUTHOR_NAME,
-  CONTACT_EMAIL,
-  ISSUES_URL,
-  SOURCE_REPO_URL,
-} from "@/lib/appInfo";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { Check } from 'lucide-react';
 import { SiteShell } from '@/components/shell/site-shell';
-import LegacyScope from '@/components/layout/LegacyScope';
-import Icon from "@/components/legacy-ui/Icon";
-import Link from "next/link";
+import { ArticlePage, ArticleSection, ArticleText, articleLink } from '@/components/pages/article';
+import { APP_VERSION, AUTHOR_GITHUB_URL, AUTHOR_NAME, CONTACT_EMAIL, ISSUES_URL, SOURCE_REPO_URL } from '@/lib/appInfo';
+import { zhCN } from '@/messages/zh-CN';
+
+export const metadata: Metadata = { title: zhCN.about.title };
 
 export default function AboutPage() {
   const t = zhCN.about;
+  const toc = [
+    { id: 'features', title: t.featuresTitle },
+    { id: 'privacy', title: t.privacyTitle },
+    { id: 'license', title: t.licenseTitle },
+    { id: 'author', title: t.authorTitle },
+    { id: 'feedback', title: t.feedbackTitle },
+  ];
   return (
-    <SiteShell nav={null}><LegacyScope><div className="workspace-page">
-      
-      <div className="container">
-        <section className="form-card beadhue-info-card">
-          <span className="studio-eyebrow">
-            {zhCN.workspace.brandVersion(APP_VERSION)}
-          </span>
-          <h1>{zhCN.app.name} BeadHue</h1>
-          <p>{t.intro}</p>
-          <div>
+    <SiteShell>
+      <ArticlePage eyebrow={zhCN.workspace.brandVersion(APP_VERSION)} title={`${zhCN.app.name} BeadHue`} lead={t.intro} toc={toc}>
+        <ArticleSection id="features" title={t.featuresTitle}>
+          <ul className="grid gap-2">
             {t.features.map((feature) => (
-              <span key={feature}>
-                <Icon name="spark" size={15} />
-                {feature}
-              </span>
+              <li key={feature} className="flex gap-3 text-body text-pretty text-ink-2">
+                <Check aria-hidden="true" strokeWidth={1.75} className="mt-1 size-4 shrink-0 text-success" />
+                <span>{feature}</span>
+              </li>
             ))}
-          </div>
-          <div className="beadhue-info-sections">
-            <section className="info-card">
-              <span>
-                <Icon name="lock" />
-              </span>
-              <h2>{t.privacyTitle}</h2>
-              <p>{t.privacyBody}</p>
-              <Link href="/privacy" className="link-soft">
-                {t.privacyLink}
-              </Link>
-            </section>
-            <section className="info-card">
-              <span>
-                <Icon name="info" />
-              </span>
-              <h2>{t.licenseTitle}</h2>
-              <p>{t.licenseBody}</p>
-              <a
-                href={SOURCE_REPO_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="link-soft"
-              >
-                {t.sourceCode}
-              </a>
-            </section>
-            <section className="info-card">
-              <span>
-                <Icon name="user" />
-              </span>
-              <h2>{t.authorTitle}</h2>
-              <p>{AUTHOR_NAME}</p>
-              <div className="info-link-row">
-                <a href={AUTHOR_GITHUB_URL} target="_blank" rel="noreferrer">
-                  {t.authorGithub}
-                </a>
-                <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-              </div>
-            </section>
-            <section className="info-card">
-              <span>
-                <Icon name="help" />
-              </span>
-              <h2>{t.feedbackTitle}</h2>
-              <p>{t.feedbackBody}</p>
-              <a
-                href={ISSUES_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="link-soft"
-              >
-                {t.feedbackLink}
-              </a>
-            </section>
-          </div>
-        </section>
-      </div>
-    </div></LegacyScope></SiteShell>
+          </ul>
+        </ArticleSection>
+        <ArticleSection id="privacy" title={t.privacyTitle}>
+          <ArticleText>{t.privacyBody}</ArticleText>
+          <p className="text-body"><Link href="/privacy" className={articleLink}>{t.privacyLink}</Link></p>
+        </ArticleSection>
+        <ArticleSection id="license" title={t.licenseTitle}>
+          <ArticleText>{t.licenseBody}</ArticleText>
+          <p className="text-body"><a href={SOURCE_REPO_URL} target="_blank" rel="noreferrer" className={articleLink}>{t.sourceCode}</a></p>
+        </ArticleSection>
+        <ArticleSection id="author" title={t.authorTitle}>
+          <ArticleText>{AUTHOR_NAME}</ArticleText>
+          <p className="flex flex-wrap gap-x-5 gap-y-1 text-body">
+            <a href={AUTHOR_GITHUB_URL} target="_blank" rel="noreferrer" className={articleLink}>{t.authorGithub}</a>
+            <a href={`mailto:${CONTACT_EMAIL}`} className={articleLink}>{CONTACT_EMAIL}</a>
+          </p>
+        </ArticleSection>
+        <ArticleSection id="feedback" title={t.feedbackTitle}>
+          <ArticleText>{t.feedbackBody}</ArticleText>
+          <p className="text-body"><a href={ISSUES_URL} target="_blank" rel="noreferrer" className={articleLink}>{t.feedbackLink}</a></p>
+        </ArticleSection>
+      </ArticlePage>
+    </SiteShell>
   );
 }

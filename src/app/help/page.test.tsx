@@ -9,12 +9,12 @@ describe('帮助页', () => {
   it('包含全部规定内容章节与 FAQ', () => {
     render(<HelpPage />);
     expect(screen.getByRole('heading', { name: '从第一颗豆开始' })).toBeTruthy();
-    expect(screen.getByText('上传要求')).toBeTruthy();
-    expect(screen.getByText('参数说明')).toBeTruthy();
-    expect(screen.getByText('色板资料与制作规格')).toBeTruthy();
-    expect(screen.getByText('板缝线')).toBeTruthy();
-    expect(screen.getByText('导出说明')).toBeTruthy();
-    expect(screen.getByText('怎样对照原图修补？')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '上传要求' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '参数说明' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '色板资料与制作规格' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '板缝线' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '导出说明' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '怎样对照原图修补？' })).toBeTruthy();
     expect(screen.getAllByText(/HEIC/).length).toBeGreaterThan(0);
     expect(screen.getByText(/透明底的像素画/)).toBeTruthy();
     expect(screen.getAllByText(/8000×8000/).length).toBeGreaterThan(0);
@@ -22,6 +22,9 @@ describe('帮助页', () => {
     expect(screen.getByText(/内置 13 套色板/)).toBeTruthy();
     expect(screen.getByText(/178dafb/)).toBeTruthy();
     expect(screen.getByText(/50 与 52 的 Mini 底板钉距不兼容/)).toBeTruthy();
+    // 目录里也有各节标题，节标题按标题角色查；FAQ 在折叠项里。
+    expect(screen.getByRole('heading', { name: '三步上手' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: '本页目录' })).toBeTruthy();
     expect(screen.getByText('为什么“收录数”和“可生成数”不一样？')).toBeTruthy();
     expect(screen.getByText('项目文件会保存原图吗？')).toBeTruthy();
     expect(screen.getByText(/v3 项目文件保存图纸、参数、色板和原图对应关系/)).toBeTruthy();
