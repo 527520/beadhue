@@ -1,7 +1,7 @@
 # 豆色绘前端全面重构（R15）
 
 Status: ready-for-agent
-Completion: in-progress
+Completion: in-progress（01–12 完成；13 清理部分完成、文档部分待编排合并；14 未开始）
 Baseline: `feat/beadhue-ui-rebuild` @ 78317a9（BeadHue 分支 + R14 合并）
 依据：[audit.md](audit.md)（现状问题）· [design.md](design.md)（设计规格）· [prototype/](prototype/)（交互原型，**唯一视觉与交互验收基准**）· 验收截图 [evidence/prototype-final/](evidence/prototype-final/)
 
@@ -82,3 +82,6 @@ Baseline: `feat/beadhue-ui-rebuild` @ 78317a9（BeadHue 分支 + R14 合并）
 见 `issues/`。依赖：01 → 03 → (04, 05, 06, 07, 10, 12)；02 → (03, 04, 05, 06, 08, 10, 11)；07 → 08 → 09；全部 → 13 → 14。
 
 ## Comments
+
+- 2026-09-24 票 13b（清理）：旧样式 / 旧组件 / react-aria 依赖已删除，`globals.css` 44 行、单一 Tailwind 构建，护栏覆盖全部页面与组件并禁止旧类名；D72 投稿深链与 D71「颗」补齐。门禁：vitest 1547 通过、性能 7/7、构建成功且产物无旧 CSS、Chromium E2E 冒烟只剩已知的 17-visual-refinement 7 条。记录见 issues/13 Comments。
+
