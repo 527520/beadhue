@@ -24,13 +24,15 @@ export function CardHead({ title, id, aside, children, className }: { title: Rea
 }
 
 const thumbSize = { sm: 'size-6 rounded-sm', md: 'size-10 rounded-sm', lg: 'size-12 rounded-md' } as const;
+/** 服务端缩略图不带边距，按边长补约 8% 白边（与原型 patternImage 的 pad 一致）。 */
+const thumbPad = { sm: 'p-0.5', md: 'p-[3px]', lg: 'p-1' } as const;
 
 /** 作品缩略图：后台专用缩略图地址（按管理员会话计量，不吃豆社公开配额）。 */
 export function Thumb({ revisionId, alt = '', size = 'md', className }: { revisionId: string | null | undefined; alt?: string; size?: keyof typeof thumbSize; className?: string }) {
   const box = cn('shrink-0 bg-bg inset-ring-1 inset-ring-line', thumbSize[size], className);
   if (!revisionId) return <span aria-hidden="true" className={cn(box, 'bg-bg-subtle')} />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={adminThumbnailUrl(revisionId)} alt={alt} loading="lazy" decoding="async" className={cn(box, 'object-contain')} />;
+  return <img src={adminThumbnailUrl(revisionId)} alt={alt} loading="lazy" decoding="async" className={cn(box, thumbPad[size], 'object-contain')} />;
 }
 
 /** 灰底图标方块（评论、举报、批次等没有缩略图的行）。 */

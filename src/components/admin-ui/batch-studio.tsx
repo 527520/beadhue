@@ -315,7 +315,7 @@ const BatchCard = memo(function BatchCard({ item, index, session, editable, serv
       <div className="relative grid aspect-square place-items-center bg-bg-subtle">
         {item.revisionId && item.preview && serverThumbnails
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={adminThumbnailUrl(item.revisionId)} alt={b.previewLabel(item.title)} loading="lazy" className="size-full object-contain" />
+          ? <img src={adminThumbnailUrl(item.revisionId)} alt={b.previewLabel(item.title)} loading="lazy" className="size-full bg-bg object-contain p-[8%]" />
           : pattern ? <BeadImage pattern={pattern} alt={b.previewLabel(item.title)} className="size-full" />
             : <span className="grid justify-items-center gap-1 text-body-sm text-ink-3 [&>svg]:size-6">{busy ? <b className="text-title-2 text-ink tabular-nums">{t.percent(item.progress)}</b> : <>{icon(ImageIcon)}{b.noPreview}</>}</span>}
         {busy ? <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.progress} className="absolute inset-x-0 bottom-0 h-1 bg-bg-muted"><i className="block h-full bg-ink transition-[width] duration-state" style={{ width: `${item.progress}%` }} /></div> : null}

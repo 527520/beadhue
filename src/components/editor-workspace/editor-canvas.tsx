@@ -8,7 +8,7 @@
  * 油漆桶、吸管、替换是轻点，拖动超过阈值即转为平移，绝不写图（D5 / D8）。
  * 跟拼模式（D39）叠加已拼淡化与勾、当前板与当前行高亮；浏览只平移，标记是轻点，未形成导航手势的短点才提交。
  */
-import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
 import { cn } from '@/lib/cn';
 import { BEAD_TOKENS, EDITOR_CANVAS } from '@/lib/render/beadTokens';
 import { luminance } from '@/lib/render/beads';
@@ -336,6 +336,20 @@ export function EditorCanvas({
     if (autoFocus) canvasRef.current?.focus({ preventScroll: true });
   }, [autoFocus]);
 
+  // 焦点框只给键盘用户：进入编辑器时的脚本聚焦与点按聚焦浏览器也会判成 :focus-visible，所以自己记最近一次输入方式。
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
+  const lastInputKeyboardRef = useRef(false);
+  useEffect(() => {
+    const onKey = () => { lastInputKeyboardRef.current = true; };
+    const onPointer = () => { lastInputKeyboardRef.current = false; };
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, []);
+
   const setHover = useCallback((cell: Cell | null) => {
     const current = hoverRef.current;
     if ((!cell && !current) || (cell && current && cell.row === current.row && cell.col === current.col)) return;
@@ -362,6 +376,7 @@ export function EditorCanvas({
   const onPointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 1) return;
     event.preventDefault();
+    setKeyboardFocus(false);
     event.currentTarget.focus({ preventScroll: true });
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -560,9 +575,11 @@ export function EditorCanvas({
         onPointerCancel={onPointerCancel}
         onPointerLeave={() => { if (!pointersRef.current.size) setHover(null); }}
         onWheel={onWheel}
-        onKeyDown={onKeyDown}
-        onBlur={() => { if (!pointersRef.current.size) setHover(null); }}
-        className={cn('absolute inset-0 block touch-none outline-none focus-visible:inset-ring-2 focus-visible:inset-ring-accent', cursorClass)}
+        onKeyDown={(event) => { setKeyboardFocus(true); onKeyDown(event); }}
+        onFocus={() => setKeyboardFocus(lastInputKeyboardRef.current)}
+        onBlur={() => { setKeyboardFocus(false); if (!pointersRef.current.size) setHover(null); }}
+        data-keyboard-focus={keyboardFocus || undefined}
+        className={cn('absolute inset-0 block touch-none outline-none data-keyboard-focus:inset-ring-2 data-keyboard-focus:inset-ring-accent', cursorClass)}
       />
     </div>
   );

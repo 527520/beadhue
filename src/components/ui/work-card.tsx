@@ -2,6 +2,11 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
+/** 卡片图区（作品卡与设计卡共用）：白底方形；服务端缩略图不带边距，四周补 8% 白边，与 <BeadImage> 的 pad 一致。 */
+export const cardMediaClass =
+  "pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']";
+export const cardMediaInnerClass = 'size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain [&>img]:p-[8%]';
+
 /**
  * 作品卡 / 设计卡外框：图纸即卡片——正方形图区、圆角 16、静置无阴影；整卡是一个链接，
  * 图区叠在链接之上但不接收点击，只有角上的按钮可点。元信息按卡片自身宽度（容器查询）取舍。
@@ -25,8 +30,8 @@ export interface WorkCardProps {
 export function WorkCard({ href, linkLabel, title, media, badges, action, actionHoverOnly, meta, className }: WorkCardProps) {
   return (
     <article data-slot="work-card" className={cn('group/card @container relative flex min-w-0 flex-col gap-2 rounded-lg sm:gap-2.5', className)}>
-      <div className="pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg-subtle after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']">
-        <div className="size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain">{media}</div>
+      <div className={cardMediaClass}>
+        <div className={cardMediaInnerClass}>{media}</div>
         {badges ? <div className="absolute top-2.5 left-2.5 z-1 flex gap-1.5">{badges}</div> : null}
         {action ? (
           <div

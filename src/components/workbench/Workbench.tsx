@@ -268,13 +268,14 @@ export default function Workbench({
     createImageDecoder(),
   );
   const activeImageDecoder = imageDecoder ?? ownedImageDecoder;
-  // 站点公开配置（票 02）：生成默认参数可被服务端环境变量覆盖，改配置即生效
+  // 站点公开配置（票 02）：生成默认参数可被服务端环境变量覆盖，改配置即生效；新建图纸默认去背景（原型）
   const pubCfg = usePublicConfig();
   const defaultParams = useMemo<GenerationParams>(
     () => ({
       ...DEFAULT_GENERATION_PARAMS,
       targetWidth: pubCfg.generation.defaultWidth,
       targetColorCount: pubCfg.generation.defaultColorCount,
+      backgroundRemoval: true,
     }),
     [pubCfg],
   );

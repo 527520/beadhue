@@ -106,7 +106,8 @@ function trendDays(items: TrendDay[]) {
   });
 }
 
-function TodoRow({ item }: { item: TodoItem }) {
+/** now 取数据快照时间（服务端渲染与客户端水合用同一时刻，跨分钟边界时「N 分钟前」不会对不上）。 */
+function TodoRow({ item, now }: { item: TodoItem; now: Date }) {
   const lead = item.kind === 'review' ? <Thumb revisionId={item.revisionId} /> : <IconTile>{item.kind === 'comment' ? <MessageCircle strokeWidth={1.75} /> : <Flag strokeWidth={1.75} />}</IconTile>;
   const title = item.kind === 'review' ? item.title : item.kind === 'comment' ? `“${item.title}”`
     : item.target === 'work' ? t.reportedWork(risk[item.title as keyof typeof risk] ?? item.title) : t.reportedComment(risk[item.title as keyof typeof risk] ?? item.title);
@@ -115,7 +116,7 @@ function TodoRow({ item }: { item: TodoItem }) {
     : item.kind === 'comment'
       ? <Badge tone={item.status === 'rejected' ? 'danger' : 'warning'}>{`${t.kinds.comment} · ${item.status === 'rejected' ? zhCN.communityAdmin.states.comment.rejected : zhCN.adminUi.comments.verdicts.review}`}</Badge>
       : <Badge tone="danger">{t.kinds.report}</Badge>;
-  const meta = item.kind === 'report' ? t.reportedBy(fmtAgo(item.at)) : `${item.who} · ${fmtAgo(item.at)}`;
+  const meta = item.kind === 'report' ? t.reportedBy(fmtAgo(item.at, now)) : `${item.who} · ${fmtAgo(item.at, now)}`;
   return (
     <li className="flex min-h-17 items-center gap-3 border-b border-line py-2.5 pr-3 pl-5 max-md:pr-2 max-md:pl-4">
       {lead}
@@ -164,7 +165,7 @@ export function OverviewView({ counts, trends, todo, todoTotal, services, modera
       </div>
       <AdminCard aria-labelledby="adm-todo-title" className={cn('col-span-full flex flex-col', withSystem ? 'xl:col-span-5' : 'xl:col-span-7', withSystem && 'lg:max-xl:col-span-7')}>
         <CardHead id="adm-todo-title" title={t.todo} aside={t.todoTotal(todoTotal)} />
-        {todo.length ? <ul role="list" className="grid">{todo.map((item) => <TodoRow key={`${item.kind}-${item.id}`} item={item} />)}</ul>
+        {todo.length ? <ul role="list" className="grid">{todo.map((item) => <TodoRow key={`${item.kind}-${item.id}`} item={item} now={new Date(updatedAt)} />)}</ul>
           : <p className="px-5 py-4 text-body-sm text-ink-3">{t.allClear}</p>}
         <footer className="mt-auto grid grid-cols-3">
           {([['/admin/reviews', t.queues.reviews, counts.pendingRevisions], ['/admin/comments', t.queues.comments, counts.pendingComments], ['/admin/reports', t.queues.reports, counts.openReports]] as const).map(([href, label, count], index) => (

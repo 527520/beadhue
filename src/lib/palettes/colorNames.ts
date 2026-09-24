@@ -4,7 +4,8 @@
  * 这是描述性名称，不是品牌命名；同一 HEX 永远得到同一个名字。
  */
 
-function toHsl(hex: string): [number, number, number] | null {
+/** [色相, 饱和度, 亮度, 色度（最大减最小通道）]，后三者 0–1。 */
+function toHsl(hex: string): [number, number, number, number] | null {
   const match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/iu.exec(hex);
   if (!match) return null;
   const [r, g, b] = [match[1], match[2], match[3]].map((part) => parseInt(part, 16) / 255);
@@ -12,12 +13,12 @@ function toHsl(hex: string): [number, number, number] | null {
   const min = Math.min(r, g, b);
   const l = (max + min) / 2;
   const d = max - min;
-  if (d === 0) return [0, 0, l];
+  if (d === 0) return [0, 0, l, 0];
   const s = d / (1 - Math.abs(2 * l - 1));
   let h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
   h *= 60;
   if (h < 0) h += 360;
-  return [h, s, l];
+  return [h, s, l, d];
 }
 
 function hueFamily(h: number): string {
@@ -35,10 +36,11 @@ function hueFamily(h: number): string {
 export function describeColorName(hex: string): string {
   const hsl = toHsl(hex);
   if (!hsl) return '未知色';
-  const [h, s, l] = hsl;
+  const [h, s, l, chroma] = hsl;
   if (l >= 0.95 || (l >= 0.88 && s < 0.35)) return '白';
   if (l < 0.1) return '黑';
-  if (s < 0.12) return l >= 0.7 ? '浅灰' : l >= 0.4 ? '灰' : l >= 0.2 ? '深灰' : '黑';
+  // 很暗的颜色 HSL 饱和度会被放大（#3A2A30 算出 16%），再用色度把近黑、近灰的色压回无彩色。
+  if (s < 0.12 || chroma < 0.08) return l >= 0.7 ? '浅灰' : l >= 0.4 ? '灰' : l >= 0.2 ? '深灰' : '黑';
   const family = hueFamily(h);
   if ((family === '橙' || family === '黄') && l < 0.45) return l < 0.25 ? '深棕' : '棕';
   if ((family === '红' || family === '玫红') && l >= 0.72) return '粉';

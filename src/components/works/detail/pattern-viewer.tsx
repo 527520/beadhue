@@ -149,9 +149,9 @@ export function PatternViewer(props: PatternViewerProps) {
       const bottom = withToolbar ? H - toolbar.offsetTop + (compactRef.current ? 8 : 12) : pad;
       return { x: pad, y: pad, w: Math.max(1, W - pad * 2), h: Math.max(1, H - pad - bottom) };
     };
-    // 手机迷你工具条在右下角，只有会压住豆子时才给它让出位置。
+    // 手机迷你工具条在右下角，只有会压住豆子时才给它让出位置；游客看的是整张图片、判断不了哪里有豆，一律让出。
     const coversBeads = (a: ReturnType<typeof area>) => {
-      if (!pattern) return false;
+      if (!pattern) return true;
       const size = Math.min(a.w / width, a.h / height);
       const x = a.x + (a.w - width * size) / 2;
       const y = a.y + (a.h - height * size) / 2;

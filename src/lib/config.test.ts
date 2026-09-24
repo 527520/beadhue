@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { normalizePdfMetrics, poolOptions, publicConfigFallback, type PublicConfig, type SiteConfig } from './config';
 
 describe('config（票 02）', () => {
-  it('公开配置回退值与历史默认一致（未配置环境变量时行为不变）', () => {
+  it('公开配置回退值：生成默认 2 板 58 格、24 色，导出与历史默认一致', () => {
     const cfg: PublicConfig = publicConfigFallback;
-    expect(cfg.generation).toEqual({ defaultWidth: 100, defaultColorCount: 40 });
+    expect(cfg.generation).toEqual({ defaultWidth: 58, defaultColorCount: 24 });
     expect(cfg.exportPng).toEqual({ cellPx: 24, cropToContent: true, includeLegend: false });
     expect(cfg.exportPdf).toEqual({ cellMm: 6, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 });
   });

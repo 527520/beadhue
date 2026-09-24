@@ -66,7 +66,7 @@ export function DesignTable({ designs, cloud, now, entries, onOpen }: { designs:
             >
               <TableCell className="h-auto py-2">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="size-12 shrink-0 overflow-hidden rounded-sm bg-bg inset-ring-1 inset-ring-line [&>*]:size-full">
+                  <span className="size-12 shrink-0 overflow-hidden rounded-sm bg-bg inset-ring-1 inset-ring-line [&>*]:size-full [&>img]:p-1">
                     <DesignMedia design={design} cloud={cloud} />
                   </span>
                   <a href={openHref(design)} onClick={(event) => openClick(event, () => onOpen(design))} aria-label={t.openLabel(design.name, designStateText(design, cloud))} className="min-w-0 truncate rounded-sm font-semibold text-ink hover:underline hover:underline-offset-3 focus-visible:focus-ring">

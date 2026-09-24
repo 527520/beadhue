@@ -248,7 +248,8 @@ export function DataTable<T>(props: DataTableProps<T>) {
     body = (
       <>
         {error ? <div className="flex items-center gap-3 border-b border-line px-5 py-2"><FormAlert>{error}</FormAlert><Button size="sm" variant="ghost" onClick={onRetry}>{t.retry}</Button></div> : null}
-        <div className="overflow-x-auto max-md:hidden" aria-busy={loading || undefined}>
+        {/* relative：表内 sr-only 与复选框的绝对定位元素以滚动容器为包含块，否则会撑宽整页 */}
+        <div className="relative overflow-x-auto max-md:hidden" aria-busy={loading || undefined}>
           <table className="w-full border-collapse text-body-sm" style={{ minWidth }}>
             <caption className="sr-only">{label}</caption>
             <thead>

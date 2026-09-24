@@ -318,7 +318,7 @@ export function DetailView({ work, loggedIn, related, byAuthor }: DetailViewProp
           <DialogBody className="grid gap-4">
             <div className="flex min-w-0 items-center gap-3 rounded-lg bg-bg-subtle p-3">
               {/* eslint-disable-next-line @next/next/no-img-element -- 服务端豆粒缩略图，长期缓存 */}
-              <img src={work.thumbnailUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-md bg-bg object-contain" />
+              <img src={work.thumbnailUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-md bg-bg object-contain p-1" />
               <div className="min-w-0 flex-1">
                 <b className="block truncate text-title-3 text-ink">{work.title}</b>
                 <span className="text-body-sm text-ink-3 tabular-nums">{t.makeMeta(work.width, work.height, work.colorCount, work.beadCount)}</span>

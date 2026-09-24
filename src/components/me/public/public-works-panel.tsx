@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useToast } from '@/components/ui/toast';
-import { MetaItem, MetaSep } from '@/components/ui/work-card';
+import { MetaItem, MetaSep, cardMediaClass, cardMediaInnerClass } from '@/components/ui/work-card';
 import { WorkGrid } from '@/components/works/community-work-card';
 import { useLoginDialog } from '@/components/shell/login-dialog';
 import { isDefiniteCommunityRejection, postCommunityCommand } from '@/components/community/communityCommand';
@@ -92,9 +92,11 @@ function OwnCard({ item, entries }: { item: OwnItem; entries: readonly ActionEnt
   const stateLabel = item.kind === 'published' ? '' : p.badges[item.kind];
   return (
     <article data-slot="own-work-card" className="group/card @container relative flex min-w-0 flex-col gap-2 rounded-lg sm:gap-2.5">
-      <div className="pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg-subtle after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']">
-        {/* eslint-disable-next-line @next/next/no-img-element -- 服务端豆粒缩略图；未公开修订只对作者本人可见 */}
-        <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" className="size-full object-contain transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103" />
+      <div className={cardMediaClass}>
+        <div className={cardMediaInnerClass}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- 服务端豆粒缩略图；未公开修订只对作者本人可见 */}
+          <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" />
+        </div>
         {badge ? <div aria-hidden="true" className="absolute top-2.5 right-12 left-2.5 z-1 flex flex-wrap gap-1.5 [&_svg]:size-3">{badge}</div> : null}
       </div>
       <div className="grid gap-0.5 px-0.5">

@@ -19,6 +19,13 @@ describe('describeColorName', () => {
     expect(describeColorName('#F28B2C')).toBe('橙');
   });
 
+  it('很暗的低色度颜色归为黑 / 深灰，不因 HSL 饱和度被放大而叫成「深玫红」', () => {
+    expect(describeColorName('#3A2A30')).toBe('黑');
+    expect(describeColorName('#4A4448')).toBe('深灰');
+    expect(describeColorName('#4A3228')).toBe('深棕');
+    expect(describeColorName('#1B2A4A')).toBe('深蓝');
+  });
+
   it('非法 HEX 不抛错', () => {
     expect(describeColorName('red')).toBe('未知色');
   });

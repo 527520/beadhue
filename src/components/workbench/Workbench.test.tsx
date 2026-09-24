@@ -16,6 +16,7 @@ import type {
   StorageAdapter,
 } from '@/lib/storage';
 import type { ProjectFile } from '@/lib/types';
+import { publicConfigFallback } from '@/lib/config';
 import { zhCN } from '@/messages/zh-CN';
 import { runGenerate, type GenerateTask } from '@/lib/engine/runGenerate';
 import type { EngineOutput } from '@/lib/engine/types';
@@ -173,7 +174,7 @@ function fakeDecode(_bytes: Uint8Array, _type: unknown): Promise<DecodeResult> {
   return Promise.resolve({ ok: true, image: fakeImage });
 }
 
-/** 8×6 横图：重新裁剪选「1:1」得到 6×6 取景（与整图不同），整图生成 100×75。 */
+/** 8×6 横图：重新裁剪选「1:1」得到 6×6 取景（与整图不同），整图按默认宽度生成 58×44。 */
 const wideImage: DecodedImage = { data: new Uint8ClampedArray(8 * 6 * 4).fill(255), width: 8, height: 6, mime: 'image/png' };
 function wideDecode(): Promise<DecodeResult> {
   return Promise.resolve({ ok: true, image: wideImage });
@@ -260,6 +261,10 @@ vi.setConfig({ testTimeout: 20_000 });
 const tw = zhCN.editorWorkspace;
 /** 画布摘要（读屏说明）里的总颗数，等同于旧界面的「共 N 粒」。 */
 const beads = (count: number) => new RegExp(`共 ${count} 颗`);
+/** 未下发 /api/config 时用站点配置回退值：8×8 图 → 方形图纸，8×6 横图 → 宽 × 四舍五入的高。 */
+const DEFAULT_WIDTH = publicConfigFallback.generation.defaultWidth;
+const SQUARE_BEADS = DEFAULT_WIDTH * DEFAULT_WIDTH;
+const WIDE_BEADS = DEFAULT_WIDTH * Math.round((DEFAULT_WIDTH * 6) / 8);
 /** Ctrl+S 立即保存（取代旧的「保存」按钮）。 */
 const saveNow = (): void => { fireEvent.keyDown(document, { key: 's', ctrlKey: true }); };
 function openTab(name: string): void {
@@ -320,7 +325,7 @@ async function enabledSpecs(): Promise<string[]> {
   fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
   return names;
 }
-/** 用画笔在画布中心点一下（100×100 图纸在 640×520 视窗里居中，中心必然落在图纸上）。 */
+/** 用画笔在画布中心点一下（默认 58×58 图纸在 640×520 视窗里居中，中心必然落在图纸上）。 */
 function paintCenter(pointerId = 1): void {
   // 默认当前色是图纸里用得最多的颜色：先换一个别的颜色，落笔才是真实改动。
   openTab(tw.tabColors);
@@ -503,7 +508,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={storage} decodeFn={wideDecode} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await screen.findByText(beads(7500));
+    await screen.findByText(beads(WIDE_BEADS));
     saveNow();
     await screen.findByText(tw.save.localOnly);
     const id = [...storage.designs.keys()][0];
@@ -524,11 +529,11 @@ describe('Workbench 全流程', () => {
       expect(within(cropDialog()).getByText(zhCN.create.cropStatus(8, 6))).toBeInTheDocument();
       fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     }
-    await screen.findByText(beads(7500));
+    await screen.findByText(beads(WIDE_BEADS));
     saveNow();
     await screen.findByText(tw.save.localOnly);
     expect(storage.sources.get(id)).toEqual(original);
-    expect(JSON.parse(storage.designs.get(id)!.projectJson).pattern.height).toBe(75);
+    expect(JSON.parse(storage.designs.get(id)!.projectJson).pattern.height).toBe(Math.round((DEFAULT_WIDTH * 6) / 8));
   });
   it('首次自动生成失败释放原图并返回可重新选图的状态', async () => {
     const decoder: ImageDecoder = {
@@ -574,7 +579,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} imageDecoder={decoder} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     fireEvent.click(recropButton());
     const apply = within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm });
     fireEvent.click(apply);
@@ -583,7 +588,7 @@ describe('Workbench 全流程', () => {
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
     await act(async () => resolveCrop({ ok: true, image: fakeImage }));
     expect(generate).toHaveBeenCalledOnce();
-    expect(screen.getByText(beads(10000))).toBeInTheDocument();
+    expect(screen.getByText(beads(SQUARE_BEADS))).toBeInTheDocument();
     expect(recropButton()).toBeEnabled();
   });
 
@@ -592,7 +597,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     paintCenter();
     fireEvent.click(recropButton());
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
@@ -601,7 +606,7 @@ describe('Workbench 全流程', () => {
     expect(generate).toHaveBeenCalledOnce();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: zhCN.workbench.confirmRegenerateTitle })).toBeNull());
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
-    expect(screen.getByText(beads(10000))).toBeInTheDocument();
+    expect(screen.getByText(beads(SQUARE_BEADS))).toBeInTheDocument();
     fireEvent.click(recropButton());
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
@@ -622,16 +627,16 @@ describe('Workbench 全流程', () => {
     );
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     fireEvent.click(recropButton());
     expect(cropDialog()).toBeInTheDocument();
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.cancel }));
-    expect(screen.getByText(beads(10000))).toBeInTheDocument();
+    expect(screen.getByText(beads(SQUARE_BEADS))).toBeInTheDocument();
     expect(decoder.region).toHaveBeenCalledOnce();
     fireEvent.click(recropButton());
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.create.ratioOriginal }));
     fireEvent.click(within(cropDialog()).getByRole('button', { name: zhCN.crop.confirm }));
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     expect(decoder.load).toHaveBeenCalledOnce();
     expect(decoder.region).toHaveBeenCalledTimes(2);
     expect(decoder.region).toHaveBeenCalledWith(
@@ -648,8 +653,8 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
 
-    // 工作台：默认 targetWidth=100 → 8×8 图 → 100×100 = 10000 颗
-    await screen.findByText(beads(10000));
+    // 工作台：默认宽度 58（站点配置回退值）→ 8×8 图 → 58×58 颗
+    await screen.findByText(beads(SQUARE_BEADS));
     expect(screen.queryByLabelText(zhCN.crop.ariaCropCanvas)).not.toBeInTheDocument();
     expect(modeButton(tw.modeEdit)).toHaveAttribute('aria-pressed', 'true');
     await chooseMenu(tw.exportLabel, tw.exportMenu.png);
@@ -669,7 +674,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     expect(screen.queryByText(zhCN.workbench.stepCrop)).not.toBeInTheDocument();
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     // 生成完成的结果句：以 role=status 播报尺寸与用量（此前生成完成完全静默）
     const done = await waitFor(() => {
@@ -679,7 +684,7 @@ describe('Workbench 全流程', () => {
       if (!match) throw new Error('missing generation result announcement');
       return match;
     });
-    expect(done.textContent).toContain('100 × 100 格');
+    expect(done.textContent).toContain(`${DEFAULT_WIDTH} × ${DEFAULT_WIDTH} 格`);
     // 位置感：生成后直接落在编辑器（编辑模式、画布获得焦点）。
     expect(modeButton(tw.modeEdit)).toHaveAttribute('aria-pressed', 'true');
     expect(canvas()).toHaveFocus();
@@ -691,7 +696,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     paintCenter(1);
 
@@ -699,14 +704,14 @@ describe('Workbench 全流程', () => {
     regenerateWithWidth('20');
     const cancelButton = await screen.findByRole('button', { name: zhCN.common.cancel }, { timeout: 5000 });
     fireEvent.click(cancelButton);
-    await waitFor(() => expect(widthField().value).toBe('100'));
-    expect(screen.getByText(beads(10000))).toBeTruthy();
+    await waitFor(() => expect(widthField().value).toBe(String(DEFAULT_WIDTH)));
+    expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy();
 
     regenerateWithWidth('20');
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }, { timeout: 5000 }));
     await waitFor(() => expect(screen.getByText(beads(400))).toBeTruthy(), { timeout: 5000 });
     fireEvent.click(undoButton());
-    await waitFor(() => expect(screen.getByText(beads(10000))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy());
     expect(undoButton()).toBeDisabled();
   }, 20_000);
 
@@ -716,7 +721,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     paintCenter(91);
 
@@ -742,7 +747,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);
     await screen.findByText(zhCN.workbench.generateFailed);
@@ -761,7 +766,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
@@ -789,7 +794,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     const clears = vi.mocked(decoder.clear).mock.calls.length;
     saveNow();
     await screen.findByText(tw.save.localOnly);
@@ -800,8 +805,8 @@ describe('Workbench 全流程', () => {
     await screen.findByText(zhCN.workbench.generateFailed);
     await waitFor(() => expect(
       widthField().value,
-    ).toBe('100'));
-    expect(screen.getByText(beads(10000))).toBeTruthy();
+    ).toBe(String(DEFAULT_WIDTH)));
+    expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy();
     expect(screen.queryByText(beads(400))).toBeNull();
     expect(vi.mocked(decoder.clear).mock.calls.length).toBe(clears);
     expect(recropButton()).toBeEnabled();
@@ -928,7 +933,7 @@ describe('Workbench 本地保存', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     saveNow();
 
     await waitFor(() => expect(storage.sources.size).toBe(1));
@@ -964,7 +969,7 @@ describe('Workbench 本地保存', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
     storage.quotaExceeded = true;
     saveNow();
 
@@ -1351,7 +1356,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     await choosePalette(paletteName(ARTKAL));
 
@@ -1443,7 +1448,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    await screen.findByText(beads(10000));
+    await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);
     await waitFor(() => expectKit(24));

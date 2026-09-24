@@ -100,7 +100,7 @@ function TypedSuggestions({ q, result, onPick }: { q: string; result: SearchSugg
           {works.map((work) => (
             <ShellLink key={work.id} href={`/community/${work.id}`} onClick={() => onPick()} className={linkItemClass}>
               {/* eslint-disable-next-line @next/next/no-img-element -- 服务端按修订渲染的豆粒缩略图（长期缓存），不经 next/image 二次处理 */}
-              <img src={work.thumbnailUrl} alt="" width={32} height={32} loading="lazy" className="size-8 shrink-0 rounded-sm bg-bg-subtle object-contain" />
+              <img src={work.thumbnailUrl} alt="" width={32} height={32} loading="lazy" className="size-8 shrink-0 rounded-sm bg-bg object-contain p-0.5" />
               <span className="min-w-0 flex-1 truncate">{work.title}</span>
               <span className="ml-auto text-caption font-normal text-ink-3 tabular-nums">{work.width}×{work.height}</span>
             </ShellLink>

@@ -23,7 +23,7 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   // 新建图纸弹窗：默认全图、默认宽度，直接生成
   await uploadAndGenerate(page, PHOTO);
 
-  // 编辑器：生成图纸（默认宽度 100 → 100×100）
+  // 编辑器：生成图纸（默认宽度 58）
   await expect(page.getByText(beadsText()).first()).toBeAttached({ timeout: 20_000 });
 
   // 调整页：宽度改为 20 → 重新生成 20×20=400 颗

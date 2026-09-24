@@ -8,7 +8,7 @@ import { thumbnailPixelSize } from '@/lib/render/thumbnailSize';
 import { zhCN } from '@/messages/zh-CN';
 import { Badge } from '@/components/ui/badge';
 import { BeadImage } from '@/components/ui/bead-image';
-import { MetaItem, MetaSep } from '@/components/ui/work-card';
+import { MetaItem, MetaSep, cardMediaClass, cardMediaInnerClass } from '@/components/ui/work-card';
 import { relativeTime } from '@/components/create/create-model';
 import { ActionMenu, type ActionEntry } from '../action-menu';
 import { ProgressRing } from '../progress-ring';
@@ -88,8 +88,8 @@ export function DesignCard({ design, cloud, now, opening, entries, onOpen }: Des
   const badges = <DesignBadges design={design} cloud={cloud} />;
   return (
     <article data-slot="design-card" aria-busy={opening || undefined} className="group/card @container relative flex min-w-0 flex-col gap-2 rounded-lg sm:gap-2.5">
-      <div className="pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg-subtle after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']">
-        <div className="size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full">
+      <div className={cardMediaClass}>
+        <div className={cardMediaInnerClass}>
           <DesignMedia design={design} cloud={cloud} />
         </div>
         <div aria-hidden="true" className="absolute top-2.5 right-12 left-2.5 z-1 flex flex-wrap gap-1.5">{badges}</div>

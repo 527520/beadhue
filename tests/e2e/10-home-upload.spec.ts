@@ -27,9 +27,9 @@ test('发现页「创作」进入创作入口 → 选新图生成，不回到上
   await expect(page.getByRole('link', { name: /^打开「/ })).toHaveCount(1);
   await uploadFile(page, PHOTO_B);
 
-  // 第二张是正方形：首版为 100×100，不能恢复旧的 100×63。
+  // 第二张是正方形：首版按默认宽度出方形图纸（58 × 58），不能恢复上一张的横图尺寸。
   await generateFromDialog(page);
-  await expect(page.getByText(beadsText(10000)).first()).toBeAttached({ timeout: 30_000 });
+  await expect(page.getByText(/^58 × 58 格 · 共 \d+ 颗/).first()).toBeAttached({ timeout: 30_000 });
   await openPanelTab(page, '调整');
   await expect(recropButton(page)).toBeEnabled();
   await expect(page.getByRole('dialog', { name: '裁剪图片' })).toHaveCount(0);
