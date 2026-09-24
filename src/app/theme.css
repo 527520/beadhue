@@ -32,6 +32,7 @@
 @source "../lib/render/beads.ts";
 @source "../lib/render/tagIconArt.ts";
 @source "./page.tsx";
+@source "../components/editor-workspace";
 
 @theme {
   --color-*: initial;
@@ -288,6 +289,14 @@
 }
 @utility max-h-popover-list { max-height: min(60dvh, 440px); }
 @utility h-crop-stage { height: min(300px, 40dvh); @media (min-width: 768px) { height: 360px; } @media (min-width: 1024px) { height: 400px; } }
+/* 编辑器（票 08）：画布区的淡钉点底纹、原图参照窗右下角的缩放手柄。 */
+@utility editor-stage-dots {
+  background-image: radial-gradient(circle, var(--color-line) 1px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+@utility reference-resize {
+  background: linear-gradient(135deg, transparent 52%, var(--color-ink-4) 52% 58%, transparent 58% 70%, var(--color-ink-4) 70% 76%, transparent 76%);
+}
 
 /* Base UI 在 CSPProvider disableStyleElements 下不再注入 <style>，隐藏滚动条的规则由这里静态提供。 */
 .base-ui-disable-scrollbar { scrollbar-width: none; }

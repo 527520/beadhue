@@ -19,6 +19,20 @@ export const BEAD_TOKENS = {
   codeOnDark: 'rgba(255,255,255,0.92)',
 } as const;
 
+/** 编辑器画布（票 08，原型 editor/viewport.js）：图纸外框、悬停 / 光标描边、高亮时淡化其余格子、原图参照的遮罩与视野框。 */
+export const EDITOR_CANVAS = {
+  /** 图纸外框与投影（--line-strong） */
+  frame: '#d1d1d6',
+  /** 悬停 / 光标的深墨内描边（--ink） */
+  ink: '#1c1c1e',
+  /** 悬停 / 光标的白色外描边，与高亮淡化层（--bg） */
+  paper: '#ffffff',
+  /** 参照窗底色（--bg-subtle） */
+  subtle: '#f7f7f8',
+  /** 参照窗里的视野框（--accent） */
+  accent: '#3160e6',
+} as const;
+
 /** 标志的 2×2 四颗豆（原型 app.js brand()）：红、黄、蓝、绿。 */
 export const BRAND_BEAD_COLORS = ['#E0473F', '#FFD447', '#3F7FD9', '#47A35B'] as const;
 

@@ -58,7 +58,6 @@ import {
 } from "@/lib/progress/stitchProgress";
 import StepIndicator from "@/components/workbench/StepIndicator";
 import GenerationCancelControl from "@/components/workbench/GenerationCancelControl";
-import { useConfirm } from "@/components/legacy-ui/ConfirmDialog";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
 import Modal from "@/components/legacy-ui/Modal";
 import CropDialog from "@/components/crop/CropDialog";
@@ -70,6 +69,18 @@ import PngExportButton from "@/components/export/PngExportButton";
 import PdfExportButton from "@/components/export/PdfExportButton";
 import ProjectFileButtons from "@/components/export/ProjectFileButtons";
 import { SiteShell } from "@/components/shell/site-shell";
+import { RefreshCw } from "lucide-react";
+import {
+  EditorWorkspace,
+  type WorkspaceNotice,
+} from "@/components/editor-workspace/editor-workspace";
+import { useConfirmDialog } from "@/components/editor-workspace/use-confirm-dialog";
+import type {
+  MissingReason,
+  ReferenceStatus,
+} from "@/components/editor-workspace/reference";
+import { useIsMobile } from "@/components/ui/use-media-query";
+import { useToast } from "@/components/ui/toast";
 import { CreateEntry } from "@/components/create/create-entry";
 import {
   NewDrawingDialog,
@@ -82,6 +93,9 @@ import {
 import {
   buildPaletteChoices,
   findPaletteChoice,
+  paletteSizes,
+  specChoices as buildSpecChoices,
+  type PaletteChoice,
 } from "@/components/create/palette-choices";
 import LegacyScope from "@/components/layout/LegacyScope";
 import LegacyPageHeading from "@/components/layout/LegacyPageHeading";
@@ -117,6 +131,7 @@ import {
   paletteColorsForSelection,
 } from "@/lib/engine/kit";
 import {
+  KIT_TIERS,
   isKitTierAvailableForPalette,
   projectPaletteEngineColors,
 } from "@/lib/kitTiers";
@@ -148,7 +163,7 @@ import {
   type DecodedImage,
   type ImageDecoder,
 } from "@/lib/image/decode";
-import { validatePixelCount } from "@/lib/image/validation";
+import { validateImageFile, validatePixelCount } from "@/lib/image/validation";
 import type { ImageType } from "@/lib/image/sniff";
 import {
   createLocalGenerationSource,
@@ -164,16 +179,18 @@ import {
   type LocalGenerationSourceV1,
   type StorageAdapter,
 } from "@/lib/storage";
-import { conflictName } from "@/lib/project/parse";
+import { conflictName, importProjectFile } from "@/lib/project/parse";
+import { projectFileName, serializeProject } from "@/lib/project/serialize";
 import {
   ENGINE_VERSION,
+  LIMITS,
   PROJECT_FILE_FORMAT,
   PROJECT_FILE_VERSION,
 } from "@/lib/appInfo";
 import { usePublicConfig } from "@/components/config/usePublicConfig";
 import { createBeadhueApi } from "@/lib/sync/api";
 import { enqueueDesignSync, withDesignStorageLock } from "@/lib/sync/queue";
-import type { SyncOutcome } from "@/lib/sync/clientAdapter";
+import { createSyncClient, type SyncOutcome } from "@/lib/sync/clientAdapter";
 import { getPaletteColors, listPalettes } from "@/components/palettes/api";
 import { track } from "@/lib/analytics/client";
 import { colorBucket, widthBucket } from "@/lib/analytics/buckets";
@@ -278,8 +295,29 @@ export default function Workbench({
 }: WorkbenchProps) {
   const t = zhCN.workbench;
   const router = useRouter();
-  // 破坏性操作统一走品牌确认弹窗（C-7），不再用 window.confirm。
-  const { confirm, confirmDialog } = useConfirm();
+  // 破坏性操作统一走确认弹窗（C-7）；R15 起用新组件版，入口、编辑器与手机旧布局共用。
+  const { confirm, confirmDialog } = useConfirmDialog();
+  const toast = useToast();
+  /** 桌面编辑器（≥768）用新工作区；手机仍是旧工作台布局（票 09 重做）。 */
+  const narrow = useIsMobile();
+  const narrowRef = useRef(narrow);
+  useEffect(() => {
+    narrowRef.current = narrow;
+  }, [narrow]);
+  /** 换色板 / 规格 / 档位的结果提示：桌面编辑器用带「撤销」的提示条（旧布局仍用 remapNotice）。 */
+  const undoRegenerationRef = useRef<() => void>(() => undefined);
+  const notifyUndoable = useCallback(
+    (message: string): void => {
+      if (narrowRef.current) return;
+      toast(message, {
+        action: {
+          label: zhCN.editorWorkspace.undoAction,
+          onClick: () => undoRegenerationRef.current(),
+        },
+      });
+    },
+    [toast],
+  );
   const [ownedImageDecoder] = useState<ImageDecoder>(() =>
     createImageDecoder(),
   );
@@ -318,6 +356,11 @@ export default function Workbench({
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
     null,
   );
+  /** 原图载入结果（按 sha256 记，换原图后旧结果自然失效）：决定原图参照是「可用 / 载入中 / 缺失」。 */
+  const [originalImageState, setOriginalImageState] = useState<{
+    sha256: string;
+    state: "ready" | "missing";
+  } | null>(null);
   const updateOriginal = useCallback((next: OriginalReference | undefined) => {
     originalRef.current = next;
     setOriginal(next);
@@ -565,6 +608,9 @@ export default function Workbench({
   const [saveSummaryOpen, setSaveSummaryOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteHost, setPaletteHost] = useState<HTMLDivElement | null>(null);
+  /** D72 深链：/app?id=…&publish=1 打开后直接弹出「公开到豆社」。 */
+  const [publishRequested, setPublishRequested] = useState(false);
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [paletteIntent, setPaletteIntent] = useState<{
     designId: string;
     value: string;
@@ -876,8 +922,19 @@ export default function Workbench({
         markDirty();
         if (firstDrawingRef.current) {
           firstDrawingRef.current = false;
+          // 新图纸默认以所选图片命名（原型：照片名 / 示例名），用户随时可在顶栏改名。
+          const fileName = retainedOriginalRef.current?.name
+            .replace(/\.[^.]+$/, "")
+            .trim()
+            .slice(0, LIMITS.designNameLength);
+          if (fileName)
+            setName((current) => (current.trim() ? current : fileName));
           setStep("workspace");
           showDesignQuery(designIdRef.current);
+        } else if (!narrowRef.current) {
+          toast(zhCN.editorWorkspace.regenerated, {
+            icon: <RefreshCw aria-hidden="true" strokeWidth={1.75} />,
+          });
         }
         // D-1：生成完成的可感知反馈（播报 + 三段编排 + 数字滚动）
         setDoneToken((token) => token + 1);
@@ -920,6 +977,7 @@ export default function Workbench({
     restoreDraftControls,
     generationDraft,
     palette.length,
+    toast,
     updateOriginal,
     source,
   ]);
@@ -1319,6 +1377,8 @@ export default function Workbench({
     imageBusyRef.current = false;
     setBusy(false);
     setErrorMsg(null);
+    // 编辑器里「选择原图」后取消裁剪：原图纸保持原样，之后的选图不再按重绑处理。
+    rebindRestoredSourceRef.current = false;
     if (generationSession.committed) {
       restoreReplacement();
       setStep("workspace");
@@ -1455,6 +1515,17 @@ export default function Workbench({
           ? t.remapDone(result.changedCells)
           : `${t.remapDone(result.changedCells)} ${t.boardProfileChanged(getBoardProfile(nextBoardProfile).displayName)}`,
       );
+      const chosenName =
+        paletteChoices.find((choice) => choice.value === value)?.name ??
+        zhCN.workbench.customPaletteLabel;
+      notifyUndoable(
+        nextBoardProfile === boardProfile
+          ? zhCN.editorWorkspace.colors.paletteDone(chosenName)
+          : zhCN.editorWorkspace.colors.paletteSpecDone(
+              chosenName,
+              getBoardProfile(nextBoardProfile).displayName,
+            ),
+      );
       markDirty();
     },
     [
@@ -1464,6 +1535,8 @@ export default function Workbench({
       generationSession.committed,
       markDirty,
       kitTier,
+      notifyUndoable,
+      paletteChoices,
       params,
       remapPalette,
       t,
@@ -1491,6 +1564,9 @@ export default function Workbench({
         boardProfile: value,
       });
       setRemapNotice(t.boardProfileChanged(getBoardProfile(value).displayName));
+      notifyUndoable(
+        zhCN.editorWorkspace.adjust.specDone(getBoardProfile(value).displayName),
+      );
       markDirty();
     },
     [
@@ -1499,6 +1575,7 @@ export default function Workbench({
       generationDraft,
       generationSession.committed,
       markDirty,
+      notifyUndoable,
       projectPalette,
       remapPalette,
       t,
@@ -1598,6 +1675,9 @@ export default function Workbench({
           boardProfile,
         });
         setRemapNotice(t.kitApplied(normalizedTier, result.changedCells));
+        notifyUndoable(
+          zhCN.editorWorkspace.colors.kitDone(normalizedTier, result.changedCells),
+        );
         markDirty();
       })();
     },
@@ -1606,6 +1686,7 @@ export default function Workbench({
       generationSession.committed,
       markDirty,
       boardProfile,
+      notifyUndoable,
       params,
       projectPalette,
       regenerate,
@@ -1655,6 +1736,9 @@ export default function Workbench({
     undoRegeneration,
     updateOriginal,
   ]);
+  useEffect(() => {
+    undoRegenerationRef.current = handleUndoRegeneration;
+  }, [handleUndoRegeneration]);
 
   useEffect(() => {
     const bound = (event: Event) => {
@@ -1890,20 +1974,25 @@ export default function Workbench({
     const imageReset = requestAnimationFrame(() => setOriginalImage(null));
     const reference = originalRef.current;
     if (!reference) return () => cancelAnimationFrame(imageReset);
+    const missing = (): void => {
+      if (!cancelled)
+        setOriginalImageState({ sha256: reference.sha256, state: "missing" });
+    };
     void (async () => {
       let cached = await getCachedOriginal(reference.sha256).catch(() => null);
       if (!cached && reference.assetId) {
         const response = await fetch(`/api/designs/${designId}/original`, {
           cache: "no-store",
         });
-        if (!response.ok) return;
+        if (!response.ok) return missing();
         const bytes = new Uint8Array(await response.arrayBuffer());
         const type = sniffImageType(bytes);
-        if (type === "unknown") return;
+        if (type === "unknown") return missing();
         cached = await cacheOriginal(bytes, type, "original");
-        if (cached.sha256 !== reference.sha256) return;
+        if (cached.sha256 !== reference.sha256) return missing();
       }
-      if (!cached || cancelled) return;
+      if (!cached) return missing();
+      if (cancelled) return;
       retainedOriginalRef.current = {
         bytes: new Uint8Array(cached.bytes),
         type: cached.type,
@@ -1921,6 +2010,7 @@ export default function Workbench({
       await image.decode();
       if (!cancelled) {
         setOriginalImage(image);
+        setOriginalImageState({ sha256: reference.sha256, state: "ready" });
         const project = buildProjectRef.current();
         if (
           !sourceRef.current &&
@@ -1937,7 +2027,7 @@ export default function Workbench({
           );
         }
       }
-    })().catch(() => undefined);
+    })().catch(missing);
     return () => {
       cancelled = true;
       cancelAnimationFrame(imageReset);
@@ -2558,6 +2648,7 @@ export default function Workbench({
         if (requestedId && requestedPalette && requestedPalette.length <= 200) {
           setPaletteIntent({ designId: requestedId, value: requestedPalette });
         }
+        if (urlParams.get("publish") === "1") setPublishRequested(true);
         const requestedMode = urlParams.get("mode");
         if (
           requestedId &&
@@ -2778,6 +2869,245 @@ export default function Workbench({
     resetWorkbench,
     saveBeforeLeave,
   ]);
+
+  // ---------- 桌面编辑器（票 08）的界面接缝：业务仍是上面这些处理函数 ----------
+
+  const sourceInputRef = useRef<HTMLInputElement>(null);
+  /** 编辑器里「选择原图」：为这张图纸重新选原图（保留设计身份），之后走同一条解码 → 裁剪 → 重新生成。 */
+  const handleSourceFile = useCallback(
+    async (file: File | undefined): Promise<void> => {
+      if (!file) return;
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const checked = validateImageFile({ bytes, name: file.name });
+      if (!checked.ok) {
+        setErrorMsg(zhCN.errors[checked.code]);
+        return;
+      }
+      rebindRestoredSourceRef.current = Boolean(generationSession.committed);
+      await handleUpload({ bytes, name: file.name, type: checked.type });
+    },
+    [generationSession.committed, handleUpload],
+  );
+
+  const exportProjectFile = useCallback((): void => {
+    const committed = selectCommittedSnapshot(generationSession);
+    if (!committed) return;
+    const analyticsSource = communityOrigin ? "community" : "other";
+    try {
+      const fileName = name.trim() || zhCN.project.unnamed;
+      const text = serializeProject({
+        original,
+        name: fileName,
+        createdAt: createdAt || new Date().toISOString(),
+        engineVersion: committed.engineVersion,
+        boardProfile: committed.boardProfile,
+        paletteSelection: committed.paletteSelection,
+        params: committed.params,
+        pattern: committed.pattern,
+      });
+      const url = URL.createObjectURL(
+        new Blob([text], { type: "application/json" }),
+      );
+      const anchor = document.createElement("a");
+      try {
+        anchor.href = url;
+        anchor.download = projectFileName(fileName);
+        document.body.appendChild(anchor);
+        anchor.click();
+      } finally {
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1_500);
+      }
+      track({
+        name: "design_exported",
+        properties: { format: "project", source: analyticsSource },
+      });
+      toast(zhCN.editorWorkspace.exportMenu.exported);
+    } catch {
+      track({
+        name: "export_failed",
+        properties: { format: "project", errorCode: "PROJECT_EXPORT_FAILED" },
+      });
+      toast(zhCN.editorWorkspace.exportMenu.exportFailed);
+    }
+  }, [communityOrigin, createdAt, generationSession, name, original, toast]);
+
+  /** 复制为新设计：先把当前改动落盘，再以新 id 另存一份（原图资产在新设计下重新关联），并切到副本。 */
+  const duplicateDesign = useCallback(async (): Promise<void> => {
+    const adapter = adapterRef.current;
+    if (!adapter) {
+      setSaveState("unavailable");
+      return;
+    }
+    if (dirtyRef.current) await doSave();
+    const project = buildProjectRef.current();
+    if (!project) return;
+    const records = await adapter.getAll().catch(() => []);
+    const copyName = conflictName(
+      zhCN.editorWorkspace.moreMenu.copyName(project.name),
+      records.map((item) => item.name),
+    );
+    const now = new Date().toISOString();
+    const copy: ProjectFile = {
+      ...project,
+      ...(project.original
+        ? { original: { ...project.original, assetId: undefined } }
+        : {}),
+      name: copyName,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const copySource =
+      pendingGenerationSourceRef.current === undefined
+        ? sourceRef.current
+        : pendingGenerationSourceRef.current;
+    const copyId = newDesignId();
+    try {
+      await withDesignStorageLock(() =>
+        adapter.put(
+          createDesignRecord(
+            copyId,
+            copy,
+            renderThumbnail(
+              copy.pattern,
+              256,
+              getBoardProfile(copy.boardProfile).boardCols,
+            ),
+          ),
+          copySource
+            ? replaceGenerationSource(createLocalGenerationSource(copySource))
+            : CLEAR_GENERATION_SOURCE,
+        ),
+      );
+    } catch (error) {
+      setSaveState(isQuotaError(error) ? "quota" : "error");
+      return;
+    }
+    pendingGenerationSourceRef.current = undefined;
+    setActiveDesignId(copyId);
+    setName(copyName);
+    setCreatedAt(now);
+    updateOriginal(copy.original);
+    setSavedNames((prev) => [...prev, copyName]);
+    showDesignQuery(copyId);
+    markDirty();
+    toast(zhCN.editorWorkspace.moreMenu.duplicated(copyName));
+  }, [doSave, markDirty, setActiveDesignId, toast, updateOriginal]);
+
+  /** 删除设计：与「我的设计」同一套规则——已上云的先做条件删除，只在本机的写墓碑，避免下次同步复活。 */
+  const deleteDesign = useCallback(async (): Promise<boolean> => {
+    const adapter = adapterRef.current;
+    const id = designIdRef.current;
+    const deletedName = name.trim() || zhCN.project.unnamed;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    dirtyRef.current = false;
+    try {
+      const api = createBeadhueApi();
+      if (adapter) {
+        const record = (await adapter.getAll()).find((item) => item.id === id);
+        let cloudRevision = record?.revision ?? 0;
+        const identity = await api.me().catch(() => ({ state: "guest" as const }));
+        if (identity.state === "verified") {
+          let cloud = await api.getDesign(id);
+          if (!cloud && cloudRevision <= 0) {
+            await enqueueDesignSync(adapter, api);
+            cloud = await api.getDesign(id);
+          }
+          cloudRevision = cloud?.revision ?? 0;
+        }
+        if (cloudRevision > 0) {
+          await api.deleteDesign(id, cloudRevision);
+          await withDesignStorageLock(() => adapter.delete(id));
+        } else if (record) {
+          const client = createSyncClient(adapter, api);
+          await withDesignStorageLock(() =>
+            client.deleteLocal(id, new Date().toISOString(), record.revision ?? 0),
+          );
+        }
+        await adapter.deleteStitchProgress(id).catch(() => undefined);
+      }
+      toast(zhCN.editorWorkspace.moreMenu.deleted(deletedName));
+      router.push("/me");
+      return true;
+    } catch {
+      toast(zhCN.editorWorkspace.moreMenu.deleteFailed);
+      return false;
+    }
+  }, [name, router, toast]);
+
+  /** 编辑器「…」里导入项目文件：与旧导出面板同一套校验（大小上限、格式、重名加后缀），成为新设计。 */
+  const importProjectFromFile = useCallback(
+    async (file: File): Promise<void> => {
+      if (file.size > LIMITS.projectFileBytes) {
+        setErrorMsg(zhCN.project.tooLarge);
+        return;
+      }
+      let text: string;
+      try {
+        text = await file.text();
+      } catch {
+        setErrorMsg(zhCN.project.invalidFile);
+        return;
+      }
+      const result = importProjectFile(text);
+      if (!result.ok) {
+        setErrorMsg(`${zhCN.project.importFailed}${result.errors.join('；')}`);
+        return;
+      }
+      handleImport({
+        ...result.project,
+        name: conflictName(result.project.name, savedNames),
+      });
+    },
+    [handleImport, savedNames],
+  );
+
+  const workspacePaletteChoices = useMemo<PaletteChoice[]>(() => {
+    if (paletteChoices.some((choice) => choice.value === selectedPalette))
+      return paletteChoices;
+    // 导入项目自带的自定义色板（或已不在云端的我的色板）：列出来当作当前项，不能再切回。
+    const colors =
+      projectPalette.kind === "custom"
+        ? projectPalette.colors.map((color) => ({
+            code: color.code,
+            hex: color.hex,
+          }))
+        : [];
+    return [
+      ...paletteChoices,
+      {
+        value: selectedPalette,
+        name: zhCN.editorWorkspace.colors.customPalette,
+        meta: `${zhCN.editorWorkspace.colors.customPaletteMeta(colors.length)} · ${paletteSizes(projectPalette)}`,
+        band: colors.slice(0, 8).map((color) => color.hex),
+        palette: projectPalette,
+        colors,
+      },
+    ];
+  }, [paletteChoices, projectPalette, selectedPalette]);
+  const workspaceSpecChoices = useMemo(
+    () => buildSpecChoices(projectPalette, paletteDisplayName),
+    [paletteDisplayName, projectPalette],
+  );
+  const workspaceKitTiers = useMemo(
+    () => KIT_TIERS.filter((tier) => tier === 0 || tier <= paletteColorCount),
+    [paletteColorCount],
+  );
+  const originalStatus: ReferenceStatus = !original
+    ? "none"
+    : !original.geometry
+      ? "missing"
+      : originalImage
+        ? "ready"
+        : originalImageState?.sha256 === original.sha256 &&
+            originalImageState.state === "missing"
+          ? "missing"
+          : "loading";
+  const missingReason: MissingReason = communityOrigin
+    ? "reuse"
+    : original
+      ? "local"
+      : "blank";
 
   const forceDragging = useForcedDragging();
   const mobileWorkspaceOpen =
@@ -3047,8 +3377,187 @@ export default function Workbench({
             onClose={() => setBlankOpen(false)}
           />
         )}
-        {confirmDialog && <LegacyScope>{confirmDialog}</LegacyScope>}
+        {confirmDialog}
       </SiteShell>
+    );
+  }
+  const stitchPanel = pattern ? (
+    <>
+      {stitchSaveError && (
+        <Notice kind="danger" compact as="div" className="stitch-save-notice">
+          <span>{t.stitchSaveFailed}</span>
+          <button type="button" className="btn-outline btn-sm" onClick={retryStitchSave}>
+            {t.stitchSaveRetry}
+          </button>
+        </Notice>
+      )}
+      {stitchProgress ? (
+        <StitchView
+          pattern={pattern}
+          progress={stitchProgress}
+          boardSize={boardSpec.boardCols}
+          layout={mobileLayout ? "mobile" : "desktop"}
+          onChange={updateStitchProgress}
+        />
+      ) : (
+        <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
+      )}
+    </>
+  ) : null;
+  if (!narrow && pattern) {
+    const workspaceNotices: WorkspaceNotice[] = [];
+    if (busy)
+      workspaceNotices.push({ id: "busy", tone: "info", text: busyText });
+    if (saveState === "unavailable")
+      workspaceNotices.push({ id: "unavailable", tone: "warning", text: t.unavailable });
+    if (saveState === "quota")
+      workspaceNotices.push({ id: "quota", tone: "danger", text: t.quotaError });
+    if (visibleErrorMsg && visibleErrorMsg !== dismissedError)
+      workspaceNotices.push({
+        id: "error",
+        tone: "danger",
+        text: visibleErrorMsg,
+        onDismiss: () => setDismissedError(visibleErrorMsg),
+      });
+    if (syncNotice)
+      workspaceNotices.push({
+        id: "sync",
+        tone: "info",
+        text: syncNotice,
+        onDismiss: () => setSyncNotice(null),
+      });
+    return (
+      <>
+        <EditorWorkspace
+          designId={designId}
+          name={name}
+          onRename={(nextName) => {
+            setName(nextName);
+            markDirty();
+          }}
+          save={{
+            state: saveState,
+            cloud: cloudSaveState,
+            loggedIn: authStatus.kind === "user",
+            onRetry: () => void doSave(),
+            onSaveNow: () => {
+              if (!generating && generationSession.committed) void doSave();
+            },
+          }}
+          mode={tab === "stitch" ? "stitch" : "edit"}
+          onModeChange={setTab}
+          stitchView={<LegacyScope>{stitchPanel}</LegacyScope>}
+          pattern={pattern}
+          stats={stats}
+          total={total}
+          onPatternChange={handlePatternChange}
+          palette={palette}
+          paletteColorCount={paletteColorCount}
+          paletteChoices={workspacePaletteChoices}
+          paletteValue={selectedPalette}
+          paletteName={paletteDisplayName}
+          onPaletteSelect={handlePaletteSelect}
+          paletteLocked={generating || !generationSession.committed}
+          paletteNotice={paletteLoadFailed ? zhCN.editorWorkspace.colors.paletteLoadFailed : null}
+          specChoices={workspaceSpecChoices}
+          spec={boardProfile}
+          specLabel={boardSpec.displayName}
+          boardSize={boardSpec.boardCols}
+          onSpecSelect={handleBoardProfileSelect}
+          kitTiers={workspaceKitTiers}
+          kitTier={kitTier}
+          onKitChange={handleKitTierChange}
+          params={params}
+          onRegenerate={handleParamsChange}
+          hasSource={Boolean(source)}
+          source={source}
+          generating={generating}
+          generationProgress={progress}
+          generationRound={generationRound}
+          onCancelGeneration={handleCancelGenerate}
+          original={original}
+          originalImage={originalImage}
+          referenceStatus={originalStatus}
+          missingReason={missingReason}
+          onOriginalChange={updateOriginal}
+          onChooseSource={() => sourceInputRef.current?.click()}
+          onFetchCommunity={communitySource ? () => void fetchCommunityOriginal() : undefined}
+          canRecrop={Boolean(decoded)}
+          onRecrop={() => {
+            if (decoded) startTransition(() => setStep("crop"));
+          }}
+          regenerationUndo={Boolean(generationSession.regenerationUndo)}
+          onUndoRegeneration={handleUndoRegeneration}
+          communityOrigin={communityOrigin}
+          onExportProject={exportProjectFile}
+          cellMm={boardProfile === DEFAULT_BOARD_PROFILE_ID ? undefined : boardSpec.pdfCellMm}
+          prepareShare={prepareShare}
+          getOriginal={() => retainedOriginalRef.current}
+          onBack={() => void saveBeforeLeave(() => router.push("/me"))}
+          onNewDesign={() => void saveBeforeLeave(resetWorkbench)}
+          onDuplicate={() => void duplicateDesign()}
+          onDelete={deleteDesign}
+          onImportFile={(file) => void importProjectFromFile(file)}
+          notices={workspaceNotices}
+          paletteIntent={
+            paletteIntent?.designId === designId
+              ? {
+                  question: intentOption
+                    ? t.paletteIntentQuestion(intentOption.brand, intentOption.series, name)
+                    : t.paletteIntentMissing,
+                  help: t.paletteIntentHelp,
+                  applyLabel: t.paletteIntentApply,
+                  cancelLabel: t.paletteIntentCancel,
+                  applyDisabled: !intentOption || busy || generating || !generationSession.committed,
+                }
+              : null
+          }
+          onPaletteIntentApply={() => {
+            if (!paletteIntent || paletteIntent.designId !== designId || !intentOption) return;
+            handlePaletteSelect(paletteIntent.value);
+            dismissPaletteIntent();
+          }}
+          onPaletteIntentCancel={dismissPaletteIntent}
+          busy={busy}
+          announcement={
+            doneToken > 0 && !generating
+              ? t.generateDone(pattern.width, pattern.height, total, stats.length)
+              : ""
+          }
+          publishRequested={publishRequested}
+          onPublishRequestHandled={() => {
+            setPublishRequested(false);
+            const url = new URL(window.location.href);
+            url.searchParams.delete("publish");
+            window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
+          }}
+        />
+        <input
+          ref={sourceInputRef}
+          type="file"
+          accept="image/*,.heic,.heif"
+          hidden
+          aria-label={zhCN.editorWorkspace.reference.fileLabel}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            void handleSourceFile(file);
+          }}
+        />
+        {step === "crop" && decoded && (
+          <LegacyScope>
+            <CropDialog
+              image={decoded}
+              initialRect={lastCropRect}
+              disabled={busy}
+              error={visibleErrorMsg}
+              onConfirm={(rect) => handleCropConfirm(rect)}
+              onCancel={handleCropCancel}
+            />
+          </LegacyScope>
+        )}
+        {confirmDialog}
+      </>
     );
   }
   return (
@@ -3383,34 +3892,7 @@ export default function Workbench({
                   role="tabpanel"
                   aria-labelledby="tab-stitch"
                 >
-                  {stitchSaveError && (
-                    <Notice
-                      kind="danger"
-                      compact
-                      as="div"
-                      className="stitch-save-notice"
-                    >
-                      <span>{t.stitchSaveFailed}</span>
-                      <button
-                        type="button"
-                        className="btn-outline btn-sm"
-                        onClick={retryStitchSave}
-                      >
-                        {t.stitchSaveRetry}
-                      </button>
-                    </Notice>
-                  )}
-                  {stitchProgress ? (
-                    <StitchView
-                      pattern={pattern}
-                      progress={stitchProgress}
-                      boardSize={boardSpec.boardCols}
-                      layout={mobileLayout ? "mobile" : "desktop"}
-                      onChange={updateStitchProgress}
-                    />
-                  ) : (
-                    <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
-                  )}
+                  {stitchPanel}
                 </div>
               )}
               {hoverInfo && tab === "preview" && (
