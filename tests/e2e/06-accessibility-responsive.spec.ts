@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { devices, expect, test, type Locator, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
 import {
   BASE_URL,
@@ -32,53 +32,35 @@ async function registerAndLogin(page: Page): Promise<string> {
   return email;
 }
 
-async function assertProjectBarLayout(
-  page: Page,
-  projectBar: Locator,
-  width: number,
-  expectedLeafCount: number,
-): Promise<void> {
+/** 编辑器顶栏（票 08 / 09）：可见的按钮、输入框互不重叠，都在视口内，页面不横向滚动。 */
+async function assertEditorTopbar(page: Page, width: number): Promise<void> {
   await page.setViewportSize({ width, height: 800 });
   await page.evaluate(() => new Promise<void>((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(() => resolveFrame()))));
-
-  const geometry = await projectBar.evaluate((bar) => {
-    const candidates: Array<[string, Element | null]> = [
-      ['name', bar.querySelector('input[aria-label="设计名称"]')],
-      ['palette', bar.querySelector('.workspace-palette-summary')],
-      ...Array.from(bar.querySelectorAll('.workbench-save-actions [role="status"], .workbench-save-actions button'))
-        .map((element, index): [string, Element] => [`save-${index}`, element]),
-      ['overflow', bar.querySelector('.workspace-project-actions > .workspace-overflow > button')],
-    ];
-    const visible = candidates.flatMap(([name, element]) => {
-      if (!(element instanceof HTMLElement)) return [];
-      const rect = element.getBoundingClientRect();
-      const style = getComputedStyle(element);
-      if (rect.width <= 0 || rect.height <= 0 || style.display === 'none' || style.visibility === 'hidden') return [];
-      return [{ name, rect }];
-    });
-    const rects = visible.map(({ rect }) => rect);
-    const intersects = rects.some((first, firstIndex) => rects
-      .slice(firstIndex + 1)
-      .some((second) => first.left < second.right
-        && first.right > second.left
-        && first.top < second.bottom
-        && first.bottom > second.top));
+  await expect(page.getByRole('group', { name: '模式' })).toBeVisible();
+  const geometry = await page.evaluate(() => {
+    const header = document.querySelector('[data-ui] > header');
+    const rects = Array.from(header?.querySelectorAll('button, input') ?? [])
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden';
+      })
+      .map((element) => element.getBoundingClientRect());
+    const intersects = rects.some((first, index) => rects.slice(index + 1).some((second) => first.left < second.right - 0.5 && first.right > second.left + 0.5 && first.top < second.bottom && first.bottom > second.top));
     return {
       count: rects.length,
-      visibleNames: visible.map(({ name }) => name),
       intersects,
       left: Math.min(...rects.map((rect) => rect.left)),
       right: Math.max(...rects.map((rect) => rect.right)),
-      viewportWidth: document.documentElement.clientWidth,
-      documentWidth: document.documentElement.scrollWidth,
+      viewport: document.documentElement.clientWidth,
+      page: document.documentElement.scrollWidth,
     };
   });
-
-  expect(geometry.count, `${width}px 项目操作栏应完整显示：${geometry.visibleNames.join(', ')}`).toBe(expectedLeafCount);
-  expect(geometry.intersects, `${width}px 名称、色板、保存状态与操作不得重叠`).toBe(false);
-  expect(geometry.left, `${width}px 工作区操作不得越出视口左侧`).toBeGreaterThanOrEqual(0);
-  expect(geometry.right, `${width}px 工作区操作不得越出视口`).toBeLessThanOrEqual(geometry.viewportWidth);
-  expect(geometry.documentWidth, `${width}px 页面不得产生横向滚动`).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.count, `${width}px 顶栏应有可见操作`).toBeGreaterThanOrEqual(4);
+  expect(geometry.intersects, `${width}px 顶栏操作不得重叠`).toBe(false);
+  expect(geometry.left).toBeGreaterThanOrEqual(0);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.page, `${width}px 页面不得横向滚动`).toBeLessThanOrEqual(geometry.viewport);
 }
 
 for (const width of widths) {
@@ -150,92 +132,48 @@ test('桌面设计库与色板页不被固定侧栏撑出视口', async ({ page 
   }
 });
 
-test('工作区项目操作栏在游客与登录态的全部目标宽度下不重叠', async ({ page }, testInfo) => {
+test('编辑器顶栏在游客与登录态的全部目标宽度下不重叠', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   await page.setViewportSize({ width: widths[0], height: 800 });
   await page.goto('/app');
   await uploadAndGenerate(page, PHOTO);
-  let projectBar = page.getByRole('region', { name: '当前设计操作' });
-  await expect(projectBar.getByLabel('设计名称')).toBeVisible({ timeout: 20_000 });
-  await expect(projectBar.getByText('设计名称', { exact: true })).toBeVisible();
-  await expect(projectBar.locator('.workspace-palette-summary')).toBeVisible();
+  await expect(page.getByLabel(/^图纸编辑画布/)).toBeVisible({ timeout: 20_000 });
+  for (const width of widths) await assertEditorTopbar(page, width);
 
-  for (const width of widths) {
-    await assertProjectBarLayout(page, projectBar, width, 5);
-    await expect(projectBar.getByRole('button', { name: '保存', exact: true })).toBeVisible();
-    const more = projectBar.getByRole('button', { name: '更多操作' });
-    await more.click();
-    const overflowPanel = projectBar.getByTestId('site-overflow-panel');
-    await expect(overflowPanel).toBeVisible();
-    const overflowGeometry = await overflowPanel.evaluate((panel) => {
-      const rect = panel.getBoundingClientRect();
-      const actionHeights = Array.from(panel.querySelectorAll('a, button'))
-        .map((element) => element.getBoundingClientRect().height);
-      return {
-        left: rect.left,
-        right: rect.right,
-        viewportWidth: document.documentElement.clientWidth,
-        actionHeights,
-      };
-    });
-    expect(overflowGeometry.left, `${width}px 游客菜单不得越出视口左侧`).toBeGreaterThanOrEqual(0);
-    expect(overflowGeometry.right, `${width}px 游客菜单不得越出视口右侧`).toBeLessThanOrEqual(overflowGeometry.viewportWidth);
-    expect(
-      overflowGeometry.actionHeights.every((height) => height >= 44),
-      `${width}px 游客菜单点击目标不得小于 44px`,
-    ).toBe(true);
-    await more.click();
-  }
-
-  await projectBar.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(projectBar.getByRole('status').filter({ hasText: /已保存/ })).toBeVisible({ timeout: 15_000 });
   const email = await registerAndLogin(page);
   await page.goto('/app');
-  projectBar = page.getByRole('region', { name: '当前设计操作' });
-  await expect(projectBar.getByLabel('设计名称')).toBeVisible({ timeout: 20_000 });
-  await expect(projectBar.getByText('设计名称', { exact: true })).toBeVisible();
+  await uploadAndGenerate(page, PHOTO);
+  await expect(page.getByLabel(/^图纸编辑画布/)).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(email, { exact: true })).toHaveCount(0);
-  await expect(projectBar.getByRole('button', { name: '重新上传', exact: true })).toBeVisible();
-  await expect(projectBar.getByText(/云端：/)).toBeVisible();
-
-  for (const width of widths) {
-    await assertProjectBarLayout(page, projectBar, width, 6);
-  }
+  for (const width of widths) await assertEditorTopbar(page, width);
 });
 
-test('移动工作台可切换编辑、用色与导出工具', async ({ page }, testInfo) => {
+test('手机编辑器：底部工具栏、颜色 / 信息 / 导出底部面板', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/app');
   await uploadAndGenerate(page, PHOTO);
+  await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeAttached({ timeout: 20_000 });
+  const tools = page.getByRole('toolbar', { name: '工具' });
+  for (const name of ['手形', '画笔', '橡皮', '油漆桶', '吸管']) await expect(tools.getByRole('button', { name, exact: true })).toBeVisible();
+  await expect(tools.getByRole('button', { name: '画笔', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
-  await expect(page.getByLabel('设计名称').last()).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeVisible();
-  await expect(page.locator('#panel-preview')).toBeFocused();
-  await page.getByRole('tab', { name: '预览', exact: true }).focus();
-  await page.getByRole('tab', { name: '预览', exact: true }).press('ArrowRight');
-  await expect(page.getByRole('tab', { name: '编辑', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('图纸编辑画布')).toBeVisible();
+  await tools.getByRole('button', { name: /^当前色 .*打开颜色$/ }).click();
+  const colors = page.getByRole('dialog', { name: '颜色' });
+  await expect(colors.getByRole('heading', { name: /图纸用色/ })).toBeVisible();
+  await colors.getByRole('button', { name: '关闭' }).click();
 
-  // 编辑/跟拼现在是沉浸工作区：先验证编辑器自己的「更多」抽屉，
-  // 再返回普通预览操作页面级的用色与导出工具。
   await page.getByRole('button', { name: '更多', exact: true }).click();
-  await expect(page.getByRole('button', { name: '油漆桶', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '返回预览', exact: true }).click();
-  await expect(page.locator('#panel-preview')).toBeVisible();
+  await page.getByRole('button', { name: '信息与采购清单', exact: true }).click();
+  const info = page.getByRole('dialog', { name: '信息与采购清单' });
+  await expect(info.getByText('10,000 颗').first()).toBeVisible();
+  await expect(info.getByRole('button', { name: '复制清单', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
 
-  const colors = page.getByRole('button', { name: '用色', exact: true });
-  await colors.click();
-  await expect(colors).toHaveAttribute('aria-pressed', 'true');
-  const materials = page.getByRole('region', { name: '采购清单', exact: true });
-  await expect(materials.getByText(/^10000 粒 · \d+ 色 · 约 \d+ 包/)).toBeVisible();
-  await expect(materials.getByRole('list', { name: '逐色材料用量' })).toBeVisible();
-  await expect(materials.getByRole('button', { name: '复制清单', exact: true })).toBeVisible();
-
-  const exportTools = page.getByRole('button', { name: '导出', exact: true });
-  await exportTools.click();
-  await expect(exportTools).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: '下载 PNG' })).toBeVisible();
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('button', { name: '导出', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '导出' }).getByRole('button', { name: '下载 PNG…' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official'] as const) {

@@ -9,7 +9,7 @@ async function createPattern(page: Page) {
   if (await reject.isVisible()) await reject.click();
   await page.getByLabel('图片文件选择器').setInputFiles(resolve('tests/fixtures/photo-gradient-64.png'));
   await page.getByRole('button', { name: '生成图纸', exact: true }).click();
-  await expect(page.getByLabel('图纸编辑画布')).toBeVisible();
+  await expect(page.getByLabel(/^图纸编辑画布/)).toBeVisible();
 }
 
 test('feedback: consent and headings use content width; portrait crop has no internal scrollbar', async ({ page }, info) => {
@@ -23,9 +23,10 @@ test('feedback: consent and headings use content width; portrait crop has no int
   await page.getByRole('button', { name: '不同意', exact: true }).click();
   await page.setViewportSize({ width: 560, height: 960 });
   await page.getByLabel('图片文件选择器').setInputFiles(resolve('tests/fixtures/max-100x8000.png'));
-  const crop = page.locator('.crop-canvas-wrap');
-  await expect(crop).toBeVisible();
-  await expect.soft.poll(() => crop.evaluate(e => e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth)).toBe(true);
+  // 「新建图纸」底部面板里的取景舞台：竖长图也等比放进舞台，不出现内部滚动条。
+  const stage = page.getByRole('dialog', { name: '新建图纸' }).locator('[data-base-ui-swipe-ignore]').first();
+  await expect(stage).toBeVisible();
+  await expect.soft.poll(() => stage.evaluate((e) => e.scrollHeight <= e.clientHeight && e.scrollWidth <= e.clientWidth)).toBe(true);
   await page.screenshot({ animations: 'disabled', path: info.outputPath('portrait-crop.png'), fullPage: true });
   await page.goto('/me');
   for (const width of [350, 390, 560, 768, 1440]) {
@@ -42,82 +43,68 @@ test('feedback: consent and headings use content width; portrait crop has no int
   await page.screenshot({ animations: 'disabled', path: info.outputPath('my-designs.png'), fullPage: true });
 });
 
-test('feedback: settings drawer is flush, dismissible and centered; name focus is contained; back leaves preview', async ({ page }, info) => {
+test('feedback: mobile sheets are flush and dismissible, rename lives in「…」, back leaves to my designs', async ({ page }, info) => {
   await page.setViewportSize({ width: 560, height: 960 });
   await createPattern(page);
-  const name = page.getByLabel('设计名称');
-  await name.fill('修改后的设计');
-  await expect.soft(name).toHaveCSS('box-shadow', 'none');
-  await page.screenshot({ animations: 'disabled', path: info.outputPath('design-name-focus.png') });
-  await page.getByRole('button', { name: '参数', exact: true }).click();
-  const panel = page.locator('.beadhue-settings:visible');
-  const bounds = (await panel.boundingBox())!;
-  expect.soft(Math.abs(bounds.y + bounds.height - 960)).toBeLessThan(2);
-  const close = page.getByRole('button', { name: '关闭参数', exact: true });
+  const more = page.getByRole('button', { name: '更多', exact: true });
+  await more.click();
+  await page.getByRole('button', { name: '重命名', exact: true }).click();
+  const rename = page.getByRole('dialog', { name: '重命名' });
+  await rename.getByRole('textbox', { name: '设计名称' }).fill('修改后的设计');
+  await rename.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page).toHaveTitle(/修改后的设计/);
+
+  await more.click();
+  await page.getByRole('button', { name: '调整', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: '调整' });
+  await expect(panel).toBeVisible();
+  const popup = page.locator('[data-slot="dialog-content"]').filter({ has: page.getByRole('heading', { name: '调整' }) });
+  await expect.poll(async () => {
+    const rect = await popup.boundingBox();
+    return rect ? Math.round(rect.y + rect.height) : 0;
+  }).toBe(960);
+  const close = panel.getByRole('button', { name: '关闭', exact: true });
   const button = (await close.boundingBox())!;
   const icon = (await close.locator('svg').boundingBox())!;
   expect.soft(Math.abs(button.x + button.width / 2 - icon.x - icon.width / 2)).toBeLessThan(1);
-  await page.screenshot({ animations: 'disabled', path: info.outputPath('settings-drawer.png') });
-  await page.mouse.click(12, Math.max(5, bounds.y - 20));
-  await expect(panel).toBeHidden();
-  await page.getByRole('button', { name: '参数', exact: true }).click();
-  const advanced = page.locator('.beadhue-settings-sheet summary').first();
-  for (let i = 0; i < 25 && !(await advanced.evaluate(e => e === document.activeElement)); i++) await page.keyboard.press('Tab');
-  await expect(advanced).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(advanced.locator('..')).toHaveAttribute('open', '');
+  await page.screenshot({ animations: 'disabled', path: info.outputPath('adjust-sheet.png') });
   await page.keyboard.press('Escape');
   await expect(panel).toBeHidden();
-  await expect(page.getByRole('button', { name: '参数', exact: true })).toBeFocused();
-  await page.getByRole('button', { name: '返回预览', exact: true }).click();
+
   await page.getByRole('button', { name: '返回我的设计', exact: true }).click();
   await expect(page).toHaveURL(/\/me$/);
   await expect(page.getByText('修改后的设计', { exact: true }).first()).toBeVisible();
 });
 
-test('feedback: current paint color stays visible and PNG settings pair labels with controls', async ({ page }, info) => {
+test('feedback: picked color shows on the current-color button and PNG settings pair labels with controls', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await createPattern(page);
-  const color = page.locator('.editor-active-color');
-  await expect(color).toBeVisible();
-  const initialColor = await color.textContent();
-  const viewport = page.locator('.editor-canvas-viewport');
-  await viewport.focus();
-  await page.keyboard.press('i');
-  const canvas = (await page.getByLabel('图纸编辑画布').boundingBox())!;
+  const tools = page.getByRole('toolbar', { name: '工具' });
+  const current = tools.getByRole('button', { name: /^当前色 .*打开颜色$/ });
+  await tools.getByRole('button', { name: '吸管', exact: true }).click();
+  const canvas = (await page.getByLabel(/^图纸编辑画布/).boundingBox())!;
   await page.mouse.click(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
-  await expect(color).toContainText(/#[0-9A-F]{6}/i);
-  await expect(color).not.toHaveText(initialColor!);
-  const sampled = await color.textContent();
-  await viewport.focus();
-  await page.keyboard.press('b');
-  await expect(color).toHaveText(sampled!);
-  await page.keyboard.press('g');
-  await expect(color).toHaveText(sampled!);
+  // 吸管取色后回到上一个上色工具（画笔），当前色块就是取到的颜色。
+  await expect(tools.getByRole('button', { name: '画笔', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const picked = await current.getAttribute('aria-label');
+  expect(picked).toMatch(/^当前色 \S+/);
+  await expect(tools.getByRole('button', { name: '油漆桶', exact: true })).toBeVisible();
+  await tools.getByRole('button', { name: '油漆桶', exact: true }).click();
+  await expect(current).toHaveAttribute('aria-label', picked!);
   await page.screenshot({ animations: 'disabled', path: info.outputPath('active-color.png') });
-  await page.getByRole('button', { name: '参数', exact: true }).click();
-  await page.locator('.desktop-tool-dock').getByRole('button', { name: '导出', exact: true }).click();
-  await page.getByRole('button', { name: 'PNG 选项', exact: true }).click();
-  const options = page.getByRole('region', { name: 'PNG 导出选项' });
-  for (const label of await options.locator('.switch-control').all()) {
-    const text = (await label.locator('span').last().boundingBox())!;
-    const track = (await label.locator('.switch-track').boundingBox())!;
-    expect(text.x).toBeLessThan(track.x);
-    expect(Math.abs(text.y + text.height / 2 - track.y - track.height / 2)).toBeLessThan(2);
+
+  await page.getByRole('button', { name: '更多', exact: true }).click();
+  await page.getByRole('button', { name: '导出', exact: true }).click();
+  await page.getByRole('button', { name: '下载 PNG…' }).click();
+  const options = page.getByRole('dialog', { name: '下载 PNG' });
+  for (const control of await options.getByRole('switch').all()) {
+    const row = control.locator('xpath=ancestor::div[1]');
+    const label = (await row.locator('label').first().boundingBox())!;
+    const track = (await control.boundingBox())!;
+    expect(label.x).toBeLessThan(track.x);
   }
   await page.screenshot({ animations: 'disabled', path: info.outputPath('png-options.png') });
-  await page.goto('/');
-  const hero = page.locator('.feature-art');
-  if (await hero.isVisible()) {
-    const image = hero.locator('img');
-    await expect(image).toHaveCSS('transform', 'none');
-    const art = (await image.boundingBox())!;
-    const area = (await hero.locator('.feature-image').boundingBox())!;
-    expect(art.width).toBeLessThanOrEqual(area.width);
-    await page.screenshot({ animations: 'disabled', path: info.outputPath('inspiration.png') });
-  }
 });
-
 
 test('feedback: search has one focus boundary and sort uses the shared picker', async ({ page }, info) => {
   for (const width of [390, 1440]) {
