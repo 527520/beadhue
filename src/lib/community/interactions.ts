@@ -235,7 +235,9 @@ export async function deleteCommunityComment(db: AnyDatabase, input: {
 
 export const COMMENT_PAGE_SIZE = 30;
 
-interface CommentCursor { createdAt: string; id: string }
+export type CommentOrder = 'asc' | 'desc';
+/** 游标记下排序方向（旧游标没有 order 字段，按升序）；方向不一致的游标视为无效。 */
+interface CommentCursor { createdAt: string; id: string; order?: 'desc' }
 
 export function encodeCommentCursor(cursor: CommentCursor): string {
   return signCursor(cursor);
@@ -245,25 +247,27 @@ export function decodeCommentCursor(value: string | undefined | null): CommentCu
   const parsed = verifyCursor(value) as Partial<CommentCursor> | null;
   if (!parsed || typeof parsed !== 'object') return null;
   if (typeof parsed.createdAt !== 'string' || Number.isNaN(Date.parse(parsed.createdAt)) || typeof parsed.id !== 'string' || !/^[0-9a-f-]{36}$/iu.test(parsed.id)) return null;
-  return { createdAt: parsed.createdAt, id: parsed.id };
+  return { createdAt: parsed.createdAt, id: parsed.id, ...(parsed.order === 'desc' ? { order: 'desc' as const } : {}) };
 }
 
 /**
- * 评论按发表时间升序游标分页（此前固定 100 条且无分页，第 101 条起对所有人不可见）。
- * 本人未公开的评论（待审 / 隐藏）只对本人可见。
+ * 评论按发表时间游标分页（此前固定 100 条且无分页，第 101 条起对所有人不可见）；
+ * 默认升序，`order: 'desc'` 为最新在前（R15 详情页输入框在上）。本人未公开的评论（待审 / 隐藏）只对本人可见。
  */
-export async function listCommunityComments(db: AnyDatabase, workId: string, viewerUserId?: string, page: { cursor?: string | null; limit?: number } = {}) {
+export async function listCommunityComments(db: AnyDatabase, workId: string, viewerUserId?: string, page: { cursor?: string | null; limit?: number; order?: CommentOrder } = {}) {
   await activeWork(db, workId);
+  const order = page.order ?? 'asc';
   const cursor = decodeCommentCursor(page.cursor);
-  if (page.cursor && !cursor) throw new AppError('VALIDATION', '分页游标无效', 'cursor');
+  if (page.cursor && (!cursor || (cursor.order ?? 'asc') !== order)) throw new AppError('VALIDATION', '分页游标无效', 'cursor');
   const limit = Math.min(Math.max(page.limit ?? COMMENT_PAGE_SIZE, 1), 100);
   const visibility = or(
     eq(communityComments.status, 'published'),
     viewerUserId ? and(eq(communityComments.authorUserId, viewerUserId), inArray(communityComments.status, ['pending_review', 'hidden'])) : undefined,
   );
+  const newest = order === 'desc';
   const after = cursor ? or(
-    sql`${communityComments.createdAt} > ${new Date(cursor.createdAt)}`,
-    and(eq(communityComments.createdAt, new Date(cursor.createdAt)), sql`${communityComments.id} > ${cursor.id}::uuid`),
+    newest ? sql`${communityComments.createdAt} < ${new Date(cursor.createdAt)}` : sql`${communityComments.createdAt} > ${new Date(cursor.createdAt)}`,
+    and(eq(communityComments.createdAt, new Date(cursor.createdAt)), newest ? sql`${communityComments.id} < ${cursor.id}::uuid` : sql`${communityComments.id} > ${cursor.id}::uuid`),
   ) : undefined;
   const rows = await db.select({
     id: communityComments.id, publicAuthorId: communityComments.publicAuthorId,
@@ -273,7 +277,7 @@ export async function listCommunityComments(db: AnyDatabase, workId: string, vie
     createdAt: communityComments.createdAt,
   }).from(communityComments).leftJoin(users, eq(users.id, communityComments.authorUserId))
     .where(and(eq(communityComments.workId, workId), visibility, after))
-    .orderBy(communityComments.createdAt, communityComments.id).limit(limit + 1);
+    .orderBy(...(newest ? [desc(communityComments.createdAt), desc(communityComments.id)] : [communityComments.createdAt, communityComments.id])).limit(limit + 1);
   const visible = rows.slice(0, limit);
   const last = visible.at(-1);
   return {
@@ -284,7 +288,7 @@ export async function listCommunityComments(db: AnyDatabase, workId: string, vie
       createdAt: row.createdAt.toISOString(),
       deletable: row.authorUserId === viewerUserId,
     })),
-    nextCursor: rows.length > limit && last ? encodeCommentCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
+    nextCursor: rows.length > limit && last ? encodeCommentCursor({ createdAt: last.createdAt.toISOString(), id: last.id, ...(newest ? { order: 'desc' as const } : {}) }) : null,
   };
 }
 
