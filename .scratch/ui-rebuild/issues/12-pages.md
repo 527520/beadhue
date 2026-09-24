@@ -1,7 +1,7 @@
 # 12 只读分享页、静态页与错误页
 
 Status: ready-for-agent
-Completion: not-started
+Completion: complete
 Blocked by: 01、03、05
 
 先读 [实施指南](../implementation-guide.md)。原型没有单独画这些页面，按详情页与组件总览的视觉语言推导。
@@ -16,3 +16,27 @@ Blocked by: 01、03、05
 ## 验收
 
 - 五个宽度截图检查；E2E 中涉及分享与静态页的用例更新（Chromium）。门禁全绿。
+
+## Comments
+
+### 实施记录（2026-09-24，分支 `feat/beadhue-r15-12-pages`）
+
+**只读分享 `/s/[token]`**：`page.tsx` 只取数（令牌格式校验、按哈希查、浏览计数 +1、严格 v3 快照解析，逻辑不变；多取 `created_at` 作「分享于」），noindex 不变。界面 `ShareView`（`src/components/pages/share-view.tsx`）与详情页同一两栏栅格：标题行（「只读分享」徽标、作品名 title-1、「W×H 格 · N 色 · N 颗 · 分享于某日」）→ 左 `PatternViewer`（完整图纸，豆粒 / 方格、色号、网格、板块、全屏都可用）→ 右吸顶卡（三格统计、规格与底板数、完整色号清单前 6 +「查看全部」、主按钮「做我自己的图纸」、次按钮「发现更多图纸」、一行快照与隐私说明）。无作者、点赞、讨论、引用。令牌无效 / 已撤销有专属 `not-found.tsx`「这个分享链接已失效」+「发现更多图纸」「去创作」。
+**静态页**：帮助、关于、隐私、社区规范、版权统一 `ArticlePage`（720px 窄栏、title-1 + 导语、title-2 节标题、body 正文，三项以上出目录：≥1280 左侧吸顶，更窄为可展开「本页目录」），文案未改。帮助页新增「三步上手」（原 `OnboardingGuide` 并入，三张豆粒示例图：照片取景、色板、拼好的心形），指南各节可锚点跳转，常见问题为折叠列表。隐私页统计偏好换成新按钮组件 `ConsentPreferences`（同一偏好逻辑）。
+**404 / 错误页**：根 `not-found.tsx`、`error.tsx`、后台 `admin/error.tsx` 统一豆粒插画整页空状态（新增 `lost` 问号、`broken` 叹号插画；`EmptyState` 加 `page` 形态：h1 + title-2），唯一主按钮 +次按钮（404：返回首页 / 去创作；错误：重试 / 返回首页，显示错误编号）。错误边界改用 Next 16.3 的 `retry`，站点错误页也上报运行日志（与后台共用 `reportClientError`）。`global-error.tsx` 换成新令牌色的内联样式。
+**删除**：`OnboardingGuide`（已无引用，内容并入帮助页）、`SharedPatternView`、`StateShell`。
+
+**验证**
+- `npm run typecheck`、`npm run lint`、`npm run brand:check` 通过。`npm test` 全量：247 文件，1871 通过 / 13 跳过 / 0 失败（首轮 1 失败为帮助页旧单测：节标题同时出现在目录里，改按标题角色查询后通过）。新增 `pages.test.tsx`（分享页、文章目录、三步、统计偏好 4 条）、改写 `error-pages.test.tsx`（404、页面错误、后台错误、失效分享 4 条）。
+- E2E Chromium（`E2E_PORT=3140`）：`17-beadhue-redesign` 的「B: shared pattern…」通过（票 05 记录的分享接口超时本次未复现，接口未改）、「B: user pages…」通过；`06` 的 axe 14 条全过（新增版权页与 404）。其余 3 条失败为旧工作台 / 创作入口基线（`06` 工作区操作栏、移动工作台工具，`17` B 第一条等「创作一张图纸」标题），属票 07/08。
+- 视觉：`evidence/impl/12/shoot-impl.mjs` 在 1440 / 1024 / 768 / 390 / 350 截取分享（有效 / 失效）、帮助、关于、隐私、规范、版权、404，逐张查看；全部无横向溢出（首轮关于页 350 宽被 40 位提交哈希撑出 17px，已加任意断行），视区内主按钮只有一个。
+
+**与设计语言的取舍**
+- 分享页主按钮留在卡片里，不做详情页的吸底栏：分享页没有点赞，吸底栏只剩一个按钮，意义不大。
+- 分享页不提供下载 PNG：原分享页也没有，本票不加功能。
+- 分享页色号与方格对所有访客开放：分享链接本身就是作者主动给出的完整图纸（D38），不属于 D53 的豆社内容分级。
+- 404、错误页、失效分享隐藏手机底栏：底栏中间「＋」是主色按钮，与空状态主按钮同屏会有两个主按钮。
+- 错误页没有做浏览器截图（无法稳定触发渲染错误），由单测覆盖结构与行为。
+
+**遗留**
+- `AnalyticsConsentSettings`、`zhCN.onboarding.dismiss/start`、`zhCN.share` 里旧只读页文案（`pageKicker`、`readonlyBadge`、`summary` 等）已无引用，票 13 清理。

@@ -176,7 +176,7 @@ test('手机编辑器：底部工具栏、颜色 / 信息 / 导出底部面板',
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official'] as const) {
+for (const route of ['/', '/app', '/me', '/me/likes', '/palettes', '/community/rules', '/community/copyright', '/privacy', '/me/settings', '/help', '/about', '/login', '/u/beadhue-official', '/missing-beadhue'] as const) {
   test(`${route} 无 axe 严重或关键问题`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(route);

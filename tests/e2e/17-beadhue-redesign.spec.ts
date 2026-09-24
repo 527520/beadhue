@@ -284,9 +284,13 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
     await page.setViewportSize({ width, height: width > 600 ? 1000 : 844 });
     await page.goto(body.path);
     await waitHydrated(page);
-    await expect(
-      page.getByRole("heading", { name: "一颗一颗，拼成喜欢。" }),
-    ).toBeVisible();
+    // R15 分享页：详情页查看器 + 制作卡的只读版，noindex。
+    await expect(page.getByText("只读分享", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "图纸查看器" })).toBeVisible();
+    const card = page.getByRole("complementary", { name: "图纸信息" });
+    await expect(card.getByRole("heading", { name: "色号清单" })).toBeVisible();
+    await expect(card.getByRole("link", { name: "做我自己的图纸" })).toHaveAttribute("href", "/app");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
     // 页脚只有一个（桌面显示、手机隐藏）。
     expect(await page.locator("footer").count()).toBe(1);
     expect(
@@ -299,4 +303,7 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
       fullPage: true,
     });
   }
+  const gone = await page.goto("/s/aaaaaaaaaaaaaaaaaaaaaaaa");
+  expect(gone?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1, name: "这个分享链接已失效" })).toBeVisible();
 });

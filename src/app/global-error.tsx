@@ -2,17 +2,12 @@
 
 /**
  * 根布局错误边界（连布局都渲染失败时的兜底，必须自带 html/body）。
+ * 这里拿不到全站样式表，只能用内联样式；颜色与尺寸取自 theme.css 的令牌（白底、深墨字、豆蓝胶囊主按钮）。
  */
 import { useEffect } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error('[global-error]', error);
   }, [error]);
@@ -20,20 +15,24 @@ export default function GlobalError({
   const t = zhCN.errorPages;
   return (
     <html lang="zh-CN">
-      <body style={{ margin: 0, background: '#FAF8F4', color: '#292633', fontFamily: '"BeadHue Text", system-ui, sans-serif' }}>
-        <main id="main" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24 }}>
-          <section style={{ width: 'min(520px, 100%)', border: '1px solid #e7e2df', borderRadius: 24, background: '#fff', padding: 32, boxSizing: 'border-box', boxShadow: '0 24px 70px -45px #302938' }}>
-            <div aria-hidden="true" style={{ width: 56, height: 56, display: 'grid', placeItems: 'center', borderRadius: 16, background: '#f5e2e9', color: '#873253', fontSize: 30, fontWeight: 800 }}>!</div>
-            <p style={{ margin: '24px 0 7px', color: '#B93E62', fontSize: 13, fontWeight: 600, letterSpacing: '.12em' }}>{t.studioName}</p>
-            <h1 style={{ margin: 0, fontSize: 32 }}>{t.errorTitle}</h1>
-            <p style={{ margin: '12px 0 24px', color: '#68616C', fontSize: 15, lineHeight: 1.7 }}>{t.errorBody}</p>
-          <button
-            type="button"
-            onClick={reset}
-            style={{ minHeight: 44, border: 0, borderRadius: 12, background: '#B93E62', padding: '0 20px', color: '#fff', fontSize: 15, fontWeight: 600 }}
-          >
-            {t.retry}
-          </button>
+      <head><title>{t.errorTitle}</title></head>
+      <body style={{ margin: 0, background: '#FFFFFF', color: '#1C1C1E', fontFamily: '"BeadHue Text", "PingFang SC", system-ui, sans-serif' }}>
+        <main id="main" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, boxSizing: 'border-box', textAlign: 'center' }}>
+          <section style={{ maxWidth: 360 }}>
+            <div aria-hidden="true" style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+              {['#F28B2C', '#FFD447', '#3F7FD9'].map((color) => (
+                <span key={color} style={{ width: 20, height: 20, borderRadius: 999, background: color }} />
+              ))}
+            </div>
+            <h1 style={{ margin: 0, fontSize: 20, lineHeight: '28px', fontWeight: 600 }}>{t.errorTitle}</h1>
+            <p style={{ margin: '8px 0 24px', color: '#6E6E78', fontSize: 14, lineHeight: '22px' }}>{t.errorBody}</p>
+            <button
+              type="button"
+              onClick={() => retry()}
+              style={{ height: 40, border: 0, borderRadius: 999, background: '#3160E6', padding: '0 18px', color: '#FFFFFF', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {t.retry}
+            </button>
           </section>
         </main>
       </body>
