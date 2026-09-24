@@ -71,6 +71,11 @@ export default async function globalSetup(): Promise<void> {
         RATE_ACCOUNT_READ_DISTINCT_WORKS_HOUR: '20000',
         RATE_NEW_ACCOUNT_READ_USER_HOUR: '20000',
         RATE_NEW_ACCOUNT_READ_DISTINCT_WORKS_HOUR: '20000',
+        // 原图上传按账号 / IP 每分钟计：后台批次用例一分钟内会连续上传十几张（与实施指南的手动开发命令同口径）。
+        RATE_ORIGINAL_USER_MINUTE: '1000',
+        RATE_ORIGINAL_USER_HOUR: '10000',
+        RATE_ORIGINAL_IP_MINUTE: '1000',
+        RATE_ORIGINAL_IP_HOUR: '10000',
         RATE_ORIGINAL_READ_USER_HOUR: '10000',
         RATE_ORIGINAL_READ_IP_HOUR: '20000',
         RATE_TAGS_IP_HOUR: '20000',
