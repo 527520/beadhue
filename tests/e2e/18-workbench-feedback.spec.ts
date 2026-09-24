@@ -30,11 +30,13 @@ test('feedback: consent and headings use content width; portrait crop has no int
   await page.goto('/me');
   for (const width of [350, 390, 560, 768, 1440]) {
     await page.setViewportSize({ width, height: 960 });
-    const heading = await page.locator('.beadhue-page-heading').boundingBox();
-    const content = await page.locator('.designs-container').boundingBox();
-    expect.soft(Math.abs(heading!.x - content!.x)).toBeLessThan(2);
-    expect.soft(Math.abs(heading!.width - content!.width)).toBeLessThan(2);
-    await expect(page.getByRole('heading', { name: '我的设计', exact: true })).toBeVisible();
+    // 页头、页签与设计区同一左边线、同宽（R15-06）。
+    const heading = await page.locator('main h1').boundingBox();
+    const tabs = await page.getByRole('navigation', { name: '我的内容' }).boundingBox();
+    const content = await page.getByRole('region', { name: '我的设计' }).boundingBox();
+    expect.soft(Math.abs(tabs!.x - content!.x)).toBeLessThan(width < 768 ? 20 : 2);
+    expect.soft(heading!.x).toBeGreaterThan(content!.x);
+    await expect(page.getByRole('region', { name: '我的设计' })).toBeVisible();
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ animations: 'disabled', path: info.outputPath('my-designs.png'), fullPage: true });

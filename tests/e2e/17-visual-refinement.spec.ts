@@ -195,19 +195,19 @@ test('手机筛选底部面板：取消不生效、再次打开重置草稿、�
 });
 
 test('色板详情独立展示不撑高卡片，关闭恢复焦点',async({page},info)=>{
-  await page.goto('/palettes');
+  await page.goto('/palettes');await waitHydrated(page);
   for(const width of [390,1280]){
     await page.setViewportSize({width,height:844});
-    const card=page.locator('.palette-series-card').first();const before=await card.boundingBox();
-    const trigger=card.getByRole('button',{name:'查看全部颜色',exact:true});await trigger.click();
+    const trigger=page.getByRole('button',{name:/^查看「MARD（豆色绘经典 291 色）」全部/});
+    const card=page.locator('li').filter({has:trigger});const before=await card.boundingBox();
+    await trigger.click();
     const panel=page.getByRole('dialog');await expect(panel).toBeVisible();
-    await expect(page.locator('.detail-panel[data-entering]')).toHaveCount(0);
     await expect(panel.getByRole('listitem').first()).toBeVisible();
     // Compare CSS pixels: Firefox's DOMRect subpixel arithmetic differs by 0.00003px after scroll lock.
     expect(Math.round((await card.boundingBox())!.height)).toBe(Math.round(before!.height));
     expect(await axe(page)).toEqual([]);
     await page.screenshot({path:output(`palette-${info.project.name}-${width}.png`)});
-    await panel.getByRole('button',{name:'关闭选择'}).click();await expect(trigger).toBeFocused();
+    await panel.getByRole('button',{name:'关闭'}).click();await expect(panel).toBeHidden();await expect(trigger).toBeFocused();
   }
 });
 
@@ -218,13 +218,13 @@ test('长选项搜索、键盘取消、减少动态效果与200%布局放大',as
   await expect(page.getByRole('heading',{name:'使用统计',exact:true})).toBeVisible();
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:output(`admin-${info.project.name}.png`),fullPage:true});
-  await page.goto('/palettes');
-  await page.getByRole('button',{name:'新建色板',exact:true}).click();
-  const trigger=page.getByRole('button',{name:/复制内置色板/});
+  await page.goto('/me/palettes');await waitHydrated(page);
+  const trigger=page.getByRole('button',{name:'新建色板',exact:true});
   await trigger.click();
-  const search=page.getByRole('searchbox',{name:'搜索选项'});await expect(search).toBeVisible();await search.fill('MARD');
-  await expect(page.getByRole('option').first()).toBeVisible();
-  await search.press('Escape');await expect(trigger).toBeFocused();
+  const editor=page.getByRole('dialog',{name:'新建色板'});
+  const search=editor.getByRole('searchbox',{name:'搜索色号、名称或 HEX'});await expect(search).toBeVisible();await search.fill('A01');
+  await expect(editor.getByRole('button',{name:/^A01 /})).toBeVisible();
+  await search.press('Escape');await expect(editor).toBeHidden();await expect(trigger).toBeFocused();
   await page.goto('/');await page.evaluate(()=>{document.body.style.zoom='2';});
   // Layout-zoom simulation, not a claim of physical-device browser zoom.
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

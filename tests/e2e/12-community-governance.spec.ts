@@ -80,7 +80,7 @@ test('投稿从可信云端预览确认，失败保留草稿并可撤回重提',
   await page.getByRole('button', { name: '重试提交审核' }).click();
   await expect(page).toHaveURL(/\/me\/public$/);
   expect(creationRequests).toHaveLength(2); expect(creationRequests[1]).toEqual(creationRequests[0]);
-  const item = page.locator('.community-mine-list > li').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+  const item = page.locator('[data-slot="own-work-card"]').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(item).toHaveCount(1);
   const withdrawalRequests: Array<{ body: string | null; key: string | undefined }> = [];
   await page.route('**/api/community/revisions/*/withdraw', async (route) => {
@@ -89,13 +89,17 @@ test('投稿从可信云端预览确认，失败保留草稿并可撤回重提',
     if (withdrawalRequests.length === 1) await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     else await route.fulfill({ response });
   });
-  await item.getByRole('button', { name: '撤回审核' }).click();
-  await page.getByRole('button', { name: '确认撤回' }).click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
-  await expect(page.getByRole('button', { name: '暂不撤回' })).toBeDisabled();
-  await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toBeVisible();
-  await page.getByRole('button', { name: '重试确认' }).click();
-  await item.getByRole('link', { name: '修改后重投' }).click();
+  await item.getByRole('button', { name: `「${title}」的更多操作` }).click();
+  await page.getByRole('menuitem', { name: '撤回审核' }).click();
+  const confirm = page.getByRole('dialog', { name: '撤回审核？' });
+  await confirm.getByRole('button', { name: '撤回审核' }).click();
+  await expect(confirm.getByRole('alert')).toBeVisible();
+  await expect(confirm.getByRole('button', { name: '取消' })).toBeDisabled();
+  await page.keyboard.press('Escape'); await expect(confirm).toBeVisible();
+  await confirm.getByRole('button', { name: '重试确认' }).click();
+  await expect(confirm).toBeHidden();
+  await item.getByRole('button', { name: `「${title}」的更多操作` }).click();
+  await page.getByRole('menuitem', { name: '修改后重投' }).click();
   expect(withdrawalRequests).toHaveLength(2); expect(withdrawalRequests[1]).toEqual(withdrawalRequests[0]);
   await expect(page.getByLabel('公开作品标题')).toHaveValue('E2E 私人设计');
   await expect(page.getByRole('checkbox', { name: /合法发布权/ })).not.toBeChecked();

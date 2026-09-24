@@ -46,8 +46,8 @@ test('注册 → 邮箱验证 → 登录 → 首页显示登录态入口', async
   const usernameInput = page.getByLabel('用户名');
   await expect(usernameInput).toHaveValue(username);
   await usernameInput.fill('新的拼豆名');
-  await page.getByRole('button', { name: '保存用户名' }).click();
-  await expect(page.getByText('用户名已保存')).toBeVisible();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(page.locator('[data-slot="toast"]').filter({ hasText: '已保存' })).toBeVisible();
   // 保存后顶栏头像菜单里的展示名随之更新（外壳重新探测登录态）。
   await page.getByRole('button', { name: '账号菜单' }).click();
   await expect(page.getByRole('menu').getByText('新的拼豆名')).toBeVisible();
