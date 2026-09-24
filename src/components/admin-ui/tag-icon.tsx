@@ -2,10 +2,10 @@
 
 import { Eraser } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { motifPattern } from '@/app/dev/ui/motifs';
 import { cn } from '@/lib/cn';
 import { parseTagIcon, TAG_ICON_KEYS } from '@/lib/community/tagIcon';
 import { BEAD_SAMPLE_COLORS } from '@/lib/render/beadTokens';
+import { tagIconPattern as tagIconArt } from '@/lib/render/tagIconArt';
 import type { Pattern } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { PixelIcon } from '@/components/ui/bead-image';
@@ -16,12 +16,10 @@ import { SegmentedControl } from '@/components/ui/tabs';
 
 const t = zhCN.adminUi.tags.pixels;
 
-/** 标签图标取值 → 像素图案：内置键用原型同名图案（13 格），px: 编码按格还原。 */
+/** 标签图标取值 → 像素图案（与发现页类目条同一份图案）；没有或非法取值返回 null，后台显示占位。 */
 export function tagIconPattern(value: string | null | undefined): Pattern | null {
   const icon = parseTagIcon(value);
-  if (!icon) return null;
-  if (icon.kind === 'builtin') return motifPattern(icon.key, 13);
-  return { width: icon.width, height: icon.height, cells: icon.cells.map((index) => (index === null ? { hex: null, code: null, transparent: true } : { hex: icon.palette[index], code: null, transparent: false })) };
+  return icon ? tagIconArt(icon) : null;
 }
 
 /** 类目像素小图标；没有图标时画一块浅底占位。 */
