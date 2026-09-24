@@ -11,6 +11,39 @@
 - 所有原图二进制上传共用账号/IP 的分钟和小时限额，429 返回准确等待时间；自动保存复用资产，不重复上传相同字节。
 - 增加品牌扫描、几何/资产/限流/迁移测试及三浏览器关键流程回归。生产资源迁移与真实设备/COS 验收另行执行。
 
+前端全面重构（R15）：用户端与管理后台按确认的原型整体重建，补齐原型需要的接口与字段（D64–D72，ADR-0027）。
+
+### 新增
+
+- 发现页成为首页：吸顶像素类目条、按尺寸 / 颜色数 / 制作规格 / 发布时间筛选（实时显示符合的张数）、推荐 / 最新 / 最多喜欢 / 最多引用排序、已选条件芯片、搜索结果与空结果建议、首访新手条；作品卡上可直接点喜欢
+- 全站搜索建议：最近搜索、大家在搜、匹配的标签 / 图纸 / 作者；手机为全屏搜索页
+- 作者主页 `/u/<公开作者 ID>`：作品数、获赞、被引用与全部公开作品
+- 作品详情：豆粒 / 方格查看器（缩放、网格、色号、板块编号、全屏）、色号清单（含颗数）、所需底板数、保存 1080×1350 分享图、相似作品、作者的更多作品；讨论最新在前
+- 创作入口 `/app`：落区、示例图、空白画布、导入项目文件、最近的设计；「新建图纸」弹窗内取景、选宽度 / 颜色数 / 色板 / 制作规格并预览，首版在弹窗里生成
+- 新编辑器：左工具栏、居中画布、右侧颜色 / 调整 / 信息面板、原图参照、导出 / 分享 / 公开弹窗；顶栏「编辑 | 跟拼」切换，`?mode=stitch` 可直达跟拼
+- 跟拼模式：浏览 / 标记、进度与板块总览、当前行颜色序列、「完成本行」与上一行 / 下一行
+- 手机编辑器：全屏画布、底部工具栏与最近用色、各面板以底部面板打开、原图参照上下分屏；跟拼为顶部进度胶囊 + 底部「上一行 ｜ 完成本行 ｜ 下一行」
+- 「公开到豆社」在编辑器内完成：填写标题、最多 5 个建议标签，勾选原图上传同意与发布权确认后提交审核；审核台显示建议标签并可一键采纳为正式标签
+- 我的：设计（缩略图换设备也能看、搜索、状态筛选、排序、网格 / 列表、复制、导出项目文件）、公开作品（审核中 / 已公开 / 未通过附原因 / 已下架）、喜欢、色板、账号设置（登录设备与退出其他设备、原图空间管理、统计偏好、注销）；页头显示设计数、公开作品数与获赞
+- 站内通知：投稿通过 / 未通过、作品被下架或恢复、作品收到新评论；顶栏铃铛显示未读数，可全部已读，通知保留 90 天，不发邮件
+- 管理后台总览：待办指标卡与 7 日趋势、跨队列待办、近 7 天投稿 / 点赞 / 新用户折线、服务状态；标签管理可设像素图标、是否进类目条与排序；数据表格支持导出 CSV（当前条件，最多 2000 条）
+- 新接口：`GET /api/designs/:id/thumbnail`（本人设计缩略图）、`GET /api/community/works/liked`、`GET /api/community/works/:id/related`、`GET /api/community/authors/:publicAuthorId`、`GET /api/community/search/suggest`、`GET /api/me/stats`、`GET /api/me/sessions`、`POST /api/me/sessions/revoke-others`、`GET /api/originals/designs`、`GET /api/me/notifications`、`GET /api/me/notifications/unread-count`、`POST /api/me/notifications/read`、`GET /api/admin/overview/trends`、`POST /api/admin/community/revisions/:id/suggested-tags`、`GET /api/admin/community/revisions/:id/original`
+- 新字段与参数：作品列表 `size` / `colors` / `spec` / `palette` / `since` / `author` / `cat` 筛选、`rec` / `new` / `likes` / `reuses` 排序与 `total`，登录时每项带 `liked`；详情 `beadCount` / `colorUsage`（未登录为空）/ `largeImageUrl`；设计列表 `thumbnailUrl`；公开标签 `icon` / `sortOrder` / `featured`；投稿 `suggestedTags`；后台列表若干筛选参数与展示字段
+- 迁移 `0020_discovery_notifications`：`notifications` 表、`community_revisions.suggested_tags`、`community_tags.icon` / `featured`（带回滚）；新增配置 `RATE_DESIGN_THUMBNAIL_USER_HOUR`、`RATE_SEARCH_SUGGEST_IP_HOUR`、`RATE_ME_READ_USER_HOUR`、`RATE_ME_WRITE_USER_HOUR`、`COMMUNITY_COUNT_CACHE_SECONDS`、`NOTIFICATION_RETENTION_DAYS`
+
+### 变更
+
+- 全新视觉：主色豆蓝、选中态深墨、每屏最多一个主按钮、七级字阶；用户端与后台同一视觉语言，组件改用 Base UI + Tailwind 设计令牌（ADR-0027），生产 CSP 不放宽
+- 导航改为「发现 / 创作 / 我的」，手机底栏「发现 · ＋ · 我的」；旧地址永久重定向并保留参数：`/community` → `/`、`/create` → `/app`、`/designs` → `/me`、`/community/mine` → `/me/public`、`/account` → `/me/settings`
+- 列表、首页与我的设计缩略图、未登录详情大图改为「豆粒渲染」（白色钉板上的圆豆，无格线与板缝）；未登录也可缩放、拖动大图，色号、方格与清单仍需登录
+- `/app` 不带设计 ID 时总是创作入口，不再自动打开最近的设计
+- 需要登录的操作改为弹出登录框，登录后继续原操作；登录默认回到「我的」
+- 统计同意改为左下角浮卡，「不同意」与「同意统计」同等分量；首次引导移入帮助页「三步上手」
+- 豆子数量单位统一为「颗」
+- 只读分享页、帮助 / 关于 / 隐私 / 社区规范 / 版权页、404 与错误页按新版式重做；分享页可切换豆粒 / 方格并查看完整色号清单
+- 管理后台重做为浅色侧栏（可折叠，手机为抽屉）+ 顶栏搜索；各模块统一数据表格 + 右侧抽屉，手机为卡片列表与底部面板
+- 豆社标签筛选改为发现页类目与搜索，旧 `?tag=` 链接并入类目
+
 后台与豆社整改（R14）：用户提出的 15 项问题一次性修复与增强。
 
 ### 新增
