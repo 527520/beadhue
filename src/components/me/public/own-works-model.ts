@@ -36,7 +36,7 @@ export interface OwnItem {
 
 const p = zhCN.me.public;
 
-export function toOwnItems(works: readonly OwnWork[], now: number): OwnItem[] {
+export function toOwnItems(works: readonly OwnWork[], now: number = Date.now()): OwnItem[] {
   const items: OwnItem[] = [];
   for (const work of works) {
     if (work.lifecycleStatus === 'withdrawn') continue;

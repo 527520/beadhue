@@ -13,6 +13,6 @@ export const metadata: Metadata = { title: zhCN.shell.mePages.publicTitle };
 export default async function MePublicPage() {
   const actor = await getSessionActor();
   const allowed = actor !== null && authorize(actor, 'community:interact');
-  const items = allowed ? toOwnItems(await listOwnCommunityWorks(getDb(), actor.userId), Date.now()) : null;
+  const items = allowed ? toOwnItems(await listOwnCommunityWorks(getDb(), actor.userId)) : null;
   return <PublicWorksPanel items={items} guest={!allowed} />;
 }
