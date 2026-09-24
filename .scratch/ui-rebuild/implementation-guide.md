@@ -95,3 +95,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。
 - **E2E 与手动开发服务不能同目录并存**：Next 16 检测到同一目录已有 `next dev` 会拒绝再起（E2E 报「dev server did not become ready」），跑 E2E 前先停掉手动服务。开发服务首次编译某个 API 路由可能整页重载并打断进行中的请求，E2E 里第一次调用前可先 GET 预热。
 - **手机顶栏**：`MobileTopbarFrame` 现在是 `<header>`（banner 地标，与桌面顶栏按宽度二选一显示），页面自定义的手机顶栏内容无需再包地标。
+
+## 后续票须知（票 05 完成后补充）
+
+- **详情页组件**在 `src/components/works/detail/`：`PatternViewer`（可复用的只读图纸查看器，`source` 为完整图纸或服务端大图）、`ActionMenu`（桌面菜单 / 手机底部面板的操作菜单）、`ReportDialog`（作品 / 评论举报）、`copyText`、`relativeTime` / `formatCount`（`detail-format.ts`，服务端可用）。
+- **画布颜色**：详情查看器与分享图的颜色在 `beadTokens.VIEWER_TOKENS`，叠加层（网格、板块编号、色号）在 `lib/render/viewer.ts`，画布字体常量 `CANVAS_FONT_*`。
+- **评论接口**：`GET /api/community/works/:id/comments?order=desc` 最新在前，游标带方向，不能与升序游标混用。
+- **需要登录后继续的操作**：`ensureAuthStatus()` 记下原登录态 → `useRequireLogin()(action)`，原来是游客就 `router.refresh()` 再执行；依赖登录后才有的数据（如图纸）时记一个待办标记，等新 props 到了再执行（见 `DetailView` 的下载）。不要给整页加 `key={loggedIn}`，会丢掉待办。
+- **Playwright**：`aria-disabled="true"` 的按钮会被判为不可点，测试锁定态点击要 `force: true` 或只断言属性。
+- **E2E 顺序依赖**：`12` 整文件连跑时，前面投稿 / 引用用例成功后审核队列多出项目，后台两条用例会失败（单独跑通过）。
