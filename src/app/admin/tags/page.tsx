@@ -1,12 +1,10 @@
 import { forbidden } from 'next/navigation';
-import TagsManager from '@/components/admin/TagsManager';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { TagsConsole } from '@/components/admin-ui/tags';
 
-export default async function AdminTagsPage() {
+export default async function AdminTagsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!authorize(await getSessionActor(), 'community:moderate')) forbidden();
-  const t = zhCN.communityAdmin.pages.tags;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><TagsManager /></main>;
+  const q = (await searchParams).q;
+  return <TagsConsole initialQ={typeof q === 'string' ? q.slice(0, 60) : undefined} />;
 }
