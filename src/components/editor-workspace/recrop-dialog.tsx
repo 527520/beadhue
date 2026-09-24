@@ -72,7 +72,7 @@ export function RecropDialog({ image, initialRect, width, boardSize, busy, error
                   aria-pressed={ratio === id}
                   disabled={busy}
                   onClick={() => choose(id)}
-                  className="h-control-sm rounded-full px-3.5 text-footnote font-medium text-ink-3 transition-colors duration-state hover:text-ink focus-visible:focus-ring aria-pressed:bg-bg aria-pressed:text-ink aria-pressed:shadow-seg"
+                  className="h-control-sm rounded-full px-3.5 text-footnote font-medium text-ink-2 transition-colors duration-state hover:text-ink focus-visible:focus-ring aria-pressed:bg-bg aria-pressed:text-ink aria-pressed:shadow-seg"
                 >
                   {label}
                 </button>

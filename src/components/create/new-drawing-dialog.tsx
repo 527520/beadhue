@@ -166,7 +166,7 @@ export function NewDrawingDialog(props: NewDrawingDialogProps) {
                     aria-pressed={ratio === id}
                     disabled={working}
                     onClick={() => chooseRatio(id)}
-                    className="h-control-sm rounded-full px-3.5 text-footnote font-medium text-ink-3 transition-colors duration-state hover:text-ink focus-visible:focus-ring aria-pressed:bg-bg aria-pressed:text-ink aria-pressed:shadow-seg"
+                    className="h-control-sm rounded-full px-3.5 text-footnote font-medium text-ink-2 transition-colors duration-state hover:text-ink focus-visible:focus-ring aria-pressed:bg-bg aria-pressed:text-ink aria-pressed:shadow-seg"
                   >
                     {label}
                   </button>
