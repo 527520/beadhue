@@ -37,7 +37,7 @@ test('可视裁剪、创建与保存丢响应同键恢复、核对后发布和�
   await page.getByLabel('选择图片', { exact: true }).setInputFiles(image(privateName)); await smallDefault(page);
   await page.getByRole('button', { name: '预览并裁剪' }).click();
   const crop = page.getByRole('dialog', { name: '裁剪图片', exact: true }); await expect(crop).toBeVisible();
-  await crop.getByLabel('裁剪选区画布').focus(); await page.keyboard.press('Alt+ArrowLeft');
+  await crop.getByRole('group', { name: '取景框，方向键移动' }).focus(); await page.keyboard.press('ArrowLeft');
   await crop.getByRole('button', { name: '确认并更新' }).click(); await expect(crop).toHaveCount(0);
   await expect(page.getByText(/裁剪区域 \d+×\d+ px/)).toBeVisible();
   const requests = new Map<string, Array<{ body: string | null; key: string | undefined }>>();

@@ -127,7 +127,7 @@ export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteVa
     <>
       <PanelSection>
         <CurrentColor color={color} />
-        <PalettePicker choices={paletteChoices} value={paletteValue} onChange={onPalette} disabled={paletteDisabled || disabled} label={t.palette} />
+        {paletteChoices.length ? <PalettePicker choices={paletteChoices} value={paletteValue} onChange={onPalette} disabled={paletteDisabled || disabled} label={t.palette} /> : null}
         {paletteNotice ? <p className="text-caption font-normal text-ink-3">{paletteNotice}</p> : null}
       </PanelSection>
       <PanelSection>

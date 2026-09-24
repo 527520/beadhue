@@ -1,10 +1,12 @@
 'use client';
 import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
-import ResponsiveSelect from '@/components/legacy-ui/ResponsiveSelect';
-import Button, { ButtonLink, buttonClassName } from '@/components/legacy-ui/Button';
-import Icon from '@/components/legacy-ui/Icon';
-import Notice from '@/components/legacy-ui/Notice';
-import TextField from '@/components/legacy-ui/TextField';
+import { Image as ImageIcon, RefreshCw, Send } from 'lucide-react';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel, FormAlert } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/cn';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -25,6 +27,7 @@ import { zhCN } from '@/messages/zh-CN';
 import { z } from 'zod';
 
 const t = zhCN.communityAdmin.submission;
+const linkClass = 'ml-1 text-ink underline underline-offset-2 hover:text-accent';
 const uuid = z.uuid();
 
 interface OriginalDraft { bytes: Uint8Array; type: ImageType; name: string; source: 'workbench' | 'file' }
@@ -206,44 +209,74 @@ export default function CommunitySubmitForm({ initialDesignId = '', displayName,
   const preview = source ? deriveCommunityPreview(source.project.pattern) : null;
   const originalLocked = busy || (locked && originalUploaded);
   return (
-    <form className="community-submit-form" onSubmit={(event) => void submit(event)}>
+    <form className="grid gap-6" onSubmit={(event) => void submit(event)}>
       <OriginalUploadStatus />
-      <p>{workId ? t.editHelp : t.previewHelp}</p>
-      <ResponsiveSelect label={t.chooseSource} value={designId} disabled={loading || locked} onValueChange={(value)=>void selectSource(value)} options={[{value:'',label:t.choosePlaceholder},...designs.map(design=>({value:design.id,label:design.name}))]} />
-      {loading && <p role="status">{t.loadingSources}</p>}
-      {!loading && !designs.length && !error && <p>{t.noSources}</p>}
-      {preview && <section className="submission-preview" aria-label={t.preview}><CommunityPreviewCanvas preview={preview} label={t.previewAria(title || source!.name)} /><div><strong>{title || source!.name}</strong><p>{t.author}{displayName}</p><p>{t.previewSize(preview.originalWidth, preview.originalHeight)}</p></div></section>}
-      <TextField label={t.title} value={title} maxLength={80} disabled={!source || locked} onChange={(event) => setTitle(event.target.value)} required />
-
-      <fieldset className="submission-original" disabled={originalLocked} aria-describedby="submission-original-help">
-        <legend>{t.originalTitle}</legend>
-        <p id="submission-original-help">{workId ? t.originalEditHelp : t.originalHelp}</p>
-        {original ? <div className="submission-original-card">
-          {/* 本地对象 URL 预览，next/image 无法优化也不该上传 */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {previewUrl ? <img src={previewUrl} alt={t.originalPreviewAlt} /> : <div className="submission-original-placeholder">{original.type.toUpperCase()}</div>}
-          <div>
-            <strong>{original.name}</strong>
-            <p>{formatBytes(original.bytes.byteLength)} · {original.source === 'workbench' ? t.originalFromWorkbench : t.originalFromFile}</p>
-            {!originalLocked && <Button variant="quiet" size="sm" icon="refresh" onClick={() => { setOriginal(null); setOriginalConsent(false); }}>{t.originalReplace}</Button>}
+      <p className="text-body-sm text-ink-3">{workId ? t.editHelp : t.previewHelp}</p>
+      <div className="grid gap-1.5">
+        <FieldLabel>{t.chooseSource}</FieldLabel>
+        <Select label={t.chooseSource} placeholder={t.choosePlaceholder} value={designId} disabled={loading || locked} onValueChange={(value) => void selectSource(value)} options={designs.map((design) => ({ value: design.id, label: design.name }))} />
+        {loading ? <p role="status" className="text-caption font-normal text-ink-3">{t.loadingSources}</p> : null}
+        {!loading && !designs.length && !error ? <p className="text-caption font-normal text-ink-3">{t.noSources}</p> : null}
+      </div>
+      {preview ? (
+        <section aria-label={t.preview} className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-4 rounded-lg bg-bg-subtle p-4 max-sm:grid-cols-1">
+          <CommunityPreviewCanvas preview={preview} label={t.previewAria(title || source!.name)} />
+          <div className="grid gap-1 text-body-sm text-ink-3">
+            <strong className="text-title-3 text-ink">{title || source!.name}</strong>
+            <p>{t.author}{displayName}</p>
+            <p className="tabular-nums">{t.previewSize(preview.originalWidth, preview.originalHeight)}</p>
           </div>
-        </div> : <label className="submission-original-picker">
-          <input type="file" className="sr-only" accept="image/*,.heic,.heif" disabled={originalLocked} onChange={(event) => { void chooseOriginal(event.target.files?.[0]); event.target.value = ''; }} />
-          <span className={buttonClassName('secondary')}><Icon name="image" size={18} />{t.chooseOriginal}</span>
-          <small>{t.originalPickerHint}</small>
-        </label>}
-        {originalError && <Notice kind="danger">{originalError}</Notice>}
-        {needsOriginal && !original && <Notice kind="warning" role="alert">{t.originalRequired}</Notice>}
-        {original && <label className="community-license-check"><input type="checkbox" checked={originalConsent} disabled={originalLocked} onChange={(event) => setOriginalConsent(event.target.checked)} />
-          <span>{t.originalConsent}<Link href="/privacy" className="link-soft">{t.originalConsentLink}</Link></span>
-        </label>}
+        </section>
+      ) : null}
+      <Field label={t.title} disabled={!source || locked}>
+        <Input value={title} maxLength={80} required onChange={(event) => setTitle(event.target.value)} />
+      </Field>
+
+      <fieldset data-slot="submission-original" className="grid gap-3" disabled={originalLocked} aria-describedby="submission-original-help">
+        <legend className="mb-1 text-title-3 text-ink">{t.originalTitle}</legend>
+        <p id="submission-original-help" className="text-body-sm text-ink-3">{workId ? t.originalEditHelp : t.originalHelp}</p>
+        {original ? (
+          <div data-slot="submission-original-card" className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-3 rounded-lg border border-line p-3">
+            {/* 本地对象 URL 预览，next/image 无法优化也不该上传 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {previewUrl ? <img src={previewUrl} alt={t.originalPreviewAlt} className="size-20 rounded-md bg-bg-subtle object-cover" /> : <div className="grid size-20 place-items-center rounded-md bg-bg-muted text-caption text-ink-3">{original.type.toUpperCase()}</div>}
+            <div className="grid min-w-0 justify-items-start gap-1">
+              <strong className="max-w-full truncate text-body-sm text-ink">{original.name}</strong>
+              <p className="text-caption font-normal text-ink-3">{formatBytes(original.bytes.byteLength)} · {original.source === 'workbench' ? t.originalFromWorkbench : t.originalFromFile}</p>
+              {!originalLocked ? <Button variant="ghost" size="sm" onClick={() => { setOriginal(null); setOriginalConsent(false); }}><RefreshCw aria-hidden="true" strokeWidth={1.75} />{t.originalReplace}</Button> : null}
+            </div>
+          </div>
+        ) : (
+          <label className="grid justify-items-start gap-2">
+            <input type="file" className="peer sr-only" accept="image/*,.heic,.heif" disabled={originalLocked} onChange={(event) => { void chooseOriginal(event.target.files?.[0]); event.target.value = ''; }} />
+            <span className={cn(buttonVariants({ variant: 'outline' }), 'cursor-pointer peer-focus-visible:focus-ring')}><ImageIcon aria-hidden="true" strokeWidth={1.75} />{t.chooseOriginal}</span>
+            <small className="text-caption font-normal text-ink-3">{t.originalPickerHint}</small>
+          </label>
+        )}
+        <FormAlert>{originalError}</FormAlert>
+        {needsOriginal && !original ? <FormAlert>{t.originalRequired}</FormAlert> : null}
+        {original ? (
+          <Checkbox checked={originalConsent} disabled={originalLocked} onCheckedChange={(checked) => setOriginalConsent(checked)}>
+            <span>{t.originalConsent}<Link href="/privacy" className={linkClass}>{t.originalConsentLink}</Link></span>
+          </Checkbox>
+        ) : null}
       </fieldset>
 
-      <label className="community-license-check"><input type="checkbox" checked={accepted} disabled={!source || locked} onChange={(event) => setAccepted(event.target.checked)} />
-        <span>{t.license}<Link href="/community/copyright" className="link-soft">{t.copyright}</Link></span>
-      </label>
-      {error && <div className="admin-command-notice"><Notice kind="danger" as="div"><span>{error}</span>{!locked && <Button variant="secondary" size="sm" icon="refresh" onClick={() => designId ? void selectSource(designId) : window.location.reload()}>{t.reloadPreview}</Button>}</Notice></div>}
-      <div className="community-form-actions"><ButtonLink variant="quiet" href={hasDraft || locked ? '/me/public' : '/me'}>{hasDraft || locked ? t.mine : t.back}</ButtonLink><Button type="submit" variant="primary" icon="send" loading={busy} disabled={busy || loading || (!locked && !canSubmit) || (locked && needsOriginal && !original)}>{busy ? (busyText ?? t.submitting) : hasDraft ? t.retryReview : locked ? t.retryOriginal : t.submit}</Button></div>
+      <Checkbox checked={accepted} disabled={!source || locked} onCheckedChange={(checked) => setAccepted(checked)}>
+        <span>{t.license}<Link href="/community/copyright" className={linkClass}>{t.copyright}</Link></span>
+      </Checkbox>
+      {error ? (
+        <div className="grid justify-items-start gap-2">
+          <FormAlert>{error}</FormAlert>
+          {!locked ? <Button size="sm" onClick={() => designId ? void selectSource(designId) : window.location.reload()}><RefreshCw aria-hidden="true" strokeWidth={1.75} />{t.reloadPreview}</Button> : null}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link href={hasDraft || locked ? '/me/public' : '/me'} className={buttonVariants({ variant: 'ghost' })}>{hasDraft || locked ? t.mine : t.back}</Link>
+        <Button type="submit" variant="primary" loading={busy} disabled={busy || loading || (!locked && !canSubmit) || (locked && needsOriginal && !original)}>
+          {busy ? null : <Send aria-hidden="true" strokeWidth={1.75} />}{busy ? (busyText ?? t.submitting) : hasDraft ? t.retryReview : locked ? t.retryOriginal : t.submit}
+        </Button>
+      </div>
     </form>
   );
 }

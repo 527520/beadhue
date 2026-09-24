@@ -44,7 +44,7 @@ export interface SiteShellProps {
 
 /**
  * 站点外壳（D66，原型 app.js）：桌面顶栏、手机顶栏、主区域、页脚、手机底栏、统计同意浮卡。
- * 外壳各部分自带 data-ui；主区域不加，旧页面内容由页面自己套 LegacyScope。
+ * 外壳各部分自带 data-ui；主区域不加，页面的新界面根自己加 data-ui。
  */
 export function SiteShell({ onNavigate, ...props }: SiteShellProps) {
   return (

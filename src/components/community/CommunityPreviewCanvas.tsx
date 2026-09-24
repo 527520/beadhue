@@ -19,5 +19,5 @@ export default function CommunityPreviewCanvas({ preview, label }: { preview: Co
       context.fillRect((index % preview.width) * scale, Math.floor(index / preview.width) * scale, scale, scale);
     });
   }, [preview]);
-  return <canvas ref={ref} role="img" aria-label={label} className="community-preview-canvas" />;
+  return <canvas ref={ref} role="img" aria-label={label} className="aspect-square w-full rounded-md bg-bg object-contain [image-rendering:pixelated]" />;
 }

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { attachSubmissionOriginal, fillField } from './helpers';
+import { attachSubmissionOriginal, fillField, selectChoice } from './helpers';
 
 const BATCH_PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
@@ -49,8 +49,7 @@ test('已验证用户引用独立副本并发布评论', async ({ page }, testIn
 
 test('投稿从可信云端预览确认，失败保留草稿并可撤回重提', async ({ page }, testInfo) => {
   await login(page, 'e2e-user@example.com', '/community/submit');
-  await page.getByRole('button',{name:/选择云端设计/}).click();
-  await page.getByRole('option',{name:'E2E 私人设计',exact:true}).click();
+  await selectChoice(page, '选择云端设计', 'E2E 私人设计');
   await expect(page.getByLabel('公开作品标题')).toHaveValue('E2E 私人设计');
   const title = `E2E ${testInfo.project.name} 投稿恢复`;
   await page.getByLabel('公开作品标题').fill(title);

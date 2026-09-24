@@ -75,3 +75,25 @@ describe('理由弹窗', () => {
     expect(screen.getByRole('button', { name: '驳回并通知作者' })).toBeDisabled();
   });
 });
+
+describe('官方草稿图纸编辑', () => {
+  it('复用编辑器工具：键盘落笔提交一次、撤销回到原图', async () => {
+    const { DraftPatternEditor } = await import('./draft-pattern-editor');
+    const red = { hex: '#ff0000', code: 'R1' };
+    const blue = { hex: '#0000ff', code: 'B1' };
+    const pattern = { width: 2, height: 2, cells: Array.from({ length: 4 }, () => ({ ...red, transparent: false })) };
+    const changes: Array<typeof pattern> = [];
+    render(<DraftPatternEditor pattern={pattern} palette={[red, blue]} boardSize={29} onPatternChange={(next) => changes.push(next as typeof pattern)} />);
+    const user = userEvent.setup();
+    expect(screen.getByRole('navigation', { name: '工具' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /B1/ }));
+    await user.click(screen.getByRole('button', { name: '油漆桶' }));
+    const canvas = screen.getByLabelText(/2 × 2 格/);
+    canvas.focus();
+    await user.keyboard('{ArrowRight}{Enter}');
+    expect(changes).toHaveLength(1);
+    expect(changes[0].cells.every((cell) => cell.code === 'B1')).toBe(true);
+    await user.click(screen.getByRole('button', { name: '撤销' }));
+    expect(changes.at(-1)?.cells.every((cell) => cell.code === 'R1')).toBe(true);
+  });
+});

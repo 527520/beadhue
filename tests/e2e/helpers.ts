@@ -10,10 +10,9 @@ import { E2E_ORIGIN } from './serverProcess';
 export const BASE_URL = process.env.E2E_BASE_URL ?? E2E_ORIGIN;
 
 /** Exercise the visible selection surface, never its hidden native form bridge. */
+/** 新 Select：桌面触发器是 combobox，手机是打开底部面板的按钮。 */
 export async function selectChoice(page: Page, label: string, option: string) {
-  await page.getByRole('button', {name:new RegExp(label)}).click();
-  const search=page.getByRole('searchbox',{name:'搜索选项'});
-  if(await search.count()) await search.fill(option);
+  await page.getByRole('combobox', { name: label, exact: true }).or(page.getByRole('button', { name: label, exact: true })).click();
   await page.getByRole('option',{name:option,exact:true}).click();
 }
 
@@ -103,8 +102,8 @@ export async function typeSpin(page: Page, name: string, value: string): Promise
  */
 export async function attachSubmissionOriginal(page: Page, filePath: string): Promise<void> {
   await waitHydrated(page);
-  await page.locator('.submission-original input[type="file"]').setInputFiles(filePath);
-  await expect(page.locator('.submission-original-card')).toBeVisible();
+  await page.locator('[data-slot="submission-original"] input[type="file"]').setInputFiles(filePath);
+  await expect(page.locator('[data-slot="submission-original-card"]')).toBeVisible();
   await page.getByRole('checkbox', { name: /本人同意按《隐私政策》/ }).check();
 }
 

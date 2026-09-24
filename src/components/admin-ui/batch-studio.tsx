@@ -3,8 +3,7 @@
 import { Check, ChevronDown, Crop, ExternalLink, Eye, Image as ImageIcon, Images, Palette, Pause, Pencil, Play, RefreshCw, Send, Square, Upload, X } from 'lucide-react';
 import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
-import CropDialog from '@/components/crop/CropDialog';
-import PixelEditorCanvas from '@/components/editor/PixelEditorCanvas';
+import { RecropDialog } from '@/components/editor-workspace/recrop-dialog';
 import { batchGenerationFailureMessage, officialBatchConcurrency } from '@/lib/community/batchClient';
 import type { OfficialBatchSpec } from '@/lib/community/batchDefaults';
 import type { CommunityPreviewV1, CommunitySnapshotV1 } from '@/lib/community/snapshot';
@@ -35,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { DraftPatternEditor } from './draft-pattern-editor';
 import { AdminCard, CardHead, Mono } from './parts';
 
 const t = zhCN.adminUi.batches;
@@ -194,8 +194,10 @@ function CropEditor({ item, session, onClose }: { item: BatchItem; session: Batc
     })();
     return () => { alive = false; decoder.dispose(); };
   }, [item.file]);
-  if (image) return <CropDialog image={image} initialRect={item.crop ?? undefined} onCancel={onClose} onConfirm={(crop) => { session.updateItem(item.localId, { crop }); onClose(); }} />;
-  // 解码期间不渲染弹窗：旧裁剪弹窗挂载时会快照背景的 aria-hidden，若此刻还有新弹窗的临时标记，关闭后会被原样恢复。
+  if (image) {
+    const { defaults, spec } = session.getSnapshot();
+    return <RecropDialog image={image} initialRect={item.crop ?? undefined} width={item.paramsOverride.targetWidth ?? defaults.targetWidth} boardSize={getBoardProfile(spec.boardProfile).boardCols} busy={false} onCancel={onClose} onConfirm={(crop) => { session.updateItem(item.localId, { crop }); onClose(); }} />;
+  }
   if (!error) return null;
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
@@ -274,7 +276,7 @@ function DraftEditor({ item, session, onClose }: { item: BatchItem; session: Bat
         <DialogBody className="grid gap-3">
           {revision ? <p className="text-body-sm text-ink-3">{b.editHelp(getBoardProfile(revision.snapshot.boardProfile).displayName)}</p> : null}
           {error ? <FormAlert>{error}</FormAlert> : !revision || !pattern ? <Skeleton className="h-96" /> : <>
-            <PixelEditorCanvas pattern={pattern} palette={palette} boardSize={getBoardProfile(revision.snapshot.boardProfile).boardCols} layout="desktop" hideOps={['transform', 'clear']} onPatternChange={setPattern} />
+            <DraftPatternEditor pattern={pattern} palette={palette} boardSize={getBoardProfile(revision.snapshot.boardProfile).boardCols} onPatternChange={setPattern} />
             <div className="flex flex-wrap items-end gap-2">
               <div className="grid min-w-50 gap-1.5"><span className="text-footnote font-medium text-ink">{b.remapPalette}</span>
                 <Select label={b.remapPalette} placeholder={b.remapPaletteChoose} value={remapTo} disabled={saving} onValueChange={setRemapTo} options={listBuiltinPalettes().filter((entry) => entry.id !== currentBrand).map((entry) => ({ value: entry.id, label: entry.label }))} />

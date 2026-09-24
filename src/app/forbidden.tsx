@@ -1,17 +1,13 @@
-import Link from 'next/link';
 import { zhCN } from '@/messages/zh-CN';
-import LegacyScope from '@/components/layout/LegacyScope';
+import { SiteShell } from '@/components/shell/site-shell';
+import { StateLink, StatePage } from '@/components/pages/state-page';
 
+/** 403：已登录但无权访问的管理资源（forbidden()）。 */
 export default function ForbiddenPage() {
   const t = zhCN.communityAdmin.forbidden;
   return (
-    <LegacyScope><main id="main" className="flex min-h-svh items-center justify-center p-6">
-      <section className="card-surface max-w-md p-8 text-center">
-        <span className="studio-eyebrow">{t.eyebrow}</span>
-        <h1 className="page-title mt-3">{t.title}</h1>
-        <p className="mt-3 text-sm leading-6 text-ink-soft">{t.body}</p>
-        <Link href="/" className="btn-outline mt-5">{t.backHome}</Link>
-      </section>
-    </main></LegacyScope>
+    <SiteShell topbarCta="secondary" tabbar={false}>
+      <StatePage kind="broken" title={t.title} description={t.body} footnote={t.eyebrow} actions={<StateLink href="/" primary>{t.backHome}</StateLink>} />
+    </SiteShell>
   );
 }

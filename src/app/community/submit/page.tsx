@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { SiteShell } from '@/components/shell/site-shell';
-import LegacyScope from '@/components/layout/LegacyScope';
 import CommunitySubmitForm from '@/components/community/CommunitySubmitForm';
+import { StateLink } from '@/components/pages/state-page';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getSessionActor } from '@/lib/auth/session';
 import { getDb } from '@/lib/auth/db';
 import { users } from '@/../db/schema';
@@ -31,9 +31,17 @@ export default async function CommunitySubmitPage({ searchParams }: { searchPara
   if (workId && (!z.string().uuid().safeParse(workId).success || !work)) notFound();
   const unavailable = work && (work.lifecycleStatus !== 'active' || work.revisions.some((item) => item.status === 'draft' || item.status === 'pending_review'));
   const t = zhCN.communityAdmin.submission;
-  return <SiteShell nav="me" topbarCta="secondary" tabbar={false}><LegacyScope><div className="workspace-page"><div className="workspace-content community-narrow">
-    {!actor.emailVerified ? <section className="community-empty"><h2>{t.verifyTitle}</h2><p>{t.verifyHelp}</p><Link href="/me/settings" className="btn-primary">{t.verifyAction}</Link></section>
-      : unavailable ? <section className="community-empty"><h2>{t.unavailableTitle}</h2><p>{t.unavailableHelp}</p><Link href="/me/public" className="btn-primary">{t.mine}</Link></section>
-        : <CommunitySubmitForm initialDesignId={initialDesignId} workId={workId} displayName={resolvePublicDisplayName(account.username, account.email)} />}
-  </div></div></LegacyScope></SiteShell>;
+  return (
+    <SiteShell nav="me" topbarCta="secondary" tabbar={false}>
+      <div data-ui="" className="page-container py-8 md:py-10"><div className="mx-auto max-w-prose">
+        <header className="mb-6 grid gap-1">
+          <h1 className="text-title-1 text-ink">{workId ? t.editTitle : t.pageTitle}</h1>
+          <p className="text-body-sm text-ink-3">{t.pageSubtitle}</p>
+        </header>
+        {!actor.emailVerified ? <EmptyState compact title={t.verifyTitle} description={t.verifyHelp} actions={<StateLink href="/me/settings" primary>{t.verifyAction}</StateLink>} />
+          : unavailable ? <EmptyState compact title={t.unavailableTitle} description={t.unavailableHelp} actions={<StateLink href="/me/public" primary>{t.mine}</StateLink>} />
+            : <CommunitySubmitForm initialDesignId={initialDesignId} workId={workId} displayName={resolvePublicDisplayName(account.username, account.email)} />}
+      </div></div>
+    </SiteShell>
+  );
 }

@@ -3,6 +3,8 @@ import { zhCN } from "@/messages/zh-CN";
 
 import { useAuthStatus } from "@/components/account/useAuthStatus";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import {
   cancelOriginalTask,
   originalTasks,
@@ -61,11 +63,14 @@ export default function OriginalUploadStatus({
   const waiting = task.status === "waiting";
   return (
     <div
-      className="sync-box"
       data-status={waiting ? "limited" : task.status}
       role="status"
+      className={cn(
+        "grid justify-items-start gap-1 rounded-md px-3 py-2.5 text-body-sm",
+        waiting ? "bg-warning-soft text-warning" : task.status === "failed" ? "bg-danger-soft text-danger" : "bg-bg-subtle text-ink-2",
+      )}
     >
-      <strong>
+      <strong className="font-semibold">
         {zhCN.beadhue.original}
         {task.status === "done"
           ? zhCN.beadhue.synced
@@ -78,24 +83,26 @@ export default function OriginalUploadStatus({
                 : zhCN.beadhue.syncWaiting}
       </strong>
       {waiting ? (
-        <p>
+        <p className="text-caption font-normal">
           {zhCN.beadhue.retryPrefix}
           {new Date(task.retryAt!).toLocaleTimeString("zh-CN")}{" "}
           {zhCN.beadhue.retry}
         </p>
       ) : task.message ? (
-        <p>{task.message}</p>
+        <p className="text-caption font-normal">{task.message}</p>
       ) : null}
-      {task.status === "failed" && (
-        <button type="button" onClick={() => void retryOriginalTask(task.key)}>
-          {zhCN.beadhue.retryOriginal}
-        </button>
-      )}
-      {["pending", "waiting", "failed"].includes(task.status) && (
-        <button type="button" onClick={() => void cancelOriginalTask(task.key)}>
-          {zhCN.beadhue.cancelUpload}
-        </button>
-      )}
+      <div className="flex flex-wrap gap-2 empty:hidden">
+        {task.status === "failed" && (
+          <Button size="sm" onClick={() => void retryOriginalTask(task.key)}>
+            {zhCN.beadhue.retryOriginal}
+          </Button>
+        )}
+        {["pending", "waiting", "failed"].includes(task.status) && (
+          <Button size="sm" variant="ghost" onClick={() => void cancelOriginalTask(task.key)}>
+            {zhCN.beadhue.cancelUpload}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
