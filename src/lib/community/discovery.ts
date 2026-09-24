@@ -110,10 +110,11 @@ export async function listRelatedCommunityWorks(
     where own.work_id = ${workId}::uuid and other.work_id = ${sql.raw('"community_works"."id"')}
       and tag.active = true and tag.merged_into_tag_id is null)`;
   const sameAuthor = eq(communityRevisions.publicAuthorId, base.publicAuthorId);
-  const samePalette = base.paletteKind === 'builtin' && base.paletteId ? eq(communityRevisions.paletteId, base.paletteId) : sql`false`;
+  // 自定义色板没有「同色板」可比；此时不能写 `order by (false)`，PostgreSQL 拒绝常量排序键。
+  const samePalette = base.paletteKind === 'builtin' && base.paletteId ? eq(communityRevisions.paletteId, base.paletteId) : null;
   const rows = await publicWorksFrom(db)
-    .where(and(...publicBaseConditions(), ne(communityWorks.id, workId), or(gt(sharedTags, 0), sameAuthor, samePalette)))
-    .orderBy(desc(sharedTags), desc(sql`(${sameAuthor})`), desc(sql`(${samePalette})`), desc(heat), desc(communityRevisions.publishedAt), desc(communityWorks.id))
+    .where(and(...publicBaseConditions(), ne(communityWorks.id, workId), or(gt(sharedTags, 0), sameAuthor, ...(samePalette ? [samePalette] : []))))
+    .orderBy(desc(sharedTags), desc(sql`(${sameAuthor})`), ...(samePalette ? [desc(sql`(${samePalette})`)] : []), desc(heat), desc(communityRevisions.publishedAt), desc(communityWorks.id))
     .limit(limit);
   return toItems(db, rows, options.viewerUserId);
 }
