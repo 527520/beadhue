@@ -32,6 +32,8 @@
 @source "../lib/render/beads.ts";
 @source "../lib/render/tagIconArt.ts";
 @source "./page.tsx";
+@source "../lib/render/viewer.ts";
+@source "../lib/render/poster.ts";
 
 @theme {
   --color-*: initial;
