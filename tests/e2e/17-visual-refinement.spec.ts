@@ -198,9 +198,9 @@ test('色板详情独立展示不撑高卡片，关闭恢复焦点',async({page}
   await page.goto('/palettes');await waitHydrated(page);
   for(const width of [390,1280]){
     await page.setViewportSize({width,height:844});
-    const trigger=page.getByRole('button',{name:/^查看「MARD（豆色绘经典 291 色）」全部/});
+    const trigger=page.getByRole('button',{name:/^查看「MARD 豆色绘经典」全部/});
     // 弹窗打开后背景不在可访问树里，卡片按属性定位。
-    const card=page.locator('li',{has:page.locator('button[aria-label^="查看「MARD（豆色绘经典 291 色）」全部"]')});const before=await card.boundingBox();
+    const card=page.locator('li',{has:page.locator('button[aria-label^="查看「MARD 豆色绘经典」全部"]')});const before=await card.boundingBox();
     await trigger.click();
     const panel=page.getByRole('dialog');await expect(panel).toBeVisible();
     await expect(panel.getByRole('listitem').first()).toBeVisible();

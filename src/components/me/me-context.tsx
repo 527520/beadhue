@@ -9,8 +9,12 @@ export interface MeViewer {
   username: string | null;
   /** 头像取色用的稳定 ID（公开作者 ID，旧账号缺省时用邮箱）。 */
   avatarId: string;
+  /** 自己选的头像底色；null 时按 avatarId 取色。 */
+  avatarColor: string | null;
   publicAuthorId: string | null;
   verified: boolean;
+  /** 上次修改或重置密码的时间（ISO）；迁移前的账号为 null。 */
+  passwordChangedAt: string | null;
 }
 
 /** GET /api/me/stats。 */

@@ -118,9 +118,14 @@ async function readProgress(storage: StorageAdapter, records: DesignRecord[], pr
     const progress = await storage.getStitchProgress(record.id).catch(() => null);
     if (!isProgressCompatible(progress, project.pattern)) return;
     const summary = summarizeProgress(progress, project.pattern.cells);
-    if (summary.doneCount > 0) result.set(record.id, summary.percent);
+    if (summary.doneCount > 0) result.set(record.id, wholePercent(summary.percent));
   }));
   return result;
+}
+
+/** 卡片与列表只显示整数百分比：向下取整（没拼完不显示 100%），拼了几颗但不足 1% 时显示 1%。 */
+function wholePercent(percent: number): number {
+  return percent > 0 && percent < 1 ? 1 : Math.floor(percent);
 }
 
 function downloadText(text: string, filename: string): void {

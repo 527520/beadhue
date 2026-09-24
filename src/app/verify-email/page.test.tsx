@@ -53,7 +53,7 @@ describe('verify-email 页', () => {
     render(<VerifyEmailPage />);
     await waitFor(() => expect(screen.getByText(zhCN.authPages.resendTitle)).toBeTruthy());
     fireEvent.change(screen.getByLabelText(zhCN.authPages.email), { target: { value: 'a@b.com' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.resendSubmit }));
     await waitFor(() => expect(screen.getByText(zhCN.authPages.resendSent)).toBeTruthy());
     const button = screen.getByRole('button', { name: /秒后再试/ });
     expect(button.hasAttribute('disabled')).toBe(true);

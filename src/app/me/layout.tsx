@@ -21,8 +21,10 @@ export default async function MeLayout({ children }: { children: ReactNode }) {
         email: profile.email,
         username: profile.username,
         avatarId: profile.publicAuthorId ?? profile.email,
+        avatarColor: profile.avatarColor,
         publicAuthorId: profile.publicAuthorId,
         verified: actor.emailVerified,
+        passwordChangedAt: profile.passwordChangedAt?.toISOString() ?? null,
       }
     : null;
   const stats = actor && viewer?.verified ? await getMyStats(db, actor.userId) : null;

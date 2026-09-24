@@ -5,7 +5,8 @@ export type DashboardSearchParams = Record<string, string | string[] | undefined
 export const DASHBOARD_COMBINATION_FILTERS = ['device', 'browser', 'os', 'actor', 'path', 'referrer', 'utmSource', 'utmMedium', 'utmCampaign', 'utmContent'] as const;
 
 export function resolveDashboardQuery(params: DashboardSearchParams, now: Date) {
-  const fallback: AnalyticsQuery = { start: toShanghaiDay(new Date(now.getTime() - 29 * 86400000)), end: toShanghaiDay(now) };
+  // 默认近 7 天（原型范围芯片的第一项）。
+  const fallback: AnalyticsQuery = { start: toShanghaiDay(new Date(now.getTime() - 6 * 86400000)), end: toShanghaiDay(now) };
   const input: Record<string, unknown> = {};
   for (const key of ['start', 'end', 'eventName', ...DASHBOARD_COMBINATION_FILTERS]) {
     const raw = params[key];

@@ -16,7 +16,7 @@ describe('boardProfiles registry', () => {
     expect(DEFAULT_BOARD_PROFILE_ID).toBe('5mm-29');
     expect(getBoardProfile('5mm-29')).toEqual({
       id: '5mm-29',
-      displayName: '5mm / 29×29',
+      displayName: '5mm · 29×29',
       beadDiameterMm: 5,
       boardRows: 29,
       boardCols: 29,
@@ -24,7 +24,7 @@ describe('boardProfiles registry', () => {
     });
     expect(getBoardProfile('2.6mm-50')).toEqual({
       id: '2.6mm-50',
-      displayName: '2.6mm / 50×50',
+      displayName: '2.6mm · 50×50',
       beadDiameterMm: 2.6,
       boardRows: 50,
       boardCols: 50,
@@ -32,7 +32,7 @@ describe('boardProfiles registry', () => {
     });
     expect(getBoardProfile('2.6mm-52')).toEqual({
       id: '2.6mm-52',
-      displayName: '2.6mm / 52×52',
+      displayName: '2.6mm · 52×52',
       beadDiameterMm: 2.6,
       boardRows: 52,
       boardCols: 52,

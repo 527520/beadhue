@@ -175,7 +175,7 @@ describe('createBeadhueApi 账号接口', () => {
       return new Response(null, { status: 204 });
     });
     await api.changePassword('old', 'new');
-    await api.updateProfile('豆豆');
+    await api.updateProfile({ username: '豆豆' });
     await api.deleteAccount('old');
     await api.logout();
     expect(calls.map((c) => c.url)).toEqual([
@@ -193,7 +193,7 @@ describe('createBeadhueApi 账号接口', () => {
       jsonResponse(401, { error: { code: 'BAD_PASSWORD', message: '密码错误' } }),
     );
     await expect(fail.changePassword('old', 'new')).rejects.toMatchObject({ code: 'BAD_PASSWORD' });
-    await expect(fail.updateProfile('豆豆')).rejects.toMatchObject({ code: 'BAD_PASSWORD' });
+    await expect(fail.updateProfile({ username: '豆豆' })).rejects.toMatchObject({ code: 'BAD_PASSWORD' });
     await expect(fail.deleteAccount('old')).rejects.toMatchObject({ code: 'BAD_PASSWORD' });
     await expect(fail.logout()).rejects.toMatchObject({ code: 'BAD_PASSWORD' });
   });

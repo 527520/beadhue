@@ -28,6 +28,10 @@ export type AuthStatus =
       /** 公开作者 ID（头像取色、作者主页）；旧响应缺省为 null。 */
       publicAuthorId: string | null;
       role: 'user' | 'moderator' | 'admin';
+      /** 自己选的头像底色；null 时按 ID 取色。 */
+      avatarColor: string | null;
+      /** 新建设计默认色板（内置色板 ID）；null 为 MARD 经典。 */
+      defaultPalette: string | null;
     };
 
 type Settled = Exclude<AuthStatus, { kind: 'loading' }>;
@@ -47,8 +51,11 @@ async function probe(): Promise<Settled> {
   try {
     const response = await fetch('/api/auth/me', { method: 'GET' });
     if (!response.ok) return { kind: 'guest' };
-    const body = (await response.json().catch(() => null)) as { email?: string; username?: string | null; publicAuthorId?: string | null; role?: string } | null;
-    return { kind: 'user', email: body?.email ?? '', username: body?.username ?? null, publicAuthorId: body?.publicAuthorId ?? null, role: readRole(body?.role) };
+    const body = (await response.json().catch(() => null)) as { email?: string; username?: string | null; publicAuthorId?: string | null; role?: string; avatarColor?: string | null; defaultPalette?: string | null } | null;
+    return {
+      kind: 'user', email: body?.email ?? '', username: body?.username ?? null, publicAuthorId: body?.publicAuthorId ?? null, role: readRole(body?.role),
+      avatarColor: body?.avatarColor ?? null, defaultPalette: body?.defaultPalette ?? null,
+    };
   } catch {
     return { kind: 'unknown' };
   }

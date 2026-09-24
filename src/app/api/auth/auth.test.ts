@@ -25,7 +25,7 @@ import { POST as loginPost } from './login/route';
 import { POST as logoutPost } from './logout/route';
 import { GET as meGet } from './me/route';
 import { POST as forgotPost } from './forgot-password/route';
-import { POST as resetPost } from './reset-password/route';
+import { GET as resetGet, POST as resetPost } from './reset-password/route';
 import { POST as changePasswordPost } from './change-password/route';
 import { DELETE as accountDelete, PATCH as accountPatch } from './account/route';
 
@@ -194,9 +194,16 @@ describe('认证全生命周期', () => {
     expect(forgotGhost.headers.get('x-dev-mail-link')).toBeNull();
     expect(sentMails()).toHaveLength(2); // 不存在的邮箱不发信
 
-    // 8. 重置密码 → 204；旧会话全部失效（E32）
+    // 8. 打开重置页先预检令牌（不消耗）；重置密码 → 204，记下修改时间；旧会话全部失效（E32）；用过的令牌预检失败
+    const check = (token: string) => resetGet(new Request(`${ORIGIN}/api/auth/reset-password?token=${encodeURIComponent(token)}`));
+    expect((await check(resetToken)).status).toBe(204);
+    expect((await check(resetToken)).status).toBe(204);
+    expect((await check('not-a-real-token')).status).toBe(400);
     const reset = await resetPost(post('/api/auth/reset-password', { token: resetToken, password: 'ResetPass-111' }));
     expect(reset.status).toBe(204);
+    expect((await check(resetToken)).status).toBe(400);
+    const [changed] = await testDb.select({ at: users.passwordChangedAt }).from(users).where(eq(users.email, mail));
+    expect(changed.at).toBeInstanceOf(Date);
     const meAfterReset = await meGet(new Request(`${ORIGIN}/api/auth/me`));
     expect(meAfterReset.status).toBe(401);
     cookieJar.clear();

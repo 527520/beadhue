@@ -45,7 +45,7 @@ describe('创作几何与尺寸', () => {
     const choices = buildPaletteChoices();
     expect(choices).toHaveLength(13);
     const artkal = choices.find((choice) => choice.name.startsWith('优肯 Artkal C'))!;
-    expect(fitSpec(artkal, '5mm-29')).toEqual({ spec: '2.6mm-50', note: expect.stringContaining('已改为 2.6mm / 50×50') });
+    expect(fitSpec(artkal, '5mm-29')).toEqual({ spec: '2.6mm-50', note: expect.stringContaining('已改为 2.6mm · 50×50') });
     expect(specChoices(artkal.palette, artkal.name).find((spec) => spec.id === '5mm-29')).toMatchObject({ disabled: true, meta: expect.stringContaining('只支持 2.6mm') });
   });
 });

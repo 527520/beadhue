@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <AuthShell title={t.forgotTitle}>
+    <AuthShell title={t.forgotTitle} description={t.forgotHint}>
       <form onSubmit={submit} noValidate className="grid gap-4">
         {done && (
           <>
@@ -73,11 +73,11 @@ export default function ForgotPasswordPage() {
           <Input type="email" autoComplete="email" disabled={pending} value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
         <Button type="submit" variant="primary" size="lg" block disabled={cooldown > 0} loading={pending}>
-          {cooldown > 0 ? t.cooldown(cooldown) : t.submit}
+          {cooldown > 0 ? t.cooldown(cooldown) : t.forgotSubmit}
         </Button>
         <p className="text-center text-body-sm">
           <Link href={authPageHref('login', returnTo)} className="font-medium text-accent hover:underline hover:underline-offset-3">
-            {t.hasAccount}
+            {t.backToLogin}
           </Link>
         </p>
       </form>

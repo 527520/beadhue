@@ -200,7 +200,7 @@ export async function resetPasswordWithToken(
     await hooks.afterTokenConsumed?.();
     await tx
       .update(users)
-      .set({ passwordHash: input.passwordHash, updatedAt: input.now })
+      .set({ passwordHash: input.passwordHash, passwordChangedAt: input.now, updatedAt: input.now })
       .where(eq(users.id, consumed[0].userId));
     await hooks.afterPasswordUpdated?.();
     await tx.delete(sessions).where(eq(sessions.userId, consumed[0].userId));
@@ -217,7 +217,7 @@ export async function changePasswordAndRevokeSessions(
   return db.transaction(async (tx) => {
     const updated = await tx
       .update(users)
-      .set({ passwordHash: input.passwordHash, updatedAt: input.now })
+      .set({ passwordHash: input.passwordHash, passwordChangedAt: input.now, updatedAt: input.now })
       .where(and(eq(users.id, input.userId), eq(users.accountStatus, 'active'), eq(users.passwordHash, input.expectedPasswordHash)))
       .returning();
     if (updated.length === 0) return false;

@@ -115,15 +115,15 @@ add('detail-fullscreen', 'detail', { widths: DESK, proto: { route: '#/works/w-ra
 // 创作入口
 add('create-entry', 'create', { tags: ['final-07'], full: true, proto: { route: '#/create' }, impl: { route: '/app' } });
 add('create-drag', 'create', { note: '拖入态（?drag=1）', proto: { route: '#/create?drag=1' }, impl: { route: '/app?drag=1' } });
-add('create-new', 'create', { tags: ['final-08'], note: '新建图纸弹窗（示例橘猫 / 橘子小猫）', proto: { route: '#/create?pick=w-cat' }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), wait(1500)] } });
-add('create-new-board', 'create', { note: '新建图纸：按底板 / 3 板', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-ratio="board"]'), click('[data-cr-width="87"]')] }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn('按底板'), btn(/^3 板/, { wait: 1200 })] } });
-add('create-new-palette', 'create', { note: '新建图纸：换色板菜单', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-cr-pick="palette"]')] }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), click('[role=dialog] button[aria-label^="色板"], [role=dialog] [role=combobox][aria-label^="色板"]', { wait: 900 })] } });
+add('create-new', 'create', { tags: ['final-08'], note: '新建图纸弹窗（示例橘猫 / 橘猫团子）', proto: { route: '#/create?pick=w-cat' }, impl: { route: '/app', steps: [btn('用示例「橘猫团子」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), wait(1500)] } });
+add('create-new-board', 'create', { note: '新建图纸：按底板 / 3 板', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-ratio="board"]'), click('[data-cr-width="87"]')] }, impl: { route: '/app', steps: [btn('用示例「橘猫团子」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn('按底板'), btn(/^3 板/, { wait: 1200 })] } });
+add('create-new-palette', 'create', { note: '新建图纸：换色板菜单', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-cr-pick="palette"]')] }, impl: { route: '/app', steps: [btn('用示例「橘猫团子」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), click('[role=dialog] button[aria-label^="色板"], [role=dialog] [role=combobox][aria-label^="色板"]', { wait: 900 })] } });
 add('create-blank', 'create', { note: '空白画布弹窗', proto: { route: '#/create?blank=1' }, impl: { route: '/app', steps: [btn(/从空白画布开始/), waitFor({ role: 'dialog', name: '从空白画布开始' })] } });
 
 // 编辑器（原型 d-cat 48 宽有原图 ↔ 实现「橘猫团子 · 大号」；d-heart 无原图 ↔「小黄鸡钥匙扣」；d-rainbow 跟拼 ↔「彩虹挂件」）
-// 云端拉下来的设计没有本机生成源（调整面板只显示「需要原图才能重新生成」），调参 / 重新裁剪类状态改为游客现场用示例「橘子小猫」按 48 宽 8 色生成。
-const SAMPLE_NOTE = '实现侧以游客身份现场用示例「橘子小猫」生成 48 宽 8 色图纸（云端拉取的设计没有本机生成源，调参区不可用）';
-const edSample = (steps = []) => ({ route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn('自定义', { optional: '没有「自定义」宽度档' }), fill({ role: 'spinbutton', name: '自定义宽度（格）' }, '48'), { do: 'focus', role: 'slider' }, { do: 'press', key: 'ArrowLeft', n: 40 }, { do: 'press', key: 'ArrowRight', n: 6 }, btn('生成图纸'), EDITOR_READY, wait(1200), ...steps] });
+// 云端拉下来的设计没有本机生成源（调整面板只显示「需要原图才能重新生成」），调参 / 重新裁剪类状态改为游客现场用示例「橘猫团子」按 48 宽 8 色生成。
+const SAMPLE_NOTE = '实现侧以游客身份现场用示例「橘猫团子」生成 48 宽 8 色图纸（云端拉取的设计没有本机生成源，调参区不可用）';
+const edSample = (steps = []) => ({ route: '/app', steps: [btn('用示例「橘猫团子」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn('自定义', { optional: '没有「自定义」宽度档' }), fill({ role: 'spinbutton', name: '自定义宽度（格）' }, '48'), { do: 'focus', role: 'slider' }, { do: 'press', key: 'ArrowLeft', n: 40 }, { do: 'press', key: 'ArrowRight', n: 6 }, btn('生成图纸'), EDITOR_READY, wait(1200), ...steps] });
 const edCat = (steps = [], extra = '') => ({ route: design('cat', extra), steps: [EDITOR_READY, wait(800), ...steps] });
 add('editor', 'editor', { tags: ['final-09'], proto: { route: '#/editor/d-cat' }, impl: edCat() });
 add('editor-export', 'editor', { widths: DESK, tags: ['final-10'], proto: { route: '#/editor/d-cat', steps: [click('[data-export]')] }, impl: edCat([btn('导出')]) });

@@ -125,23 +125,27 @@ export interface CommunityAuthorDto {
   publicAuthorId: string;
   displayName: string;
   authorType: 'user' | 'official';
+  /** 作者自己选的头像底色；官方与已注销为 null。 */
+  avatarColor: string | null;
   counts: { works: number; likes: number; reuses: number };
 }
 
 /** 作者公开信息与公开作品统计；公开 ID 不存在返回 null（官方作者恒存在）。 */
 export async function getCommunityAuthor(db: AnyDatabase, publicAuthorId: string): Promise<CommunityAuthorDto | null> {
   pushSpan({ kind: 'service', name: 'community.getAuthor' });
-  let identity: Pick<CommunityAuthorDto, 'displayName' | 'authorType'>;
+  let identity: Pick<CommunityAuthorDto, 'displayName' | 'authorType' | 'avatarColor'>;
   if (publicAuthorId === OFFICIAL_PUBLIC_AUTHOR_ID) {
-    identity = { displayName: '豆色绘官方', authorType: 'official' };
+    identity = { displayName: '豆色绘官方', authorType: 'official', avatarColor: null };
   } else {
     if (!UUID_PATTERN.test(publicAuthorId)) return null;
-    const [account] = await db.select({ username: users.username, email: users.email, accountStatus: users.accountStatus })
+    const [account] = await db.select({ username: users.username, email: users.email, accountStatus: users.accountStatus, avatarColor: users.avatarColor })
       .from(users).where(eq(users.publicAuthorId, publicAuthorId));
     if (!account) return null;
+    const email = account.accountStatus === 'anonymized' ? null : account.email;
     identity = {
       authorType: 'user',
-      displayName: account.accountStatus === 'anonymized' || !account.email ? ANONYMIZED_DISPLAY_NAME : resolvePublicDisplayName(account.username, account.email),
+      displayName: email ? resolvePublicDisplayName(account.username, email) : ANONYMIZED_DISPLAY_NAME,
+      avatarColor: email ? account.avatarColor : null,
     };
   }
   const [stats] = await db.select({
@@ -195,6 +199,8 @@ export async function suggestCommunitySearch(db: AnyDatabase, rawQuery: string) 
       publicAuthorId: communityRevisions.publicAuthorId,
       authorType: communityRevisions.authorType,
       displayName: sql<string>`max(${publicDisplayNameExpression})`,
+      // 同一公开作者 ID 只对应一个账号；官方作者没有头像颜色。
+      avatarColor: sql<string | null>`max(case when ${communityRevisions.authorType} = 'official' then null else ${users.avatarColor} end)`,
       workCount: countExpression,
     }).from(communityWorks).innerJoin(communityRevisions, eq(communityRevisions.workId, communityWorks.id))
       .leftJoin(users, eq(users.id, communityWorks.authorUserId))
@@ -212,6 +218,7 @@ export async function suggestCommunitySearch(db: AnyDatabase, rawQuery: string) 
       publicAuthorId: row.authorType === 'official' ? OFFICIAL_PUBLIC_AUTHOR_ID : row.publicAuthorId,
       authorType: row.authorType,
       displayName: row.displayName,
+      avatarColor: row.avatarColor ?? null,
       workCount: Number(row.workCount),
     })),
   };

@@ -28,7 +28,7 @@ export interface PickedImage {
   type: ImageType;
 }
 
-export const SAMPLES = ['cat', 'rabbit', 'tulips', 'frog'] as const;
+export const SAMPLES = ['cat', 'strawberry', 'rainbow', 'frog'] as const;
 export type SampleId = (typeof SAMPLES)[number];
 
 export interface CreateEntryProps {

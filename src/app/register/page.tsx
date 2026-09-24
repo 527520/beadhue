@@ -80,7 +80,7 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <AuthShell title={t.registerTitle}>
+      <AuthShell title={t.registerTitle} description={t.registerHint}>
         <div className="grid gap-4">
           <FormNotice>{t.registeredSent}</FormNotice>
           <DevMailLink href={devMailLink} />
@@ -93,7 +93,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthShell title={t.registerTitle}>
+    <AuthShell title={t.registerTitle} description={t.registerHint}>
       <form onSubmit={submit} noValidate className="grid gap-4">
         <Field label={t.usernameOptional} error={errors.username}>
           <Input type="text" autoComplete="nickname" disabled={pending} value={username} onChange={(e) => setUsername(e.target.value)} maxLength={LIMITS.usernameLength} />

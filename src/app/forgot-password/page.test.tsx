@@ -19,7 +19,7 @@ describe('forgot-password 页', () => {
   it('非法邮箱本地拦截', async () => {
     render(<ForgotPasswordPage />);
     fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'bad' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.forgotSubmit }));
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -28,7 +28,7 @@ describe('forgot-password 页', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
     render(<ForgotPasswordPage />);
     fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'a@b.com' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.forgotSubmit }));
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain(zhCN.authPages.forgotSent));
   });
 
@@ -37,7 +37,7 @@ describe('forgot-password 页', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204, headers: { 'x-dev-mail-link': link } }));
     render(<ForgotPasswordPage />);
     fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'a@b.com' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.forgotSubmit }));
     const shown = await screen.findByRole('link', { name: link });
     expect(shown.getAttribute('href')).toBe(link);
     expect(screen.getByText(zhCN.authPages.devMailHint)).toBeTruthy();
@@ -47,7 +47,7 @@ describe('forgot-password 页', () => {
     fetchMock.mockRejectedValue(new Error('network down'));
     render(<ForgotPasswordPage />);
     fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'a@b.com' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.forgotSubmit }));
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain(zhCN.authPages.forgotSent));
   });
 
@@ -55,7 +55,7 @@ describe('forgot-password 页', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
     render(<ForgotPasswordPage />);
     fireEvent.change(screen.getByLabelText('邮箱'), { target: { value: 'a@b.com' } });
-    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.submit }));
+    fireEvent.click(screen.getByRole('button', { name: zhCN.authPages.forgotSubmit }));
     await waitFor(() => {
       const button = screen.getByRole('button', { name: /秒后再试/ });
       expect(button.hasAttribute('disabled')).toBe(true);

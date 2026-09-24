@@ -21,7 +21,10 @@ import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTi
 import { EmptyState } from '@/components/ui/empty-state';
 import { Field, FormAlert } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/toast';
+import { Tooltip } from '@/components/ui/tooltip';
+import { AVATAR_PICKER_COLORS } from '@/lib/render/beadTokens';
 import { useLoginDialog } from '@/components/shell/login-dialog';
 import { relativeTime } from '@/components/create/create-model';
 import { ConfirmDialog } from '../confirm-dialog';
@@ -63,17 +66,46 @@ function Row({ title, description, children, extra, htmlFor }: { title: string; 
   );
 }
 
+/** 头像颜色（原型 openAvatarColors）：八颗豆色，桌面浮层、手机底部面板；选完回到表单，与用户名一起保存。 */
+function AvatarColorPicker({ value, onChange }: { value: string | null; onChange: (color: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen} sheetTitle={t.avatarColorTitle}>
+      <PopoverTrigger render={<Button type="button" size="sm" variant="outline" />}>{t.changeAvatarColor}</PopoverTrigger>
+      <PopoverContent align="start" aria-label={t.avatarColorTitle}>
+        <div role="group" aria-label={t.avatarColorTitle} className="grid grid-cols-4 gap-3 p-2 max-md:justify-center">
+          {AVATAR_PICKER_COLORS.map((color, index) => (
+            <Tooltip key={color} content={t.avatarColorNames[index]} side="top">
+              <button
+                type="button"
+                aria-label={t.avatarColorNames[index]}
+                aria-pressed={value?.toUpperCase() === color}
+                onClick={() => { onChange(color); setOpen(false); }}
+                className="size-control-md rounded-full inset-ring-1 inset-ring-ink/10 transition-transform duration-press hover:scale-108 focus-visible:focus-ring aria-pressed:ring-2 aria-pressed:ring-ink aria-pressed:ring-offset-2 aria-pressed:ring-offset-bg"
+                style={{ backgroundColor: color }}
+              />
+            </Tooltip>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ProfileCard({ viewer }: { viewer: MeViewer }) {
   const api = useMemo(() => createBeadhueApi(), []);
   const router = useRouter();
   const toast = useToast();
-  const [saved, setSaved] = useState(viewer.username ?? '');
-  const [value, setValue] = useState(saved);
+  const [saved, setSaved] = useState({ name: viewer.username ?? '', color: viewer.avatarColor });
+  const [value, setValue] = useState(saved.name);
+  const [color, setColor] = useState(viewer.avatarColor);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const nameChanged = value.trim() !== saved.name;
+  const colorChanged = color !== saved.color;
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (busy || value.trim() === saved) return;
+    if (busy || (!nameChanged && !colorChanged)) return;
     const parsed = usernameSchema.safeParse(value);
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? zhCN.me.actionFailed);
@@ -81,8 +113,8 @@ function ProfileCard({ viewer }: { viewer: MeViewer }) {
     }
     setBusy(true);
     try {
-      await api.updateProfile(parsed.data);
-      setSaved(parsed.data);
+      await api.updateProfile({ ...(nameChanged ? { username: parsed.data } : {}), ...(colorChanged ? { avatarColor: color } : {}) });
+      setSaved({ name: parsed.data, color });
       setValue(parsed.data);
       toast(t.profileSaved);
       notifyAuthStatusChanged();
@@ -97,11 +129,14 @@ function ProfileCard({ viewer }: { viewer: MeViewer }) {
   return (
     <Card id="profile" title={t.sections.profile} description={t.profileDesc}>
       <form onSubmit={(event) => void submit(event)} noValidate className="flex items-start gap-6 max-md:flex-col max-md:gap-4">
-        <Avatar id={viewer.avatarId} name={preview} size="xl" />
+        <div className="grid shrink-0 justify-items-center gap-3 max-md:grid-flow-col max-md:items-center">
+          <Avatar id={viewer.avatarId} name={preview} color={color ?? undefined} size="xl" />
+          <AvatarColorPicker value={color} onChange={setColor} />
+        </div>
         <Field label={t.username} hint={t.usernameHint} error={error} className="w-full min-w-0 flex-1">
           <div className="flex gap-2">
             <Input value={value} maxLength={LIMITS.usernameLength} autoComplete="nickname" className="min-w-0 flex-1" onChange={(event) => { setValue(event.target.value); setError(null); }} />
-            <Button type="submit" loading={busy} disabled={value.trim() === saved}>{zhCN.me.save}</Button>
+            <Button type="submit" loading={busy} disabled={!nameChanged && !colorChanged}>{zhCN.me.save}</Button>
           </div>
         </Field>
       </form>
@@ -172,7 +207,7 @@ function PasswordDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-interface SessionItem { current: boolean; createdAt: string }
+interface SessionItem { current: boolean; createdAt: string; label: string | null }
 
 function SecurityCard({ viewer }: { viewer: MeViewer }) {
   const toast = useToast();
@@ -235,7 +270,7 @@ function SecurityCard({ viewer }: { viewer: MeViewer }) {
       <Row title={t.email} description={viewer.email}>
         <Badge tone="success">{icon(BadgeCheck)}{t.verified}</Badge>
       </Row>
-      <Row title={t.password} description={t.passwordDesc}>
+      <Row title={t.password} description={viewer.passwordChangedAt && now ? t.passwordChangedAt(relativeTime(viewer.passwordChangedAt, now)) : t.passwordDesc}>
         <Button variant="outline" onClick={() => setChanging(true)}>{t.changePassword}</Button>
       </Row>
       <Row
@@ -250,7 +285,7 @@ function SecurityCard({ viewer }: { viewer: MeViewer }) {
             <ul className="mt-2 rounded-md bg-bg-subtle">
               {devices.map((item, index) => (
                 <li key={`${item.createdAt}-${index}`} className="flex min-h-12 items-center gap-3 border-t border-line px-4 py-2 text-body-sm text-ink-2 first:border-t-0">
-                  <span className="min-w-0 flex-1 truncate">{item.current ? t.thisDevice : t.otherDevice}</span>
+                  <span className="min-w-0 flex-1 truncate">{item.label ?? (item.current ? t.thisDevice : t.otherDevice)}</span>
                   {item.current ? <Badge>{t.currentDevice}</Badge> : null}
                   <span className="shrink-0 text-ink-3">{t.signedInAt(relativeTime(item.createdAt, now))}</span>
                 </li>
@@ -264,7 +299,7 @@ function SecurityCard({ viewer }: { viewer: MeViewer }) {
       <Row title={t.logout} description={t.logoutDesc}>
         <Button variant="outline" loading={loggingOut} onClick={() => void logout()}>{icon(LogOut)}{t.logout}</Button>
       </Row>
-      {changing ? <PasswordDialog onClose={() => { setChanging(false); void load(); }} /> : null}
+      {changing ? <PasswordDialog onClose={() => { setChanging(false); void load(); router.refresh(); }} /> : null}
       <ConfirmDialog open={confirming} onOpenChange={setConfirming} title={t.signOutOthersTitle} description={t.signOutOthersText(others)} confirmLabel={t.signOutOthers} busy={busy} error={error} onConfirm={() => void revoke()} />
     </Card>
   );

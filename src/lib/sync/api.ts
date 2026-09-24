@@ -12,11 +12,18 @@ export type MeInfo =
   | { state: 'verified'; email: string; username: string | null; createdAt: string }
   | { state: 'unverified' };
 
+export interface ProfilePatch {
+  username?: string;
+  avatarColor?: string | null;
+  defaultPalette?: string | null;
+}
+
 export interface AuthApi {
   me(): Promise<MeInfo>;
   resendVerification(email: string): Promise<void>;
   changePassword(currentPassword: string, newPassword: string): Promise<void>;
-  updateProfile(username: string): Promise<void>;
+  /** 只改传入的字段；null 恢复默认（头像按 ID 取色、默认色板回到 MARD 经典）。 */
+  updateProfile(patch: ProfilePatch): Promise<void>;
   deleteAccount(password: string): Promise<void>;
   logout(): Promise<void>;
 }
@@ -155,10 +162,10 @@ export function createBeadhueApi(fetchImpl: typeof fetch = fetch) {
     async changePassword(currentPassword: string, newPassword: string): Promise<void> {
       await expectNoContent('/api/auth/change-password', { currentPassword, newPassword });
     },
-    async updateProfile(username: string): Promise<void> {
+    async updateProfile(patch: ProfilePatch): Promise<void> {
       const response = await request('/api/auth/account', {
         method: 'PATCH',
-        body: JSON.stringify({ username }),
+        body: JSON.stringify(patch),
       });
       if (!response.ok) await throwFor(response);
     },

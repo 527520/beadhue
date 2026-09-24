@@ -14,7 +14,7 @@ describe('analytics dashboard query recovery', () => {
     for (const input of [{ start: 'invalid' }, { start: '2020-01-01' }, { start: '2026-09-06', end: '2026-09-01' }, { device: ['desktop', 'mobile'] }]) {
       const resolved = resolveDashboardQuery(input, now);
       expect(resolved.invalid).toBe(true);
-      expect(resolved.query).toEqual({ start: '2026-08-07', end: '2026-09-05' });
+      expect(resolved.query).toEqual({ start: '2026-08-30', end: '2026-09-05' });
     }
   });
   it('keeps supported precise filters and explicitly removes combinations in long ranges', () => {

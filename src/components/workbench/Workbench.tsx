@@ -47,6 +47,7 @@ import {
   type StitchProgress,
 } from "@/lib/progress/stitchProgress";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
+import { FALLBACK_DEFAULT_PALETTE, useDefaultPalette } from "@/components/account/useDefaultPalette";
 import { SiteShell } from "@/components/shell/site-shell";
 import { RefreshCw } from "lucide-react";
 import {
@@ -2362,6 +2363,22 @@ export default function Workbench({
     updateGenerationDraft({ ...generationDraft, params: defaultParams });
   }, [defaultParams, generationDraft, step, updateGenerationDraft]);
 
+  // 新建设计默认色板（「我的 · 色板」设为默认）：读到后换进上传步骤的草稿；草稿已不是上一次套用的默认值（用户换过）就不动。
+  const defaultPalette = useDefaultPalette();
+  const appliedDefaultPaletteRef = useRef<string>(FALLBACK_DEFAULT_PALETTE);
+  useEffect(() => {
+    if (step !== "upload" || rebindRestoredSourceRef.current || !defaultPalette.ready) return;
+    const current = generationDraft.paletteSelection.palette;
+    if (current.kind !== "builtin" || current.brand !== appliedDefaultPaletteRef.current || current.brand === defaultPalette.value) return;
+    appliedDefaultPaletteRef.current = defaultPalette.value;
+    const palette: ProjectPalette = { kind: "builtin", brand: defaultPalette.value };
+    updateGenerationDraft({
+      ...generationDraft,
+      boardProfile: defaultBoardProfileForPalette(palette, generationDraft.boardProfile),
+      paletteSelection: { palette, kitTier: 0 },
+    });
+  }, [defaultPalette.ready, defaultPalette.value, generationDraft, step, updateGenerationDraft]);
+
   // 卸载时作废在途任务。调用方注入的图片解码器不在本组件中销毁。
   useEffect(() => {
     return () => {
@@ -2401,7 +2418,16 @@ export default function Workbench({
         const records = await adapter.getAll();
         if (cancelled || imageOperationRef.current !== restoreOperation) return;
         setSavedNames(records.map((r) => r.name));
-        if (!requestedId) return;
+        if (!requestedId) {
+          // 深链 /app?blank=1（「我的」空状态「从空白开始」）：直接打开空白画布弹窗，参数用过即去掉。
+          if (urlParams.get("blank") === "1") {
+            setBlankOpen(true);
+            urlParams.delete("blank");
+            const rest = urlParams.toString();
+            window.history.replaceState(window.history.state, "", `${window.location.pathname}${rest ? `?${rest}` : ""}`);
+          }
+          return;
+        }
         const last = records.find((r) => r.id === requestedId);
         if (!last) {
           setErrorMsg(t.designNotLocal);
@@ -2994,7 +3020,7 @@ export default function Workbench({
         {blankOpen && !pattern && (
           <BlankCanvasDialog
             paletteChoices={paletteChoices}
-            paletteValue={selectedPalette.startsWith("__") ? "builtin:MARD" : selectedPalette}
+            paletteValue={selectedPalette.startsWith("__") ? `builtin:${defaultPalette.value}` : selectedPalette}
             boardProfile={boardProfile}
             onCreate={handleBlankCreate}
             onClose={() => setBlankOpen(false)}

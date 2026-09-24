@@ -294,6 +294,9 @@ const specButton = (): HTMLElement => { openTab(tw.tabAdjust); return screen.get
 const kitButton = (): HTMLElement => { openTab(tw.tabAdjust); return screen.getByRole('button', { name: /^套装档位：/ }); };
 const PALETTES = buildPaletteChoices();
 const paletteName = (value: string): string => PALETTES.find((choice) => choice.value === value)!.name;
+/** 选择框里的色板文字：短名 · 色数。 */
+const paletteTrigger = (value: string): string => { const choice = PALETTES.find((item) => item.value === value)!; return zhCN.create.paletteTrigger(choice.name, choice.colors.length); };
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const kitLabel = (tier: number): string => (tier === 0 ? tw.adjust.kitAll(291) : tw.adjust.kitOption(tier));
 async function pickOption(trigger: HTMLElement, name: string | RegExp): Promise<void> {
   fireEvent.click(trigger);
@@ -314,7 +317,7 @@ const canvas = (): HTMLElement => screen.getByLabelText(/^图纸编辑画布/);
 /** 跟拼面板的「已拼 N / M 颗」（数字在 <b> / <span> 里，按整段文字匹配）。 */
 const stitchCount = (pattern: RegExp) => screen.findByText((_, element) => element?.tagName === 'P' && pattern.test(element.textContent ?? ''));
 const ARTKAL = 'builtin:pcd:artkal-c-197-official@178dafbc9e77d3de556550dbd058270200129186';
-const expectPalette = (value: string) => expect(paletteButton()).toHaveAccessibleName(`色板：${paletteName(value)}`);
+const expectPalette = (value: string) => expect(paletteButton()).toHaveAccessibleName(`色板：${paletteTrigger(value)}`);
 const expectSpec = (label: string) => expect(specButton()).toHaveAccessibleName(`${tw.adjust.spec}：${label}`);
 const expectKit = (tier: number) => expect(kitButton()).toHaveAccessibleName(`${tw.adjust.kit}：${kitLabel(tier)}`);
 /** 规格选择里当前色板能用的规格（不兼容的保留但禁用）。 */
@@ -388,12 +391,12 @@ describe('Workbench 全流程', () => {
     const view = render(<Workbench storage={storage} />);
     try {
       await screen.findByDisplayValue('准确的目标设计');
-      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteName('builtin:MARD')}`);
+      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteTrigger('builtin:MARD')}`);
       fireEvent.click(screen.getByRole('button', { name: '应用到图纸' }));
-      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteName(value)}`);
+      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteTrigger(value)}`);
       expect(new URLSearchParams(window.location.search).has('palette')).toBe(false);
       fireEvent.click(undoButton());
-      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteName('builtin:MARD')}`);
+      expect(paletteButton()).toHaveAccessibleName(`色板：${paletteTrigger('builtin:MARD')}`);
       saveNow();
       await waitFor(() => expect(JSON.parse(storage.designs.get('chosen')!.projectJson).pattern).toEqual(original.pattern));
     } finally { view.unmount(); window.history.replaceState(null, '', '/app'); }
@@ -1329,11 +1332,11 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     fireEvent.click(await screen.findByRole('button', { name: new RegExp(zhCN.create.blankTitle) }));
     const dialog = await screen.findByRole('dialog', { name: zhCN.create.blankDialogTitle });
     fireEvent.click(within(dialog).getByRole('button', { name: /^色板：/ }));
-    fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C 197 色/ }));
-    expect(within(dialog).getByRole('button', { name: /^制作规格：/ })).toHaveTextContent('2.6mm / 50×50');
-    expect(within(dialog).getByText(/已改为 2\.6mm \/ 50×50/)).toBeTruthy();
+    fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C/ }));
+    expect(within(dialog).getByRole('button', { name: /^制作规格：/ })).toHaveTextContent('2.6mm · 50×50');
+    expect(within(dialog).getByText(/已改为 2\.6mm · 50×50/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: /^制作规格：/ }));
-    fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm \/ 52×52/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm · 52×52/ }));
     fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.blankChip(1, 52) }));
     expect(within(dialog).getByText(/52 × 52 格/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.createCanvas }));
@@ -1360,10 +1363,10 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
 
     await choosePalette(paletteName(ARTKAL));
 
-    await waitFor(() => expectSpec('2.6mm / 50×50'));
+    await waitFor(() => expectSpec('2.6mm · 50×50'));
     expect(generateFn).toHaveBeenCalledTimes(1);
     fireEvent.click(undoButton());
-    expectSpec('5mm / 29×29');
+    expectSpec('5mm · 29×29');
     expectPalette('builtin:MARD');
   });
 
@@ -1481,13 +1484,13 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       const dialog = await screen.findByRole('dialog', { name: zhCN.create.newTitle });
       await waitFor(() => expect(within(dialog).getByRole('spinbutton', { name: zhCN.create.customWidthAria })).toHaveValue(88));
       fireEvent.click(within(dialog).getByRole('button', { name: /^色板：/ }));
-      fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C 197 色/ }));
+      fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C/ }));
       fireEvent.click(within(dialog).getByRole('button', { name: /^制作规格：/ }));
-      fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm \/ 52×52/ }));
+      fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm · 52×52/ }));
       fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.generate }));
       await screen.findByText(beads(7744));
       expectPalette(ARTKAL);
-      expectSpec('2.6mm / 52×52');
+      expectSpec('2.6mm · 52×52');
       expect(generateFn.mock.calls[0][0].params).toMatchObject({ targetWidth: 88, targetColorCount: 32 });
       expect(window.location.search).toMatch(/^\?id=/);
     } finally {
@@ -1505,11 +1508,11 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     await screen.findByDisplayValue('Mini');
     expectNeedsSource();
 
-    expect((await enabledSpecs()).map((name) => name.split('每块')[0])).toEqual(['5mm / 29×29', '2.6mm / 50×50', '2.6mm / 52×52']);
-    await pickOption(specButton(), /^2\.6mm \/ 50×50/);
+    expect((await enabledSpecs()).map((name) => name.split('每块')[0])).toEqual(['5mm · 29×29', '2.6mm · 50×50', '2.6mm · 52×52']);
+    await pickOption(specButton(), /^2\.6mm · 50×50/);
 
-    expectSpec('2.6mm / 50×50');
-    expect(await screen.findByText(tw.adjust.specDone('2.6mm / 50×50'))).toBeTruthy();
+    expectSpec('2.6mm · 50×50');
+    expect(await screen.findByText(tw.adjust.specDone('2.6mm · 50×50'))).toBeTruthy();
     saveNow();
     await waitFor(() => {
       const saved = storage.designs.get('id-last');
@@ -1517,7 +1520,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       expect((JSON.parse(saved!.projectJson) as ProjectFile).boardProfile).toBe('2.6mm-50');
     });
     fireEvent.click(undoButton());
-    expectSpec('5mm / 29×29');
+    expectSpec('5mm · 29×29');
     expectNeedsSource();
   });
 
@@ -1533,9 +1536,9 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     // 主文案不泄露版本化的稳定 ID（保存时才用到）。
     expect(paletteButton().textContent).not.toMatch(/pcd:|[0-9a-f]{40}/i);
 
-    await waitFor(() => expectSpec('2.6mm / 50×50'));
-    expect((await enabledSpecs()).map((name) => name.split('每块')[0])).toEqual(['2.6mm / 50×50', '2.6mm / 52×52']);
-    expect(await screen.findByText(tw.colors.paletteSpecDone(paletteName(ARTKAL), '2.6mm / 50×50'))).toBeTruthy();
+    await waitFor(() => expectSpec('2.6mm · 50×50'));
+    expect((await enabledSpecs()).map((name) => name.split('每块')[0])).toEqual(['2.6mm · 50×50', '2.6mm · 52×52']);
+    expect(await screen.findByText(tw.colors.paletteSpecDone(paletteName(ARTKAL), '2.6mm · 50×50'))).toBeTruthy();
 
     saveNow();
     await waitFor(() => {
@@ -1547,7 +1550,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
       });
     });
     fireEvent.click(undoButton());
-    expectSpec('5mm / 29×29');
+    expectSpec('5mm · 29×29');
     expectPalette('builtin:MARD');
   });
 });
@@ -1677,7 +1680,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
     expectNeedsSource();
     expect(paletteButton()).not.toBeDisabled();
     await choosePalette(new RegExp(`^${mine('粉彩 B')}`));
-    await waitFor(() => expect(paletteButton()).toHaveAccessibleName(`色板：${mine('粉彩 B')}`));
+    await waitFor(() => expect(paletteButton()).toHaveAccessibleName(new RegExp(`^色板：${escapeRegExp(mine('粉彩 B'))} · \\d+ 色$`)));
     // 重映射结果有明确反馈，且提供一步撤销
     expect(await screen.findByText(tw.colors.paletteDone(mine('粉彩 B')))).toBeTruthy();
     expect(undoButton()).toBeEnabled();
@@ -1687,7 +1690,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
     await choosePalette(paletteName('builtin:COCO'));
     await waitFor(() => expectPalette('builtin:COCO'));
     fireEvent.click(undoButton());
-    await waitFor(() => expect(paletteButton()).toHaveAccessibleName(`色板：${mine('粉彩 B')}`));
+    await waitFor(() => expect(paletteButton()).toHaveAccessibleName(new RegExp(`^色板：${escapeRegExp(mine('粉彩 B'))} · \\d+ 色$`)));
 
     await waitFor(() => expect(screen.getByText(tw.save.saved)).toBeTruthy());
     const callsBeforeOnline = enqueueDesignSyncMock.mock.calls.length;

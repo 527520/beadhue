@@ -38,7 +38,7 @@ function MobileAccount() {
   if (auth.kind === 'user') {
     return (
       <ShellLink href="/me" aria-label={t.me} className={iconButtonVariants()}>
-        <Avatar id={avatarIdOf(auth)} name={displayNameOf(auth)} size="sm" />
+        <Avatar id={avatarIdOf(auth)} name={displayNameOf(auth)} color={auth.avatarColor ?? undefined} size="sm" />
       </ShellLink>
     );
   }

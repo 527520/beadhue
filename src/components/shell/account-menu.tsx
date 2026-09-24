@@ -81,11 +81,11 @@ export function AccountMenu({ user }: { user: User }) {
         className="inline-flex h-10 items-center gap-2 rounded-full pr-1 pl-3 inset-ring-1 inset-ring-line-strong transition-shadow duration-state ease-standard hover:shadow-float hover:inset-ring-ink focus-visible:focus-ring data-popup-open:inset-ring-ink"
       >
         <MenuIcon aria-hidden="true" strokeWidth={1.75} className="size-4.5 text-ink-3" />
-        <Avatar id={avatarIdOf(user)} name={name} size="sm" />
+        <Avatar id={avatarIdOf(user)} name={name} color={user.avatarColor ?? undefined} size="sm" />
       </MenuTrigger>
       <MenuContent align="end" className="w-66">
         <div className="flex items-center gap-3 px-2.5 pt-2.5 pb-3">
-          <Avatar id={avatarIdOf(user)} name={name} size="lg" />
+          <Avatar id={avatarIdOf(user)} name={name} color={user.avatarColor ?? undefined} size="lg" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-title-3 text-ink">{name}</div>
             <div className="truncate text-caption font-normal text-ink-3">{user.email}</div>

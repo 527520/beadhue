@@ -175,7 +175,7 @@ export function DesignsPanel({ initialQuery, storageOverride, apiOverride, loadP
         description={t.emptyText}
         actions={<>
           <Link href="/app" className={buttonVariants({ variant: 'primary' })}>{icon(Upload)}{t.upload}</Link>
-          <Link href="/app" className={buttonVariants({ variant: 'secondary' })}>{t.blank}</Link>
+          <Link href="/app?blank=1" className={buttonVariants({ variant: 'secondary' })}>{t.blank}</Link>
         </>}
       />
     );

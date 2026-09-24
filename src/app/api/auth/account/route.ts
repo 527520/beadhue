@@ -48,7 +48,7 @@ async function deleteAccount(request: Request): Promise<NextResponse> {
 
 export const DELETE = withApiErrors(deleteAccount);
 
-/** 展示资料：用户名可修改或清空；邮箱仍是唯一登录身份。 */
+/** 展示资料：用户名可修改或清空，头像颜色与新建设计默认色板可改或恢复默认；邮箱仍是唯一登录身份。 */
 async function updateProfile(request: Request): Promise<NextResponse> {
   const guard = enforceMutatingGuard(request);
   if (guard) return guard;
@@ -62,10 +62,16 @@ async function updateProfile(request: Request): Promise<NextResponse> {
   if (!body.ok) return body.response;
   const parsed = updateProfileSchema.safeParse(body.data);
   if (!parsed.success) return apiError(parsed.error);
+  const { username, avatarColor, defaultPalette } = parsed.data;
 
   await getDb()
     .update(users)
-    .set({ username: parsed.data.username || null, updatedAt: new Date() })
+    .set({
+      ...(username !== undefined ? { username: username || null } : {}),
+      ...(avatarColor !== undefined ? { avatarColor } : {}),
+      ...(defaultPalette !== undefined ? { defaultPalette } : {}),
+      updatedAt: new Date(),
+    })
     .where(and(eq(users.id, userId), eq(users.accountStatus, 'active')));
   return new NextResponse(null, { status: 204 });
 }

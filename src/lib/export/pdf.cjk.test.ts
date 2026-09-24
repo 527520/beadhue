@@ -224,7 +224,7 @@ describe('generatePatternPdf（CJK 字体嵌入）', () => {
     expect(document.getPageCount()).toBe(5);
   }, 30000);
 
-  it('2.6mm / 50×50 规格保持一页一板且使用独立板边界', async () => {
+  it('2.6mm · 50×50 规格保持一页一板且使用独立板边界', async () => {
     const mini: Pattern = {
       width: 51,
       height: 50,
@@ -242,7 +242,7 @@ describe('generatePatternPdf（CJK 字体嵌入）', () => {
     expect(document.getPageCount()).toBe(4);
   }, 30000);
 
-  it('2.6mm / 52×52 真实产物一页一板，单元格物理间距严格为 2.6mm', async () => {
+  it('2.6mm · 52×52 真实产物一页一板，单元格物理间距严格为 2.6mm', async () => {
     const codes = ['A1', 'B2'];
     const mini: Pattern = {
       width: 53,

@@ -32,7 +32,7 @@ for (const [name, state] of Object.entries(STATES)) {
       const refuse = page.getByRole('button', { name: '不同意', exact: true });
       if (await refuse.count()) await refuse.click().catch(() => {});
       if (state.open === 'sample') {
-        await page.getByRole('button', { name: '用示例「橘子小猫」新建图纸' }).click();
+        await page.getByRole('button', { name: '用示例「橘猫团子」新建图纸' }).click();
         await page.getByRole('dialog', { name: '新建图纸' }).waitFor();
         await page.waitForTimeout(1500);
       }

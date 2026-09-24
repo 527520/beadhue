@@ -47,11 +47,11 @@ afterEach(() => {
 });
 
 describe('迁移 0020', () => {
-  it('journal 最后一项就是 0020，且 down 文件删除的正是它的时间戳', () => {
-    const last = journal.entries.at(-1)!;
-    expect(last).toMatchObject({ idx: 20, tag: TAG });
+  it('journal 第 20 项就是 0020，且 down 文件删除的正是它的时间戳', () => {
+    const entry = journal.entries.find((item) => item.tag === TAG)!;
+    expect(entry).toMatchObject({ idx: 20, tag: TAG });
     const down = readFileSync(join(migrationsFolder, 'down', `${TAG}.down.sql`), 'utf8');
-    expect(down).toContain(`created_at = ${last.when}`);
+    expect(down).toContain(`created_at = ${entry.when}`);
   });
 
   it('全新库从 0000 一路升到 0020：新表、新列与两条索引都在', async () => {
@@ -83,7 +83,7 @@ describe('迁移 0020', () => {
       license_confirmed_at, engine_version, board_profile, palette_kind, width, height, color_count, snapshot, preview
     ) values ($1, 1, '升级前作品', 'user', 'pa', '小豆', 'v1', now(), 'e', '5mm-29', 'builtin', 1, 1, 1, '{}'::jsonb, '{}'::jsonb) returning id`, [workId]);
 
-    await migrate(db, { migrationsFolder });
+    await migrate(db, { migrationsFolder: folderUntil(TAG) });
     expect(await scalar<number>(client, 'select count(*)::int from drizzle.__drizzle_migrations')).toBe(21);
     const tag = (await client.query<{ name: string; sort_order: number; icon: string | null; featured: boolean }>(
       'select name, sort_order, icon, featured from community_tags where id = $1', [tagId],
@@ -107,7 +107,7 @@ describe('迁移 0020', () => {
     expect(await scalar<string>(client, 'select title from community_revisions where id = $1', [revisionId])).toBe('升级前作品');
     expect(await scalar<number>(client, 'select sort_order from community_tags where id = $1', [tagId])).toBe(3);
 
-    await migrate(db, { migrationsFolder });
+    await migrate(db, { migrationsFolder: folderUntil(TAG) });
     expect(await scalar<number>(client, 'select count(*)::int from drizzle.__drizzle_migrations')).toBe(21);
     expect(await scalar<string[]>(client, 'select suggested_tags from community_revisions where id = $1', [revisionId])).toEqual([]);
     expect(await scalar<boolean>(client, 'select featured from community_tags where id = $1', [tagId])).toBe(false);

@@ -11,10 +11,9 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: 
 afterEach(() => { vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
 
 describe('色板数据', () => {
-  it('13 套内置色板，默认 MARD；色带等间距取 24 颗；色系按 HEX 推导', () => {
+  it('13 套内置色板；色带等间距取 24 颗；色系按 HEX 推导', () => {
     const cards = builtinCards();
     expect(cards).toHaveLength(13);
-    expect(cards.filter((card) => card.isDefault).map((card) => card.id)).toEqual(['MARD']);
     expect(cards[0].strip).toHaveLength(24);
     expect(sampleStrip(['#000000', '#FFFFFF'])).toEqual(['#000000', '#FFFFFF']);
     expect([colorFamily('#FFFFFF'), colorFamily('#E0473F'), colorFamily('#3F7FD9'), colorFamily('#47A35B'), colorFamily('#6B4423'), colorFamily('#FFC0CB')]).toEqual(['neutral', 'red', 'blue', 'green', 'brown', 'pink']);
@@ -24,7 +23,7 @@ describe('色板数据', () => {
   });
 });
 
-const viewer = { name: '豆豆', email: 'u@e.com', username: '豆豆', avatarId: 'x', publicAuthorId: 'x', verified: true };
+const viewer = { name: '豆豆', email: 'u@e.com', username: '豆豆', avatarId: 'x', avatarColor: null, publicAuthorId: 'x', verified: true, passwordChangedAt: null };
 const provide = (children: React.ReactNode) => <MeProvider value={{ viewer, stats: null, designCount: null, setDesignCount: () => undefined, refreshStats: () => undefined }}>{children}</MeProvider>;
 
 describe('色板页', () => {
@@ -34,11 +33,30 @@ describe('色板页', () => {
     render(<PalettesPanel mode="public" />);
     expect(screen.queryByRole('heading', { name: '我的色板' })).toBeNull();
     expect(await screen.findByRole('link', { name: /返回原图纸/ })).toHaveAttribute('href', '/app?id=11111111-2222-4333-8444-555555555555');
-    await user.click(screen.getByRole('button', { name: /^查看「MARD（豆色绘经典 291 色）」全部/ }));
+    await user.click(screen.getByRole('button', { name: /^查看「MARD 豆色绘经典」全部/ }));
     const dialog = await screen.findByRole('dialog');
     await user.type(within(dialog).getByRole('searchbox', { name: '搜索色号、名称或 HEX' }), 'A01');
     expect(within(within(dialog).getByRole('list')).getAllByRole('listitem')).toHaveLength(1);
     expect(within(dialog).getByRole('link', { name: '用于当前图纸' })).toHaveAttribute('href', '/app?id=11111111-2222-4333-8444-555555555555&palette=builtin%3AMARD');
+  });
+
+  it('默认色板：MARD 带「默认」徽标；在查看弹窗里把 COCO 设为默认后徽标与说明跟着换（游客存本机）', async () => {
+    const user = userEvent.setup();
+    window.localStorage.removeItem('beadhue:default-palette');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })));
+    render(<PalettesPanel mode="public" />);
+    const card = (name: RegExp) => screen.getByRole('button', { name }).closest('li')!;
+    await waitFor(() => expect(within(card(/^查看「MARD 豆色绘经典」/)).getByText('默认')).toBeVisible());
+    await user.click(screen.getByRole('button', { name: /^查看「COCO 豆色绘经典」/ }));
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '设为默认色板' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(within(card(/^查看「COCO 豆色绘经典」/)).getByText('默认')).toBeVisible();
+    expect(within(card(/^查看「MARD 豆色绘经典」/)).queryByText('默认')).toBeNull();
+    expect(window.localStorage.getItem('beadhue:default-palette')).toBe('COCO');
+    await user.click(screen.getByRole('button', { name: /^查看「COCO 豆色绘经典」/ }));
+    expect(within(await screen.findByRole('dialog')).getByRole('button', { name: '当前默认' })).toBeDisabled();
+    window.localStorage.removeItem('beadhue:default-palette');
   });
 
   it('登录后新建色板：点选颜色才可保存，保存后出现在我的色板', async () => {

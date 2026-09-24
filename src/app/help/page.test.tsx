@@ -43,7 +43,7 @@ describe('关于页', () => {
     expect(screen.getByText(/HansBug\/pindou-color-data/)).toBeTruthy();
     expect(screen.getByText(/178dafbc9e77d3de556550dbd058270200129186/)).toBeTruthy();
     expect(screen.getByText(/内置 13 套版本化色板/)).toBeTruthy();
-    expect(screen.getByText(/2.6mm \/ 50×50、52×52/)).toBeTruthy();
+    expect(screen.getByText(/2.6mm · 50×50、52×52/)).toBeTruthy();
     const sourceLink = screen.getByText('源码仓库');
     expect(sourceLink.getAttribute('href')).toBe('https://github.com/527520/beadhue');
     expect(screen.getByRole('heading', { name: '隐私政策' })).toBeTruthy();

@@ -27,11 +27,8 @@ export interface BuiltinCard {
   count: number;
   specs: string[];
   strip: string[];
-  isDefault: boolean;
 }
 
-/** 新建设计默认使用的内置色板（工作台初始为 builtin:MARD）。 */
-export const DEFAULT_PALETTE_ID = 'MARD';
 export const STRIP_SLOTS = 24;
 
 function hsl(hex: string): [number, number, number] {
@@ -73,7 +70,6 @@ export function builtinCards(): BuiltinCard[] {
       count: summary.engineColorCount,
       specs: paletteSizes({ kind: 'builtin', brand: summary.id }).split(' / ').filter(Boolean),
       strip: sampleStrip(full.engineColors.map((color) => color.hex)),
-      isDefault: summary.id === DEFAULT_PALETTE_ID,
     };
   });
 }

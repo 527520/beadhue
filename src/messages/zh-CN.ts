@@ -58,9 +58,9 @@ export const zhCN = {
   params: {
     customPaletteGroup: '我的色板',
     boardProfileNames: {
-      '5mm-29': '5mm / 29×29',
-      '2.6mm-50': '2.6mm / 50×50',
-      '2.6mm-52': '2.6mm / 52×52',
+      '5mm-29': '5mm · 29×29',
+      '2.6mm-50': '2.6mm · 50×50',
+      '2.6mm-52': '2.6mm · 52×52',
     },
   },
   export: {
@@ -192,18 +192,26 @@ export const zhCN = {
       `<p>你请求了重置豆色绘密码。</p><p>请点击以下链接设置新密码（1 小时内有效）：</p><p><a href="${link}">${link}</a></p><p>如果这不是你的操作，请忽略本邮件。</p>`,
   },
   authPages: {
-    formHint: '安全地回到你的创作空间。',
     registerTitle: '注册',
+    registerHint: '注册后，设计会在你的设备之间同步，也能公开到豆社。',
     verifyTitle: '邮箱验证',
     forgotTitle: '找回密码',
+    forgotHint: '填写注册时用的邮箱，我们会发一封重置密码的邮件，1 小时内有效。',
+    forgotSubmit: '发送重置邮件',
+    backToLogin: '想起来了？返回登录',
     resetTitle: '重置密码',
+    resetHint: '设置新密码后，其他设备上的登录会全部失效。',
+    resetSubmit: '设置新密码',
+    resetChecking: '正在检查重置链接…',
+    resetInvalid: '这个重置链接无效或已过期（链接 1 小时内有效，且只能用一次）。',
+    resetAgain: '重新获取重置邮件',
+    resendSubmit: '发送验证邮件',
     email: '邮箱',
     usernameOptional: '用户名（选填）',
     usernameTooLong: (max: number) => `用户名最长 ${max} 个字符`,
     password: '密码',
     confirmPassword: '确认密码',
     registerSubmit: '注册',
-    submit: '提交',
     adminAccountNotice: '管理员账号由现有管理员授权，无法自行注册',
     hasAccount: '已有账号？去登录',
     registeredSent: '注册成功！验证邮件已发送，请查收邮件并点击链接完成验证。',
@@ -225,10 +233,10 @@ export const zhCN = {
     cooldown: (seconds: number) => `请 ${seconds} 秒后再试`,
   },
   palettes: {
-    /** 内置色板目录的完整展示文案；目录模块按稳定 ID 绑定数据与文案，调用方无需拼接。 */
+    /** 内置色板目录的展示文案；label 是不含色数的短名（色数另行显示），目录模块按稳定 ID 绑定数据与文案。 */
     builtinCatalog: {
       MARD: {
-        label: 'MARD（豆色绘经典 291 色）',
+        label: 'MARD 豆色绘经典',
         brand: 'MARD',
         series: '豆色绘经典 291 色',
         description: '豆色绘原内置 MARD 色号映射。',
@@ -237,7 +245,7 @@ export const zhCN = {
         sourceQualitySummary: '豆色绘既有五品牌映射，使用 golden hash 锁定。',
       },
       COCO: {
-        label: 'COCO（豆色绘经典 291 色）',
+        label: 'COCO 豆色绘经典',
         brand: 'COCO',
         series: '豆色绘经典 291 色',
         description: '豆色绘原内置 COCO 色号映射。',
@@ -246,7 +254,7 @@ export const zhCN = {
         sourceQualitySummary: '豆色绘既有五品牌映射，使用 golden hash 锁定。',
       },
       manmanLegacy: {
-        label: '漫漫（豆色绘经典 291 色）',
+        label: '漫漫 豆色绘经典',
         brand: '漫漫',
         series: '豆色绘经典 291 色',
         description: '豆色绘原内置漫漫色号映射。',
@@ -256,7 +264,7 @@ export const zhCN = {
           '豆色绘既有映射；#F3C1C0 的漫漫色号上游记为 S4，豆色绘按确认修正为 S7，并使用 golden hash 锁定。',
       },
       panpanLegacy: {
-        label: '盼盼（豆色绘经典 291 色）',
+        label: '盼盼 豆色绘经典',
         brand: '盼盼',
         series: '豆色绘经典 291 色',
         description: '豆色绘原内置盼盼色号映射。',
@@ -265,7 +273,7 @@ export const zhCN = {
         sourceQualitySummary: '豆色绘既有五品牌映射，使用 golden hash 锁定。',
       },
       mixiaowoLegacy: {
-        label: '咪小窝（豆色绘经典 291 色）',
+        label: '咪小窝 豆色绘经典',
         brand: '咪小窝',
         series: '豆色绘经典 291 色',
         description: '豆色绘原内置咪小窝色号映射。',
@@ -274,7 +282,7 @@ export const zhCN = {
         sourceQualitySummary: '豆色绘既有五品牌映射，使用 golden hash 锁定。',
       },
       mard291Public: {
-        label: 'MARD 291 色（公开源码版）',
+        label: 'MARD 公开源码版',
         brand: 'MARD',
         series: '291 色公开源码版',
         description: 'MARD 291色（公开源码库版）',
@@ -283,7 +291,7 @@ export const zhCN = {
         sourceQualitySummary: '来自公开源码或工具站资料，不等同于品牌官方实物色卡。',
       },
       coco291Public: {
-        label: 'COCO 291 色（公开资料版）',
+        label: 'COCO 公开资料版',
         brand: 'COCO',
         series: '291 色公开资料版',
         description: 'COCO 291色',
@@ -292,7 +300,7 @@ export const zhCN = {
         sourceQualitySummary: '来自公开源码或工具站资料，不等同于品牌官方实物色卡。',
       },
       manman278Public: {
-        label: '漫漫 278 色（公开资料版）',
+        label: '漫漫 公开资料版',
         brand: '漫漫',
         series: '278 色公开资料版',
         description: '漫漫 278色',
@@ -301,7 +309,7 @@ export const zhCN = {
         sourceQualitySummary: '来自公开源码或工具站资料，不等同于品牌官方实物色卡。',
       },
       panpan289Public: {
-        label: '盼盼 289 色（公开资料版）',
+        label: '盼盼 公开资料版',
         brand: '盼盼',
         series: '289 色公开资料版',
         description: '盼盼 289色',
@@ -310,7 +318,7 @@ export const zhCN = {
         sourceQualitySummary: '来自公开源码或工具站资料，不等同于品牌官方实物色卡。',
       },
       mixiaowo290Public: {
-        label: '咪小窝 290 色（公开资料版）',
+        label: '咪小窝 公开资料版',
         brand: '咪小窝',
         series: '290 色公开资料版',
         description: '咪小窝 290色',
@@ -319,7 +327,7 @@ export const zhCN = {
         sourceQualitySummary: '来自公开源码或工具站资料，不等同于品牌官方实物色卡。',
       },
       mard221Reviewed: {
-        label: 'MARD 221 色（Alfonse + 豆豆工坊）',
+        label: 'MARD 221 核对版',
         brand: 'MARD',
         series: '221 色核对版',
         description: 'MARD 221色（Alfonse + 豆豆工坊核对版）',
@@ -328,7 +336,7 @@ export const zhCN = {
         sourceQualitySummary: '由 Alfonse 与豆豆工坊公开色卡交叉核对；不是品牌官方数字色卡。',
       },
       artkalC197: {
-        label: '优肯 Artkal C 197 色',
+        label: '优肯 Artkal C',
         brand: '优肯 Artkal',
         series: 'C 系列 197 色',
         description: '优肯 / Artkal C系列 197色（官方整理）',
@@ -337,7 +345,7 @@ export const zhCN = {
         sourceQualitySummary: '普通色来自 Artkal 官方 RGB PDF；部分特殊材质由官方色卡图采样。',
       },
       artkalM221: {
-        label: '优肯 Artkal M 221 色',
+        label: '优肯 Artkal M',
         brand: '优肯 Artkal',
         series: 'M 系列 221 色',
         description: '优肯 / Artkal M系列 221色（官方整理）',
@@ -368,7 +376,7 @@ export const zhCN = {
       '内置 13 套色板：五套豆色绘经典兼容版，以及 MARD、COCO、漫漫、盼盼、咪小窝的公开资料版、MARD 221 核对版和 Artkal C/M。外部资料固定在 pindou-color-data 的 178dafb 快照并随应用离线打包，使用时不会联网更新。收录数包含资料项，可生成数才是引擎实际会选用的颜色；特殊材质的屏幕 RGB 仅为近似参考。',
     seamTitle: '板缝线',
     seamBody:
-      '制作规格有 5mm / 29×29、2.6mm / 50×50、2.6mm / 52×52 三种，板缝线会按所选底板格数绘制。50 与 52 的 Mini 底板钉距不兼容，请按手里的实物底板选择。Artkal C/M 只支持两种 2.6mm，MARD 221 支持三种，其余内置色板只支持 5mm；自定义色板可使用任一规格。',
+      '制作规格有 5mm · 29×29、2.6mm · 50×50、2.6mm · 52×52 三种，板缝线会按所选底板格数绘制。50 与 52 的 Mini 底板钉距不兼容，请按手里的实物底板选择。Artkal C/M 只支持两种 2.6mm，MARD 221 支持三种，其余内置色板只支持 5mm；自定义色板可使用任一规格。',
     exportTitle: '导出说明',
     exportBody:
       'PNG 图纸：电子设备查看用，网格和板缝跟随当前制作规格。打印版 PDF：按规格一页一块板，5mm 保持现有 6mm 打印格版式，2.6mm 使用 2.6mm 单元格；图例与色号用量清单会自动分页。项目文件：JSON 格式，v3 会记录制作规格、色板与套装档位，可再次导入继续编辑。',
@@ -400,7 +408,7 @@ export const zhCN = {
       },
       {
         q: '5mm、2.6mm 50×50 和 52×52 怎么选？',
-        a: '按豆径和实物底板选择，50 与 52 不能混用。Artkal C/M 会使用 2.6mm 规格；MARD 221 可搭配三种规格；其他内置色板使用 5mm / 29×29。切换规格只改变板缝、跟拼分板与导出几何，不会改变已经生成的格子或用量。',
+        a: '按豆径和实物底板选择，50 与 52 不能混用。Artkal C/M 会使用 2.6mm 规格；MARD 221 可搭配三种规格；其他内置色板使用 5mm · 29×29。切换规格只改变板缝、跟拼分板与导出几何，不会改变已经生成的格子或用量。',
       },
       {
         q: '图纸宽度选多少合适？',
@@ -439,6 +447,9 @@ export const zhCN = {
   errorPages: {
     notFoundTitle: '页面不存在',
     notFoundBody: '你访问的页面不存在或已被移动。可以去首页继续制作拼豆图纸。',
+    workMissingTitle: '这张图纸不存在或已下架',
+    workMissingBody: '作者可能撤回了公开，或它因不符合社区规范被下架了。去发现页看看别的图纸吧。',
+    backDiscover: '回到发现',
     errorTitle: '页面出错了',
     errorBody: '很抱歉，页面加载时出了点问题。点击重试，或返回首页重新开始。',
     retry: '重试',
@@ -467,7 +478,7 @@ export const zhCN = {
       heroTitle: '豆色绘隐私政策',
       heroBody: '豆色绘（以下称“本平台”）尊重并保护用户的个人信息。本政策适用于本平台提供的全部服务。使用本平台即表示您已阅读并理解本政策；如您不同意本政策的任何内容，请停止使用相关功能。本政策更新时，本平台将在本页面公布更新后的版本及生效日期。',
       sections: [
-        { title: '一、账号信息', body: '注册账号时，本平台收集并存储您的电子邮箱地址及经不可逆加密处理的登录凭证，用于身份验证、邮箱验证与密码找回。您可以选择设置用户名，用户名将作为公开作者名展示。本平台不会向任何第三方出售或出租您的账号信息。' },
+        { title: '一、账号信息', body: '注册账号时，本平台收集并存储您的电子邮箱地址及经不可逆加密处理的登录凭证，用于身份验证、邮箱验证与密码找回。您可以选择设置用户名与头像颜色，二者将随公开作者名展示。每次登录时，本平台会从浏览器标识中归纳出「操作系统 · 浏览器」类别（例如「macOS · Chrome」），仅用于在账号设置中列出您的登录设备；不保存完整浏览器标识、网络地址或位置，该登录会话结束或被退出时一并删除。本平台不会向任何第三方出售或出租您的账号信息。' },
         { title: '二、图纸与设计数据', body: '您在工作台中生成的拼豆图纸、生成参数、色板与编辑记录首先保存在您本机浏览器内；登录后，上述数据可按您的操作同步至本平台服务器，用于跨设备继续编辑。本平台不会将您的私人设计向其他用户展示。' },
         { title: '三、图片原图', body: '图片生成在本机浏览器完成。登录并满足云同步资格后，完整原图随私人设计自动上传到腾讯云对象存储的私有空间，用于跨设备恢复、原图对照和后续调参；未登录时仅保存在本机。私人原图由服务端验证设计归属后提供，其他用户不能访问。每账号原图额度默认 2 GiB（2 × 1024³ 字节），单图不超过 20 MB。图纸与原图分别保存，上传失败或频率受限不会阻止本地编辑。主动公开作品时，将冻结对应原图版本，供审核人员核对，以及已成功引用该作品的用户继续制作；原图不会公开展示。' },
         { title: '四、原图的删除', body: '撤回公开作品会停止提供该公开版本的原图，但不会删除您的私人原图。删除私人设计会释放其原图关联及对应额度；仍被其他设计、有效公开版本或已成功引用者的独立私人设计使用的对象不会删除。无有效关联的原图经过清理等待期后删除，失败清理会重试。管理员下架作品后，其公开原图访问被封禁；三十日内未恢复公开的版本会释放对应关联。已经合法取得的引用副本独立保存，不能随作者撤回而追回。' },
@@ -799,7 +810,7 @@ export const zhCN = {
       label: '标签列表', search: '搜索标签', create: '新建标签', createTitle: '新建标签', edit: (name: string) => `编辑标签「${name}」`,
       columns: { name: '标签', works: '作品数', order: '排序', featured: '类目条', status: '状态' },
       filters: { state: '状态' }, states: { on: '启用', off: '停用', merged: '已合并' },
-      usage: (n: number) => `${n} 件作品`, usagePublic: (all: number, published: number) => `${all} 件 · 公开 ${published}`, orderAt: (n: number) => `排序第 ${n} 位`,
+      usage: (n: number) => `${n} 件作品`, usagePublic: (all: number, published: number) => `${all} 件 · 公开 ${published}`, orderAt: (n: number) => `排序 ${n}`,
       featuredToggle: (name: string) => `在类目条显示「${name}」`, featuredOn: (name: string) => `「${name}」已显示在类目条`, featuredOff: (name: string) => `「${name}」已从类目条隐藏`,
       menu: { edit: '编辑', up: '上移', down: '下移', disable: '停用…', enable: '启用…' }, moved: (name: string) => `已调整「${name}」的排序`,
       form: {
@@ -913,7 +924,7 @@ export const zhCN = {
       '完全免费，无广告，无会员',
       '不含任何 AI 功能，全部为传统图像算法',
       '内置 13 套版本化色板，保留五套豆色绘经典兼容版',
-      '支持 5mm / 29×29 与 2.6mm / 50×50、52×52 制作规格',
+      '支持 5mm · 29×29 与 2.6mm · 50×50、52×52 制作规格',
       '外部色板资料固定版本并随应用离线提供，运行时不联网追踪更新',
       '登录后，完整原图随设计保存到私人空间；主动公开时冻结对应版本，供审核与成功引用者继续制作',
     ],
@@ -1288,7 +1299,7 @@ export const zhCN = {
     samplesTitle: '用示例试试',
     samplesHint: '点一张示例，走一遍裁剪、设置和生成',
     sampleAria: (name: string) => `用示例「${name}」新建图纸`,
-    samples: { cat: '橘子小猫', rabbit: '奶油小兔', tulips: '一束郁金香', frog: '青蛙' },
+    samples: { cat: '橘猫团子', strawberry: '草莓小甜心', rainbow: '云朵彩虹', frog: '呱呱青蛙' },
     sampleFailed: '示例加载失败，请重试',
     recentTitle: '最近的设计',
     allDesigns: '全部设计',
@@ -1329,6 +1340,8 @@ export const zhCN = {
     paletteMenuTitle: '选择色板',
     specMenuTitle: '制作规格',
     paletteMeta: (count: number, sizes: string) => `${count} 色 · ${sizes}`,
+    /** 选择框里的色板：短名 + 色数（列表第二行已有色数，这里单独一行时补上）。 */
+    paletteTrigger: (name: string, count: number) => `${name} · ${count} 色`,
     myPalette: (name: string) => `${name}（我的色板）`,
     specMeta: (cols: number, rows: number) => `每块底板 ${cols}×${rows} 格`,
     specBlocked: (palette: string, sizes: string) => `${palette} 只支持 ${sizes}`,
@@ -1919,6 +1932,9 @@ export const zhCN = {
       create: '新建色板',
       defaultNote: (name: string) => `新建设计默认使用「${name}」`,
       defaultBadge: '默认',
+      setDefault: '设为默认色板',
+      currentDefault: '当前默认',
+      defaultSet: (name: string) => `已把「${name}」设为默认色板`,
       guestTitle: '登录后保存自己的色板',
       guestText: '把手上有的颜色存成色板，生成图纸时只用这些颜色。',
       emptyTitle: '还没有自己的色板',
@@ -1978,6 +1994,10 @@ export const zhCN = {
       guestTitle: '登录后管理账号',
       guestText: '个人资料、登录安全和原图空间需要登录后才能设置。',
       profileDesc: '会显示在作者主页和之后投稿的作品上，已公开的作品保留投稿时的署名。',
+      changeAvatarColor: '更换颜色',
+      avatarColorTitle: '头像颜色',
+      /** 与 AVATAR_PICKER_COLORS 顺序一致。 */
+      avatarColorNames: ['番茄红', '橘橙', '叶绿', '墨绿', '晴空蓝', '葡萄紫', '可可棕', '可可黑'],
       username: '用户名',
       usernameHint: '最多 30 个字；留空时显示邮箱 @ 前面的部分。',
       profileSaved: '已保存',
@@ -1990,6 +2010,7 @@ export const zhCN = {
       resent: '验证邮件已重新发送，请查收',
       password: '密码',
       passwordDesc: '修改后，其他设备上的豆色绘需要重新登录。',
+      passwordChangedAt: (when: string) => `上次修改于 ${when}`,
       changePassword: '修改密码',
       currentPassword: '当前密码',
       newPassword: '新密码',

@@ -121,7 +121,7 @@ function VerifyInner() {
               <Input type="email" autoComplete="email" value={resendEmail} onChange={(e) => setResendEmail(e.target.value)} required />
             </Field>
             <Button type="submit" variant="primary" size="lg" block disabled={cooldown > 0} loading={resendPending}>
-              {cooldown > 0 ? t.cooldown(cooldown) : t.submit}
+              {cooldown > 0 ? t.cooldown(cooldown) : t.resendSubmit}
             </Button>
             {resendDone && <p className="text-body-sm text-success">{t.resendSent}</p>}
           </form>

@@ -168,22 +168,22 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   await regenerateButton.click();
   await expect(page.getByText(/共 400 颗 · 2 种颜色/).first()).toBeAttached({ timeout: 20_000 });
 
-  // 版本化 Mini 色板会原子切换到兼容的 2.6mm / 50×50；随后改参数，
+  // 版本化 Mini 色板会原子切换到兼容的 2.6mm · 50×50；随后改参数，
   // 确认真实生成链路使用新色板，而不是只在既有图纸上做一次重映射。
   await openPanelTab(page, '颜色');
   await page.getByRole('button', { name: /^色板：/ }).click();
-  await page.getByRole('option', { name: /^优肯 Artkal C 197 色/ }).click();
+  await page.getByRole('option', { name: /^优肯 Artkal C/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: '换色板', exact: true }).click();
-  await expect(page.getByText(/制作规格已改为 2\.6mm \/ 50×50/).first()).toBeVisible();
+  await expect(page.getByText(/制作规格已改为 2\.6mm · 50×50/).first()).toBeVisible();
   await openPanelTab(page, '调整');
   const specButton = page.getByRole('button', { name: /^制作规格：/ });
-  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm / 50×50');
+  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm · 50×50');
   // Artkal 同时支持两种 Mini 底板；主旅程继续切到 52×52，覆盖该规格的
   // 生成、编辑、PNG/PDF/项目导出、保存和刷新恢复完整链路。
   await specButton.click();
-  await page.getByRole('option', { name: /^2\.6mm \/ 52×52/ }).click();
-  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm / 52×52');
-  await expect(page.getByText(/制作规格已改为 2\.6mm \/ 52×52/).first()).toBeVisible();
+  await page.getByRole('option', { name: /^2\.6mm · 52×52/ }).click();
+  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm · 52×52');
+  await expect(page.getByText(/制作规格已改为 2\.6mm · 52×52/).first()).toBeVisible();
   await colorsSlider.focus();
   await colorsSlider.press('ArrowRight');
   await regenerateButton.click();
@@ -286,9 +286,9 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   await expect(page.getByLabel('设计名称').first()).toBeVisible();
   await expect(page.getByText(beadsText(400)).first()).toBeAttached({ timeout: 20_000 });
   await openPanelTab(page, '颜色');
-  await expect(page.getByRole('button', { name: /^色板：/ })).toHaveAccessibleName(/^色板：优肯 Artkal C 197 色/);
+  await expect(page.getByRole('button', { name: /^色板：/ })).toHaveAccessibleName(/^色板：优肯 Artkal C · 197 色/);
   await openPanelTab(page, '调整');
-  await expect(page.getByRole('button', { name: /^制作规格：/ })).toHaveAccessibleName('制作规格：2.6mm / 52×52');
+  await expect(page.getByRole('button', { name: /^制作规格：/ })).toHaveAccessibleName('制作规格：2.6mm · 52×52');
   const restoredWidth = page.getByRole('spinbutton', { name: WIDTH });
   await expect(restoredWidth).toBeEnabled();
   await typeSpin(page, WIDTH, '21');

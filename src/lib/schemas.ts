@@ -17,6 +17,7 @@ import { firstPatternPaletteMismatch } from './palettes/projectIntegrity';
 import type { BuiltinPaletteId, ProjectFile } from './types';
 import { isKitTier, isKitTierAvailableForPalette, projectPaletteEngineColors } from './kitTiers';
 import { selectKitColors } from './engine/kit';
+import { AVATAR_PICKER_COLORS } from './render/beadTokens';
 import { zhCN } from '@/messages/zh-CN';
 
 // ---------- 基础 ----------
@@ -305,9 +306,17 @@ export const registerSchema = z.object({
   username: usernameSchema.optional(),
 });
 
-export const updateProfileSchema = z.object({
-  username: usernameSchema,
-});
+/** 新建设计默认色板：内置色板 ID 本身（如 MARD、pcd:coco-291@…，不带 builtin: 前缀）；自定义色板按设计单独选。 */
+export const defaultPaletteSchema = z.string().max(200).refine(isBuiltinPaletteId, '色板不存在');
+
+/** 资料修改：只改传入的字段；null 表示恢复默认（头像按 ID 取色、默认色板回到 MARD 经典）。 */
+export const updateProfileSchema = z
+  .object({
+    username: usernameSchema.optional(),
+    avatarColor: z.enum(AVATAR_PICKER_COLORS).nullable().optional(),
+    defaultPalette: defaultPaletteSchema.nullable().optional(),
+  })
+  .refine((value) => value.username !== undefined || value.avatarColor !== undefined || value.defaultPalette !== undefined, '没有要保存的资料');
 
 export const loginSchema = z.object({
   email: emailSchema,

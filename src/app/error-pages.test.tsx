@@ -9,6 +9,7 @@ import NotFound from './not-found';
 import PageError from './error';
 import AdminError from './admin/error';
 import ShareGone from './s/[token]/not-found';
+import WorkMissing from './community/[id]/not-found';
 
 const fetchMock = vi.fn();
 beforeEach(() => {
@@ -30,6 +31,14 @@ describe('404 页', () => {
     expect(home.className).toContain('bg-accent');
     expect(screen.getByRole('link', { name: '去创作' }).getAttribute('href')).toBe('/app');
     expect(document.querySelector('[data-slot="empty-state"] canvas')).toBeTruthy();
+  });
+});
+
+describe('作品不存在', () => {
+  it('说明已下架或不存在，主按钮回发现', () => {
+    render(<WorkMissing />);
+    expect(screen.getByRole('heading', { level: 1, name: '这张图纸不存在或已下架' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '回到发现' }).getAttribute('href')).toBe('/');
   });
 });
 

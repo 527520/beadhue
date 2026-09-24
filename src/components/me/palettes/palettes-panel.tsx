@@ -25,7 +25,8 @@ import { ActionMenu } from '../action-menu';
 import { Banner } from '../banner';
 import { ConfirmDialog } from '../confirm-dialog';
 import { useMe } from '../me-context';
-import { builtinCards, builtinSwatches, customSwatches, DEFAULT_PALETTE_ID, sampleStrip, type Swatch } from './palette-model';
+import { builtinCards, builtinSwatches, customSwatches, sampleStrip, type Swatch } from './palette-model';
+import { FALLBACK_DEFAULT_PALETTE, useDefaultPalette } from '@/components/account/useDefaultPalette';
 import { PaletteStrip, SwatchPanel } from './swatch-panel';
 
 const s = zhCN.me.palettes;
@@ -49,7 +50,7 @@ function SectionHead({ id, title, children }: { id: string; title: string; child
 function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | null; onClose: () => void; onSaved: (record: PaletteRecord) => void }) {
   const [name, setName] = useState(record?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
-  const [baseId, setBaseId] = useState<BuiltinPaletteId>(DEFAULT_PALETTE_ID as BuiltinPaletteId);
+  const [baseId, setBaseId] = useState<BuiltinPaletteId>(FALLBACK_DEFAULT_PALETTE);
   const [selected, setSelected] = useState<Set<string>>(() => new Set((record?.colors ?? []).map(colorKey)));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -130,13 +131,18 @@ function PaletteEditor({ record, onClose, onSaved }: { record: PaletteRecord | n
   );
 }
 
-function PaletteViewer({ viewing, targetDesignId, onClose, onEdit }: { viewing: Viewing; targetDesignId: string | null; onClose: () => void; onEdit: (record: PaletteRecord) => void }) {
+function PaletteViewer({ viewing, targetDesignId, defaultId, onSetDefault, onClose, onEdit }: {
+  viewing: Viewing; targetDesignId: string | null; defaultId: BuiltinPaletteId;
+  onSetDefault: (id: BuiltinPaletteId, name: string) => Promise<void>; onClose: () => void; onEdit: (record: PaletteRecord) => void;
+}) {
   const builtin = viewing.kind === 'builtin' ? getBuiltinPalette(viewing.id) : null;
+  const [settingDefault, setSettingDefault] = useState(false);
+  const isDefault = builtin?.id === defaultId;
   const swatches = useMemo(() => (viewing.kind === 'builtin' ? builtinSwatches(viewing.id) : customSwatches(viewing.record.colors)), [viewing]);
   const title = builtin ? builtin.label : viewing.kind === 'custom' ? viewing.record.name : '';
   const [now] = useState(() => Date.now());
   const meta = builtin
-    ? [s.viewerBuiltinMeta(builtin.engineColorCount, paletteSizes({ kind: 'builtin', brand: builtin.id }).replaceAll(' / ', '、')), builtin.id === DEFAULT_PALETTE_ID ? s.viewerDefault : null, builtin.exclusions.total > 0 ? s.viewerExcluded(builtin.exclusions.total) : null].filter(Boolean).join(' · ')
+    ? [s.viewerBuiltinMeta(builtin.engineColorCount, paletteSizes({ kind: 'builtin', brand: builtin.id }).replaceAll(' / ', '、')), isDefault ? s.viewerDefault : null, builtin.exclusions.total > 0 ? s.viewerExcluded(builtin.exclusions.total) : null].filter(Boolean).join(' · ')
     : viewing.kind === 'custom' ? s.viewerCustomMeta(viewing.record.colors.length, relativeTime(viewing.record.updatedAt, now)) : '';
   const useHref = targetDesignId ? `/app?${new URLSearchParams({ id: targetDesignId, palette: viewing.kind === 'builtin' ? `builtin:${viewing.id}` : `custom:${viewing.record.id}` })}` : null;
   return (
@@ -156,12 +162,15 @@ function PaletteViewer({ viewing, targetDesignId, onClose, onEdit }: { viewing: 
             </details>
           ) : null}
         </DialogBody>
-        {viewing.kind === 'custom' || useHref ? (
-          <DialogFooter>
-            {viewing.kind === 'custom' ? <Button onClick={() => onEdit(viewing.record)}>{icon(Pencil)}{s.editPalette}</Button> : null}
-            {useHref ? <Link href={useHref} className={buttonVariants({ variant: 'primary' })}>{s.useForDesign}</Link> : null}
-          </DialogFooter>
-        ) : null}
+        <DialogFooter>
+          {viewing.kind === 'custom' ? <Button onClick={() => onEdit(viewing.record)}>{icon(Pencil)}{s.editPalette}</Button> : null}
+          {builtin ? (
+            isDefault
+              ? <Button disabled>{icon(Check)}{s.currentDefault}</Button>
+              : <Button loading={settingDefault} onClick={() => { setSettingDefault(true); void onSetDefault(builtin.id, builtin.label).finally(() => setSettingDefault(false)); }}>{s.setDefault}</Button>
+          ) : null}
+          {useHref ? <Link href={useHref} className={buttonVariants({ variant: 'primary' })}>{s.useForDesign}</Link> : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -188,13 +197,24 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
   const [targetDesignId, setTargetDesignId] = useState<string | null>(null);
   const [now, setNow] = useState(0);
   const cards = useMemo(() => builtinCards(), []);
+  const defaultPalette = useDefaultPalette();
   // 弹窗按需挂载、关闭即卸载，Base UI 来不及归还焦点：打开时记下入口，关闭后手动还回去。
   const opener = useRef<HTMLElement | null>(null);
   const remember = () => {
     if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('[role=dialog]')) opener.current = document.activeElement;
   };
   const restore = () => window.setTimeout(() => { if (opener.current?.isConnected) opener.current.focus(); }, 0);
-  const defaultName = cards.find((card) => card.isDefault)?.name ?? '';
+  const defaultName = cards.find((card) => card.id === defaultPalette.value)?.name ?? '';
+  const setDefault = async (id: BuiltinPaletteId, name: string) => {
+    try {
+      await defaultPalette.set(id);
+      setViewing(null);
+      restore();
+      toast(s.defaultSet(name), { icon: icon(Check) });
+    } catch {
+      toast(zhCN.me.actionFailed, { icon: icon(CircleAlert) });
+    }
+  };
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -292,7 +312,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
               <div className="grid min-w-0 gap-1 px-1 pb-1">
                 <div className="flex min-w-0 items-center gap-2">
                   <h3 className="truncate text-title-3 text-ink">{card.name}</h3>
-                  {card.isDefault ? <Badge>{icon(Check)}{s.defaultBadge}</Badge> : null}
+                  {card.id === defaultPalette.value ? <Badge>{icon(Check)}{s.defaultBadge}</Badge> : null}
                 </div>
                 <p className="flex items-center gap-2 text-body-sm text-ink-3">
                   <span className="tabular-nums">{s.colors(card.count)}</span>
@@ -305,7 +325,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
         </ul>
       </section>
 
-      {viewing ? <PaletteViewer viewing={viewing} targetDesignId={targetDesignId} onClose={() => { setViewing(null); restore(); }} onEdit={(record) => { setViewing(null); setEditing(record); }} /> : null}
+      {viewing ? <PaletteViewer viewing={viewing} targetDesignId={targetDesignId} defaultId={defaultPalette.value} onSetDefault={setDefault} onClose={() => { setViewing(null); restore(); }} onEdit={(record) => { setViewing(null); setEditing(record); }} /> : null}
       {editing ? (
         <PaletteEditor
           record={editing === 'new' ? null : editing}

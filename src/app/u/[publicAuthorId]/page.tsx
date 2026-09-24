@@ -57,7 +57,7 @@ export default async function AuthorPage({ params, searchParams }: { params: Par
     <SiteShell nav={null} topbarCta="secondary" mobileTop={<><MobileTopBack /><MobileTopTitle>{author.displayName}</MobileTopTitle><ShareProfileButton /></>}>
       <div data-ui="" className="page-container pb-8">
         <header className="flex items-center gap-5 pt-8 pb-6 max-md:gap-4 max-md:pt-4 max-md:pb-5">
-          <Avatar id={author.publicAuthorId} name={author.displayName} color={official ? OFFICIAL_AVATAR : undefined} size="xl" className="max-md:size-14 max-md:text-avatar-lg" />
+          <Avatar id={author.publicAuthorId} name={author.displayName} color={official ? OFFICIAL_AVATAR : author.avatarColor ?? undefined} size="xl" className="max-md:size-14 max-md:text-avatar-lg" />
           <div className="grid min-w-0 flex-1 gap-1">
             <div className="flex min-w-0 items-center gap-2">
               <h1 className="truncate text-title-1 text-ink max-md:text-title-2">{author.displayName}</h1>

@@ -65,6 +65,12 @@ export const users = pgTable(
     suspendedAt: timestamp('suspended_at', { withTimezone: true }),
     anonymizedAt: timestamp('anonymized_at', { withTimezone: true }),
     emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    // 头像底色：头像色板里的一颗豆色（HEX）；null 时按公开作者 ID 取色。
+    avatarColor: text('avatar_color'),
+    // 新建设计默认色板（内置色板 ID）；null 为 MARD 经典。
+    defaultPalette: text('default_palette'),
+    // 最近一次修改或重置密码的时间；迁移前的账号为 null（界面不写时间）。
+    passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -236,6 +242,8 @@ export const sessions = pgTable(
     absoluteExpiresAt: timestamp('absolute_expires_at', { withTimezone: true })
       .notNull()
       .default(sql`now() + interval '90 days'`),
+    // 登录时由 User-Agent 归纳的「系统 · 浏览器」（如「macOS · Chrome」）；不存完整 UA、网络地址与位置。
+    deviceLabel: text('device_label'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('sessions_user_idx').on(table.userId)],
@@ -448,6 +456,8 @@ export const officialBatches = pgTable(
   'official_batches',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // 管理员起的批次名（新建批次弹窗）；迁移前的批次为 null，界面按创建时间命名。
+    name: text('name'),
     status: officialBatchStatusEnum('status').notNull().default('draft'),
     version: integer('version').notNull().default(1),
     defaultParams: jsonb('default_params').notNull(),

@@ -113,7 +113,7 @@ function TypedSuggestions({ q, result, onPick }: { q: string; result: SearchSugg
           <div aria-hidden="true" className={groupLabelClass}>{t.authors}</div>
           {authors.map((author) => (
             <ShellLink key={author.publicAuthorId} href={`/u/${encodeURIComponent(author.publicAuthorId)}`} onClick={() => onPick()} className={linkItemClass}>
-              <Avatar id={author.publicAuthorId} name={author.displayName} size="sm" />
+              <Avatar id={author.publicAuthorId} name={author.displayName} color={author.avatarColor ?? undefined} size="sm" />
               <span className="min-w-0 flex-1 truncate">{author.displayName}</span>
             </ShellLink>
           ))}

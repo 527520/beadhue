@@ -1,3 +1,5 @@
+import { and, eq, gt, isNull } from 'drizzle-orm';
+import { emailTokens } from '@/../db/schema';
 import { AppError } from '@/lib/errors';
 import { resetPasswordSchema } from '@/lib/schemas';
 import { getDb } from '@/lib/auth/db';
@@ -44,3 +46,19 @@ async function post(request: Request) {
 }
 
 export const POST = withApiErrors(post);
+
+/** 打开重置页时预检令牌（不消耗）：仍可用 204，不存在、已用过或已过期 400，页面直接给「重新获取重置邮件」。 */
+async function get(request: Request) {
+  const token = new URL(request.url).searchParams.get('token') ?? '';
+  const db = getDb();
+  if (!(await checkRateLimit(db, rateLimitKey('reset-check', clientIp(request)), RATE_LIMIT))) {
+    return apiError(new AppError('RATE_LIMITED', zhCN.auth.tooManyRequests));
+  }
+  if (!token || token.length > 200) return apiError(new AppError('VALIDATION', zhCN.auth.linkInvalid));
+  const [row] = await db.select({ id: emailTokens.id }).from(emailTokens).where(and(
+    eq(emailTokens.tokenHash, hashToken(token)), eq(emailTokens.purpose, 'reset'), isNull(emailTokens.usedAt), gt(emailTokens.expiresAt, new Date()),
+  ));
+  return row ? noContent() : apiError(new AppError('VALIDATION', zhCN.auth.linkInvalid));
+}
+
+export const GET = withApiErrors(get);

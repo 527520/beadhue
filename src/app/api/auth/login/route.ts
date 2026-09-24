@@ -5,6 +5,7 @@ import { loginSchema } from '@/lib/schemas';
 import { getDb } from '@/lib/auth/db';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
 import { createSession } from '@/lib/auth/session';
+import { deviceLabelFromUserAgent } from '@/lib/auth/deviceLabel';
 import { serializeSessionCookie } from '@/lib/auth/cookies';
 import { checkRateLimit, clearLoginFailures, clientIp, loginLockState, rateLimitKey, recordLoginFailure } from '@/lib/auth/rateLimit';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
@@ -86,7 +87,7 @@ async function post(request: Request) {
   }
   // 成功登录清零失败计数与临时锁定；每 IP / 每邮箱的尝试配额保持原样（不因成功而返还）。
   await clearLoginFailures(db, email);
-  const session = await createSession(db, user.id);
+  const session = await createSession(db, user.id, new Date(), deviceLabelFromUserAgent(request.headers.get('user-agent')));
   return okJson(
     { email: user.email, emailVerified: user.emailVerifiedAt !== null },
     { headers: { 'Set-Cookie': serializeSessionCookie(session.token) } },

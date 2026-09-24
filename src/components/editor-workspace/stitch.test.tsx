@@ -95,7 +95,7 @@ describe('跟拼会话', () => {
     expect(result.current.finished).toBe(true);
   });
 
-  it('2.6mm / 50×50 规格按 50 格一板标记', () => {
+  it('2.6mm · 50×50 规格按 50 格一板标记', () => {
     const { result, onChange } = renderSession(solid(100, 1), createStitchProgress(100, 1), 50);
     act(() => { result.current.completeRow(); });
     const next = onChange.mock.calls[0][0] as StitchProgress;

@@ -1,6 +1,6 @@
 // 票 08 视觉对照：编辑器桌面编辑模式（原型与实现同状态），1440 / 1024（可加 768）。
 // 用法：node shoot-editor.mjs proto|impl [状态…]；PROTO_BASE 默认 http://127.0.0.1:4181，IMPL_BASE 默认 http://127.0.0.1:3101。
-// 实现侧先用示例「橘子小猫」按 48 宽、8 色生成一张图纸（与原型 d-cat 同尺寸），再进入各状态。
+// 实现侧先用示例「橘猫团子」按 48 宽、8 色生成一张图纸（与原型 d-cat 同尺寸），再进入各状态。
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
@@ -46,7 +46,7 @@ async function createImplDesign(page, blank) {
     await dialog.getByRole('spinbutton', { name: '高（格）' }).fill('24').catch(() => {});
     await dialog.getByRole('button', { name: '创建画布' }).click();
   } else {
-    await page.getByRole('button', { name: '用示例「橘子小猫」新建图纸' }).click();
+    await page.getByRole('button', { name: '用示例「橘猫团子」新建图纸' }).click();
     const dialog = page.getByRole('dialog', { name: '新建图纸' });
     await dialog.waitFor();
     await dialog.getByRole('button', { name: '自定义' }).click().catch(() => {});

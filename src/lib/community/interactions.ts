@@ -272,7 +272,7 @@ export async function listCommunityComments(db: AnyDatabase, workId: string, vie
   const rows = await db.select({
     id: communityComments.id, publicAuthorId: communityComments.publicAuthorId,
     authorUserId: communityComments.authorUserId,
-    frozenDisplayName: communityComments.frozenDisplayName, accountStatus: users.accountStatus,
+    frozenDisplayName: communityComments.frozenDisplayName, accountStatus: users.accountStatus, avatarColor: users.avatarColor,
     body: communityComments.body, version: communityComments.version, status: communityComments.status,
     createdAt: communityComments.createdAt,
   }).from(communityComments).leftJoin(users, eq(users.id, communityComments.authorUserId))
@@ -283,7 +283,9 @@ export async function listCommunityComments(db: AnyDatabase, workId: string, vie
   return {
     items: visible.map((row) => ({
       id: row.id,
-      author: { publicAuthorId: row.publicAuthorId, displayName: row.accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : row.frozenDisplayName },
+      author: row.accountStatus === 'anonymized'
+        ? { publicAuthorId: row.publicAuthorId, displayName: ANONYMIZED_DISPLAY_NAME, avatarColor: null }
+        : { publicAuthorId: row.publicAuthorId, displayName: row.frozenDisplayName, avatarColor: row.avatarColor },
       body: row.body, version: row.version, status: row.status,
       createdAt: row.createdAt.toISOString(),
       deletable: row.authorUserId === viewerUserId,

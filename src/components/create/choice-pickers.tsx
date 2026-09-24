@@ -71,7 +71,7 @@ export function PalettePicker({ choices, value, onChange, disabled, label = zhCN
   const current = choices.find((choice) => choice.value === value);
   return (
     <Popover open={open} onOpenChange={setOpen} sheetTitle={zhCN.create.paletteMenuTitle}>
-      <PickerTrigger label={label} value={current?.name ?? ''} disabled={disabled} prefix={current ? <PaletteBand colors={current.band} max={4} /> : null} />
+      <PickerTrigger label={label} value={current ? zhCN.create.paletteTrigger(current.name, current.colors.length) : ''} disabled={disabled} prefix={current ? <PaletteBand colors={current.band} max={4} /> : null} />
       <PopoverContent align="start" className="max-h-popover-list overflow-y-auto">
         <div role="listbox" aria-label={zhCN.create.paletteMenuTitle} className="grid">
           {choices.map((choice) => (

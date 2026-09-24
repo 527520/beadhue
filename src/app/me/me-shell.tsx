@@ -76,7 +76,7 @@ function ProfileHead({ viewer, stats, designCount }: { viewer: MeViewer | null; 
     name = h.guestName;
     items = [[h.guestStatus, null], [h.guestHint, null]];
   } else {
-    face = <Avatar id={viewer.avatarId} name={viewer.name} size="xl" className={avatarClass} />;
+    face = <Avatar id={viewer.avatarId} name={viewer.name} color={viewer.avatarColor ?? undefined} size="xl" className={avatarClass} />;
     name = viewer.name;
     items = viewer.verified
       ? [[h.designs, String(designCount ?? stats?.designs ?? 0)], [h.public, String(stats?.publicWorks ?? 0)], [h.likes, formatCount(stats?.likes ?? 0)]]

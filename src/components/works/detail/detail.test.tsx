@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => router, usePathname: () => 
 
 const pattern = { width: 2, height: 1, cells: [{ hex: '#E0473F', code: 'F5', transparent: false }, { hex: '#FFFFFF', code: 'H1', transparent: false }] };
 const base: DetailWork = {
-  id: 'w1', title: '橘猫团子', author: { authorType: 'user', publicAuthorId: 'pa-1', displayName: '橙子手作' },
+  id: 'w1', title: '橘猫团子', author: { authorType: 'user', publicAuthorId: 'pa-1', displayName: '橙子手作', avatarColor: null },
   width: 32, height: 32, colorCount: 7, beadCount: 498,
   colorUsage: Array.from({ length: 7 }, (_, index) => ({ code: `A${index}`, name: `色${index}`, hex: '#E0473F', count: 100 - index })),
   colorBand: ['#E0473F', '#FFFFFF'], pattern, thumbnailUrl: '/t.png', largeImageUrl: '/l.png', imageCell: 28,

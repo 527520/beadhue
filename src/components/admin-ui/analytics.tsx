@@ -21,7 +21,7 @@ const d = zhCN.communityAdmin.analyticsDashboard;
 /** 时间范围芯片（原型 .adm-range）：链接到对应的 start/end，选中深墨。 */
 export function RangeChips({ ranges, active }: { ranges: Array<{ key: string; href: string }>; active: string | null }) {
   return (
-    <nav aria-label={a.rangeLabel} className="flex gap-2 max-md:w-full max-md:overflow-x-auto">
+    <nav aria-label={a.rangeLabel} className="flex min-w-0 gap-2 max-md:flex-1 max-md:overflow-x-auto max-md:[scrollbar-width:none]">
       {ranges.map((range) => (
         <Link key={range.key} href={range.href} aria-current={active === range.key ? 'page' : undefined}
           className={cn(chipVariants({ selected: active === range.key }), 'focus-visible:focus-ring')}>{a.ranges[range.key as keyof typeof a.ranges]}</Link>
@@ -48,8 +48,8 @@ export function AnalyticsFilters({ requested, dimension, funnel }: { requested: 
   const active = Object.entries(requested).filter(([key, value]) => value && key !== 'start' && key !== 'end').length;
   return (
     <Popover open={open} onOpenChange={setOpen} sheetTitle={a.filters}>
-      <PopoverTrigger render={<Button variant="outline" />}>
-        <SlidersHorizontal aria-hidden="true" strokeWidth={1.75} />{a.filters}
+      <PopoverTrigger render={<Button variant="outline" aria-label={a.filters} className="shrink-0 max-md:w-control-md max-md:px-0" />}>
+        <SlidersHorizontal aria-hidden="true" strokeWidth={1.75} /><span className="max-md:hidden">{a.filters}</span>
         {active ? <span className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-ink px-1.25 text-caption leading-none font-semibold text-on-ink">{active}</span> : null}
       </PopoverTrigger>
       <PopoverContent wide align="end" aria-label={a.filters}>

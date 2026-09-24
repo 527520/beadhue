@@ -27,7 +27,7 @@ const iconProps = { 'aria-hidden': true, strokeWidth: 1.75 } as const;
 
 export interface CommentItem {
   id: string;
-  author: { publicAuthorId: string; displayName: string };
+  author: { publicAuthorId: string; displayName: string; avatarColor?: string | null };
   body: string;
   version: number;
   createdAt: string;
@@ -171,7 +171,7 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
   } else {
     composer = (
       <form onSubmit={(event) => void submit(event)} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3">
-        <Avatar id={me ? avatarIdOf(me) : 'me'} name={me ? displayNameOf(me) : ''} className="mt-2" />
+        <Avatar id={me ? avatarIdOf(me) : 'me'} name={me ? displayNameOf(me) : ''} color={me?.avatarColor ?? undefined} className="mt-2" />
         <div className="min-w-0">
           <label htmlFor={inputId} className="sr-only">{t.commentLabel}</label>
           <textarea
@@ -225,7 +225,7 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
           {items.map((item) => (
             <li key={item.id} id={`comment-${item.id}`} data-status={item.status} className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 border-t border-line py-4 last:pb-0">
               <Link href={`/u/${encodeURIComponent(item.author.publicAuthorId)}`} tabIndex={-1} aria-hidden="true" className="self-start rounded-full">
-                <Avatar id={item.author.publicAuthorId} name={item.author.displayName} />
+                <Avatar id={item.author.publicAuthorId} name={item.author.displayName} color={item.author.avatarColor ?? undefined} />
               </Link>
               <div className="min-w-0">
                 <p className="flex min-w-0 items-baseline gap-2 text-caption font-normal whitespace-nowrap text-ink-3">

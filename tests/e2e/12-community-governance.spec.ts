@@ -192,7 +192,7 @@ test('admin 可读取人员、审计和系统证据；规则页已退役', async
   await page.goto('/admin/system');
   await expect(page.getByText('未接入').first()).toBeVisible();
   await expect(page.getByText('评论内容安全服务（腾讯云）')).toBeVisible();
-  await expect(page.getByText('0020_discovery_notifications')).toBeVisible();
+  await expect(page.getByText('0021_account_profile_and_batch_names')).toBeVisible();
 });
 
 test('分析后台在精确与长期聚合范围间明确切换能力', async ({ page }) => {

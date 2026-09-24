@@ -21,6 +21,8 @@ async function get(_request: Request) {
       role: users.role,
       accountStatus: users.accountStatus,
       createdAt: users.createdAt,
+      avatarColor: users.avatarColor,
+      defaultPalette: users.defaultPalette,
     })
     .from(users)
     .where(eq(users.id, userId));
@@ -39,6 +41,8 @@ async function get(_request: Request) {
     accountStatus: user.accountStatus,
     emailVerified: true,
     createdAt: user.createdAt.toISOString(),
+    avatarColor: user.avatarColor,
+    defaultPalette: user.defaultPalette,
   });
 }
 

@@ -18,18 +18,19 @@ const ABSOLUTE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 /** 剩余有效期低于半程（15 天）才滚动续期，避免每次只读请求都写库。 */
 const RENEW_THRESHOLD_MS = TTL_MS / 2;
 
-/** 创建会话：返回明文令牌（仅此一次）与过期时间。 */
+/** 创建会话：返回明文令牌（仅此一次）与过期时间；deviceLabel 是登录时归纳的「系统 · 浏览器」。 */
 export async function createSession(
   db: AnyDatabase,
   userId: string,
   now: Date = new Date(),
+  deviceLabel: string | null = null,
 ): Promise<{ token: string; expiresAt: Date }> {
   const token = generateToken();
   const expiresAt = new Date(now.getTime() + TTL_MS);
   const absoluteExpiresAt = new Date(now.getTime() + ABSOLUTE_TTL_MS);
   await db.transaction(async (tx) => {
     await lockActiveAccount(tx, userId);
-    await tx.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, absoluteExpiresAt });
+    await tx.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, absoluteExpiresAt, deviceLabel });
   });
   return { token, expiresAt };
 }

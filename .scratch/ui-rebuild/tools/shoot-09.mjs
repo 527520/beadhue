@@ -1,6 +1,6 @@
 // 票 09 视觉对照（实现侧）：跟拼模式与手机编辑器，文件名对应原型的 evidence/prototype/ce-<状态>-<宽>.png。
 // 用法：node shoot-09.mjs [状态…]；IMPL_BASE 默认 http://127.0.0.1:3101。
-// 先用示例「橘子小猫」按 58 宽、8 色生成一张图纸（与原型 d-rainbow 同为 2×2 块板），跟拼状态再连点「完成本行」造出进度。
+// 先用示例「橘猫团子」按 58 宽、8 色生成一张图纸（与原型 d-rainbow 同为 2×2 块板），跟拼状态再连点「完成本行」造出进度。
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
@@ -32,7 +32,7 @@ async function createDesign(page) {
   await page.waitForTimeout(1500);
   const refuse = page.getByRole('button', { name: '不同意', exact: true });
   if (await refuse.count()) await refuse.click().catch(() => {});
-  await page.getByRole('button', { name: '用示例「橘子小猫」新建图纸' }).click();
+  await page.getByRole('button', { name: '用示例「橘猫团子」新建图纸' }).click();
   const dialog = page.getByRole('dialog', { name: '新建图纸' });
   await dialog.waitFor();
   await dialog.getByRole('button', { name: /^2 板/ }).click();

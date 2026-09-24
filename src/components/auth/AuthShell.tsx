@@ -1,14 +1,13 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { zhCN } from '@/messages/zh-CN';
 import { SiteShell } from '@/components/shell/site-shell';
 
 /**
  * 账号页（登录、注册、找回 / 重置密码、邮箱验证）：站点外壳 + 居中卡片，与登录弹窗同一视觉。
  * 账号页自己就是表单：顶栏不放账号位与「上传图片」，手机不显示底栏。
  */
-export default function AuthShell({ title, description = zhCN.authPages.formHint, children }: { title: string; description?: string; children: ReactNode }) {
+export default function AuthShell({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <SiteShell nav={null} topbarCta={false} account={false} tabbar={false}>
       <div data-ui="" className="min-h-page bg-bg-subtle px-gutter pt-16 pb-12 max-md:bg-bg max-md:pt-6">

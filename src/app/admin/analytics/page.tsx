@@ -41,7 +41,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const requestedStrings = Object.fromEntries(Object.entries(requested).map(([key, value]) => [key, value === undefined ? undefined : String(value)]));
   return (
     <>
-      <AdminPageHead section="analytics" actions={<><RangeChips ranges={ranges} active={active} /><AnalyticsFilters requested={requestedStrings} dimension={dimension} funnel={funnel} /></>} />
+      <AdminPageHead section="analytics" actions={<div className="flex min-w-0 items-center gap-2"><RangeChips ranges={ranges} active={active} /><AnalyticsFilters requested={requestedStrings} dimension={dimension} funnel={funnel} /></div>} />
       {invalid ? <p role="alert" className="rounded-md bg-warning-soft px-3 py-2.5 text-body-sm text-warning">{t.invalidQuery}</p> : null}
       <p className={noteClass}>{summary.capability.mode === 'exact' ? t.exactMode : t.aggregateMode}{summary.capability.mode === 'aggregate' ? ` ${t.rollupFreshness}` : ''}</p>
       {filtersIgnored ? <p className={noteClass}>{t.ignoredFilters}</p> : null}

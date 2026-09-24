@@ -206,7 +206,7 @@ export function DetailView({ work, loggedIn, related, byAuthor }: DetailViewProp
               ) : null}
               <p className="flex min-w-0 basis-full items-center gap-2 text-body-sm whitespace-nowrap text-ink-3 max-md:order-1">
                 <Link href={authorHref(work.author.publicAuthorId)} className="inline-flex min-w-0 items-center gap-2 rounded-full font-medium text-ink hover:[&>span]:underline hover:[&>span]:underline-offset-3">
-                  <Avatar id={work.author.publicAuthorId} name={work.author.displayName} color={verified ? AVATAR_BEAD_COLORS[0] : undefined} size="sm" />
+                  <Avatar id={work.author.publicAuthorId} name={work.author.displayName} color={verified ? AVATAR_BEAD_COLORS[0] : work.author.avatarColor ?? undefined} size="sm" />
                   <span className="truncate">{work.author.displayName}</span>
                 </Link>
                 {verified ? <BadgeCheck role="img" aria-label={t.officialAccount} strokeWidth={1.75} className="-ml-1 size-4 shrink-0 text-ink" /> : null}

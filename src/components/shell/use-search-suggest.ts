@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export interface SuggestTag { id: string; name: string; count: number }
 export interface SuggestWork { id: string; revisionId: string; title: string; width: number; height: number; thumbnailUrl: string }
-export interface SuggestAuthor { publicAuthorId: string; authorType: 'user' | 'official'; displayName: string; workCount: number }
+export interface SuggestAuthor { publicAuthorId: string; authorType: 'user' | 'official'; displayName: string; avatarColor?: string | null; workCount: number }
 export interface SearchSuggestResult { q: string; tags: SuggestTag[]; works: SuggestWork[]; authors: SuggestAuthor[] }
 
 /** 与接口一致（GET /api/community/search/suggest，q ≤ 40 字）。 */

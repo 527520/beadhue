@@ -8,7 +8,7 @@ import { SettingsView } from './settings-view';
 const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => navigation, usePathname: () => '/me/settings' }));
 
-const viewer: MeViewer = { name: '小鹿', email: 'lu@example.com', username: '小鹿', avatarId: 'a', publicAuthorId: 'a', verified: true };
+const viewer: MeViewer = { name: '小鹿', email: 'lu@example.com', username: '小鹿', avatarId: 'a', avatarColor: null, publicAuthorId: 'a', verified: true, passwordChangedAt: null };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 let calls: Array<{ url: string; init?: RequestInit }>;
 let routes: Record<string, (init?: RequestInit) => Response>;
@@ -56,6 +56,27 @@ describe('账号设置', () => {
     await user.click(save);
     await waitFor(() => expect(calls.some((call) => call.init?.method === 'PATCH' && call.init.body === JSON.stringify({ username: '新名字' }))).toBe(true));
     expect(navigation.refresh).toHaveBeenCalled();
+  });
+
+  it('更换头像颜色：选一颗豆色后保存可用，只提交颜色', async () => {
+    const user = userEvent.setup();
+    renderView();
+    await user.click(screen.getByRole('button', { name: '更换颜色' }));
+    const blue = await screen.findByRole('button', { name: '晴空蓝' });
+    expect(blue).toHaveAttribute('aria-pressed', 'false');
+    await user.click(blue);
+    await user.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => expect(calls.some((call) => call.init?.method === 'PATCH' && call.init.body === JSON.stringify({ avatarColor: '#3F7FD9' }))).toBe(true));
+  });
+
+  it('密码行写上次修改时间；登录设备列出「系统 · 浏览器」', async () => {
+    const user = userEvent.setup();
+    routes['GET /api/me/sessions'] = () => json({ items: [{ current: true, createdAt: new Date().toISOString(), label: 'macOS · Chrome' }, { current: false, createdAt: new Date().toISOString(), label: null }], count: 2 });
+    renderView({ ...viewer, passwordChangedAt: new Date(Date.now() - 3 * 86_400_000).toISOString() });
+    expect(await screen.findByText('上次修改于 3 天前')).toBeVisible();
+    await user.click(screen.getByText('查看设备'));
+    expect(screen.getByText('macOS · Chrome')).toBeVisible();
+    expect(screen.getByText('其他设备')).toBeVisible();
   });
 
   it('修改密码：客户端校验两次不一致，服务端的当前密码错误挂在字段下', async () => {

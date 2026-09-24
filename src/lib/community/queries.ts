@@ -111,6 +111,8 @@ export interface PublicAuthorDto {
   authorType: 'user' | 'official';
   publicAuthorId: string;
   displayName: string;
+  /** 作者自己选的头像底色（官方与已注销为 null，前端按公开作者 ID 取色）。 */
+  avatarColor: string | null;
 }
 
 export function publicAuthor(row: {
@@ -118,14 +120,17 @@ export function publicAuthor(row: {
   publicAuthorId: string;
   frozenDisplayName: string;
   accountStatus: 'active' | 'suspended' | 'anonymized' | null;
+  avatarColor?: string | null;
 }): PublicAuthorDto {
   if (row.authorType === 'official') {
-    return { authorType: 'official', publicAuthorId: OFFICIAL_PUBLIC_AUTHOR_ID, displayName: '豆色绘官方' };
+    return { authorType: 'official', publicAuthorId: OFFICIAL_PUBLIC_AUTHOR_ID, displayName: '豆色绘官方', avatarColor: null };
   }
+  const anonymized = row.accountStatus === 'anonymized';
   return {
     authorType: 'user',
     publicAuthorId: row.publicAuthorId,
-    displayName: row.accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : row.frozenDisplayName,
+    displayName: anonymized ? ANONYMIZED_DISPLAY_NAME : row.frozenDisplayName,
+    avatarColor: anonymized ? null : row.avatarColor ?? null,
   };
 }
 
@@ -137,6 +142,7 @@ export const publicSelection = {
   publicAuthorId: communityRevisions.publicAuthorId,
   frozenDisplayName: communityRevisions.frozenDisplayName,
   accountStatus: users.accountStatus,
+  avatarColor: users.avatarColor,
   boardProfile: communityRevisions.boardProfile,
   paletteKind: communityRevisions.paletteKind,
   paletteId: communityRevisions.paletteId,
@@ -323,6 +329,7 @@ type PublicRow = {
   id: string; revisionId: string; title: string;
   authorType: 'user' | 'official'; publicAuthorId: string; frozenDisplayName: string;
   accountStatus: 'active' | 'suspended' | 'anonymized' | null;
+  avatarColor: string | null;
   boardProfile: string; paletteKind: string; paletteId: string | null;
   width: number; height: number; colorCount: number; preview: unknown;
   publishedAt: Date | null; featuredAt: Date | null;

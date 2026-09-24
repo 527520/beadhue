@@ -153,7 +153,7 @@ describe('我的 · 设计', () => {
     expect(screen.queryByText('还没有设计')).toBeNull();
     expect(await screen.findByText('还没有设计')).toBeVisible();
     expect(screen.getByRole('link', { name: '上传图片' })).toHaveAttribute('href', '/app');
-    expect(screen.getByRole('link', { name: '从空白开始' })).toBeVisible();
+    expect(screen.getByRole('link', { name: '从空白开始' })).toHaveAttribute('href', '/app?blank=1');
     expect(screen.queryByRole('group', { name: '按状态筛选' })).toBeNull();
   });
 

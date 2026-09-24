@@ -140,7 +140,7 @@ describe('GET /api/community/authors/:publicAuthorId', () => {
   it('返回展示名、作者类型与公开作品统计；官方作者恒存在', async () => {
     const response = await call(alice.publicAuthorId!);
     expect(response.headers.get('cache-control')).toBe('public, s-maxage=60, stale-while-revalidate=300');
-    expect(await response.json()).toEqual({ publicAuthorId: alice.publicAuthorId, displayName: '小鹿拼豆', authorType: 'user', counts: { works: 2, likes: 8, reuses: 6 } });
+    expect(await response.json()).toEqual({ publicAuthorId: alice.publicAuthorId, displayName: '小鹿拼豆', authorType: 'user', avatarColor: null, counts: { works: 2, likes: 8, reuses: 6 } });
     expect(await (await call('beadhue-official')).json()).toMatchObject({ authorType: 'official', displayName: '豆色绘官方', counts: { works: 1, likes: 2 } });
   });
 
@@ -171,7 +171,7 @@ describe('GET /api/community/search/suggest', () => {
     expect(body.works[0].thumbnailUrl).toMatch(/\/thumbnail\?v=2$/u);
     expect(body.authors).toEqual([]);
     const authors = await (await call('小鹿')).json();
-    expect(authors.authors).toEqual([{ publicAuthorId: alice.publicAuthorId, authorType: 'user', displayName: '小鹿拼豆', workCount: 2 }]);
+    expect(authors.authors).toEqual([{ publicAuthorId: alice.publicAuthorId, authorType: 'user', displayName: '小鹿拼豆', avatarColor: null, workCount: 2 }]);
     expect((await (await call('官方')).json()).authors).toEqual([expect.objectContaining({ publicAuthorId: 'beadhue-official', authorType: 'official' })]);
   });
 

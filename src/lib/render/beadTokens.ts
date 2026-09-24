@@ -49,6 +49,10 @@ export const BRAND_BEAD_COLORS = ['#E0473F', '#FFD447', '#3F7FD9', '#47A35B'] as
 /** 无头像时的首字底色：按 ID 从这几颗豆色里取（白字对比度均 ≥3:1，取自原型 data.js 的作者色）。 */
 export const AVATAR_BEAD_COLORS = ['#1C1C1E', '#E0473F', '#F28B2C', '#3F7FD9', '#47A35B', '#8B6CC9'] as const;
 
+/** 头像可选底色（账号设置「更换颜色」，与原型同一组豆色）；名称在 zhCN.me.settings.avatarColorNames，顺序一致。 */
+export const AVATAR_PICKER_COLORS = ['#E0473F', '#F28B2C', '#47A35B', '#1F6B45', '#3F7FD9', '#8B6CC9', '#7C4F36', '#3A2A30'] as const;
+export type AvatarPickerColor = (typeof AVATAR_PICKER_COLORS)[number];
+
 /** 空状态插画用到的几颗「豆色」（取自原型 motifs.js 的示例色板）。 */
 export const BEAD_SAMPLE_COLORS = {
   K: '#3A2A30',
