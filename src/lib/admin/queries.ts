@@ -12,6 +12,8 @@ import { sanitizeAuditState } from './audit';
 
 const usersQuerySchema = z.object({
   q: z.string().trim().max(80).optional(),
+  role: z.enum(['user', 'moderator', 'admin']).optional(),
+  accountStatus: z.enum(['active', 'suspended', 'anonymized']).optional(),
   ...pageQueryFields,
 }).strict();
 
@@ -19,7 +21,11 @@ export async function listGovernedUsers(db: AnyDatabase, input: unknown = {}) {
   pushSpan({ kind: 'service', name: 'admin.listGovernedUsers' });
   const query = usersQuerySchema.parse(input);
   const q = query.q?.trim().slice(0, 80);
-  const where = q ? or(ilike(users.email, `%${q}%`), ilike(users.username, `%${q}%`), sql`${users.id}::text = ${q}`) : undefined;
+  const where = and(
+    q ? or(ilike(users.email, `%${q}%`), ilike(users.username, `%${q}%`), sql`${users.id}::text = ${q}`) : undefined,
+    query.role ? eq(users.role, query.role) : undefined,
+    query.accountStatus ? eq(users.accountStatus, query.accountStatus) : undefined,
+  );
   const [rows, totalRows] = await Promise.all([
     db.select({
       id: users.id, email: users.email, username: users.username, role: users.role,

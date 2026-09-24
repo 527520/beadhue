@@ -391,13 +391,17 @@ export async function handleCommunityReport(db: AnyDatabase, input: {
 }
 
 /** 治理台队列的分页参数（admin-round-3 06）：评论与举报各自独立翻页。 */
-const governanceQuerySchema = z.object({ ...pageQueryFields }).strict();
+/** 后台表格筛选（R15-10）：评论按判定、举报按状态与对象类型。 */
+const commentQueueQuerySchema = z.object({ status: z.enum(['pending_review', 'rejected']).optional(), ...pageQueryFields }).strict();
+const reportQueueQuerySchema = z.object({ status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...pageQueryFields }).strict();
 
 /** 治理台的评论队列：待审评论 + 最近 30 天被拦截的评论，附带最近一次内容安全判定。 */
 export async function listGovernanceComments(db: AnyDatabase, input: unknown = {}, now: Date = new Date()) {
-  const query = governanceQuerySchema.parse(input);
+  const query = commentQueueQuerySchema.parse(input);
   const rejectedSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const where = or(eq(communityComments.status, 'pending_review'), and(eq(communityComments.status, 'rejected'), gte(communityComments.createdAt, rejectedSince)));
+  const pending = eq(communityComments.status, 'pending_review');
+  const rejected = and(eq(communityComments.status, 'rejected'), gte(communityComments.createdAt, rejectedSince));
+  const where = query.status === 'pending_review' ? pending : query.status === 'rejected' ? rejected : or(pending, rejected);
   const [rawComments, totalRows] = await Promise.all([
     db.select({ id: communityComments.id, workId: communityComments.workId, status: communityComments.status,
       version: communityComments.version, body: communityComments.body, riskCategories: communityComments.riskCategories,
@@ -434,8 +438,9 @@ export async function listGovernanceComments(db: AnyDatabase, input: unknown = {
 
 /** 治理台的举报队列：待受理与已受理的案件。 */
 export async function listGovernanceReports(db: AnyDatabase, input: unknown = {}) {
-  const query = governanceQuerySchema.parse(input);
-  const where = inArray(communityReports.status, ['open', 'accepted']);
+  const query = reportQueueQuerySchema.parse(input);
+  const where = and(query.status ? eq(communityReports.status, query.status) : inArray(communityReports.status, ['open', 'accepted']),
+    query.targetType ? eq(communityReports.targetType, query.targetType) : undefined);
   const [items, totalRows] = await Promise.all([
     db.select({ id: communityReports.id, targetType: communityReports.targetType, targetId: communityReports.targetId,
       targetVersion: communityReports.targetVersion, status: communityReports.status, version: communityReports.version,

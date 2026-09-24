@@ -6,7 +6,7 @@ import { listGovernanceComments } from '@/lib/community/interactions';
 async function get(request: Request) {
   await requireApiActor('community:moderate');
   const search = new URL(request.url).searchParams;
-  const input = Object.fromEntries(['page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  const input = Object.fromEntries(['page', 'size', 'status'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
   return okJson(await listGovernanceComments(getDb(), input), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
