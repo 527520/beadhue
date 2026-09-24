@@ -95,3 +95,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。
 - **E2E 与手动开发服务不能同目录并存**：Next 16 检测到同一目录已有 `next dev` 会拒绝再起（E2E 报「dev server did not become ready」），跑 E2E 前先停掉手动服务。开发服务首次编译某个 API 路由可能整页重载并打断进行中的请求，E2E 里第一次调用前可先 GET 预热。
 - **手机顶栏**：`MobileTopbarFrame` 现在是 `<header>`（banner 地标，与桌面顶栏按宽度二选一显示），页面自定义的手机顶栏内容无需再包地标。
+
+## 后续票须知（票 11 完成后补充）
+
+- **通知铃铛**：`NotificationBell`（`src/components/notifications/`）由外壳自己放：桌面顶栏「上传图片」左侧（`account` 为真且已登录），发现页手机顶栏（`mobileTop="discover"`，`sheet` 变体开底部面板）。游客不渲染铃铛，发现页手机顶栏的铃铛位回落为「登录」。页面不要再自己放铃铛；别的手机顶栏要铃铛时用 `<NotificationBell sheet />`。
+- **未读数**：`useUnreadCount(email)` 是页面级共享仓库（两个铃铛只发一次请求），挂载（每页各自渲染 SiteShell，换页即重新挂载；不用 `usePathname`，免得各测试的 `next/navigation` mock 都要补）、窗口聚焦 / 标签页回到前台时刷新，3 秒内的重复触发合并；别处改了通知状态可调 `setUnreadCount(n)` / `refreshUnreadCount({ force: true })`。单测连续渲染要 `resetUnreadStore()`（和 `resetAuthStatusCache()` 一起）。
+- **跳转约定**：通过 / 恢复 → `/community/<workId>`；新评论 → `/community/<workId>#comment-<commentId>`（与后台举报「公开页」同一锚点）；未通过 / 下架 → `/me/public`。**票 05 重做详情时评论项保留 `id="comment-<id>"`，评论是客户端加载的话，加载完按地址里的 hash 滚到那一条**；票 06 的 `/me/public` 要能看到驳回原因。
+- **空状态插画**：`EmptyState kind="notifications"`（豆粒金铃铛，`beads.ts` 的 ART）。
+- **E2E**：铃铛可访问名称是「通知」或「有 N 条未读通知」，徽标 `[data-slot="unread-badge"]`，面板是名为「通知」的 dialog；打开即把露出的条目标为已读，断言未读数要在打开之前做。用例 `tests/e2e/19-notifications.spec.ts` 经接口投稿、后台界面审核。
+- **开发服务**：隔离工作树里长时间运行的 `next dev` 偶尔会对已存在的 API 路由返回 HTML 404（路由表过期），重启即恢复；看到「路由存在却 404、响应是 HTML」先重启再排查。

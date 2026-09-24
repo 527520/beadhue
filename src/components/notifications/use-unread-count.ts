@@ -1,11 +1,10 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { useEffect, useSyncExternalStore } from 'react';
 
 /**
  * 未读通知数（D70）：页面级共享，桌面顶栏与手机顶栏的两个铃铛读同一份数字、只发一次请求。
- * 不做长连接：铃铛挂载、换页（pathname 变化）、窗口重新聚焦或标签页回到前台时刷新；
+ * 不做长连接：铃铛挂载（每个页面各自渲染 SiteShell，换页即重新挂载）、窗口重新聚焦或标签页回到前台时刷新；
  * 弹出层里列表与标记已读的响应也会带回最新数字。换了账号（或退出后再登录）从 0 重新开始。
  */
 
@@ -82,14 +81,13 @@ export function resetUnreadStore(): void {
   unread = 0;
 }
 
-/** 已登录用户的未读数；负责触发挂载、换页与聚焦时的刷新。 */
+/** 已登录用户的未读数；负责触发挂载（含换页）与聚焦时的刷新。 */
 export function useUnreadCount(user: string): number {
-  const pathname = usePathname();
   const count = useSyncExternalStore(subscribe, () => (owner === user ? unread : 0), () => 0);
   useEffect(() => {
     claim(user);
     void refreshUnreadCount();
-  }, [user, pathname]);
+  }, [user]);
   useEffect(() => {
     const refresh = () => void refreshUnreadCount();
     const onVisible = () => {

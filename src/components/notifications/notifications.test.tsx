@@ -148,10 +148,11 @@ describe('通知铃铛', () => {
     await screen.findByRole('button', { name: bell.unread(2), hidden: true });
     vi.spyOn(Date, 'now').mockImplementation(() => start + 2 * UNREAD_FRESH_MS + 2000);
     server.unread = 0;
-    nav.pathname = '/me';
-    view.rerender({ nav: 'me' });
+    // 换页：每个页面各自渲染 SiteShell，铃铛重新挂载。
+    view.unmount();
+    renderShell({ nav: 'me' });
+    await waitFor(() => expect(unreadCountCalls(server)).toBe(3));
     await screen.findByRole('button', { name: bell.label, hidden: true });
-    expect(unreadCountCalls(server)).toBe(3);
   });
 
   it('打开：列出各类通知，未读项露出即标记已读（徽标随之更新，本次打开仍保留未读圆点）', async () => {
