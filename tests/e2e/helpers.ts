@@ -160,3 +160,37 @@ export async function uploadAndGenerate(page: Page, filePath: string): Promise<v
   await uploadFile(page, filePath);
   await generateFromDialog(page);
 }
+
+/** 编辑器（票 08）：画布摘要里的总颗数（读屏说明，取代旧界面的「共 N 粒」）。 */
+export const beadsText = (count?: number): RegExp => new RegExp(`共 ${count ?? '\\d+'} 颗`);
+
+/** 编辑器右面板切页签（颜色 / 调整 / 信息）。 */
+export async function openPanelTab(page: Page, name: '颜色' | '调整' | '信息'): Promise<void> {
+  await page.getByRole('tab', { name, exact: true }).click();
+}
+
+/** 调整页的「重新裁剪」（已有图纸时重新打开裁剪弹窗）。 */
+export function recropButton(page: Page): Locator {
+  return page.getByRole('button', { name: '重新裁剪', exact: true });
+}
+
+export async function openRecrop(page: Page): Promise<void> {
+  await openPanelTab(page, '调整');
+  await recropButton(page).click();
+}
+
+/** 顶栏菜单：导出 / 分享 / 更多。 */
+export async function chooseEditorMenu(page: Page, trigger: '导出' | '分享' | '更多', item: string | RegExp): Promise<void> {
+  await page.getByRole('button', { name: trigger, exact: true }).click();
+  await page.getByRole('menuitem', { name: item }).click();
+}
+
+/** 自动保存完成：保存状态回到「仅存本机」（游客）或「已保存」（已同步）。 */
+export async function waitSaved(page: Page, timeout = 15_000): Promise<void> {
+  await expect(page.getByRole('status').filter({ hasText: /^(仅存本机|已保存)$/ }).first()).toBeVisible({ timeout });
+}
+
+/** 编辑器的模式分段（编辑 / 跟拼）。 */
+export function modeButton(page: Page, name: '编辑' | '跟拼'): Locator {
+  return page.getByRole('group', { name: '模式' }).getByRole('button', { name, exact: true });
+}

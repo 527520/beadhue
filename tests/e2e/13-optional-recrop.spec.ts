@@ -1,75 +1,88 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, generateFromDialog, typeSpin, uploadFile } from './helpers';
+import { BASE_URL, generateFromDialog, openPanelTab, openRecrop, recropButton, typeSpin, uploadFile, waitSaved } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 const cropButton = (page: Page) => page.getByRole('button', { name: '裁剪图片', exact: true });
 const cropDialog = (page: Page) => page.getByRole('dialog', { name: '裁剪图片', exact: true });
-const beads = (page: Page, count: number) => page.getByText(new RegExp(`共 ${count} 粒`)).first();
+// 手机仍是旧工作台（「粒」），桌面是新编辑器的画布摘要（「颗」）。
+const beads = (page: Page, count: number) => page.getByText(new RegExp(`共 ${count} (粒|颗)`)).first();
 
 async function revealMissingOriginalHelp(page: Page) {
   const explanation = page.getByText(/当前会话没有完整原图/);
-  await expect(cropButton(page)).toBeEnabled();
-  await expect(cropButton(page)).toHaveAttribute('aria-expanded', 'false');
+  await openPanelTab(page, '调整');
+  await expect(recropButton(page)).toBeEnabled();
+  await expect(recropButton(page)).toHaveAttribute('aria-expanded', 'false');
   await expect(explanation).toHaveCount(0);
-  await cropButton(page).click();
-  await expect(cropButton(page)).toHaveAttribute('aria-expanded', 'true');
+  await recropButton(page).click();
+  await expect(recropButton(page)).toHaveAttribute('aria-expanded', 'true');
   await expect(cropDialog(page)).toHaveCount(0);
   await expect(explanation).toBeVisible();
+}
+
+async function clearOriginalCache(page: Page) {
+  await page.evaluate(() => new Promise<void>((done) => {
+    const request = indexedDB.deleteDatabase('beadhue-originals');
+    request.onsuccess = request.onerror = request.onblocked = () => done();
+  }));
 }
 
 async function start(page: Page) {
   await page.goto('/app?new=1');
   await uploadFile(page, PHOTO);
   await generateFromDialog(page);
-  await expect(beads(page, 6300)).toBeVisible();
+  await expect(beads(page, 6300)).toBeAttached();
   await expect(cropDialog(page)).toHaveCount(0);
 }
 
-test('整图首版 → 取消不更新 → 确认自动更新 → 刷新缺原图如实提示', async ({ page }) => {
+test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动接回原图 → 缺原图如实提示', async ({ page }) => {
   await start(page);
-  await cropButton(page).click();
+  await openRecrop(page);
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
-  await expect(beads(page, 6300)).toBeVisible();
-  await expect(cropButton(page)).toBeFocused();
+  await expect(beads(page, 6300)).toBeAttached();
+  await expect(recropButton(page)).toBeFocused();
 
-  await cropButton(page).click();
+  await recropButton(page).click();
   await expect(cropDialog(page)).toContainText('当前选区：320 × 200 像素');
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '确认并更新' }).click();
   await expect(cropDialog(page)).toHaveCount(0);
-  await expect(beads(page, 10000)).toBeVisible();
-  await cropButton(page).click();
+  await expect(beads(page, 10000)).toBeAttached();
+  await openRecrop(page);
   await expect(cropDialog(page)).toContainText('当前选区：200 × 200 像素');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByText('本地：已保存', { exact: true }).first()).toBeVisible();
+  await waitSaved(page);
+
+  // 刷新后从本机原图缓存自动接回，仍可重新裁剪。
   await page.reload();
-  await expect(beads(page, 10000)).toBeVisible();
+  await expect(beads(page, 10000)).toBeAttached();
+  await openRecrop(page);
+  await expect(cropDialog(page)).toContainText('当前选区：200 × 200 像素');
+  await page.keyboard.press('Escape');
+  await expect(cropDialog(page)).toHaveCount(0);
+
+  // 清掉本机原图缓存再刷新：如实提示缺原图，重新选图并取消会保留原图纸。
+  await clearOriginalCache(page);
+  await page.reload();
+  await expect(beads(page, 10000)).toBeAttached();
   await revealMissingOriginalHelp(page);
-  await page.getByRole('button', { name: '重新选择图片', exact: true }).click();
-  await page.getByRole('button', { name: '返回原图纸' }).click();
-  await expect(beads(page, 10000)).toBeVisible();
-  await revealMissingOriginalHelp(page);
-  await page.getByRole('button', { name: '重新选择图片', exact: true }).click();
-  await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
-  await page.getByRole('dialog', { name: '替换当前图纸？' }).getByRole('button', { name: '取消', exact: true }).click();
-  await expect(beads(page, 10000)).toBeVisible();
-  await revealMissingOriginalHelp(page);
+  await page.getByLabel('原图文件选择器').setInputFiles(PHOTO);
+  await expect(cropDialog(page)).toBeVisible();
+  await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
+  await expect(cropDialog(page)).toHaveCount(0);
+  await expect(beads(page, 10000)).toBeAttached();
 });
 
 test('手工修改：取消裁剪和拒绝覆盖均保留，确认后可以撤销重生成', async ({ page }) => {
   await start(page);
-  await page.getByRole('tab', { name: /编辑/ }).click();
-  await page.getByLabel('编辑画布区域').focus();
+  await page.getByLabel(/^图纸编辑画布/).focus();
   await page.keyboard.press('ArrowRight');
   await page.keyboard.press('e');
   await page.keyboard.press('Enter');
-  await expect(beads(page, 6299)).toBeVisible();
-  await page.getByRole('tab', { name: /预览/ }).click();
-  await cropButton(page).click();
+  await expect(beads(page, 6299)).toBeAttached();
+  await openRecrop(page);
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '确认并更新' }).click();
   const warning = page.getByRole('dialog', { name: '重新生成会覆盖手工修补' });
@@ -78,22 +91,23 @@ test('手工修改：取消裁剪和拒绝覆盖均保留，确认后可以撤�
   await expect(warning).toHaveCount(0);
   await expect(cropDialog(page)).toBeVisible();
   await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
-  await expect(beads(page, 6299)).toBeVisible();
-  await cropButton(page).click();
+  await expect(beads(page, 6299)).toBeAttached();
+  await recropButton(page).click();
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '确认并更新' }).click();
   await warning.getByRole('button', { name: '重新生成', exact: true }).click();
-  await expect(beads(page, 10000)).toBeVisible();
-  await page.getByRole('button', { name: '撤销自动改动' }).click();
-  await expect(beads(page, 6299)).toBeVisible();
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByText('本地：已保存', { exact: true }).first()).toBeVisible();
+  await expect(beads(page, 10000)).toBeAttached();
+  await page.getByRole('button', { name: '撤销', exact: true }).first().click();
+  await expect(beads(page, 6299)).toBeAttached();
+  await waitSaved(page);
   await page.reload();
-  await expect(beads(page, 6299)).toBeVisible();
-  await typeSpin(page, '目标宽度（格）', '50');
-  await page.getByRole('spinbutton', { name: '目标宽度（格）' }).blur();
+  await expect(beads(page, 6299)).toBeAttached();
+  await openPanelTab(page, '调整');
+  await typeSpin(page, '自定义宽度（格）', '50');
+  await page.getByRole('button', { name: '重新生成', exact: true }).click();
+  await warning.getByRole('button', { name: '重新生成', exact: true }).click({ timeout: 5_000 }).catch(() => undefined);
   // 实际 IndexedDB 恢复的是原始宽图生成源，而非撤销前的正方形源。
-  await expect(beads(page, 1550)).toBeVisible();
+  await expect(beads(page, 1550)).toBeAttached();
 });
 
 for (const width of [350, 390]) {

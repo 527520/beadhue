@@ -1,13 +1,14 @@
 /**
  * E2E 核心旅程 2：工作台（spec §F1–F5、§F7）。
- * 上传 → 整图自动生成 → 参数调整 → 悬停格信息 → 编辑 → 导出三格式 → 保存 → 刷新恢复。
+ * 上传 → 整图自动生成 → 参数调整 → 悬停格信息 → 编辑 → 导出三格式 → 自动保存 → 刷新恢复（票 08 起为新编辑器）。
  */
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { fillField, typeSpin, uploadAndGenerate, selectChoice } from './helpers';
+import { beadsText, chooseEditorMenu, openPanelTab, typeSpin, uploadAndGenerate, waitSaved } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
+const WIDTH = '自定义宽度（格）';
 
 test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复', async ({ page }) => {
   // 应用侧的 perfMark 只在 window.__beadhuePerfMarks 已存在时才记录（生产零开销）。
@@ -22,39 +23,30 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   // 新建图纸弹窗：默认全图、默认宽度，直接生成
   await uploadAndGenerate(page, PHOTO);
 
-  // 工作台：生成图纸（默认宽度 100 → 100×100）
-  await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
+  // 编辑器：生成图纸（默认宽度 100 → 100×100）
+  await expect(page.getByText(beadsText()).first()).toBeAttached({ timeout: 20_000 });
 
-  // 参数面板：宽度改为 20 → 防抖重生成 20×20=400 粒
-  await fillField(page, '目标宽度（格）', '20');
-  await page.getByRole('spinbutton', { name: '目标宽度（格）' }).blur();
-  await expect(page.getByText(/共 400 粒/).first()).toBeVisible({ timeout: 20_000 });
+  // 调整页：宽度改为 20 → 重新生成 20×20=400 颗
+  await openPanelTab(page, '调整');
+  const widthInput = page.getByRole('spinbutton', { name: WIDTH });
+  const regenerateButton = page.getByRole('button', { name: '重新生成', exact: true });
+  await typeSpin(page, WIDTH, '20');
+  await regenerateButton.click();
+  await expect(page.getByText(beadsText(400)).first()).toBeAttached({ timeout: 20_000 });
 
-  // 持久 Worker + SharedArrayBuffer 协作式取消：生成期间编辑/保存/导出锁定，
+  // 持久 Worker + SharedArrayBuffer 协作式取消：生成期间编辑 / 导出 / 分享锁定，
   // 取消后恢复到上一个已提交快照。
-  const widthInput = page.getByRole('spinbutton', { name: '目标宽度（格）' });
   const cancelBtn = page.getByRole('button', { name: '取消', exact: true });
-  await page.getByRole('button', { name: '高级选项', exact: true }).click();
   await page.getByRole('switch', { name: '抖动' }).check();
-  await typeSpin(page, '目标宽度（格）', '200');
-  // The optimized engine can finish before a second Playwright command starts.
-  // Observe the transient generating UI before blur, capture its locked state,
-  // and click Cancel in the same browser task as soon as React mounts it.
+  await typeSpin(page, WIDTH, '200');
   // 热服务器上生成可能赶在观察器建立前就完成（「取消」按钮从未出现）——给观察
   // 一个截止时间，超时按「跳过取消断言」处理，绝不让用例挂满 120s。
-  // 取消门禁的口径：只考核「点击那一刻发生了什么」。
-  //
-  // 走过两次弯路：最早用「点击 → rAF/观察器看到卸载」的墙钟差，CI 上会漂到
-  // 215~422ms（混进 Playwright 轮询与 runner 调度延迟）；随后改用应用自打的
-  // performance 标记之差，又被 abortGeneration() 同步拆 Worker 的时间污染。
-  // 现在直接量 cancel.click() 这一次同步调用：它返回时按钮是否已经离开 DOM，
-  // 以及这次调用总共花了多久——两者都是应用在点击任务内真实花掉的时间，
-  // 不含任何跨任务等待。
+  // 取消门禁只考核「点击那一刻发生了什么」：cancel.click() 返回时按钮是否已离开 DOM、这次同步调用花了多久。
   const cancellation = page.evaluate(() => new Promise<
     {
       widthDisabled: boolean;
-      pngDisabled: boolean;
-      saveDisabled: boolean;
+      exportDisabled: boolean;
+      shareDisabled: boolean;
       cancelUiMs: number;
       handlerMs: number;
       goneSynchronously: boolean;
@@ -68,8 +60,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     const deadline = setTimeout(() => finish({ skipped: true }), 8_000);
     const finish = (result: {
       widthDisabled: boolean;
-      pngDisabled: boolean;
-      saveDisabled: boolean;
+      exportDisabled: boolean;
+      shareDisabled: boolean;
       cancelUiMs: number;
       handlerMs: number;
       goneSynchronously: boolean;
@@ -86,23 +78,19 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
       const buttons = Array.from(document.querySelectorAll('button'));
       const cancel = buttons.find((button) => button.textContent?.trim() === '取消');
       if (!cancel) return;
-      const width = document.querySelector<HTMLInputElement>('input[aria-label="目标宽度（格）"]');
-      const png = buttons.find((button) => button.textContent?.includes('下载 PNG'));
-      const save = buttons.find((button) => button.textContent?.includes('保存'));
+      const width = document.querySelector<HTMLInputElement>('input[aria-label="自定义宽度（格）"]');
+      const exporter = buttons.find((button) => button.textContent?.trim() === '导出');
+      const share = buttons.find((button) => button.getAttribute('aria-label') === '分享');
       const observed = {
-        // The input is effectively disabled by its ancestor fieldset.
+        // 参数输入被外层 fieldset 锁住。
         widthDisabled: Boolean(width?.matches(':disabled')),
-        pngDisabled: Boolean(png?.disabled),
-        saveDisabled: Boolean(save?.disabled),
+        exportDisabled: Boolean(exporter?.disabled),
+        shareDisabled: Boolean(share?.disabled),
       };
-      // 原生按钮：click() 会同步进入 React 的 onClick（处理器里 flushSync 同步卸载），
-      // 所以「click() 返回时按钮是否已经不在了」就是「同步卸载」的直接证据；
-      // 同时记下点击处理器的总耗时，失败信息里带上，下一轮不必再猜。
       const startedAt = performance.now();
       cancel.click();
       const handlerMs = performance.now() - startedAt;
       const goneSynchronously = !document.body.contains(cancel);
-      // 细分同步成本：flushSync（卸载按钮需重渲染的那部分）与 abortGeneration（拆 Worker）。
       const marks = (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks ?? [];
       const at = (name: string): number | null => {
         const hit = [...marks].reverse().find((mark) => mark.name === name);
@@ -120,7 +108,6 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
         finish({ ...observed, cancelUiMs: handlerMs, handlerMs, goneSynchronously, ...breakdown });
         return;
       }
-      // 没做到同步卸载：监听真实的移除时刻（只影响失败信息与门禁判定）。
       const removal = new MutationObserver(() => {
         if (document.body.contains(cancel)) return;
         removal.disconnect();
@@ -135,17 +122,16 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
     inspect();
   }));
-  await widthInput.blur();
+  await regenerateButton.click();
   const cancelled = await cancellation;
   if ('skipped' in cancelled) {
     // 生成太快没赶上取消 UI：把宽度改回 20 后继续后续断言（取消协议已由单测精确覆盖）。
-    await typeSpin(page, '目标宽度（格）', '20');
-    await widthInput.blur();
-    await expect(page.getByText(/共 400 粒/).first()).toBeVisible({ timeout: 20_000 });
+    await typeSpin(page, WIDTH, '20');
+    await regenerateButton.click();
+    await expect(page.getByText(beadsText(400)).first()).toBeAttached({ timeout: 20_000 });
   } else {
-    // 失败信息里带上实测值：退出码 41 只能说明是这个 spec，带上数字下一轮不用再猜。
     const measured = `handlerMs=${cancelled.handlerMs.toFixed(1)} flushSync=${cancelled.flushSyncMs} abort=${cancelled.abortMs} 同步卸载=${cancelled.goneSynchronously}`;
-    expect(cancelled, measured).toEqual(expect.objectContaining({ widthDisabled: true, pngDisabled: true, saveDisabled: true }));
+    expect(cancelled, measured).toEqual(expect.objectContaining({ widthDisabled: true, exportDisabled: true, shareDisabled: true }));
     // 契约一：点击处理器返回时按钮已经离开 DOM（不是等下一轮提交才消失）。
     expect(cancelled.goneSynchronously, `取消按钮必须在点击处理器内同步卸载（${measured}）`).toBe(true);
     // 契约二：点击处理器总耗时要留在预算内（<100ms）。
@@ -153,20 +139,20 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
     await expect(cancelBtn).toBeHidden({ timeout: 1_000 });
     await expect(widthInput).toHaveValue('20');
     await expect(widthInput).toBeEnabled();
-    await expect(page.getByText(/共 400 粒/).first()).toBeVisible();
+    await expect(page.getByText(beadsText(400)).first()).toBeAttached();
   }
 
   // latest-only 任务协议的乱序在单测精确覆盖；浏览器这里验证取消后可再生成。
-  const colorsInput = page.getByRole('spinbutton', { name: '目标颜色数' });
-  // 重启门禁也只看应用自己的时间戳：从「生成开始」到「新图纸提交」两个标记之差。
-  // 旧写法是 Date.now() 包住「Playwright 逐字符输入 + blur + 轮询可见」，CI 上
-  // webkit 跑到 2390ms 撞线——量到的是测试驱动的开销，不是应用重生成有多慢。
+  // 颜色数滑杆：Home 到最小 2 色。
+  const colorsSlider = page.getByRole('slider', { name: '颜色数' });
+  // 重启门禁只看应用自己的时间戳：从「生成开始」到「新图纸提交」两个标记之差。
   await page.evaluate(() => {
     (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks = [];
   });
-  await typeSpin(page, '目标颜色数', '2');
-  await colorsInput.blur();
-  await expect(page.getByText(/共 400 粒 · 2 种颜色/).first()).toBeVisible({ timeout: 20_000 });
+  await colorsSlider.focus();
+  await colorsSlider.press('Home');
+  await regenerateButton.click();
+  await expect(page.getByText(/共 400 颗 · 2 种颜色/).first()).toBeAttached({ timeout: 20_000 });
   const restartLatency = await page.evaluate(() => {
     const marks = (window as Window & { __beadhuePerfMarks?: Array<{ name: string; at: number }> }).__beadhuePerfMarks ?? [];
     const start = marks.filter((mark) => mark.name === 'workbench-generation-start').at(-1);
@@ -175,138 +161,137 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   });
   expect(restartLatency, `重生成应在 2s 内提交（null = 本次没触发重生成）`).not.toBeNull();
   expect(restartLatency).toBeLessThan(2_000);
-  await typeSpin(page, '目标宽度（格）', '200');
-  await widthInput.blur();
-  await expect(page.getByText(/共 40000 粒 · 2 种颜色/).first()).toBeVisible({ timeout: 20_000 });
-  await typeSpin(page, '目标宽度（格）', '20');
-  await widthInput.blur();
-  await expect(page.getByText(/共 400 粒 · 2 种颜色/).first()).toBeVisible({ timeout: 20_000 });
+  await typeSpin(page, WIDTH, '200');
+  await regenerateButton.click();
+  await expect(page.getByText(/共 40000 颗 · 2 种颜色/).first()).toBeAttached({ timeout: 20_000 });
+  await typeSpin(page, WIDTH, '20');
+  await regenerateButton.click();
+  await expect(page.getByText(/共 400 颗 · 2 种颜色/).first()).toBeAttached({ timeout: 20_000 });
 
   // 版本化 Mini 色板会原子切换到兼容的 2.6mm / 50×50；随后改参数，
   // 确认真实生成链路使用新色板，而不是只在既有图纸上做一次重映射。
-  await selectChoice(page,'色板品牌','优肯 Artkal');
-  const paletteSeriesSelect = page.getByRole('button', { name: /色板系列/ });
-  const miniPaletteId = await paletteSeriesSelect.locator('..').locator('select').inputValue();
-  expect(miniPaletteId).toMatch(/^builtin:pcd:artkal-c-197-official@/);
-  const boardProfileSelect = page.getByRole('button',{name:/制作规格/});
-  await expect(boardProfileSelect).toHaveText('2.6mm / 50×50');
-  await expect(page.getByText(/制作规格已切换为 2\.6mm \/ 50×50/).first()).toBeVisible();
+  await openPanelTab(page, '颜色');
+  await page.getByRole('button', { name: /^色板：/ }).click();
+  await page.getByRole('option', { name: /^优肯 Artkal C 197 色/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '换色板', exact: true }).click();
+  await expect(page.getByText(/制作规格已改为 2\.6mm \/ 50×50/).first()).toBeVisible();
+  await openPanelTab(page, '调整');
+  const specButton = page.getByRole('button', { name: /^制作规格：/ });
+  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm / 50×50');
   // Artkal 同时支持两种 Mini 底板；主旅程继续切到 52×52，覆盖该规格的
   // 生成、编辑、PNG/PDF/项目导出、保存和刷新恢复完整链路。
-  await selectChoice(page,'制作规格','2.6mm / 52×52');
-  await expect(boardProfileSelect).toHaveText('2.6mm / 52×52');
-  await expect(page.getByText(/制作规格已切换为 2\.6mm \/ 52×52/).first()).toBeVisible();
-  await typeSpin(page, '目标颜色数', '3');
-  await colorsInput.blur();
-  await expect(page.getByText(/共 400 粒 · 3 种颜色/).first()).toBeVisible({ timeout: 20_000 });
-  await typeSpin(page, '目标颜色数', '2');
-  await colorsInput.blur();
-  await expect(page.getByText(/共 400 粒 · 2 种颜色/).first()).toBeVisible({ timeout: 20_000 });
+  await specButton.click();
+  await page.getByRole('option', { name: /^2\.6mm \/ 52×52/ }).click();
+  await expect(specButton).toHaveAccessibleName('制作规格：2.6mm / 52×52');
+  await expect(page.getByText(/制作规格已改为 2\.6mm \/ 52×52/).first()).toBeVisible();
+  await colorsSlider.focus();
+  await colorsSlider.press('ArrowRight');
+  await regenerateButton.click();
+  await expect(page.getByText(/共 400 颗 · 3 种颜色/).first()).toBeAttached({ timeout: 20_000 });
+  await colorsSlider.focus();
+  await colorsSlider.press('Home');
+  await regenerateButton.click();
+  await expect(page.getByText(/共 400 颗 · 2 种颜色/).first()).toBeAttached({ timeout: 20_000 });
 
-  // 悬停显示格信息（工作台工具提示）：带重悬停重试（最终生成的画布重绘可能吞掉首次 mousemove）
+  // 悬停显示格信息：左下角提示「第 r 行 · 第 c 列 · 色号」（带重悬停重试，重绘可能吞掉首次 mousemove）。
+  const editCanvas = page.getByLabel(/^图纸编辑画布/);
   await expect(async () => {
-    await page.locator('canvas').first().hover({ position: { x: 8, y: 8 } });
-    await expect(page.getByRole('status').filter({ hasText: /第 0 行/ }).first()).toBeVisible({ timeout: 2_000 });
+    const box = (await editCanvas.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.getByText(/^第 \d+ 行 · 第 \d+ 列 · /).first()).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 15_000 });
+  await page.mouse.move(0, 0);
 
-  // 编辑：切换页签即自动聚焦；同一光标格验证四种工具的 Enter 语义。
-  await page.getByRole('tab', { name: /编辑/ }).click();
-  const editorRegion = page.getByLabel('编辑画布区域');
-  await expect(editorRegion).toBeFocused();
+  // 编辑：同一光标格验证四种工具的 Enter 语义（方向键移光标，回车落笔）。
+  await editCanvas.focus();
   await page.keyboard.press('ArrowRight');
   const cursorStatus = page.getByRole('status').filter({ hasText: /光标：第 1 行 第 2 列/ }).first();
-  await expect(cursorStatus).toBeVisible();
+  await expect(cursorStatus).toBeAttached();
   const cursorText = (await cursorStatus.textContent()) ?? '';
   const originalCode = cursorText.match(/· ([^（·]+)（回车落笔）/)?.[1]?.trim();
   expect(originalCode).toBeTruthy();
 
+  const currentColor = page.getByRole('complementary', { name: '属性面板' }).getByText('当前色', { exact: true }).locator('..');
   await page.keyboard.press('i');
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('status', { name: `当前颜色: ${originalCode}` })).toBeVisible();
+  await openPanelTab(page, '颜色');
+  await expect(currentColor).toContainText(originalCode!);
 
+  await editCanvas.focus();
   await page.keyboard.press('e');
   await page.keyboard.press('Enter');
-  await expect(page.getByText(/共 399 粒/).first()).toBeVisible();
+  await expect(page.getByText(beadsText(399)).first()).toBeAttached();
 
   await page.keyboard.press('g');
   await page.keyboard.press('Enter');
-  await expect(page.getByText(/共 400 粒/).first()).toBeVisible();
+  await expect(page.getByText(beadsText(400)).first()).toBeAttached();
 
-  const paletteButtons = page.getByRole('region', { name: '选择画笔颜色' }).getByRole('button');
-  const paletteCount = await paletteButtons.count();
+  const swatches = page.getByRole('group', { name: '全部颜色' }).getByRole('button');
+  const swatchCount = await swatches.count();
   let keyboardBrushCode = '';
-  for (let index = 0; index < paletteCount; index += 1) {
-    const label = await paletteButtons.nth(index).getAttribute('aria-label');
-    const code = label?.split(' ')[0] ?? '';
+  for (let index = 0; index < swatchCount; index += 1) {
+    const code = (await swatches.nth(index).getAttribute('aria-label'))?.split(' ')[0] ?? '';
     if (code && code !== originalCode) {
       keyboardBrushCode = code;
-      await paletteButtons.nth(index).click();
+      await swatches.nth(index).click();
       break;
     }
   }
   expect(keyboardBrushCode).toBeTruthy();
-  // WebKit 下点击色板按钮后重新聚焦画布偶发不生效（光标状态消失，'b' 落空）。
-  // 恢复顺序：悬停把光标拉回 (0,0)（onPointerMove → setCursor），再聚焦 + 'b' + → 到
-  // (0,1)。位置特定的断言同时验证了方向键真的生效（即焦点确实回到画布）。
-  await expect(async () => {
-    await page.locator('canvas').first().hover({ position: { x: 8, y: 8 } });
-    await editorRegion.focus();
-    await page.keyboard.press('b');
-    await page.keyboard.press('ArrowRight');
-    await expect(cursorStatus).toBeVisible({ timeout: 2_000 });
-  }).toPass({ timeout: 15_000 });
+  await editCanvas.focus();
+  await page.keyboard.press('b');
   await page.keyboard.press('Enter');
   await expect(cursorStatus).toContainText(`· ${keyboardBrushCode}（回车落笔）`);
 
-  // 默认 PNG 一次下载；导出分区是显式的用户入口。
-  await page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true }).click();
+  // 导出 PNG：导出菜单 → 下载 PNG 弹窗 → 下载。
+  await chooseEditorMenu(page, '导出', '下载 PNG…');
   const [pngDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: '下载 PNG', exact: true }).click(),
+    page.getByRole('dialog', { name: '下载 PNG' }).getByRole('button', { name: '下载', exact: true }).click(),
   ]);
   expect(pngDownload.suggestedFilename()).toMatch(/^豆色绘-.*\.png$/);
   const pngPath = await pngDownload.path();
   expect(readFileSync(pngPath!).length).toBeGreaterThan(1000);
 
-  // 导出 PDF（预览确认；确认按钮文案为「导出」）
-  await page.getByRole('button', { name: /导出 PDF/ }).click();
+  // 打印 PDF：弹窗说明页数与打印比例 → 下载 PDF。
+  await chooseEditorMenu(page, '导出', '打印 PDF…');
   const [pdfDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('region', { name: '确认导出 PDF' }).getByRole('button', { name: '导出', exact: true }).click(),
+    page.getByRole('dialog', { name: '打印 PDF' }).getByRole('button', { name: '下载 PDF', exact: true }).click(),
   ]);
   expect(pdfDownload.suggestedFilename()).toMatch(/\.pdf$/);
   const pdfPath = await pdfDownload.path();
   expect(readFileSync(pdfPath!).subarray(0, 4).toString('latin1')).toBe('%PDF');
 
   // 导出项目文件
+  await page.getByRole('button', { name: '导出', exact: true }).click();
   const [projectDownload] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: /导出项目文件/ }).click(),
+    page.getByRole('menuitem', { name: /导出项目文件/ }).click(),
   ]);
   expect(projectDownload.suggestedFilename()).toMatch(/\.json$/);
   const projectPath = await projectDownload.path();
   const project = JSON.parse(readFileSync(projectPath!, 'utf8'));
   expect(project.format).toBe('beadhue-project');
   expect(project.boardProfile).toBe('2.6mm-52');
-  expect(project.paletteSelection).toEqual({
-    palette: { kind: 'builtin', brand: miniPaletteId!.replace(/^builtin:/, '') },
-    kitTier: 0,
-  });
+  expect(project.paletteSelection.kitTier).toBe(0);
+  expect(project.paletteSelection.palette.kind).toBe('builtin');
+  expect(project.paletteSelection.palette.brand).toMatch(/^pcd:artkal-c-197-official@/);
   expect(project.pattern.width).toBe(20);
   expect(project.pattern.cells[1].code).toBe(keyboardBrushCode);
 
-  // 保存并刷新恢复
-  await page.getByRole('button', { name: /保存/ }).click();
-  await expect(page.getByText(/已保存/).first()).toBeVisible({ timeout: 15_000 });
+  // 自动保存后刷新恢复
+  await waitSaved(page);
   await page.reload();
   await expect(page.getByLabel('设计名称').first()).toBeVisible();
-  await expect(page.getByText(/共 400 粒/).first()).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('button',{name:/色板品牌/})).toHaveText('优肯 Artkal');
-  await expect(page.getByRole('button',{name:/色板系列/}).locator('..').locator('select')).toHaveValue(miniPaletteId!);
-  await expect(page.getByRole('button',{name:/制作规格/})).toHaveText('2.6mm / 52×52');
-  const restoredWidth = page.getByRole('spinbutton', { name: '目标宽度（格）' });
+  await expect(page.getByText(beadsText(400)).first()).toBeAttached({ timeout: 20_000 });
+  await openPanelTab(page, '颜色');
+  await expect(page.getByRole('button', { name: /^色板：/ })).toHaveAccessibleName(/^色板：优肯 Artkal C 197 色/);
+  await openPanelTab(page, '调整');
+  await expect(page.getByRole('button', { name: /^制作规格：/ })).toHaveAccessibleName('制作规格：2.6mm / 52×52');
+  const restoredWidth = page.getByRole('spinbutton', { name: WIDTH });
   await expect(restoredWidth).toBeEnabled();
-  await typeSpin(page, '目标宽度（格）', '21');
-  await restoredWidth.blur();
-  await expect(page.getByText(/共 441 粒/).first()).toBeVisible({ timeout: 20_000 });
+  await typeSpin(page, WIDTH, '21');
+  await page.getByRole('button', { name: '重新生成', exact: true }).click();
+  await expect(page.getByText(beadsText(441)).first()).toBeAttached({ timeout: 20_000 });
 });

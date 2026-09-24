@@ -438,8 +438,8 @@ export function EditorCanvas({
       event.preventDefault();
       const base = cursor ?? { row: 0, col: 0 };
       const next = {
-        row: Math.max(0, Math.min(H - 1, base.row + (cursor ? move[0] : 0))),
-        col: Math.max(0, Math.min(W - 1, base.col + (cursor ? move[1] : 0))),
+        row: Math.max(0, Math.min(H - 1, base.row + move[0])),
+        col: Math.max(0, Math.min(W - 1, base.col + move[1])),
       };
       hoverRef.current = null;
       onCursorChange(next, 'keyboard');

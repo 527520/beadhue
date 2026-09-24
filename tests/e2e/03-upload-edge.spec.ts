@@ -5,7 +5,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { generateFromDialog, uploadFile } from './helpers';
+import { generateFromDialog, uploadFile, beadsText, chooseEditorMenu, openPanelTab, recropButton } from './helpers';
 
 const fixture = (name: string) => resolve(process.cwd(), 'tests/fixtures', name);
 
@@ -38,9 +38,11 @@ test('E10：全透明 PNG 生成后统计为 0 且 PNG 导出禁用', async ({ p
   await openApp(page);
   await uploadFile(page, fixture('transparent-64.png'));
   await generateFromDialog(page);
-  await expect(page.getByText(/共 0 粒/).first()).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true }).click();
-  await expect(page.getByRole('button', { name: '下载 PNG', exact: true })).toBeDisabled();
+  await expect(page.getByText(beadsText(0)).first()).toBeAttached({ timeout: 20_000 });
+  await chooseEditorMenu(page, '导出', '下载 PNG…');
+  const dialog = page.getByRole('dialog', { name: '下载 PNG' });
+  await expect(dialog.getByText('图纸还是空的，画上颜色后才能导出')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '下载', exact: true })).toBeDisabled();
 });
 
 test('损坏 HEIC：尺寸探针失败时在原生/WASM 解码前拒绝', async ({ page }) => {
@@ -54,7 +56,8 @@ test('真实 HEIC：原生或 WASM 路径都必须自动生成首版', async ({ 
   await uploadFile(page, fixture('static-real.heic'));
   await expect(page.getByRole('dialog', { name: '新建图纸' })).toBeVisible({ timeout: 30_000 });
   await generateFromDialog(page);
-  await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled({ timeout: 30_000 });
+  await openPanelTab(page, '调整');
+  await expect(recropButton(page)).toBeEnabled({ timeout: 30_000 });
 });
 
 test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可完成生成', async ({ page }, testInfo) => {

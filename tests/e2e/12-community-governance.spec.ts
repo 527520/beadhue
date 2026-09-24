@@ -36,7 +36,7 @@ test('已验证用户引用独立副本并发布评论', async ({ page }, testIn
   const originalWorkUrl = page.url();
   await page.getByRole('button', { name: '用这张制作' }).click();
   await expect(page).toHaveURL(/\/app\?id=.+&mode=edit/);
-  await expect(page.getByRole('tab', { name: '编辑', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('group', { name: '模式' }).getByRole('button', { name: '编辑', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('设计名称')).toHaveValue(/（引用）$/);
   await page.goto(originalWorkUrl);
   await fillField(page, '发表评论', `E2E ${testInfo.project.name} 普通评论`);

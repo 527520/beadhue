@@ -225,7 +225,7 @@ test("B: private full original sync restores in a separate browser context witho
   await page.getByRole("button", { name: "生成图纸", exact: true }).click();
   await expect(page.getByLabel("图纸编辑画布")).toBeVisible();
   await page.getByLabel("设计名称").fill("跨上下文原图恢复");
-  await page.getByRole("button", { name: "保存", exact: true }).click();
+  // 新编辑器自动保存（登录后自动同步），没有「保存」按钮。
   await expect
     .poll(
       async () =>

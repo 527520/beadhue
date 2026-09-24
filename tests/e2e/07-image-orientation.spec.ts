@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { generateFromDialog, waitHydrated } from './helpers';
+import { generateFromDialog, waitHydrated, beadsText, openRecrop } from './helpers';
 
 async function orientation6Jpeg(page: Page): Promise<Buffer> {
   const bytes = await page.evaluate(async () => {
@@ -81,8 +81,8 @@ test('EXIF 旋转 JPEG 通过真实 Workbench Worker 以同一 oriented 坐标�
   expectBlue(stageColors.top);
   expectYellow(stageColors.bottom);
   await generateFromDialog(page);
-  await expect(page.getByText(/共 15000 粒/).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
+  await expect(page.getByText(beadsText(15000)).first()).toBeAttached({ timeout: 30_000 });
+  await openRecrop(page);
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible();
   await expect(page.getByText('20 × 30 像素')).toBeVisible();
 
@@ -93,13 +93,28 @@ test('EXIF 旋转 JPEG 通过真实 Workbench Worker 以同一 oriented 坐标�
   expectYellow(previewColors.bottom);
 
   await page.getByRole('button', { name: '确认并更新' }).click();
-  await expect(page.getByText(/共 15000 粒/).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByLabel('网格线').uncheck();
-  await page.getByLabel('板缝线').uncheck();
-  await page.getByLabel('色号标注').uncheck();
+  await expect(page.getByText(beadsText(15000)).first()).toBeAttached({ timeout: 30_000 });
+  // 缩放胶囊里的网格 / 板缝 / 色号开关（按下态 = 显示）。
+  for (const name of ['网格', '板缝', '色号']) {
+    const toggle = page.getByRole('toolbar', { name: '视图' }).getByRole('button', { name, exact: true });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  }
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
 
-  const patternColors = await sampleVerticalColors(page.locator('canvas').last());
+  // 编辑画布按相机绘制（四周留白）：按图纸坐标取左半边的上 / 下两点。
+  const patternColors = await page.getByLabel(/^图纸编辑画布/).evaluate((element: HTMLCanvasElement) => {
+    const camera = JSON.parse(element.parentElement!.dataset.camera!) as { cellPx: number; offsetX: number; offsetY: number };
+    const scale = element.width / element.clientWidth;
+    const context = element.getContext('2d')!;
+    const sample = (fx: number, fy: number): number[] => Array.from(context.getImageData(
+      Math.floor((camera.offsetX + camera.cellPx * 100 * fx) * scale),
+      Math.floor((camera.offsetY + camera.cellPx * 150 * fy) * scale),
+      1,
+      1,
+    ).data.slice(0, 3));
+    return { top: sample(0.25, 0.25), bottom: sample(0.25, 0.75) };
+  });
   expectBlue(patternColors.top);
   expectYellow(patternColors.bottom);
 });

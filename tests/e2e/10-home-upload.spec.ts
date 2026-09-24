@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { generateFromDialog, uploadAndGenerate, uploadFile } from './helpers';
+import { generateFromDialog, uploadAndGenerate, uploadFile, beadsText, openPanelTab, recropButton } from './helpers';
 
 const PHOTO_A = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 const PHOTO_B = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
@@ -15,7 +15,7 @@ test('发现页「创作」进入创作入口 → 选新图生成，不回到上
   // 1) 先生成一张设计，留下本地历史
   await page.goto('/app');
   await uploadAndGenerate(page, PHOTO_A);
-  await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByText(beadsText()).first()).toBeAttached({ timeout: 40_000 });
   await page.waitForTimeout(1500); // 让自动保存落库（1s 防抖）
 
   // 2) 回发现页，经顶栏「创作」进入 /app：是创作入口，不恢复上一张（D66）
@@ -29,7 +29,8 @@ test('发现页「创作」进入创作入口 → 选新图生成，不回到上
 
   // 第二张是正方形：首版为 100×100，不能恢复旧的 100×63。
   await generateFromDialog(page);
-  await expect(page.getByText(/共 10000 粒/).first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
+  await expect(page.getByText(beadsText(10000)).first()).toBeAttached({ timeout: 30_000 });
+  await openPanelTab(page, '调整');
+  await expect(recropButton(page)).toBeEnabled();
   await expect(page.getByRole('dialog', { name: '裁剪图片' })).toHaveCount(0);
 });

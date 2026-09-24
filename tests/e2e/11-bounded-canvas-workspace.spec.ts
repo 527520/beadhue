@@ -8,7 +8,7 @@
 import { writeFile } from 'node:fs/promises';
 import { devices, expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, uploadAndGenerate } from './helpers';
+import { BASE_URL, modeButton, uploadAndGenerate } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/static-2x2.png');
 const FIXED_TIME = '2026-08-30T00:00:00.000Z';
@@ -56,7 +56,8 @@ async function importProject(page: Page, width: number, height: number, testInfo
   await writeFile(projectPath, JSON.stringify(value), 'utf8');
   await page.getByLabel('项目文件选择器').setInputFiles(projectPath);
   await expect(page.getByRole('textbox', { name: '设计名称' }).last()).toHaveValue(value.name);
-  await expect(page.getByText(`共 ${width * height} 粒`).first()).toBeVisible();
+  // 手机仍是旧工作台（「粒」），桌面是新编辑器的画布摘要（「颗」）。
+  await expect(page.getByText(new RegExp(`共 ${width * height} (粒|颗)`)).first()).toBeAttached();
 }
 
 async function enterWorkbenchWithProject(page: Page, testInfo: TestInfo, width = 200, height = 200): Promise<void> {
@@ -65,7 +66,7 @@ async function enterWorkbenchWithProject(page: Page, testInfo: TestInfo, width =
   await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeVisible({ timeout: 20_000 });
 
   // 移动布局把项目文件入口放在「导出」抽屉；桌面入口始终存在。
-  const exportTools = page.getByRole('button', { name: '导出', exact: true });
+  const exportTools = page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true });
   if (await exportTools.isVisible().catch(() => false)) await exportTools.click();
   await importProject(page, width, height, testInfo);
 }
@@ -338,11 +339,11 @@ test('29×29、58×58、100×63 在桌面 944/1280/1440px 保持有界且不撑�
     if (patternWidth !== 29 || patternHeight !== 29) {
       await importProject(page, patternWidth, patternHeight, testInfo);
     }
-    await page.getByRole('tab', { name: '编辑', exact: true }).click();
-    await expectViewportSizedBacking(page.getByLabel('图纸编辑画布'), page);
+    await modeButton(page, '编辑').click();
+    await expectViewportSizedBacking(page.getByLabel(/^图纸编辑画布/), page);
     await expectNoDocumentOverflow(page);
 
-    await page.getByRole('tab', { name: '跟拼', exact: true }).click();
+    await modeButton(page, '跟拼').click();
     await expectViewportSizedBacking(
       page.getByRole('img', { name: new RegExp(`跟拼画布：${patternWidth} × ${patternHeight} 格`) }),
       page,
