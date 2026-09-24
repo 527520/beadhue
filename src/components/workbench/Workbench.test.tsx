@@ -372,7 +372,6 @@ describe('Workbench 全流程', () => {
     window.history.replaceState(null, '', '/app?id=missing');
     const storage = new FakeStorage();
     storage.designs.set('other', record('other', savedProject('其他作品', '2026-09-01T00:00:00Z')));
-    window.history.replaceState(null, '', '/app?id=other');
     render(<Workbench storage={storage} />);
     expect(await screen.findByText('这张设计不在本机，请回到我的设计下载或选择其他图纸。')).toBeVisible();
     expect(screen.queryByDisplayValue('其他作品')).not.toBeInTheDocument();
@@ -401,7 +400,6 @@ describe('Workbench 全流程', () => {
     const storage = new FakeStorage();
     storage.designs.set('chosen', record('chosen', savedProject('选中的作品', '2026-09-01T00:00:00Z')));
     storage.designs.set('other', record('other', savedProject('另一张作品', '2026-09-02T00:00:00Z')));
-    window.history.replaceState(null, '', '/app?id=other');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('选中的作品');
     expect(screen.getByRole('tab', { name: mode === 'edit' ? zhCN.workbench.editTab : zhCN.stitch.tab })).toHaveAttribute('aria-selected', 'true');
