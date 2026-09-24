@@ -134,7 +134,7 @@ async function seed(browser) {
 
   const userContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const userPage = await userContext.newPage();
-  await login(userPage, 'e2e-user@example.com', '/designs');
+  await login(userPage, 'e2e-user@example.com', '/me');
   const publicWorks = (await api(userPage, 'GET', '/api/community/works?sort=latest')).json?.items ?? [];
   for (const work of publicWorks.slice(0, 7)) await api(userPage, 'PUT', `/api/community/works/${work.id}/like`);
   const now = new Date();

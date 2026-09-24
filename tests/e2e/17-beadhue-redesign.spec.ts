@@ -47,8 +47,9 @@ test("B: discover → crop → neutral editor/reference → save/export → rest
   await waitHydrated(page);
   const consent = page.getByRole("button", { name: "不同意", exact: true });
   if (await consent.isVisible()) await consent.click();
+  await expect(page.getByRole("navigation", { name: "类目" })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "下一份喜欢，从这里开始。" }),
+    page.getByRole("region", { name: "作品" }).getByRole("link", { name: /^查看「/ }).first(),
   ).toBeVisible();
   await page.screenshot({
     path: info.outputPath("discover-desktop.png"),
@@ -306,7 +307,7 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
   await page.screenshot({ path: info.outputPath("admin-flat-buttons.png") });
   await page.goto("/");
   await waitHydrated(page);
-  await page.locator(".work-card a").first().click();
+  await page.getByRole("region", { name: "作品" }).getByRole("link", { name: /^查看「/ }).first().click();
   await expect(page.locator(".detail-grid")).toBeVisible();
   await page.screenshot({ path: info.outputPath("detail-desktop.png") });
   const reuse = page

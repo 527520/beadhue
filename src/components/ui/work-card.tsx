@@ -26,7 +26,7 @@ export function WorkCard({ href, linkLabel, title, media, badges, action, action
   return (
     <article data-slot="work-card" className={cn('group/card @container relative flex min-w-0 flex-col gap-2 rounded-lg sm:gap-2.5', className)}>
       <div className="pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg-subtle after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']">
-        <div className="size-full transition-transform duration-400 ease-standard group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain">{media}</div>
+        <div className="size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain">{media}</div>
         {badges ? <div className="absolute top-2.5 left-2.5 z-1 flex gap-1.5">{badges}</div> : null}
         {action ? (
           <div

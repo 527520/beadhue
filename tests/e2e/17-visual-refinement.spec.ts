@@ -50,17 +50,19 @@ test('合法的长英文公开标题不裁切，减少动态效果取消卡片�
   const draft=await post(`/api/admin/batches/${batch.id}/drafts`,{title,snapshot:source.snapshot,reason:'本地长标题排版验证'});
   await uploadDraftOriginal(page,draft.revisionId);
   await post(`/api/admin/batches/${batch.id}/publish`,{revisionIds:[draft.revisionId],expectedVersion:batch.version,reason:'本地长标题排版验证'});
-  await page.goto(`/community?q=${title}`);
-  const card=page.locator('.community-card').filter({has:page.getByRole('heading',{name:title,exact:true})});
+  await page.goto(`/?q=${encodeURIComponent(title)}`);
+  const card=page.locator('[data-slot="work-card"]').filter({has:page.getByRole('heading',{name:title,exact:true})});
   for(const width of widths){
     await page.setViewportSize({width,height:844});await expect(card).toBeVisible();
     // 轮询而不是读一次：setViewportSize 之后卡片内部布局（长词的断词、字体度量）
     // 不一定在同一帧完成，取样到中间态会把合法换行判成溢出（webkit 上间歇性红）。
     // 判据不变，仍是 scrollWidth <= clientWidth。
-    await expect.poll(async()=>card.locator('.community-card-body > div')
-      .evaluate(element=>element.scrollWidth<=element.clientWidth),
-      {message:`${width}px 下长英文标题不应横向溢出`})
+    // 发现页作品卡的标题按原型单行省略：卡片本身不溢出，完整标题在整卡链接的可访问名称里。
+    await expect.poll(async()=>card.evaluate(element=>element.scrollWidth<=element.clientWidth),
+      {message:`${width}px 下长英文标题不应撑破作品卡`})
       .toBe(true);
+    await expect(card.getByRole('heading',{name:title,exact:true})).toHaveCSS('text-overflow','ellipsis');
+    await expect(card.getByRole('link',{name:`查看「${title}」`})).toBeAttached();
     await card.hover();await expectNoMotionTransform(card);
   }
   await page.screenshot({path:output(`long-title-${info.project.name}.png`),fullPage:true});
@@ -77,13 +79,13 @@ test('合法的长英文公开标题不裁切，减少动态效果取消卡片�
 });
 
 test('豆社、色板和登录页五宽度排版与无障碍',async({page},info)=>{
-  for(const route of ['/community','/palettes','/login']){
+  for(const route of ['/','/palettes','/login']){
     await page.goto(route);await waitHydrated(page);await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
     for(const width of widths){
       await page.setViewportSize({width,height:844});
       expect(await page.evaluate(()=>document.documentElement.scrollWidth),`${route} ${width}px`).toBeLessThanOrEqual(width);
       expect(await axe(page),`${route} ${width}px`).toEqual([]);
-      if(width===350||width===1440)await page.screenshot({path:output(`${route.slice(1)}-${info.project.name}-${width}.png`),fullPage:true});
+      if(width===350||width===1440)await page.screenshot({path:output(`${route.slice(1)||'discover'}-${info.project.name}-${width}.png`),fullPage:true});
     }
   }
 });
@@ -137,13 +139,14 @@ test('后台待审、批次和人员队列五宽度排版与无障碍',async({pa
   }
 });
 
-test('无 JavaScript 时保留原生选择和 GET 筛选降级',async({browser,baseURL})=>{
+test('无 JavaScript 时发现页的类目、排序与加载更多仍是可用的链接',async({browser,baseURL})=>{
   const context=await browser.newContext({baseURL,javaScriptEnabled:false,viewport:{width:390,height:844}});
   try{
-    const page=await context.newPage();await page.goto('/community');await page.getByText('更多筛选',{exact:true}).click();
-    await page.getByRole('combobox',{name:'制作规格',exact:true}).selectOption('5mm-29');
-    await page.getByRole('button',{name:'筛选',exact:true}).click();
-    await expect.poll(()=>new URL(page.url()).searchParams.get('boardProfile')).toBe('5mm-29');
+    const page=await context.newPage();await page.goto('/');
+    await expect(page.getByRole('region',{name:'作品'}).getByRole('link',{name:/^查看「/}).first()).toBeVisible();
+    await page.getByRole('navigation',{name:'类目'}).getByRole('link',{name:'精选',exact:true}).click();
+    await expect.poll(()=>new URL(page.url()).searchParams.get('cat')).toBe('featured');
+    await expect(page.getByRole('navigation',{name:'类目'}).getByRole('link',{name:'精选',exact:true})).toHaveAttribute('aria-current','page');
   } finally{await context.close();}
 });
 
@@ -169,26 +172,26 @@ test('字体实际加载，首屏选择图片完整可见，五宽度无溢出',
   }
 });
 
-test('手机筛选嵌套选择、取消、GET 应用及浏览器返回',async({page},info)=>{
-  await page.setViewportSize({width:390,height:844});await page.goto('/community');
-  await page.getByRole('button',{name:'更多筛选',exact:true}).click();
-  const panel=page.getByRole('dialog',{name:'更多筛选',exact:true});
+test('手机筛选底部面板：取消不生效、再次打开重置草稿、应用写进地址及浏览器返回',async({page},info)=>{
+  await page.setViewportSize({width:390,height:844});await page.goto('/');await waitHydrated(page);
+  const trigger=page.getByRole('button',{name:'筛选',exact:true});
+  await trigger.click();
+  const panel=page.getByRole('dialog',{name:'筛选'});
   await expect(panel).toBeVisible();
-  await selectChoice(page,'制作规格','2.6mm / 52×52');
-  await panel.getByRole('textbox',{name:'作者',exact:true}).fill('未提交的作者');
-  await panel.getByRole('button',{name:'关闭选择'}).click();
-  await expect(page.getByRole('button',{name:'更多筛选',exact:true})).toBeFocused();
-  await page.getByRole('button',{name:'更多筛选',exact:true}).click();
-  await expect(panel.getByRole('textbox',{name:'作者',exact:true})).toHaveValue('');
-  await expect(panel.getByRole('button',{name:/制作规格/})).toContainText('全部规格');
-  await selectChoice(page,'制作规格','5mm / 29×29');
+  await panel.getByRole('button',{name:'5mm 标准豆',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'5mm 标准豆',exact:true})).toHaveAttribute('aria-pressed','true');
+  await panel.getByRole('button',{name:'关闭'}).click();
+  await expect(panel).toBeHidden();
+  await expect(trigger).toBeFocused();
+  expect(new URL(page.url()).search).toBe('');
+  await trigger.click();
+  await expect(panel.getByRole('button',{name:'5mm 标准豆',exact:true})).toHaveAttribute('aria-pressed','false');
+  await panel.getByRole('button',{name:'5mm 标准豆',exact:true}).click();
   await page.screenshot({path:output(`filters-${info.project.name}.png`),fullPage:false});
-  await panel.getByRole('button',{name:'筛选',exact:true}).click();
-  await expect.poll(()=>new URL(page.url()).searchParams.get('boardProfile')).toBe('5mm-29');
-  await page.goBack();await expect(page).toHaveURL(/\/community$/);
-  await page.getByRole('radio',{name:'精选',exact:true}).check();
-  await page.getByRole('button',{name:'筛选',exact:true}).click();
-  await expect.poll(()=>new URL(page.url()).searchParams.get('sort')).toBe('featured');
+  await panel.getByRole('button',{name:/^显示 \d+ 张图纸$/}).click();
+  await expect.poll(()=>new URL(page.url()).searchParams.get('spec')).toBe('5mm');
+  await expect(page.getByRole('button',{name:'筛选（已选 1 项）'})).toBeVisible();
+  await page.goBack();await expect.poll(()=>new URL(page.url()).search).toBe('');
 });
 
 test('色板详情独立展示不撑高卡片，关闭恢复焦点',async({page},info)=>{
@@ -263,19 +266,8 @@ test('多色续作、长标题，以及加载失败后的重试状态',async({pa
   await expect(page.locator('.home-community img.community-thumbnail').first()).toBeVisible();
 });
 
-test('分段滑块随选中位移，日期字段整块可点，审计筛选行底边对齐',async({page})=>{
-  await page.setViewportSize({width:1280,height:844});await page.goto('/community');await waitHydrated(page);
-  const track=page.locator('.community-filter-bar .segmented-track');
-  // 滑块是轨道的 ::before，位移读它 transform 矩阵的 X 分量（在浏览器里解析，Node 没有 DOMMatrix）。
-  const thumbX=()=>track.evaluate(node=>new DOMMatrixReadOnly(getComputedStyle(node,'::before').transform).m41);
-  expect(await thumbX()).toBe(0);
-  await page.getByRole('radio',{name:'精选',exact:true}).check();
-  await expect.poll(thumbX).toBeGreaterThan(0);
-  // 更多筛选里的「发布日期」：点字段本体（不是右侧日历按钮）就能打开月历
-  await page.getByRole('button',{name:'更多筛选',exact:true}).click();
-  const group=page.getByRole('group',{name:/发布日期/}).first();await expect(group).toBeVisible();
-  await group.click({position:{x:12,y:20}});
-  await expect(page.getByRole('dialog',{name:'发布日期'})).toBeVisible();await page.keyboard.press('Escape');
+test('审计筛选行底边对齐，日期区间独占下一整行',async({page})=>{
+  await page.setViewportSize({width:1280,height:844});
   // 审计筛选是两段式：搜索与「查询」同一行底边对齐；日期区间独占下一整行，宽度与搜索 + 查询整行一致
   await page.goto('/login?next=/admin/audit');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/audit');await waitHydrated(page);
