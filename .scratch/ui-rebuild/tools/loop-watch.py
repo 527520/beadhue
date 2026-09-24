@@ -1,6 +1,9 @@
 """R15 编排常驻监视：盯住本会话全部子代理记录（含之后新派发的），
 任一记录新增 turn_ended（成功或出错）即输出唤醒行；另按固定间隔输出心跳唤醒行。进程不退出。
 
+唤醒行带递增序号（`AGENT_LOOP_WAKE_r15 #N HH:MM:SS {...}`）：后台通知在主会话空闲时不会开启新回合，
+主会话改为在回合内用 AwaitShell 按序号等下一条（pattern 会匹配整份输出，所以必须带序号）。
+
 用法：python3 loop-watch.py [心跳秒数，默认 1200]
 """
 import json
@@ -29,8 +32,14 @@ def snapshot():
     return counts
 
 
+seq = 0
+
+
 def wake(prompt):
-    print('AGENT_LOOP_WAKE_r15 ' + json.dumps({'prompt': prompt}, ensure_ascii=False), flush=True)
+    global seq
+    seq += 1
+    stamp = time.strftime('%H:%M:%S')
+    print(f'AGENT_LOOP_WAKE_r15 #{seq} {stamp} ' + json.dumps({'prompt': prompt}, ensure_ascii=False), flush=True)
 
 
 seen = {agent_id: len(statuses) for agent_id, statuses in snapshot().items()}
