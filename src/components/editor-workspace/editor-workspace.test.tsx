@@ -8,6 +8,8 @@ import { useEditorDocument } from './use-editor-document';
 
 const RED = { hex: '#FF0000', code: 'R1' };
 const BLUE = { hex: '#0000FF', code: 'B1' };
+// 图纸与色板要稳定引用：父组件每次传新图纸就是新的编辑事务。
+const PALETTE = [RED, BLUE];
 
 function pattern(width: number, height: number, fill = RED): Pattern {
   return { width, height, cells: Array.from({ length: width * height }, () => ({ ...fill, transparent: false })) };
@@ -58,7 +60,8 @@ describe('建议标签规范化（D68）', () => {
 describe('useEditorDocument', () => {
   it('默认当前色是用得最多的颜色；一笔一步撤销，重做恢复', () => {
     const onPatternChange = vi.fn();
-    const { result } = renderHook(() => useEditorDocument({ pattern: pattern(3, 1), palette: [RED, BLUE], onPatternChange }));
+    const value = pattern(3, 1);
+    const { result } = renderHook(() => useEditorDocument({ pattern: value, palette: PALETTE, onPatternChange }));
     expect(result.current.color).toEqual(RED);
     act(() => result.current.setColor(BLUE));
     act(() => { result.current.commitStroke(result.current.paintCell(0, 1)); });
@@ -74,7 +77,8 @@ describe('useEditorDocument', () => {
     const onPatternChange = vi.fn();
     const onOriginalChange = vi.fn();
     const original = { sha256: 'x', width: 30, height: 10, geometry: [1, 0, 0, 1, 0, 0] as [number, number, number, number, number, number] };
-    const { result } = renderHook(() => useEditorDocument({ pattern: pattern(3, 1), palette: [RED, BLUE], original, onOriginalChange, onPatternChange }));
+    const value = pattern(3, 1);
+    const { result } = renderHook(() => useEditorDocument({ pattern: value, palette: PALETTE, original, onOriginalChange, onPatternChange }));
     act(() => { expect(result.current.replaceCode('R1', BLUE)).toBe(3); });
     act(() => result.current.transform('rotateCW'));
     expect(result.current.width).toBe(1);
@@ -87,7 +91,7 @@ describe('useEditorDocument', () => {
 
   it('父组件换了新图纸就开始新的编辑事务：历史清空', () => {
     const onPatternChange = vi.fn();
-    const { result, rerender } = renderHook(({ value }) => useEditorDocument({ pattern: value, palette: [RED, BLUE], onPatternChange }), { initialProps: { value: pattern(2, 1) } });
+    const { result, rerender } = renderHook(({ value }) => useEditorDocument({ pattern: value, palette: PALETTE, onPatternChange }), { initialProps: { value: pattern(2, 1) } });
     act(() => result.current.setColor(BLUE));
     act(() => { result.current.commitStroke(result.current.paintCell(0, 0)); });
     rerender({ value: pattern(4, 4, BLUE) });
