@@ -1,6 +1,4 @@
 "use client";
-import WorkbenchSettings from "./WorkbenchSettings";
-import OriginalUploadStatus from "@/components/beadhue/OriginalUploadStatus";
 import {
   cacheOriginal,
   getCachedOriginal,
@@ -15,10 +13,10 @@ import {
 import { sniffImageType } from "@/lib/image/sniff";
 
 /**
- * 工作台（T12）：选图→整图首版→可选裁剪 + 生成管线 + 编辑器/预览 + 导出 + 本地保存。
- * 本地保存：IndexedDB（未登录可用）；自动保存 1s 防抖 + 手动保存；beforeunload 防丢失；
- * 刷新恢复最后设计；配额满/存储不可用降级提示（E39）。
- * 云端同步接缝（T16/T17）：storage 注入 + onSavedStatus 回调，本票仅本地实现。
+ * 工作台（T12）：选图→整图首版→可选裁剪 + 生成管线 + 编辑器 + 导出 + 本地保存。
+ * 本地保存：IndexedDB（未登录可用）；自动保存 1s 防抖 + Ctrl/⌘+S；beforeunload 防丢失；
+ * 按 /app?id= 恢复设计；配额满/存储不可用降级提示（E39）。
+ * 界面：创作入口（CreateEntry + 弹窗）与编辑器工作区（EditorWorkspace，桌面 / 手机同一组件）；这里只做业务。
  */
 import {
   startTransition,
@@ -28,7 +26,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type KeyboardEvent,
   type MouseEvent,
 } from "react";
 import { perfMark } from "@/lib/perf/mark";
@@ -36,12 +33,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ValidImageFile } from "@/components/upload/UploadDropzone";
 import { takePendingUpload } from "@/lib/upload/pendingUpload";
-import Notice from "@/components/legacy-ui/Notice";
-import Icon from "@/components/legacy-ui/Icon";
-import ShoppingListPanel from "@/components/export/ShoppingListPanel";
-import StitchView from "@/components/stitch/StitchView";
-import ShareButton from "@/components/share/ShareButton";
-import PublishToCommunityButton from "@/components/community/PublishToCommunityButton";
 import {
   canFetchRevisionOriginal,
   fetchRevisionOriginal,
@@ -56,30 +47,20 @@ import {
   isProgressCompatible,
   type StitchProgress,
 } from "@/lib/progress/stitchProgress";
-import StepIndicator from "@/components/workbench/StepIndicator";
-import GenerationCancelControl from "@/components/workbench/GenerationCancelControl";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
-import Modal from "@/components/legacy-ui/Modal";
-import CropDialog from "@/components/crop/CropDialog";
-import GenerationParamsPanel from "@/components/params/GenerationParamsPanel";
 import type { PalettePickerOption } from "@/components/palettes/PalettePicker";
-import PatternPreview from "@/components/preview/PatternPreview";
-import PixelEditorCanvas from "@/components/editor/PixelEditorCanvas";
-import PngExportButton from "@/components/export/PngExportButton";
-import PdfExportButton from "@/components/export/PdfExportButton";
-import ProjectFileButtons from "@/components/export/ProjectFileButtons";
 import { SiteShell } from "@/components/shell/site-shell";
 import { RefreshCw } from "lucide-react";
 import {
   EditorWorkspace,
   type WorkspaceNotice,
 } from "@/components/editor-workspace/editor-workspace";
+import { RecropDialog } from "@/components/editor-workspace/recrop-dialog";
 import { useConfirmDialog } from "@/components/editor-workspace/use-confirm-dialog";
 import type {
   MissingReason,
   ReferenceStatus,
 } from "@/components/editor-workspace/reference";
-import { useIsMobile } from "@/components/ui/use-media-query";
 import { useToast } from "@/components/ui/toast";
 import { CreateEntry } from "@/components/create/create-entry";
 import {
@@ -97,12 +78,7 @@ import {
   specChoices as buildSpecChoices,
   type PaletteChoice,
 } from "@/components/create/palette-choices";
-import LegacyScope from "@/components/layout/LegacyScope";
-import LegacyPageHeading from "@/components/layout/LegacyPageHeading";
-import { useMobileLayout } from "@/components/layout/useMobileLayout";
-import DesignNameEditor from "./DesignNameEditor";
-import WorkbenchProjectBar from "./WorkbenchProjectBar";
-import SaveStatus, { type CloudSaveState, type SaveState } from "./SaveStatus";
+import type { CloudSaveState, SaveState } from "./SaveStatus";
 import { zhCN } from "@/messages/zh-CN";
 import {
   DEFAULT_GENERATION_PARAMS,
@@ -196,35 +172,14 @@ import { track } from "@/lib/analytics/client";
 import { colorBucket, widthBucket } from "@/lib/analytics/buckets";
 
 type Step = "upload" | "crop" | "workspace";
-type Tab = "preview" | "edit" | "stitch";
+type Tab = "edit" | "stitch";
 type PaletteKind =
   { kind: "builtin"; brand: BuiltinPaletteId } | { kind: "custom" };
-
-const MOBILE_WORKSPACE_HISTORY_KEY = "__beadhueMobileWorkspace";
 
 interface PendingStitchWrite {
   adapter: StorageAdapter;
   designId: string;
   progress: StitchProgress;
-}
-
-function mobileWorkspaceFromHistory(
-  state: unknown,
-): Exclude<Tab, "preview"> | null {
-  if (!state || typeof state !== "object") return null;
-  const mode = (state as Record<string, unknown>)[MOBILE_WORKSPACE_HISTORY_KEY];
-  return mode === "edit" || mode === "stitch" ? mode : null;
-}
-
-function historyStateWithMobileWorkspace(
-  mode: Exclude<Tab, "preview">,
-): Record<string, unknown> {
-  const current = window.history.state;
-  const base =
-    current && typeof current === "object"
-      ? (current as Record<string, unknown>)
-      : {};
-  return { ...base, [MOBILE_WORKSPACE_HISTORY_KEY]: mode };
 }
 
 function paletteColorsMatch(
@@ -295,20 +250,13 @@ export default function Workbench({
 }: WorkbenchProps) {
   const t = zhCN.workbench;
   const router = useRouter();
-  // 破坏性操作统一走确认弹窗（C-7）；R15 起用新组件版，入口、编辑器与手机旧布局共用。
+  // 破坏性操作统一走确认弹窗（C-7）：入口与编辑器共用。
   const { confirm, confirmDialog } = useConfirmDialog();
   const toast = useToast();
-  /** 桌面编辑器（≥768）用新工作区；手机仍是旧工作台布局（票 09 重做）。 */
-  const narrow = useIsMobile();
-  const narrowRef = useRef(narrow);
-  useEffect(() => {
-    narrowRef.current = narrow;
-  }, [narrow]);
-  /** 换色板 / 规格 / 档位的结果提示：桌面编辑器用带「撤销」的提示条（旧布局仍用 remapNotice）。 */
+  /** 换色板 / 规格 / 档位的结果提示：带「撤销」的提示条。 */
   const undoRegenerationRef = useRef<() => void>(() => undefined);
   const notifyUndoable = useCallback(
     (message: string): void => {
-      if (narrowRef.current) return;
       toast(message, {
         action: {
           label: zhCN.editorWorkspace.undoAction,
@@ -427,7 +375,6 @@ export default function Workbench({
   const [savedNames, setSavedNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [busyText, setBusyText] = useState<string>(zhCN.workbench.decoding);
-  const [cropRecoveryOpen, setCropRecoveryOpen] = useState(false);
   const replacementBackupRef = useRef<{
     decoded: DecodedImage | null;
     rect: Rect | undefined;
@@ -472,7 +419,6 @@ export default function Workbench({
     imageOperationRef.current += 1;
     imageBusyRef.current = false;
     setBusy(false);
-    setCropRecoveryOpen(false);
     setDecoded(null);
     setLastCropRect(undefined);
     encodedSourceRef.current = null;
@@ -523,8 +469,6 @@ export default function Workbench({
    * 0 表示本会话还没生成过（不放动效）。
    */
   const [doneToken, setDoneToken] = useState(0);
-  const patternRegionRef = useRef<HTMLDivElement>(null);
-  const firstDoneHandledRef = useRef(false);
   const generationDraft = generationSession.draft ?? initialGenerationDraft;
   const paletteSelection = generationDraft.paletteSelection;
   const kitTier = paletteSelection.kitTier;
@@ -552,7 +496,6 @@ export default function Workbench({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const visibleErrorMsg = errorMsg ?? generationSession.error;
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
-  const [hoverInfo, setHoverInfo] = useState<string | null>(null);
   /**
    * 登录态（J-1）：决定头部显示「登录/注册」还是账号邮箱。
    * 探测逻辑收在 useAuthStatus，与首页导航、新手引导共用同一套 401/网络失败处理。
@@ -602,12 +545,6 @@ export default function Workbench({
   const [storageReady, setStorageReady] = useState(false);
   const [tab, setTab] = useState<Tab>("edit");
   const [blankOpen, setBlankOpen] = useState(false);
-  const [mobilePanel, setMobilePanel] = useState<
-    "params" | "colors" | "export"
-  >("params");
-  const [saveSummaryOpen, setSaveSummaryOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [paletteHost, setPaletteHost] = useState<HTMLDivElement | null>(null);
   /** D72 深链：/app?id=…&publish=1 打开后直接弹出「公开到豆社」。 */
   const [publishRequested, setPublishRequested] = useState(false);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
@@ -615,7 +552,6 @@ export default function Workbench({
     designId: string;
     value: string;
   } | null>(null);
-  const mobileLayout = useMobileLayout();
   /**
    * 跟拼进度（G-1）：按设计 id 存在本机 IndexedDB，与图纸尺寸绑定。
    * null 表示本地存储不可用（隐私模式）；尺寸不匹配时重建，避免把「已拼」错位。
@@ -631,8 +567,6 @@ export default function Workbench({
   const pendingStitchWriteRef = useRef<PendingStitchWrite | null>(null);
   const activeStitchWriteRef = useRef<Promise<void> | null>(null);
   const stitchWriteFailedRef = useRef(false);
-  /** 换色板结果提示（H-1）：告诉用户换了多少格，并提示可撤销。 */
-  const [remapNotice, setRemapNotice] = useState<string | null>(null);
   const adapterRef = useRef<StorageAdapter | null>(null);
   const dirtyRef = useRef(false);
   /** 编辑代数：每次置脏 +1；保存完成后仅当代数未变才清脏（避免抹掉保存期间的编辑）。 */
@@ -661,31 +595,6 @@ export default function Workbench({
     setCloudSaveState("pending");
     scheduleAutosave();
   }, [scheduleAutosave]);
-
-  const previewTabRef = useRef<HTMLButtonElement>(null);
-  const editTabRef = useRef<HTMLButtonElement>(null);
-  const stitchTabRef = useRef<HTMLButtonElement>(null);
-  const TAB_ORDER: Tab[] = useMemo(() => ["preview", "edit", "stitch"], []);
-
-  /** 页签键盘导航：←/→ 在预览/修补/跟拼之间循环，焦点跟随（ARIA tabs pattern） */
-  const handleTabKey = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      const current = TAB_ORDER.indexOf(tab);
-      const delta = event.key === "ArrowRight" ? 1 : -1;
-      const next =
-        TAB_ORDER[(current + delta + TAB_ORDER.length) % TAB_ORDER.length];
-      setTab(next);
-      const refs: Record<Tab, React.RefObject<HTMLButtonElement | null>> = {
-        preview: previewTabRef,
-        edit: editTabRef,
-        stitch: stitchTabRef,
-      };
-      refs[next].current?.focus();
-    },
-    [TAB_ORDER, tab],
-  );
 
   const paletteOptions = useMemo<PalettePickerOption[]>(() => {
     const builtin = listBuiltinPalettes().map((summary) => {
@@ -784,15 +693,6 @@ export default function Workbench({
     [projectPalette],
   );
   const paletteColorCount = fullPalette.length;
-  const boardProfileOptions = useMemo(
-    () =>
-      compatibleBoardProfilesForPalette(projectPalette).map((profile) => ({
-        value: profile.id,
-        label: profile.displayName,
-        boardSize: profile.boardCols,
-      })),
-    [projectPalette],
-  );
   const paletteDisplayName =
     projectPalette.kind === "builtin"
       ? getBuiltinPalette(projectPalette.brand).label
@@ -931,7 +831,7 @@ export default function Workbench({
             setName((current) => (current.trim() ? current : fileName));
           setStep("workspace");
           showDesignQuery(designIdRef.current);
-        } else if (!narrowRef.current) {
+        } else {
           // 提示放到下一个任务：提示栈是同步外部状态，和换图纸的重渲染挤在一帧里会成长任务。
           window.setTimeout(() =>
             toast(zhCN.editorWorkspace.regenerated, {
@@ -1030,14 +930,6 @@ export default function Workbench({
   ]);
 
   // ---------- 上传/裁剪 ----------
-
-  // 首次生成完成时把焦点移到图纸区（D-1）：键盘/读屏用户直接落在结果上。
-  // 只做第一次——之后每次调参都抢焦点会打断正在操作参数的用户。
-  useEffect(() => {
-    if (doneToken === 0 || firstDoneHandledRef.current) return;
-    firstDoneHandledRef.current = true;
-    patternRegionRef.current?.focus();
-  }, [doneToken]);
 
   const applyImageCrop = useCallback(
     async (
@@ -1513,11 +1405,6 @@ export default function Workbench({
         paletteSelection: nextPaletteSelection,
         boardProfile: nextBoardProfile,
       });
-      setRemapNotice(
-        nextBoardProfile === boardProfile
-          ? t.remapDone(result.changedCells)
-          : `${t.remapDone(result.changedCells)} ${t.boardProfileChanged(getBoardProfile(nextBoardProfile).displayName)}`,
-      );
       const chosenName =
         paletteChoices.find((choice) => choice.value === value)?.name ??
         zhCN.workbench.customPaletteLabel;
@@ -1542,7 +1429,6 @@ export default function Workbench({
       paletteChoices,
       params,
       remapPalette,
-      t,
       updateGenerationDraft,
     ],
   );
@@ -1566,7 +1452,6 @@ export default function Workbench({
         paletteSelection: committed.paletteSelection,
         boardProfile: value,
       });
-      setRemapNotice(t.boardProfileChanged(getBoardProfile(value).displayName));
       notifyUndoable(
         zhCN.editorWorkspace.adjust.specDone(getBoardProfile(value).displayName),
       );
@@ -1581,7 +1466,6 @@ export default function Workbench({
       notifyUndoable,
       projectPalette,
       remapPalette,
-      t,
       updateGenerationDraft,
     ],
   );
@@ -1677,7 +1561,6 @@ export default function Workbench({
           paletteSelection: nextPaletteSelection,
           boardProfile,
         });
-        setRemapNotice(t.kitApplied(normalizedTier, result.changedCells));
         notifyUndoable(
           zhCN.editorWorkspace.colors.kitDone(normalizedTier, result.changedCells),
         );
@@ -1695,7 +1578,6 @@ export default function Workbench({
       regenerate,
       remapPalette,
       source,
-      t,
       updateGenerationDraft,
     ],
   );
@@ -1727,7 +1609,6 @@ export default function Workbench({
       );
     }
     paletteIdentityUndoRef.current = null;
-    setRemapNotice(null);
     markDirty();
   }, [
     generationSession.committedSource,
@@ -2855,25 +2736,7 @@ export default function Workbench({
     [router, saveBeforeLeave],
   );
 
-  const handleRestart = useCallback((): void => {
-    const leave =
-      generationSession.status === "restored-locked"
-        ? () => {
-            rebindRestoredSourceRef.current = true;
-            clearOriginalSource();
-            setErrorMsg(null);
-            setStep("upload");
-          }
-        : resetWorkbench;
-    void saveBeforeLeave(leave);
-  }, [
-    clearOriginalSource,
-    generationSession.status,
-    resetWorkbench,
-    saveBeforeLeave,
-  ]);
-
-  // ---------- 桌面编辑器（票 08）的界面接缝：业务仍是上面这些处理函数 ----------
+  // ---------- 编辑器（票 08 / 09）的界面接缝：业务仍是上面这些处理函数 ----------
 
   const sourceInputRef = useRef<HTMLInputElement>(null);
   /** 编辑器里「选择原图」：为这张图纸重新选原图（保留设计身份），之后走同一条解码 → 裁剪 → 重新生成。 */
@@ -3113,44 +2976,6 @@ export default function Workbench({
       : "blank";
 
   const forceDragging = useForcedDragging();
-  const mobileWorkspaceOpen =
-    mobileLayout && step === "workspace" && tab !== "preview";
-  const requestOriginal = (): void => {
-    void saveBeforeLeave(() => {
-      rebindRestoredSourceRef.current = true;
-      setStep("upload");
-    });
-  };
-  const sourceAdjustment = generationSession.status === "restored-locked" && (
-    <div className="source-adjustment-note">
-      <p>{t.sourceRequired}</p>
-      {!cropRecoveryOpen && (
-        <button type="button" className="btn-outline" onClick={requestOriginal}>
-          {t.reselectOriginal}
-        </button>
-      )}
-      {communitySource && !cropRecoveryOpen && (
-        <button
-          type="button"
-          className="btn-primary"
-          disabled={busy}
-          onClick={() => void fetchCommunityOriginal()}
-        >
-          {t.fetchCommunityOriginal}
-        </button>
-      )}
-    </div>
-  );
-  const paletteLibraryHref = `/palettes?designId=${encodeURIComponent(designId)}`;
-  const paletteLibraryLink = (
-    <Link
-      href={paletteLibraryHref}
-      className="link-soft text-sm"
-      onClick={(event) => handleNavigationClick(event, paletteLibraryHref)}
-    >
-      {t.paletteLibrary}
-    </Link>
-  );
   const intentOption =
     paletteIntent &&
     paletteOptions.find(
@@ -3169,116 +2994,6 @@ export default function Workbench({
       `${url.pathname}${url.search}${url.hash}`,
     );
   };
-  const paletteIntentNotice = paletteIntent?.designId === designId && (
-    <section className="palette-intent" aria-label={t.paletteIntentAria}>
-      <p>
-        {intentOption
-          ? t.paletteIntentQuestion(
-              intentOption.brand,
-              intentOption.series,
-              name,
-            )
-          : t.paletteIntentMissing}
-      </p>
-      <small>{t.paletteIntentHelp}</small>
-      <div className="community-form-actions">
-        <button
-          type="button"
-          className="btn-primary btn-sm"
-          disabled={
-            !intentOption || busy || generating || !generationSession.committed
-          }
-          onClick={() => {
-            if (
-              !paletteIntent ||
-              paletteIntent.designId !== designId ||
-              !intentOption
-            )
-              return;
-            handlePaletteSelect(paletteIntent.value);
-            dismissPaletteIntent();
-          }}
-        >
-          {t.paletteIntentApply}
-        </button>
-        <button
-          type="button"
-          className="btn-outline btn-sm"
-          onClick={dismissPaletteIntent}
-        >
-          {t.paletteIntentCancel}
-        </button>
-      </div>
-    </section>
-  );
-  const cropAction = (
-    <div className="preview-crop-action">
-      <button
-        type="button"
-        className="btn-outline"
-        disabled={busy || generating}
-        aria-expanded={!decoded ? cropRecoveryOpen : undefined}
-        onClick={(event) => {
-          event.currentTarget.focus();
-          // Opening the cropper re-renders the workspace and mounts a measured
-          // canvas. Let React yield between render work instead of extending the
-          // input event into a single main-thread task; image operations stay urgent.
-          if (decoded) startTransition(() => setStep("crop"));
-          else setCropRecoveryOpen((open) => !open);
-        }}
-      >
-        {zhCN.crop.title}
-      </button>
-      {!decoded && cropRecoveryOpen && (
-        <>
-          <span>{t.cropSourceMissing}</span>
-          <button
-            type="button"
-            className="btn-outline"
-            disabled={busy || generating}
-            onClick={requestOriginal}
-          >
-            {t.reselectOriginal}
-          </button>
-          {communitySource && (
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || generating}
-              onClick={() => void fetchCommunityOriginal()}
-            >
-              {t.fetchCommunityOriginal}
-            </button>
-          )}
-        </>
-      )}
-    </div>
-  );
-
-  /**
-   * 手机编辑/跟拼是 /app 内的一层界面状态：首次进入 push，一层内切换只 replace。
-   * 因此系统 Back 会先回到普通预览，不会直接离开工作台路由。
-   */
-  useEffect(() => {
-    if (!mobileWorkspaceOpen) return;
-    const nextState = historyStateWithMobileWorkspace(tab);
-    if (mobileWorkspaceFromHistory(window.history.state)) {
-      window.history.replaceState(nextState, "", window.location.href);
-    } else {
-      window.history.pushState(nextState, "", window.location.href);
-    }
-  }, [mobileWorkspaceOpen, tab]);
-
-  useEffect(() => {
-    if (!mobileLayout) return;
-    const handlePopState = (event: PopStateEvent): void => {
-      const mode = mobileWorkspaceFromHistory(event.state);
-      setTab(mode ?? "preview");
-      if (!mode) void drainStitchWrites(true);
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [drainStitchWrites, mobileLayout]);
 
   const previousTabRef = useRef<Tab>(tab);
   useEffect(() => {
@@ -3288,15 +3003,8 @@ export default function Workbench({
     previousTabRef.current = tab;
   }, [drainStitchWrites, tab]);
 
-  const exitMobileWorkspace = useCallback((): void => {
-    void drainStitchWrites(true);
-    setTab("preview");
-    if (mobileWorkspaceFromHistory(window.history.state)) window.history.back();
-  }, [drainStitchWrites]);
-
-  // 编辑中（非选图入口）：不显示手机顶栏 / 底栏、页脚与统计浮卡；桌面顶栏保留到票 08 的编辑器顶栏上线。
-  const workingLayout = !(step === "upload" || (step === "crop" && !pattern));
-  if (!workingLayout) {
+  // 选图入口（含首版生成的「新建图纸」弹窗）；有图纸之后是编辑器工作区（桌面 / 手机同一组件）。
+  if (step === "upload" || !pattern) {
     const entryError = visibleErrorMsg ? (
       <>
         {visibleErrorMsg}
@@ -3384,753 +3092,173 @@ export default function Workbench({
       </SiteShell>
     );
   }
-  const stitchPanel = pattern ? (
-    <>
-      {stitchSaveError && (
-        <Notice kind="danger" compact as="div" className="stitch-save-notice">
-          <span>{t.stitchSaveFailed}</span>
-          <button type="button" className="btn-outline btn-sm" onClick={retryStitchSave}>
-            {t.stitchSaveRetry}
-          </button>
-        </Notice>
-      )}
-      {stitchProgress ? (
-        <StitchView
-          pattern={pattern}
-          progress={stitchProgress}
-          boardSize={boardSpec.boardCols}
-          layout={mobileLayout ? "mobile" : "desktop"}
-          onChange={updateStitchProgress}
-        />
-      ) : (
-        <Notice kind="warning">{zhCN.stitch.unavailable}</Notice>
-      )}
-    </>
-  ) : null;
-  if (!narrow && pattern) {
-    const workspaceNotices: WorkspaceNotice[] = [];
-    if (busy)
-      workspaceNotices.push({ id: "busy", tone: "info", text: busyText });
-    if (saveState === "unavailable")
-      workspaceNotices.push({ id: "unavailable", tone: "warning", text: t.unavailable });
-    if (saveState === "quota")
-      workspaceNotices.push({ id: "quota", tone: "danger", text: t.quotaError });
-    if (visibleErrorMsg && visibleErrorMsg !== dismissedError)
-      workspaceNotices.push({
-        id: "error",
-        tone: "danger",
-        text: visibleErrorMsg,
-        onDismiss: () => setDismissedError(visibleErrorMsg),
-      });
-    if (syncNotice)
-      workspaceNotices.push({
-        id: "sync",
-        tone: "info",
-        text: syncNotice,
-        onDismiss: () => setSyncNotice(null),
-      });
-    return (
-      <>
-        <EditorWorkspace
-          designId={designId}
-          name={name}
-          onRename={(nextName) => {
-            setName(nextName);
-            markDirty();
-          }}
-          save={{
-            state: saveState,
-            cloud: cloudSaveState,
-            loggedIn: authStatus.kind === "user",
-            onRetry: () => void doSave(),
-            onSaveNow: () => {
-              if (!generating && generationSession.committed) void doSave();
-            },
-          }}
-          mode={tab === "stitch" ? "stitch" : "edit"}
-          onModeChange={setTab}
-          stitchView={<LegacyScope>{stitchPanel}</LegacyScope>}
-          pattern={pattern}
-          stats={stats}
-          total={total}
-          onPatternChange={handlePatternChange}
-          palette={palette}
-          paletteColorCount={paletteColorCount}
-          paletteChoices={workspacePaletteChoices}
-          paletteValue={selectedPalette}
-          paletteName={paletteDisplayName}
-          onPaletteSelect={handlePaletteSelect}
-          paletteLocked={generating || !generationSession.committed}
-          paletteNotice={paletteLoadFailed ? zhCN.editorWorkspace.colors.paletteLoadFailed : null}
-          specChoices={workspaceSpecChoices}
-          spec={boardProfile}
-          specLabel={boardSpec.displayName}
-          boardSize={boardSpec.boardCols}
-          onSpecSelect={handleBoardProfileSelect}
-          kitTiers={workspaceKitTiers}
-          kitTier={kitTier}
-          onKitChange={handleKitTierChange}
-          params={params}
-          onRegenerate={handleParamsChange}
-          hasSource={Boolean(source)}
-          source={source}
-          generating={generating}
-          generationProgress={progress}
-          generationRound={generationRound}
-          onCancelGeneration={handleCancelGenerate}
-          original={original}
-          originalImage={originalImage}
-          referenceStatus={originalStatus}
-          missingReason={missingReason}
-          onOriginalChange={updateOriginal}
-          onChooseSource={() => sourceInputRef.current?.click()}
-          onFetchCommunity={communitySource ? () => void fetchCommunityOriginal() : undefined}
-          canRecrop={Boolean(decoded)}
-          onRecrop={() => {
-            if (decoded) startTransition(() => setStep("crop"));
-          }}
-          regenerationUndo={Boolean(generationSession.regenerationUndo)}
-          onUndoRegeneration={handleUndoRegeneration}
-          communityOrigin={communityOrigin}
-          onExportProject={exportProjectFile}
-          cellMm={boardProfile === DEFAULT_BOARD_PROFILE_ID ? undefined : boardSpec.pdfCellMm}
-          prepareShare={prepareShare}
-          getOriginal={() => retainedOriginalRef.current}
-          onBack={() => void saveBeforeLeave(() => router.push("/me"))}
-          onNewDesign={() => void saveBeforeLeave(resetWorkbench)}
-          onDuplicate={() => void duplicateDesign()}
-          onDelete={deleteDesign}
-          onImportFile={(file) => void importProjectFromFile(file)}
-          notices={workspaceNotices}
-          paletteIntent={
-            paletteIntent?.designId === designId
-              ? {
-                  question: intentOption
-                    ? t.paletteIntentQuestion(intentOption.brand, intentOption.series, name)
-                    : t.paletteIntentMissing,
-                  help: t.paletteIntentHelp,
-                  applyLabel: t.paletteIntentApply,
-                  cancelLabel: t.paletteIntentCancel,
-                  applyDisabled: !intentOption || busy || generating || !generationSession.committed,
-                }
-              : null
-          }
-          onPaletteIntentApply={() => {
-            if (!paletteIntent || paletteIntent.designId !== designId || !intentOption) return;
-            handlePaletteSelect(paletteIntent.value);
-            dismissPaletteIntent();
-          }}
-          onPaletteIntentCancel={dismissPaletteIntent}
-          busy={busy}
-          announcement={
-            doneToken > 0 && !generating
-              ? t.generateDone(pattern.width, pattern.height, total, stats.length)
-              : ""
-          }
-          publishRequested={publishRequested}
-          onPublishRequestHandled={() => {
-            setPublishRequested(false);
-            const url = new URL(window.location.href);
-            url.searchParams.delete("publish");
-            window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
-          }}
-        />
-        <input
-          ref={sourceInputRef}
-          type="file"
-          accept="image/*,.heic,.heif"
-          hidden
-          aria-label={zhCN.editorWorkspace.reference.fileLabel}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            void handleSourceFile(file);
-          }}
-        />
-        {step === "crop" && decoded && (
-          <LegacyScope>
-            <CropDialog
-              image={decoded}
-              initialRect={lastCropRect}
-              disabled={busy}
-              error={visibleErrorMsg}
-              onConfirm={(rect) => handleCropConfirm(rect)}
-              onCancel={handleCropCancel}
-            />
-          </LegacyScope>
-        )}
-        {confirmDialog}
-      </>
-    );
-  }
+  const workspaceNotices: WorkspaceNotice[] = [];
+  if (busy)
+    workspaceNotices.push({ id: "busy", tone: "info", text: busyText });
+  if (saveState === "unavailable")
+    workspaceNotices.push({ id: "unavailable", tone: "warning", text: t.unavailable });
+  if (saveState === "quota")
+    workspaceNotices.push({ id: "quota", tone: "danger", text: t.quotaError });
+  if (visibleErrorMsg && visibleErrorMsg !== dismissedError)
+    workspaceNotices.push({
+      id: "error",
+      tone: "danger",
+      text: visibleErrorMsg,
+      onDismiss: () => setDismissedError(visibleErrorMsg),
+    });
+  if (syncNotice)
+    workspaceNotices.push({
+      id: "sync",
+      tone: "info",
+      text: syncNotice,
+      onDismiss: () => setSyncNotice(null),
+    });
   return (
-    <SiteShell
-      nav="create"
-      topbarCta={false}
-      tabbar={false}
-      footer={false}
-      mobileTop={false}
-      consent={false}
-      onNavigate={leaveTo}
-    >
-    <LegacyScope><div className="workspace-page bg-cream">
-      {saveSummaryOpen && (
-        <Modal
-          label={zhCN.beadhue.saveTitle}
-          onClose={() => setSaveSummaryOpen(false)}
-          panelClassName="beadhue-save-dialog"
+    <>
+      <EditorWorkspace
+        designId={designId}
+        name={name}
+        onRename={(nextName) => {
+          setName(nextName);
+          markDirty();
+        }}
+        save={{
+          state: saveState,
+          cloud: cloudSaveState,
+          loggedIn: authStatus.kind === "user",
+          onRetry: () => void doSave(),
+          onSaveNow: () => {
+            if (!generating && generationSession.committed) void doSave();
+          },
+        }}
+        mode={tab === "stitch" ? "stitch" : "edit"}
+        onModeChange={setTab}
+        stitchProgress={stitchProgress}
+        onStitchChange={updateStitchProgress}
+        pattern={pattern}
+        stats={stats}
+        total={total}
+        onPatternChange={handlePatternChange}
+        palette={palette}
+        paletteColorCount={paletteColorCount}
+        paletteChoices={workspacePaletteChoices}
+        paletteValue={selectedPalette}
+        paletteName={paletteDisplayName}
+        onPaletteSelect={handlePaletteSelect}
+        paletteLocked={generating || !generationSession.committed}
+        paletteNotice={paletteLoadFailed ? zhCN.editorWorkspace.colors.paletteLoadFailed : null}
+        specChoices={workspaceSpecChoices}
+        spec={boardProfile}
+        specLabel={boardSpec.displayName}
+        boardSize={boardSpec.boardCols}
+        onSpecSelect={handleBoardProfileSelect}
+        kitTiers={workspaceKitTiers}
+        kitTier={kitTier}
+        onKitChange={handleKitTierChange}
+        params={params}
+        onRegenerate={handleParamsChange}
+        hasSource={Boolean(source)}
+        source={source}
+        generating={generating}
+        generationProgress={progress}
+        generationRound={generationRound}
+        onCancelGeneration={handleCancelGenerate}
+        original={original}
+        originalImage={originalImage}
+        referenceStatus={originalStatus}
+        missingReason={missingReason}
+        onOriginalChange={updateOriginal}
+        onChooseSource={() => sourceInputRef.current?.click()}
+        onFetchCommunity={communitySource ? () => void fetchCommunityOriginal() : undefined}
+        canRecrop={Boolean(decoded)}
+        onRecrop={() => {
+          if (decoded) startTransition(() => setStep("crop"));
+        }}
+        regenerationUndo={Boolean(generationSession.regenerationUndo)}
+        onUndoRegeneration={handleUndoRegeneration}
+        communityOrigin={communityOrigin}
+        onExportProject={exportProjectFile}
+        cellMm={boardProfile === DEFAULT_BOARD_PROFILE_ID ? undefined : boardSpec.pdfCellMm}
+        prepareShare={prepareShare}
+        getOriginal={() => retainedOriginalRef.current}
+        onBack={() => void saveBeforeLeave(() => router.push("/me"))}
+        onNewDesign={() => void saveBeforeLeave(resetWorkbench)}
+        onDuplicate={() => void duplicateDesign()}
+        onDelete={deleteDesign}
+        onImportFile={(file) => void importProjectFromFile(file)}
+        notices={
+          stitchSaveError
+            ? [
+                ...workspaceNotices,
+                {
+                  id: "stitch-save",
+                  tone: "danger",
+                  text: t.stitchSaveFailed,
+                  actions: [{ label: t.stitchSaveRetry, onClick: retryStitchSave }],
+                },
+              ]
+            : workspaceNotices
+        }
+        paletteIntent={
+          paletteIntent?.designId === designId
+            ? {
+                question: intentOption
+                  ? t.paletteIntentQuestion(intentOption.brand, intentOption.series, name)
+                  : t.paletteIntentMissing,
+                help: t.paletteIntentHelp,
+                applyLabel: t.paletteIntentApply,
+                cancelLabel: t.paletteIntentCancel,
+                applyDisabled: !intentOption || busy || generating || !generationSession.committed,
+              }
+            : null
+        }
+        onPaletteIntentApply={() => {
+          if (!paletteIntent || paletteIntent.designId !== designId || !intentOption) return;
+          handlePaletteSelect(paletteIntent.value);
+          dismissPaletteIntent();
+        }}
+        onPaletteIntentCancel={dismissPaletteIntent}
+        busy={busy}
+        announcement={
+          doneToken > 0 && !generating
+            ? t.generateDone(pattern.width, pattern.height, total, stats.length)
+            : ""
+        }
+        publishRequested={publishRequested}
+        onPublishRequestHandled={() => {
+          setPublishRequested(false);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("publish");
+          window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
+        }}
+      />
+      <input
+        ref={sourceInputRef}
+        type="file"
+        accept="image/*,.heic,.heif"
+        hidden
+        aria-label={zhCN.editorWorkspace.reference.fileLabel}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void handleSourceFile(file);
+        }}
+      />
+      {step === "crop" && decoded && (
+        <RecropDialog
+          image={decoded}
+          initialRect={lastCropRect}
+          width={params.targetWidth}
+          boardSize={boardSpec.boardCols}
+          busy={busy}
+          error={visibleErrorMsg}
+          onConfirm={(rect) => void handleCropConfirm(rect)}
+          onCancel={handleCropCancel}
         >
-          <h2>{zhCN.beadhue.saveTitle}</h2>
-          <div className="status-list">
-            <p>
-              <Icon name="check" />
-              {zhCN.beadhue.savedLocally}
-            </p>
-            <p>
-              <Icon name="cloud" />
-              {authStatus.kind !== "user"
-                ? zhCN.beadhue.signInSyncHint
-                : cloudSaveState === "synced"
-                  ? zhCN.beadhue.patternSynced
-                  : zhCN.beadhue.patternWaiting}
-            </p>
-            <p>
-              <Icon name="lock" />
-              {zhCN.beadhue.privateVisibility}
-            </p>
-          </div>
-          <OriginalUploadStatus designId={designId} sha256={original?.sha256} />
-          <div className="row wrap">
-            <button
-              className="button"
-              onClick={() => setSaveSummaryOpen(false)}
-            >
-              {zhCN.beadhue.continueEditing}
-            </button>
-            <PublishToCommunityButton
-              designId={designId}
-              onBeforePublish={prepareShare}
-              getOriginal={() => retainedOriginalRef.current}
-              disabled={
-                authStatus.kind !== "user" || generating || communityOrigin
-              }
-              disabledReason={
-                communityOrigin
-                  ? zhCN.publish.communityOriginBlocked
-                  : zhCN.share.requiresCloud
-              }
-            />
-          </div>
-        </Modal>
+          {confirmDialog}
+        </RecropDialog>
       )}
-      {step !== "crop" && (
-        <LegacyPageHeading
-          title={t.title}
-          subtitle={zhCN.workspace.workbenchSubtitle}
-        />
-      )}
-      <div
-        className={`workspace-content beadhue-workbench flex w-full flex-col gap-4 is-working`}
-      >
-        {pattern && (
-          <WorkbenchProjectBar
-            context={
-              <div className="beadhue-editor-title">
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={tab === "preview" && step !== "crop" ? zhCN.beadhue.backToDesigns : zhCN.beadhue.backToPreview}
-                  onClick={() => {
-                    if (step === "crop") handleCropCancel();
-                    else if (tab !== "preview") exitMobileWorkspace();
-                    else void saveBeforeLeave(() => router.push("/me"));
-                  }}
-                >
-                  <Icon name="back" />
-                </button>
-                <div>
-                  <DesignNameEditor
-                    name={name}
-                    onChange={(nextName) => {
-                      setName(nextName);
-                      markDirty();
-                    }}
-                  />
-                  <span className="workspace-palette-summary shrink-0 text-xs text-ink-soft/80">
-                    {zhCN.beadhue.privateLabel}
-                    {paletteDisplayName}
-                  </span>
-                </div>
-              </div>
-            }
-            actions={
-              <div className="workbench-save-actions">
-                <button
-                  type="button"
-                  className="button mobile-settings-button"
-                  aria-expanded={settingsOpen}
-                  onClick={(event) => {
-                    // Safari does not focus buttons on pointer click; keep the sheet's return target explicit.
-                    event.currentTarget.focus();
-                    setSettingsOpen((v) => !v);
-                  }}
-                >
-                  <Icon name="sliders" />
-                  {zhCN.beadhue.parameters}
-                </button>
-                <button
-                  type="button"
-                  className="button publish-desktop"
-                  onClick={() => {
-                    setMobilePanel("export");
-                    setSettingsOpen(true);
-                  }}
-                >
-                  {zhCN.beadhue.export}
-                </button>
-                <SaveStatus
-                  state={saveState}
-                  cloudState={cloudSaveState}
-                  loggedIn={authStatus.kind === "user"}
-                  onSave={() => {
-                    void doSave().then((saved) => {
-                      if (saved) setSaveSummaryOpen(true);
-                    });
-                  }}
-                  disabled={generating || !generationSession.committed}
-                />
-                <span className="publish-desktop">
-                  <PublishToCommunityButton
-                    designId={designId}
-                    onBeforePublish={prepareShare}
-                    getOriginal={() => retainedOriginalRef.current}
-                    disabled={
-                      authStatus.kind !== "user" ||
-                      generating ||
-                      communityOrigin
-                    }
-                    disabledReason={
-                      communityOrigin
-                        ? zhCN.publish.communityOriginBlocked
-                        : zhCN.share.requiresCloud
-                    }
-                  />
-                </span>
-              </div>
-            }
-            overflowActions={
-              <>
-                {authStatus.kind !== "user" && (
-                  <>
-                    <Link
-                      href="/login"
-                      onClick={(event) =>
-                        handleNavigationClick(event, "/login")
-                      }
-                    >
-                      <Icon name="user" size={16} />
-                      {zhCN.nav.login}
-                    </Link>
-                    <Link
-                      href="/register"
-                      onClick={(event) =>
-                        handleNavigationClick(event, "/register")
-                      }
-                    >
-                      <Icon name="plus" size={16} />
-                      {zhCN.nav.registerAccount}
-                    </Link>
-                    <hr aria-hidden="true" />
-                  </>
-                )}
-                <button type="button" onClick={handleRestart}>
-                  <Icon name="refresh" size={16} />
-                  {t.restart}
-                </button>
-              </>
-            }
-          />
-        )}
-
-        {/* 选图与图纸两步；裁剪是图纸上的可选弹窗。 */}
-        <div className="sr-only">
-          <StepIndicator step={step} />
-        </div>
-
-        {busy && (
-          <p className="text-sm text-primary-deep" role="status">
-            {busyText}
-          </p>
-        )}
-        {generating && !busy && (
-          <GenerationCancelControl
-            key={generationRound}
-            generating={generating}
-            progress={progress}
-            onCancel={handleCancelGenerate}
-            labels={{
-              generating: t.generating,
-              progress: t.generatingProgressLabel,
-              cancel: t.cancel,
-            }}
-          />
-        )}
-        {saveState === "unavailable" && (
-          <Notice kind="warning">{t.unavailable}</Notice>
-        )}
-        {/* 配额不足此前只体现在头部徽标文字里（现已缩短），必须在正文说清怎么办（D-8）。 */}
-        {saveState === "quota" && <Notice kind="danger">{t.quotaError}</Notice>}
-        {visibleErrorMsg && (
-          <Notice kind="danger">
-            <span>
-              {visibleErrorMsg}
-              {(visibleErrorMsg === t.designNotLocal ||
-                visibleErrorMsg === t.designUnreadable) && (
-                <>
-                  {" "}
-                  <Link className="link-soft" href="/me">
-                    {t.backToDesigns}
-                  </Link>
-                </>
-              )}
-            </span>
-          </Notice>
-        )}
-        {syncNotice && <Notice kind="warning">{syncNotice}</Notice>}
-        {step === "workspace" && mobileLayout && (
-          <OriginalUploadStatus
-            designId={designId}
-            sha256={original?.sha256}
-            problemsOnly
-          />
-        )}
-
-        {step === "crop" && decoded && pattern && (
-          <CropDialog
-            image={decoded}
-            initialRect={lastCropRect}
-            disabled={busy}
-            error={visibleErrorMsg}
-            onConfirm={(rect) => handleCropConfirm(rect)}
-            onCancel={handleCropCancel}
-          />
-        )}
-
-        {pattern && (
-          <div
-            className={`beadhue-editor-layout${settingsOpen ? " settings-open" : ""}${mobileWorkspaceOpen ? " mobile-editing" : ""}`}
-          >
-            <section className="flex min-w-0 flex-col gap-3">
-              {/*
-              生成完成的结果句：礼貌播报，保持文字对比度，不淡入。
-              以前生成完成没有任何反馈——进度行消失、图纸静默替换，用户不确定是否已完成。
-            */}
-              {doneToken > 0 && !generating && (
-                <p key={doneToken} role="status" className="sr-only">
-                  {t.generateDone(
-                    pattern.width,
-                    pattern.height,
-                    total,
-                    stats.length,
-                  )}
-                </p>
-              )}
-              {tab === "preview" && (
-                <div
-                  id="panel-preview"
-                  role="tabpanel"
-                  aria-labelledby="tab-preview"
-                  ref={patternRegionRef}
-                  tabIndex={-1}
-                >
-                  {/*
-                  这里刻意不做「图纸淡入」动效：淡入需要重挂载才能重播，而重挂载会
-                  把用户的缩放、网格/板缝/色号开关全部重置——每次调参都丢一次视图状态，
-                  代价远大于一个 400ms 的动效。完成状态由上方稳定的结果句播报。
-                */}
-                  <PatternPreview
-                    pattern={pattern}
-                    boardSize={boardSpec.boardCols}
-                    paused={step === "crop" || generating}
-                    onCellHover={(info) =>
-                      setHoverInfo(
-                        info
-                          ? zhCN.preview.cellInfo(
-                              info.row,
-                              info.col,
-                              info.cell.code,
-                            )
-                          : null,
-                      )
-                    }
-                  />
-                </div>
-              )}
-              {tab === "edit" && (
-                <div id="panel-edit" role="tabpanel" aria-labelledby="tab-edit">
-                  <div
-                    className={
-                      generating ? "pointer-events-none opacity-60" : undefined
-                    }
-                    aria-busy={generating}
-                  >
-                    <PixelEditorCanvas
-                      paletteTarget={paletteHost}
-                      original={original}
-                      originalImage={originalImage}
-                      onOriginalChange={updateOriginal}
-                      pattern={pattern}
-                      palette={palette}
-                      boardSize={boardSpec.boardCols}
-                      layout={mobileLayout ? "mobile" : "desktop"}
-                      autoFocus
-                      onPatternChange={handlePatternChange}
-                    />
-                  </div>
-                </div>
-              )}
-              {tab === "stitch" && (
-                <div
-                  id="panel-stitch"
-                  role="tabpanel"
-                  aria-labelledby="tab-stitch"
-                >
-                  {stitchPanel}
-                </div>
-              )}
-              {hoverInfo && tab === "preview" && (
-                <p
-                  role="status"
-                  className="rounded-lg bg-ink px-2 py-1 text-xs text-white"
-                >
-                  {hoverInfo}
-                </p>
-              )}
-              <p className="beadhue-canvas-summary mono">
-                {t.statsTotal(total)} · {t.colorCount(stats.length)}
-              </p>
-
-              {generationSession.regenerationUndo && !generating && (
-                <button
-                  type="button"
-                  onClick={handleUndoRegeneration}
-                  className="self-start btn-outline btn-sm"
-                >
-                  {t.undoRegeneration}
-                </button>
-              )}
-            </section>
-
-            <WorkbenchSettings open={settingsOpen} onClose={() => setSettingsOpen(false)}>
-              <div className="row between beadhue-settings-heading">
-                <h2>{zhCN.beadhue.patternSettings}</h2>
-                <button
-                  type="button"
-                  className="mobile-settings-button icon-button"
-                  aria-label={zhCN.beadhue.closeSettings}
-                  onClick={() => setSettingsOpen(false)}
-                >
-                  <Icon name="close" />
-                </button>
-              </div>
-              <div
-                role="tablist"
-                aria-label={t.title}
-                onKeyDown={handleTabKey}
-                className="desktop-mode-switcher"
-              >
-                <button
-                  ref={previewTabRef}
-                  type="button"
-                  id="tab-preview"
-                  role="tab"
-                  aria-selected={tab === "preview"}
-                  aria-controls="panel-preview"
-                  tabIndex={tab === "preview" ? 0 : -1}
-                  onClick={() => setTab("preview")}
-                  className={`desktop-mode-button${tab === "preview" ? " is-active" : ""}`}
-                >
-                  {t.previewTab}
-                </button>
-                <button
-                  ref={editTabRef}
-                  type="button"
-                  id="tab-edit"
-                  role="tab"
-                  aria-selected={tab === "edit"}
-                  aria-controls="panel-edit"
-                  tabIndex={tab === "edit" ? 0 : -1}
-                  onClick={() => setTab("edit")}
-                  className={`desktop-mode-button${tab === "edit" ? " is-active" : ""}`}
-                >
-                  {t.editTab}
-                </button>
-                <button
-                  ref={stitchTabRef}
-                  type="button"
-                  id="tab-stitch"
-                  role="tab"
-                  aria-selected={tab === "stitch"}
-                  aria-controls="panel-stitch"
-                  tabIndex={tab === "stitch" ? 0 : -1}
-                  onClick={() => setTab("stitch")}
-                  className={`desktop-mode-button${tab === "stitch" ? " is-active" : ""}`}
-                >
-                  {zhCN.stitch.tab}
-                </button>
-              </div>
-
-              <nav className="desktop-tool-dock" aria-label={t.mobileTools}>
-                {(["params", "colors", "export"] as const).map((panel) => (
-                  <button
-                    key={panel}
-                    type="button"
-                    aria-pressed={mobilePanel === panel}
-                    onClick={() => setMobilePanel(panel)}
-                  >
-                    {panel === "params"
-                      ? t.mobileParams
-                      : panel === "colors"
-                        ? t.mobileColors
-                        : t.mobileExport}
-                  </button>
-                ))}
-              </nav>
-              {mobilePanel === "params" && (
-                <>
-                  {paletteIntentNotice}
-                  {cropAction}
-                  {sourceAdjustment}
-                  {paletteLoadFailed && (
-                    <Notice kind="warning" compact>
-                      {t.paletteLoadFailed}
-                    </Notice>
-                  )}
-                  {remapNotice && (
-                    <Notice kind="success" compact>
-                      {remapNotice}
-                    </Notice>
-                  )}
-                  <GenerationParamsPanel
-                    compact
-                    params={params}
-                    paletteOptions={paletteOptions}
-                    selectedPalette={selectedPalette}
-                    onParamsChange={handleParamsChange}
-                    onPaletteSelect={handlePaletteSelect}
-                    boardProfileOptions={boardProfileOptions}
-                    selectedBoardProfile={boardProfile}
-                    onBoardProfileSelect={handleBoardProfileSelect}
-                    paletteColorCount={paletteColorCount}
-                    backgroundSampleSource={source}
-                    disabled={!source || generating}
-                    /* 换色板不需要原图（H-1）：只要有已提交的图纸就能重映射。 */
-                    paletteDisabled={generating || !generationSession.committed}
-                    kitTier={kitTier}
-                    onKitTierChange={handleKitTierChange}
-                  />
-                  {paletteLibraryLink}
-                </>
-              )}
-
-              {mobilePanel === "colors" && generationSession.committed && (
-                <ShoppingListPanel
-                  expanded
-                  stats={stats}
-                  designName={name.trim() || zhCN.project.unnamed}
-                  width={pattern.width}
-                  height={pattern.height}
-                />
-              )}
-
-              {/*
-              导出按钮要留在 DOM 里：生成中的 disabled 是取消协议的一部分（E2E 02 查「下载 PNG」）。
-              用 hidden 而不是卸掉；PNG 规划延后到打开选项，避免落地时扫 2 万格。
-            */}
-              {generationSession.committed && (
-                <div hidden={mobilePanel !== "export"}>
-                  <div className="card-surface flex flex-col gap-3 p-3">
-                    <PngExportButton
-                      pattern={generationSession.committed.pattern}
-                      designName={name.trim() || zhCN.project.unnamed}
-                      boardSize={boardSpec.boardCols}
-                      disabled={generating}
-                      analyticsSource={communityOrigin ? "community" : "other"}
-                    />
-                    <PdfExportButton
-                      name={name.trim() || zhCN.project.unnamed}
-                      pattern={generationSession.committed.pattern}
-                      stats={generationSession.committed.stats}
-                      boardSize={boardSpec.boardCols}
-                      cellMm={
-                        boardProfile === DEFAULT_BOARD_PROFILE_ID
-                          ? undefined
-                          : boardSpec.pdfCellMm
-                      }
-                      disabled={generating}
-                      analyticsSource={communityOrigin ? "community" : "other"}
-                    />
-                    <ProjectFileButtons
-                      source={{
-                        original,
-                        name: name.trim() || zhCN.project.unnamed,
-                        createdAt: createdAt || new Date().toISOString(),
-                        engineVersion:
-                          generationSession.committed.engineVersion,
-                        boardProfile: generationSession.committed.boardProfile,
-                        paletteSelection:
-                          generationSession.committed.paletteSelection,
-                        params: generationSession.committed.params,
-                        pattern: generationSession.committed.pattern,
-                      }}
-                      existingNames={savedNames}
-                      onImport={handleImport}
-                      disabled={generating}
-                      analyticsSource={communityOrigin ? "community" : "other"}
-                    />
-                    {/* 只读分享（K）：需要登录且已同步云端，否则链接打不开 */}
-                    <ShareButton
-                      designId={designId}
-                      onBeforeShare={prepareShare}
-                      disabled={authStatus.kind !== "user" || generating}
-                      disabledReason={
-                        generating
-                          ? zhCN.share.generationInProgress
-                          : zhCN.share.requiresCloud
-                      }
-                    />
-                    {/* 公开到豆社（D49）：带上当前会话原图去投稿页；引用来的副本不能再次公开 */}
-                    <PublishToCommunityButton
-                      designId={designId}
-                      onBeforePublish={prepareShare}
-                      getOriginal={() => retainedOriginalRef.current}
-                      disabled={
-                        authStatus.kind !== "user" ||
-                        generating ||
-                        communityOrigin
-                      }
-                      disabledReason={
-                        communityOrigin
-                          ? zhCN.publish.communityOriginBlocked
-                          : generating
-                            ? zhCN.share.generationInProgress
-                            : zhCN.share.requiresCloud
-                      }
-                    />
-                  </div>
-                </div>
-              )}
-              <div ref={setPaletteHost} className="beadhue-palette-host" />
-              <OriginalUploadStatus
-                designId={designId}
-                sha256={original?.sha256}
-              />
-            </WorkbenchSettings>
-          </div>
-        )}
-        {confirmDialog}
-      </div>
-    </div></LegacyScope>
-    </SiteShell>
+      {step === "crop" && decoded ? null : confirmDialog}
+    </>
   );
 }

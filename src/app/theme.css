@@ -302,6 +302,14 @@
 @utility reference-resize {
   background: linear-gradient(135deg, transparent 52%, var(--color-ink-4) 52% 58%, transparent 58% 70%, var(--color-ink-4) 70% 76%, transparent 76%);
 }
+/* 手机编辑器（票 09）：横向滑动的最近用色条 / 当前行颜色序列不显示滚动条；提示条浮在底部工具栏上方（原型 180px + 安全区）。 */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 767px) {
+  html[data-mobile-editor] [data-slot="toast-viewport"] { bottom: calc(180px + env(safe-area-inset-bottom, 0px)); }
+}
 
 /* Base UI 在 CSPProvider disableStyleElements 下不再注入 <style>，隐藏滚动条的规则由这里静态提供。 */
 .base-ui-disable-scrollbar { scrollbar-width: none; }

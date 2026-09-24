@@ -37,6 +37,9 @@ export const ZOOM_PRESETS = [50, 100, 200, 400] as const;
 export const CODES_MIN_CELL = 18;
 /** 适配时四周留给浮层（尺寸胶囊、原图胶囊、缩放胶囊）的边距。 */
 export const FIT_MARGINS = { top: 60, right: 40, bottom: 76, left: 40 } as const;
+/** 手机画布全屏：浮层更小，边距也更窄（原型 margins 的手机分支）。 */
+export const MOBILE_FIT_MARGINS = { top: 52, right: 16, bottom: 64, left: 16 } as const;
+export type FitMargins = { top: number; right: number; bottom: number; left: number };
 /** 平移时至少留在视野里的图纸像素。 */
 const KEEP_VISIBLE = 48;
 
@@ -44,8 +47,7 @@ const clamp = (value: number, lo: number, hi: number) => Math.max(lo, Math.min(h
 
 export const zoomPercent = (cellPx: number) => Math.round((cellPx / BASE_CELL) * 100);
 
-export function fitEditorCamera(patternW: number, patternH: number, size: GridViewportSize): GridCamera {
-  const m = FIT_MARGINS;
+export function fitEditorCamera(patternW: number, patternH: number, size: GridViewportSize, m: FitMargins = FIT_MARGINS): GridCamera {
   const aw = Math.max(40, size.width - m.left - m.right);
   const ah = Math.max(40, size.height - m.top - m.bottom);
   let cell = Math.min(aw / Math.max(1, patternW), ah / Math.max(1, patternH), 48);
@@ -89,6 +91,30 @@ export function revealCell(camera: GridCamera, row: number, col: number, size: G
     cellPx: camera.cellPx,
     offsetX: Math.round(size.width / 2 - (col + 0.5) * camera.cellPx),
     offsetY: Math.round(size.height / 2 - (row + 0.5) * camera.cellPx),
+  };
+}
+
+/**
+ * 让图纸上的一块区域（格）进入视野（原型 viewport.reveal）：放不下就缩小到正好放下并居中；
+ * 放得下但在边距外就居中；已经在视野里则不动。
+ */
+export function revealRectCamera(camera: GridCamera, rect: { x: number; y: number; w: number; h: number }, size: GridViewportSize, m: FitMargins = FIT_MARGINS): GridCamera {
+  const aw = Math.max(40, size.width - m.left - m.right);
+  const ah = Math.max(40, size.height - m.top - m.bottom);
+  let cell = camera.cellPx;
+  let center = false;
+  if (rect.w * cell > aw || rect.h * cell > ah) {
+    cell = Math.min(cell, Math.max(2, Math.floor(Math.min(aw / rect.w, ah / rect.h))));
+    center = true;
+  }
+  const x0 = camera.offsetX + rect.x * cell;
+  const y0 = camera.offsetY + rect.y * cell;
+  const outside = x0 < m.left || y0 < m.top || x0 + rect.w * cell > size.width - m.right || y0 + rect.h * cell > size.height - m.bottom;
+  if (!center && !outside) return camera;
+  return {
+    cellPx: cell,
+    offsetX: Math.round(m.left + aw / 2 - (rect.x + rect.w / 2) * cell),
+    offsetY: Math.round(m.top + ah / 2 - (rect.y + rect.h / 2) * cell),
   };
 }
 

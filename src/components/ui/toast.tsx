@@ -47,6 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <BaseToast.Portal>
         <BaseToast.Viewport
           data-ui=""
+          data-slot="toast-viewport"
           aria-label={zhCN.ui.toastRegion}
           className="pointer-events-none fixed bottom-6 left-1/2 z-90 grid -translate-x-1/2 justify-items-center gap-2 max-md:bottom-safe-toast"
         >

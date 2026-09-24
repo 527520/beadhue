@@ -34,6 +34,8 @@ export interface EditorDocumentOptions {
   original?: OriginalReference;
   onOriginalChange?: (original: OriginalReference) => void;
   onPatternChange: (pattern: Pattern) => void;
+  /** 一次编辑提交之后（手机「最近用色」按实际用过的颜色更新）。 */
+  onCommit?: (label: ToolId, color: PaletteColor | null) => void;
 }
 
 export interface EditorDocument {
@@ -76,7 +78,7 @@ function mostUsedColor(state: EditorState, palette: readonly PaletteColor[]): Pa
   return palette[0] ?? null;
 }
 
-export function useEditorDocument({ pattern, palette, original, onOriginalChange, onPatternChange }: EditorDocumentOptions): EditorDocument {
+export function useEditorDocument({ pattern, palette, original, onOriginalChange, onPatternChange, onCommit }: EditorDocumentOptions): EditorDocument {
   const available = useMemo(() => palette.filter((color) => color.code !== null && color.code.trim().length > 0), [palette]);
   const stateRef = useRef<EditorState>(createEditorState(pattern));
   const historyRef = useRef(new EditHistory());
@@ -84,6 +86,7 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
   const originalRef = useRef(original);
   const onPatternChangeRef = useRef(onPatternChange);
   const onOriginalChangeRef = useRef(onOriginalChange);
+  const onCommitRef = useRef(onCommit);
   const [version, setVersion] = useState(0);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -96,7 +99,8 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
     originalRef.current = original;
     onPatternChangeRef.current = onPatternChange;
     onOriginalChangeRef.current = onOriginalChange;
-  }, [onOriginalChange, onPatternChange, original]);
+    onCommitRef.current = onCommit;
+  }, [onCommit, onOriginalChange, onPatternChange, original]);
 
   useEffect(() => {
     if (pattern === lastEmittedRef.current) return;
@@ -119,11 +123,12 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
     onPatternChangeRef.current(next);
   }, []);
 
-  const commit = useCallback((label: ToolId, snapshots: EditSnapshot[]): number => {
+  const commit = useCallback((label: ToolId, snapshots: EditSnapshot[], used: PaletteColor | null = null): number => {
     if (snapshots.length === 0) return 0;
     historyRef.current.push({ label, snapshots });
     refreshStats(stateRef.current);
     emit();
+    onCommitRef.current?.(label, used);
     return snapshots.length;
   }, [emit]);
 
@@ -141,7 +146,7 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
     return [];
   }, [brushSize, color, tool]);
 
-  const commitStroke = useCallback((snapshots: EditSnapshot[]) => commit(tool === 'eraser' ? 'eraser' : 'brush', snapshots), [commit, tool]);
+  const commitStroke = useCallback((snapshots: EditSnapshot[]) => commit(tool === 'eraser' ? 'eraser' : 'brush', snapshots, tool === 'eraser' ? null : color), [color, commit, tool]);
 
   const rollback = useCallback((snapshots: EditSnapshot[]) => {
     rollbackSnapshots(stateRef.current.cells, snapshots);
@@ -150,7 +155,7 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
 
   const fillAt = useCallback((row: number, col: number) => {
     const state = stateRef.current;
-    return commit('fill', floodFill(state.cells, state.width, state.height, row, col, color));
+    return commit('fill', floodFill(state.cells, state.width, state.height, row, col, color), color);
   }, [color, commit]);
 
   const pickAt = useCallback((row: number, col: number): PaletteColor | null => {
@@ -161,7 +166,7 @@ export function useEditorDocument({ pattern, palette, original, onOriginalChange
     return picked;
   }, [cellAt]);
 
-  const replaceCode = useCallback((fromCode: string, target: PaletteColor | null) => commit('replace', replaceByCode(stateRef.current.cells, fromCode, target)), [commit]);
+  const replaceCode = useCallback((fromCode: string, target: PaletteColor | null) => commit('replace', replaceByCode(stateRef.current.cells, fromCode, target), target), [commit]);
 
   const clear = useCallback(() => commit('clear', clearAll(stateRef.current.cells)), [commit]);
 

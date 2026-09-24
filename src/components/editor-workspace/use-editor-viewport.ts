@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { screenPointToGridCell, type GridCamera, type GridViewportSize } from '@/lib/render/gridViewport';
-import { BASE_CELL, clampEditorCamera, fitEditorCamera, revealCell, stepZoom, zoomEditorCameraAt } from './editor-model';
+import { BASE_CELL, FIT_MARGINS, clampEditorCamera, fitEditorCamera, revealCell, revealRectCamera, stepZoom, zoomEditorCameraAt, type FitMargins } from './editor-model';
 
 /** jsdom 等测不到尺寸的环境用这个视窗（与旧工作台的有界视窗一致）。 */
 const FALLBACK: GridViewportSize = { width: 640, height: 520 };
@@ -24,16 +24,19 @@ export interface EditorViewport {
   /** 两指缩放：从起始相机直接换算到新相机。 */
   applyCamera: (camera: GridCamera) => void;
   reveal: (row: number, col: number) => void;
+  /** 让一块区域（格）进入视野，放不下就缩小（跟拼切换当前板时用）。 */
+  revealRect: (rect: { x: number; y: number; w: number; h: number }) => void;
   localPoint: (clientX: number, clientY: number) => { x: number; y: number };
   cellAt: (clientX: number, clientY: number) => { row: number; col: number } | null;
 }
 
-export function useEditorViewport(patternWidth: number, patternHeight: number): EditorViewport {
+export function useEditorViewport(patternWidth: number, patternHeight: number, margins: FitMargins = FIT_MARGINS): EditorViewport {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<GridViewportSize>(FALLBACK);
-  const [camera, setCameraState] = useState<GridCamera>(() => fitEditorCamera(patternWidth, patternHeight, FALLBACK));
+  const [camera, setCameraState] = useState<GridCamera>(() => fitEditorCamera(patternWidth, patternHeight, FALLBACK, margins));
   const cameraRef = useRef(camera);
   const sizeRef = useRef(size);
+  const marginsRef = useRef(margins);
   /** 用户动过视图后，窗口尺寸变化只平移保持居中，不再重新适配。 */
   const touchedRef = useRef(false);
   const measuredRef = useRef(false);
@@ -50,7 +53,7 @@ export function useEditorViewport(patternWidth: number, patternHeight: number): 
   const fit = useCallback(() => {
     const { w, h } = dimsRef.current;
     touchedRef.current = false;
-    const next = fitEditorCamera(w, h, sizeRef.current);
+    const next = fitEditorCamera(w, h, sizeRef.current, marginsRef.current);
     cameraRef.current = next;
     setCameraState(next);
   }, []);
@@ -85,6 +88,13 @@ export function useEditorViewport(patternWidth: number, patternHeight: number): 
     fit();
   }, [fit, patternHeight, patternWidth]);
 
+  // 桌面 / 手机切换（窗口跨过 768）：边距变了，没动过视图就按新边距重新适配。
+  useEffect(() => {
+    if (marginsRef.current === margins) return;
+    marginsRef.current = margins;
+    if (!touchedRef.current) fit();
+  }, [fit, margins]);
+
   const readCamera = useCallback(() => cameraRef.current, []);
   const zoomAt = useCallback((cellPx: number, x: number, y: number) => commit(zoomEditorCameraAt(cameraRef.current, cellPx, x, y), true), [commit]);
   const zoomStep = useCallback((dir: 1 | -1, x = sizeRef.current.width / 2, y = sizeRef.current.height / 2) => {
@@ -102,6 +112,10 @@ export function useEditorViewport(patternWidth: number, patternHeight: number): 
     const next = revealCell(cameraRef.current, row, col, sizeRef.current);
     if (next !== cameraRef.current) commit(next, true);
   }, [commit]);
+  const revealRect = useCallback((rect: { x: number; y: number; w: number; h: number }) => {
+    const next = revealRectCamera(cameraRef.current, rect, sizeRef.current, marginsRef.current);
+    if (next !== cameraRef.current) commit(next, true);
+  }, [commit]);
   const localPoint = useCallback((clientX: number, clientY: number) => {
     const rect = wrapRef.current?.getBoundingClientRect();
     return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) };
@@ -112,5 +126,5 @@ export function useEditorViewport(patternWidth: number, patternHeight: number): 
     return screenPointToGridCell(point.x, point.y, cameraRef.current, w, h);
   }, [localPoint]);
 
-  return { wrapRef, size, camera, readCamera, fit, zoomAt, zoomStep, zoomToPercent, panBy, applyCamera, reveal, localPoint, cellAt };
+  return { wrapRef, size, camera, readCamera, fit, zoomAt, zoomStep, zoomToPercent, panBy, applyCamera, reveal, revealRect, localPoint, cellAt };
 }

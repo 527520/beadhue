@@ -30,6 +30,8 @@ export interface ColorsPanelProps {
   onHighlight: (color: PaletteColor | null) => void;
   onReplace: (fromCode: string, target: PaletteColor | null) => void;
   disabled?: boolean;
+  /** 手机底部面板：替换 / 高亮常驻在行尾，颗数一直可见（原型 .ed-used.is-touch）。 */
+  touch?: boolean;
 }
 
 function CurrentColor({ color }: { color: PaletteColor | null }) {
@@ -117,7 +119,7 @@ const PaletteGrid = memo(function PaletteGrid({ colors, color, onColor }: { colo
   );
 });
 
-export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteValue, onPalette, paletteDisabled, paletteNotice, stats, highlight, onHighlight, onReplace, disabled }: ColorsPanelProps) {
+export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteValue, onPalette, paletteDisabled, paletteNotice, stats, highlight, onHighlight, onReplace, disabled, touch = false }: ColorsPanelProps) {
   const t = zhCN.editorWorkspace.colors;
   const [query, setQuery] = useState('');
   const matches = useMemo(() => palette.filter((entry) => matchesColorQuery(entry, query)), [palette, query]);
@@ -140,23 +142,24 @@ export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteVa
               const current = sameColor(color, entry);
               const lit = sameColor(highlight, entry);
               return (
-                <li key={`${item.code}-${item.hex}`} className="group relative rounded-md">
+                <li key={`${item.code}-${item.hex}`} className={cn('group relative rounded-md', touch && 'flex items-center gap-1')}>
                   <button
                     type="button"
                     aria-pressed={current}
                     aria-label={t.useAria(label, item.count)}
                     onClick={() => onColor(entry)}
                     className={cn(
-                      'grid h-9 w-full grid-cols-[auto_40px_minmax(0,1fr)_auto] items-center gap-2 rounded-md pr-3 pl-2 text-left text-body-sm text-ink-2 hover:bg-bg-muted focus-visible:focus-ring group-focus-within:bg-bg-muted',
+                      'grid h-9 w-full grid-cols-[auto_40px_minmax(0,1fr)_auto] items-center gap-2 rounded-md pr-3 pl-2 text-left text-body-sm text-ink-2 hover:bg-bg-muted focus-visible:focus-ring',
+                      touch ? 'min-w-0 flex-1' : 'group-focus-within:bg-bg-muted',
                       current && 'bg-bg-muted font-semibold text-ink',
                     )}
                   >
                     <BeadSwatch hex={item.hex} size="sm" className={current ? 'ring-2 ring-ink ring-offset-2 ring-offset-bg' : undefined} />
                     <span className="truncate font-mono text-caption text-ink">{item.code}</span>
                     <span className="truncate">{colorName(item.hex)}</span>
-                    <span className={cn('text-ink-3 tabular-nums group-focus-within:invisible group-hover:invisible', lit && 'invisible')}>{formatCount(item.count)}</span>
+                    <span className={cn('text-ink-3 tabular-nums', !touch && 'group-focus-within:invisible group-hover:invisible', !touch && lit && 'invisible')}>{formatCount(item.count)}</span>
                   </button>
-                  <span className={cn('absolute top-0.5 right-0.5 hidden rounded-md bg-bg-muted group-focus-within:flex group-hover:flex', lit && 'flex')}>
+                  <span className={cn(touch ? 'flex shrink-0' : cn('absolute top-0.5 right-0.5 hidden rounded-md bg-bg-muted group-focus-within:flex group-hover:flex', lit && 'flex'))}>
                     <ReplaceMenu from={item} color={color} palette={palette} onReplace={onReplace} disabled={disabled} />
                     <IconButton
                       size="sm"

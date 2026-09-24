@@ -6,6 +6,7 @@
  * 编辑画布（原型 editor/viewport.js）：方格渲染 + 网格 / 板缝 / 色号、悬停落点预览、颜色高亮，
  * 以及手势分层——平移、滚轮与双指缩放只改视图；画笔 / 橡皮一次按下到抬起是一条笔迹；
  * 油漆桶、吸管、替换是轻点，拖动超过阈值即转为平移，绝不写图（D5 / D8）。
+ * 跟拼模式（D39）叠加已拼淡化与勾、当前板与当前行高亮；浏览只平移，标记是轻点，未形成导航手势的短点才提交。
  */
 import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
 import { cn } from '@/lib/cn';
@@ -13,11 +14,21 @@ import { BEAD_TOKENS, EDITOR_CANVAS } from '@/lib/render/beadTokens';
 import { luminance } from '@/lib/render/beads';
 import { visibleGridRange, type GridCamera } from '@/lib/render/gridViewport';
 import { rasterizeGridLine, type EditSnapshot } from '@/lib/editor/ops';
+import type { BoardRect } from '@/lib/progress/stitchProgress';
 import type { PaletteColor } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { CODES_MIN_CELL, sameColor } from './editor-model';
+import type { StitchTool } from './stitch-model';
 import type { EditorDocument } from './use-editor-document';
 import type { EditorViewport } from './use-editor-viewport';
+
+/** 跟拼叠层：已拼格、当前板、当前行（整图坐标）。 */
+export interface StitchOverlay {
+  done: Uint8Array;
+  board: BoardRect | null;
+  row: { row: number; colStart: number; colEnd: number } | null;
+  tool: StitchTool;
+}
 
 const MOVE_THRESHOLD_PX = 8;
 const MOUSE_THRESHOLD_PX = 4;
@@ -57,6 +68,12 @@ export interface EditorCanvasProps {
   describedBy?: string;
   /** 进入编辑器时把焦点放在画布上：键盘用户直接落在图纸上（D-1）。 */
   autoFocus?: boolean;
+  /** 跟拼模式：画叠层；标记是轻点（onTap），浏览只平移。 */
+  stitch?: StitchOverlay | null;
+  /** 触屏画笔 / 橡皮连续绘制（会话内显式开启，D5）；默认精准模式：拖动对准、松手只改最终格。 */
+  continuousTouch?: boolean;
+  /** 覆盖默认的可访问名称（跟拼画布）。 */
+  label?: string;
 }
 
 function distance(a: Point, b: Point): number {
@@ -84,6 +101,9 @@ export function EditorCanvas({
   onApply,
   describedBy,
   autoFocus,
+  stitch = null,
+  continuousTouch = false,
+  label,
 }: EditorCanvasProps) {
   const t = zhCN.editorWorkspace;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -178,7 +198,7 @@ export function EditorCanvas({
         }
       }
     }
-    if (highlight) {
+    if (highlight && !stitch) {
       g.fillStyle = EDITOR_CANVAS.paper;
       g.globalAlpha = 0.8;
       g.beginPath();
@@ -201,9 +221,74 @@ export function EditorCanvas({
         g.stroke();
       }
     }
+    if (stitch) {
+      // 已拼：压淡 + 勾（原型 drawStitch）。
+      const stitched = (row: number, col: number) => {
+        const item = at(row, col);
+        return stitch.done[row * state.width + col] === 1 && Boolean(item && !item.transparent && item.hex && item.external !== true);
+      };
+      g.fillStyle = EDITOR_CANVAS.paper;
+      g.globalAlpha = 0.64;
+      g.beginPath();
+      for (let row = range.rowStart; row < range.rowEnd; row += 1) {
+        for (let col = range.colStart; col < range.colEnd; col += 1) if (stitched(row, col)) g.rect(ox + col * cell, oy + row * cell, cell, cell);
+      }
+      g.fill();
+      if (cell >= 9) {
+        g.globalAlpha = 0.62;
+        g.strokeStyle = EDITOR_CANVAS.ink;
+        g.lineWidth = Math.max(1.2, cell * 0.09);
+        g.lineCap = 'round';
+        g.lineJoin = 'round';
+        g.beginPath();
+        for (let row = range.rowStart; row < range.rowEnd; row += 1) {
+          for (let col = range.colStart; col < range.colEnd; col += 1) {
+            if (!stitched(row, col)) continue;
+            const x = ox + col * cell;
+            const y = oy + row * cell;
+            g.moveTo(x + cell * 0.28, y + cell * 0.52);
+            g.lineTo(x + cell * 0.44, y + cell * 0.68);
+            g.lineTo(x + cell * 0.74, y + cell * 0.34);
+          }
+        }
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+      if (stitch.board) {
+        const { colStart, rowStart, width: bwCells, height: bhCells } = stitch.board;
+        const bx = ox + colStart * cell;
+        const by = oy + rowStart * cell;
+        const bw = bwCells * cell;
+        const bh = bhCells * cell;
+        // 当前板以外压淡，当前板描深墨框。
+        g.fillStyle = EDITOR_CANVAS.subtle;
+        g.globalAlpha = 0.66;
+        g.beginPath();
+        g.rect(ox, oy, pw, ph);
+        g.rect(bx, by, bw, bh);
+        g.fill('evenodd');
+        g.globalAlpha = 1;
+        g.strokeStyle = EDITOR_CANVAS.ink;
+        g.lineWidth = 2;
+        g.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
+      }
+      if (stitch.row) {
+        const rx = ox + stitch.row.colStart * cell;
+        const ry = oy + stitch.row.row * cell;
+        const rw = (stitch.row.colEnd - stitch.row.colStart) * cell;
+        g.fillStyle = EDITOR_CANVAS.accent;
+        g.globalAlpha = 0.14;
+        g.fillRect(rx, ry, rw, cell);
+        g.globalAlpha = 1;
+        g.strokeStyle = EDITOR_CANVAS.accent;
+        g.lineWidth = 2;
+        g.strokeRect(rx, ry, rw, cell);
+      }
+    }
     const marker = hoverRef.current ?? cursor;
+    const panTool = stitch ? stitch.tool === 'browse' : doc.tool === 'hand';
     if (marker && marker.row < state.height && marker.col < state.width) {
-      const paints = !locked && !spaceHeld && (doc.tool === 'brush' || doc.tool === 'eraser');
+      const paints = !stitch && !locked && !spaceHeld && (doc.tool === 'brush' || doc.tool === 'eraser');
       const sizeCells = paints ? doc.brushSize : 1;
       const start = -Math.floor((sizeCells - 1) / 2);
       const col = Math.max(0, Math.min(state.width - 1, marker.col + start));
@@ -218,7 +303,7 @@ export function EditorCanvas({
         g.fillRect(x, y, w, h);
         g.globalAlpha = 1;
       }
-      if (doc.tool !== 'hand' || !hoverRef.current) {
+      if (!panTool || !hoverRef.current) {
         g.lineWidth = 3;
         g.strokeStyle = EDITOR_CANVAS.paper;
         g.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
@@ -230,7 +315,7 @@ export function EditorCanvas({
     g.strokeStyle = EDITOR_CANVAS.frame;
     g.lineWidth = 1;
     g.strokeRect(Math.round(ox) - 0.5, Math.round(oy) - 0.5, Math.round(pw) + 1, Math.round(ph) + 1);
-  }, [boardSize, cursor, doc, highlight, locked, showCodes, showGrid, showSeams, size, spaceHeld, viewport]);
+  }, [boardSize, cursor, doc, highlight, locked, showCodes, showGrid, showSeams, size, spaceHeld, stitch, viewport]);
 
   const requestDraw = useCallback(() => {
     if (frameRef.current) return;
@@ -291,7 +376,8 @@ export function EditorCanvas({
     }
     const hit = viewport.cellAt(event.clientX, event.clientY);
     const touch = event.pointerType !== 'mouse';
-    if (doc.tool === 'hand' || spaceHeld || event.button === 1 || locked) {
+    const panTool = stitch ? stitch.tool === 'browse' : doc.tool === 'hand';
+    if (panTool || spaceHeld || event.button === 1 || locked) {
       gestureRef.current = { kind: 'pan', pointerId: event.pointerId, lastX: point.x, lastY: point.y };
       return;
     }
@@ -300,8 +386,8 @@ export function EditorCanvas({
       return;
     }
     onCursorChange(hit, 'pointer');
-    if (doc.tool === 'brush' || doc.tool === 'eraser') {
-      if (event.pointerType === 'touch') {
+    if (!stitch && (doc.tool === 'brush' || doc.tool === 'eraser')) {
+      if (event.pointerType === 'touch' && !continuousTouch) {
         gestureRef.current = { kind: 'aim', pointerId: event.pointerId, hit };
         setHover(hit);
         return;
@@ -446,13 +532,14 @@ export function EditorCanvas({
       viewport.reveal(next.row, next.col);
       return;
     }
-    if (event.key === 'Enter' && cursor && !locked && doc.tool !== 'hand') {
+    if (event.key === 'Enter' && cursor && !locked && !(stitch ? stitch.tool === 'browse' : doc.tool === 'hand')) {
       event.preventDefault();
       onApply(cursor);
     }
   };
 
-  const cursorClass = spaceHeld || doc.tool === 'hand' || locked ? 'cursor-grab' : doc.tool === 'pick' ? 'cursor-copy' : 'cursor-crosshair';
+  const panTool = stitch ? stitch.tool === 'browse' : doc.tool === 'hand';
+  const cursorClass = spaceHeld || panTool || locked ? 'cursor-grab' : stitch ? 'cursor-pointer' : doc.tool === 'pick' ? 'cursor-copy' : 'cursor-crosshair';
 
   return (
     <div
@@ -464,7 +551,7 @@ export function EditorCanvas({
       <canvas
         ref={canvasRef}
         tabIndex={0}
-        aria-label={t.canvasAria(W, H)}
+        aria-label={label ?? t.canvasAria(W, H)}
         aria-describedby={describedBy}
         aria-busy={locked || undefined}
         onPointerDown={onPointerDown}
