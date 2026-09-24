@@ -1,61 +1,57 @@
-import Link from 'next/link';
-import type { CSSProperties } from 'react';
 import { forbidden } from 'next/navigation';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import Icon, { type IconName } from '@/components/legacy-ui/Icon';
 import { getDb } from '@/lib/auth/db';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
 import { getAdminOverview } from '@/lib/admin/overview';
-import { zhCN } from '@/messages/zh-CN';
+import { getAdminTrends } from '@/lib/admin/trends';
+import { getServiceStatus } from '@/lib/admin/serviceStatus';
+import { listCommunityReviewQueue } from '@/lib/community/queries';
+import { listGovernanceComments, listGovernanceReports } from '@/lib/community/interactions';
+import { summarizeModerationToday } from '@/lib/moderation/commentModeration';
+import { AdminPageHead } from '@/components/admin-ui/page-head';
+import { OverviewView, type TodoItem } from '@/components/admin-ui/overview';
 
-/** 后台总览：待办计数按处理顺序排列，取代原来直接跳转到审核台。 */
+/** 后台总览（原型 admin/overview.js）：四张指标卡、跨队列待办前 5、近 7 天趋势、服务状态。 */
 export default async function AdminOverviewPage() {
   const actor = await getSessionActor();
   if (!authorize(actor, 'community:moderate')) forbidden();
   const includeSystem = authorize(actor, 'system:read');
-  const overview = await getAdminOverview(getDb(), { includeSystem });
-  const t = zhCN.communityAdmin.overview;
-  const nav = zhCN.communityAdmin.nav;
-  const queues: Array<{ href: string; icon: IconName; label: string; help: string; count: number }> = [
-    { href: '/admin/reviews', icon: 'inbox', label: t.pendingRevisions, help: t.pendingRevisionsHelp, count: overview.pendingRevisions },
-    { href: '/admin/comments', icon: 'send', label: t.pendingComments, help: t.pendingCommentsHelp, count: overview.pendingComments },
-    { href: '/admin/reports', icon: 'flag', label: t.openReports, help: t.openReportsHelp, count: overview.openReports },
-  ];
-  const shortcuts: Array<{ href: string; icon: IconName; label: string }> = [
-    { href: '/admin/works', icon: 'images', label: nav.works },
-    { href: '/admin/tags', icon: 'tag', label: nav.tags },
-    ...(includeSystem ? [
-      { href: '/admin/batches', icon: 'grid' as IconName, label: nav.batches },
-      { href: '/admin/users', icon: 'users' as IconName, label: nav.users },
-      { href: '/admin/analytics', icon: 'chart' as IconName, label: nav.analytics },
-      { href: '/admin/audit', icon: 'list' as IconName, label: nav.audit },
-      { href: '/admin/logs', icon: 'alert' as IconName, label: nav.logs },
-    ] : []),
-  ];
-  const allClear = queues.every((queue) => queue.count === 0);
-  return <main id="main" className="admin-page admin-overview">
-    <AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} />
-    <section className="admin-overview-queues stagger" aria-label={t.title}>
-      {queues.map((queue, index) => <Link key={queue.href} href={queue.href} style={{ '--i': index } as CSSProperties} className={`admin-overview-card${queue.count > 0 ? ' has-pending' : ''}`}>
-        <span className="admin-overview-icon"><Icon name={queue.icon} size={20} /></span>
-        <strong>{queue.count}</strong>
-        <span className="admin-overview-label">{queue.label}</span>
-        <small>{queue.help}</small>
-        <span className="admin-overview-open">{t.open}<Icon name="arrow" size={14} /></span>
-      </Link>)}
-      {includeSystem && <Link href="/admin/system" style={{ '--i': queues.length } as CSSProperties} className={`admin-overview-card is-system${overview.moderationDegraded ? ' has-pending' : ''}`}>
-        <span className="admin-overview-icon"><Icon name="shield" size={20} /></span>
-        <strong className="admin-overview-state">{overview.moderationDegraded ? t.moderationDegraded : t.moderationHealthy}</strong>
-        <span className="admin-overview-label">{t.moderation}</span>
-        <small>{t.moderationHelp}</small>
-        <span className="admin-overview-open">{t.open}<Icon name="arrow" size={14} /></span>
-      </Link>}
-    </section>
-    {allClear && <p className="admin-overview-clear"><Icon name="check" size={16} /><strong>{t.allClear}</strong><span>{t.allClearHelp}</span></p>}
-    <section className="admin-panel admin-overview-shortcuts" aria-label={t.shortcuts}>
-      <header><h2>{t.shortcuts}</h2></header>
-      <div>{shortcuts.map((item) => <Link key={item.href} href={item.href} className="admin-shortcut"><Icon name={item.icon} size={18} />{item.label}</Link>)}</div>
-    </section>
-  </main>;
+  const db = getDb();
+  const [overview, trends, reviews, comments, reports, services, moderation] = await Promise.all([
+    getAdminOverview(db, { includeSystem }),
+    getAdminTrends(db, { days: 7 }),
+    listCommunityReviewQueue(db, { size: 10 }),
+    listGovernanceComments(db, { size: 10 }),
+    listGovernanceReports(db, { size: 10 }),
+    includeSystem ? getServiceStatus(db) : Promise.resolve(null),
+    includeSystem ? summarizeModerationToday(db) : Promise.resolve(null),
+  ]);
+  const todo: TodoItem[] = [
+    ...reviews.items.map((item) => ({
+      kind: 'review' as const, id: item.revisionId, at: item.submittedAt, title: item.title, revisionId: item.revisionId,
+      revisionNumber: item.revisionNumber, who: item.author.displayName, href: `/admin/reviews?id=${item.revisionId}`,
+    })),
+    ...comments.items.map((item) => ({
+      kind: 'comment' as const, id: item.id, at: item.createdAt.toISOString(), title: item.body, status: item.status,
+      who: item.authorName, href: `/admin/comments?id=${item.id}`,
+    })),
+    ...reports.items.map((item) => ({
+      kind: 'report' as const, id: item.id, at: item.createdAt.toISOString(), title: item.category, target: item.targetType,
+      href: `/admin/reports?id=${item.id}`,
+    })),
+  ].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
+  return (
+    <>
+      <AdminPageHead section="overview" />
+      <OverviewView
+        counts={overview}
+        trends={trends.items}
+        todo={todo.slice(0, 5)}
+        todoTotal={overview.pendingRevisions + overview.pendingComments + overview.openReports}
+        services={services}
+        moderation={moderation ? { calls: moderation.calls, budget: moderation.budget } : null}
+        updatedAt={new Date().toISOString()}
+      />
+    </>
+  );
 }

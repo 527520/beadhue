@@ -222,6 +222,8 @@ describe('GET /api/admin/overview/trends', () => {
     expect(today.submissions).toBe(1);
     expect(today.likes).toBe(1);
     expect(today.newUsers).toBe(3);
+    // R15-10：总览指标卡的迷你趋势（评论 / 举报按创建日，内容安全只计实际调用）。
+    expect(today).toEqual(expect.objectContaining({ comments: expect.any(Number), reports: expect.any(Number), moderationCalls: 0 }));
     expect(body.items.slice(0, 6).every((item: { submissions: number }) => item.submissions === 0)).toBe(true);
     expect((await (await call()).json()).items).toHaveLength(7);
     expect((await call('?days=0')).status).toBe(400);

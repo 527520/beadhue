@@ -1,12 +1,12 @@
 import { forbidden } from 'next/navigation';
-import GovernanceConsole from '@/components/admin/GovernanceConsole';
+import { z } from 'zod';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { AdminPageHead } from '@/components/admin-ui/page-head';
+import { CommentsConsole } from '@/components/admin-ui/governance';
 
-export default async function AdminCommentsPage() {
+export default async function AdminCommentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!authorize(await getSessionActor(), 'community:moderate')) forbidden();
-  const t = zhCN.communityAdmin.pages.comments;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><GovernanceConsole mode="comments" /></main>;
+  const id = z.uuid().safeParse((await searchParams).id);
+  return <><AdminPageHead section="comments" /><CommentsConsole initialOpenId={id.success ? id.data : undefined} /></>;
 }

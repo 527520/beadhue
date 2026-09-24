@@ -52,12 +52,10 @@ export interface PopoverContentProps extends Omit<ComponentProps<typeof BasePopo
   wide?: boolean;
   /** 锚定到触发器以外的元素（如搜索框）。 */
   anchor?: ComponentProps<typeof BasePopover.Positioner>['anchor'];
-  /** 从弹窗里打开时压在弹窗遮罩（z-80）之上。 */
-  raised?: boolean;
   children: ReactNode;
 }
 
-export function PopoverContent({ className, align = 'end', side = 'bottom', wide, anchor, raised, children, ...props }: PopoverContentProps) {
+export function PopoverContent({ className, align = 'end', side = 'bottom', wide, anchor, children, ...props }: PopoverContentProps) {
   const sheet = useContext(SheetContext);
   if (sheet) {
     return (
@@ -71,7 +69,7 @@ export function PopoverContent({ className, align = 'end', side = 'bottom', wide
   }
   return (
     <BasePopover.Portal>
-      <BasePopover.Positioner anchor={anchor} align={align} side={side} sideOffset={8} collisionPadding={12} className={raised ? 'z-90' : 'z-60'} data-ui="">
+      <BasePopover.Positioner anchor={anchor} align={align} side={side} sideOffset={8} collisionPadding={12} className="z-85" data-ui="">
         <BasePopover.Popup data-slot="popover" className={cn(menuPopupClass, wide && 'popover-width-wide max-w-none p-3', className as string)} {...props}>
           {children}
         </BasePopover.Popup>

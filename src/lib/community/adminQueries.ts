@@ -57,7 +57,8 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     id: communityWorks.id, version: communityWorks.version, lifecycleStatus: communityWorks.lifecycleStatus,
     commentsLocked: communityWorks.commentsLocked, featuredAt: communityWorks.featuredAt,
     currentPublishedRevisionId: communityWorks.currentPublishedRevisionId,
-    createdAt: communityWorks.createdAt, title: communityRevisions.title, preview: communityRevisions.preview,
+    createdAt: communityWorks.createdAt, updatedAt: communityWorks.updatedAt, likeCount: communityWorks.likeCount,
+    commentCount: communityWorks.commentCount, title: communityRevisions.title, preview: communityRevisions.preview,
     displayRevisionId: communityRevisions.id, width: communityRevisions.width, height: communityRevisions.height,
     authorType: communityRevisions.authorType, displayName: communityRevisions.frozenDisplayName,
     accountStatus: users.accountStatus, revisionNumber: communityRevisions.revisionNumber,
@@ -65,9 +66,15 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     .leftJoin(users, eq(users.id, communityWorks.authorUserId))
     .where(where).orderBy(desc(communityWorks.createdAt), desc(communityWorks.id))
     .limit(size).offset(pageOffset(meta.page, size));
+  // 后台表格的「标签」列（R15-10）：一页一次查询，按标签排序。
+  const tagRows = rows.length === 0 ? [] : await db.select({ workId: communityWorkTags.workId, name: communityTags.name })
+    .from(communityWorkTags).innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
+    .where(inArray(communityWorkTags.workId, rows.map((row) => row.id))).orderBy(communityTags.sortOrder, communityTags.name);
+  const tagsOf = (workId: string) => tagRows.filter((tag) => tag.workId === workId).map((tag) => tag.name);
   const items = rows.map((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
     return {
+      likeCount: row.likeCount, commentCount: row.commentCount, updatedAt: row.updatedAt.toISOString(), tags: tagsOf(row.id),
       id: row.id, version: row.version, lifecycleStatus: row.lifecycleStatus, commentsLocked: row.commentsLocked,
       isPublic: row.lifecycleStatus === 'active' && row.currentPublishedRevisionId !== null,
       featured: row.featuredAt !== null, title: row.title, revisionNumber: row.revisionNumber,

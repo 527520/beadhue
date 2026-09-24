@@ -17,7 +17,7 @@ const schema = z.object({
 async function get(request: Request) {
   await requireApiActor('community:moderate');
   const search = new URL(request.url).searchParams;
-  const input = Object.fromEntries(['q', 'page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  const input = Object.fromEntries(['q', 'state', 'page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
   return okJson(await listCommunityTagsAdmin(getDb(), input), { headers: { 'Cache-Control': 'private, no-store' } });
 }
 

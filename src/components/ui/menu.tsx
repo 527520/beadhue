@@ -31,7 +31,7 @@ export interface MenuContentProps extends ComponentProps<typeof BaseMenu.Popup> 
 export function MenuContent({ className, align = 'start', side = 'bottom', ...props }: MenuContentProps) {
   return (
     <BaseMenu.Portal>
-      <BaseMenu.Positioner align={align} side={side} sideOffset={8} collisionPadding={12} className="z-60 outline-none" data-ui="">
+      <BaseMenu.Positioner align={align} side={side} sideOffset={8} collisionPadding={12} className="z-85 outline-none" data-ui="">
         <BaseMenu.Popup data-slot="menu" className={cn(menuPopupClass, className as string)} {...props} />
       </BaseMenu.Positioner>
     </BaseMenu.Portal>

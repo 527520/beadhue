@@ -1,12 +1,12 @@
 import { forbidden } from 'next/navigation';
-import ReviewConsole from '@/components/admin/ReviewConsole';
+import { z } from 'zod';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { AdminPageHead } from '@/components/admin-ui/page-head';
+import { ReviewConsole } from '@/components/admin-ui/reviews';
 
-export default async function ReviewsPage() {
+export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!authorize(await getSessionActor(), 'community:moderate')) forbidden();
-  const t = zhCN.communityAdmin.pages.reviews;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><ReviewConsole /></main>;
+  const id = z.uuid().safeParse((await searchParams).id);
+  return <><AdminPageHead section="reviews" /><ReviewConsole initialId={id.success ? id.data : undefined} /></>;
 }

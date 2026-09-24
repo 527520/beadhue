@@ -54,7 +54,7 @@ export function Select({ options, value, defaultValue, onValueChange, label, pla
         </BaseSelect.Icon>
       </BaseSelect.Trigger>
       <BaseSelect.Portal>
-        <BaseSelect.Positioner alignItemWithTrigger={false} sideOffset={8} collisionPadding={12} className="z-60 outline-none" data-ui="">
+        <BaseSelect.Positioner alignItemWithTrigger={false} sideOffset={8} collisionPadding={12} className="z-85 outline-none" data-ui="">
           <BaseSelect.Popup data-slot="select" className={cn(menuPopupClass, 'min-w-(--anchor-width)')}>
             <BaseSelect.List>
               {options.map((option) => (

@@ -1,12 +1,9 @@
 import { forbidden } from 'next/navigation';
-import OfficialBatchStudio from '@/components/admin/OfficialBatchStudio';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { BatchesConsole } from '@/components/admin-ui/batches';
 
 export default async function AdminBatchesPage() {
   if (!authorize(await getSessionActor(), 'official:manage')) forbidden();
-  const t = zhCN.communityAdmin.pages.batches;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><OfficialBatchStudio /></main>;
+  return <BatchesConsole />;
 }

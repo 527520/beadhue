@@ -1,15 +1,17 @@
 import { forbidden } from 'next/navigation';
 import { z } from 'zod';
-import WorksManager from '@/components/admin/WorksManager';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { AdminPageHead } from '@/components/admin-ui/page-head';
+import { WorksConsole } from '@/components/admin-ui/works';
 
-export default async function AdminWorksPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+type Search = Promise<Record<string, string | string[] | undefined>>;
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+
+export default async function AdminWorksPage({ searchParams }: { searchParams: Search }) {
   if (!authorize(await getSessionActor(), 'community:moderate')) forbidden();
-  const parsed = z.uuid().safeParse((await searchParams).work);
-  const workId = parsed.success ? parsed.data : undefined;
-  const t = zhCN.communityAdmin.pages.works;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><WorksManager key={workId ?? 'all'} initialWorkId={workId} /></main>;
+  const params = await searchParams;
+  const id = z.uuid().safeParse(first(params.id) ?? first(params.work));
+  const q = first(params.q)?.slice(0, 80);
+  return <><AdminPageHead section="works" /><WorksConsole key={`${q ?? ''}|${id.success ? id.data : ''}`} initialQ={q} initialOpenId={id.success ? id.data : undefined} /></>;
 }

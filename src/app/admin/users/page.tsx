@@ -1,13 +1,12 @@
 import { forbidden } from 'next/navigation';
-import UsersManager from '@/components/admin/UsersManager';
 import { authorize } from '@/lib/auth/authorization';
 import { getSessionActor } from '@/lib/auth/session';
-import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import { zhCN } from '@/messages/zh-CN';
+import { AdminPageHead } from '@/components/admin-ui/page-head';
+import { UsersConsole } from '@/components/admin-ui/users';
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const actor = await getSessionActor();
   if (!actor || !authorize(actor, 'users:manage')) forbidden();
-  const t = zhCN.communityAdmin.pages.users;
-  return <main id="main" className="admin-page"><AdminPageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} /><UsersManager currentUserId={actor.userId} /></main>;
+  const q = (await searchParams).q;
+  return <><AdminPageHead section="users" /><UsersConsole currentUserId={actor.userId} initialQ={typeof q === 'string' ? q.slice(0, 80) : undefined} /></>;
 }

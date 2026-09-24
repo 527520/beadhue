@@ -72,7 +72,7 @@ export function PalettePicker({ choices, value, onChange, disabled, label = zhCN
   return (
     <Popover open={open} onOpenChange={setOpen} sheetTitle={zhCN.create.paletteMenuTitle}>
       <PickerTrigger label={label} value={current?.name ?? ''} disabled={disabled} prefix={current ? <PaletteBand colors={current.band} max={4} /> : null} />
-      <PopoverContent raised align="start" className="max-h-popover-list overflow-y-auto">
+      <PopoverContent align="start" className="max-h-popover-list overflow-y-auto">
         <div role="listbox" aria-label={zhCN.create.paletteMenuTitle} className="grid">
           {choices.map((choice) => (
             <OptionRow
@@ -99,7 +99,7 @@ export function SpecPicker({ choices, value, onChange, disabled, label = zhCN.cr
   return (
     <Popover open={open} onOpenChange={setOpen} sheetTitle={zhCN.create.specMenuTitle}>
       <PickerTrigger label={label} value={current?.label ?? ''} disabled={disabled} />
-      <PopoverContent raised align="start">
+      <PopoverContent align="start">
         <div role="listbox" aria-label={zhCN.create.specMenuTitle} className="grid">
           {choices.map((choice) => (
             <OptionRow

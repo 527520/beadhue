@@ -27,6 +27,8 @@
 @source "./reset-password";
 @source "./verify-email";
 @source "./dev";
+@source "../components/admin-ui";
+@source "./admin";
 @source "../lib/render/beads.ts";
 @source "../lib/render/tagIconArt.ts";
 @source "./page.tsx";
@@ -66,6 +68,9 @@
   --color-featured: #ffc53d;
   --color-info-soft: #eef3ff;
   --color-danger-hover: #b3262a;
+  /* 后台折线图第二、三条线（原型 admin/data.js：豆色 O 橘橙、B 晴空蓝；第一条用 ink） */
+  --color-chart-2: #f28b2c;
+  --color-chart-3: #3f7fd9;
   --color-scrim: rgb(18 18 20 / 42%);
 
   /* 字体 */
@@ -188,9 +193,10 @@
   --spacing: 0.25rem;
   --color-ink: #1c1c1e;
   --color-success: #17804a;
-  --color-success-soft: #e8f5ee;
+  /* 软底按徽标文字的 AA 对比度取值（成功 4.63:1、警告 4.55:1；原型的 #e8f5ee / #fff4e5 只有 4.43 / 4.35）。 */
+  --color-success-soft: #f0f9f4;
   --color-warning: #b35c00;
-  --color-warning-soft: #fff4e5;
+  --color-warning-soft: #fffaf2;
   --color-danger: #ce2c31;
   --color-danger-soft: #fdecec;
   --font-sans: "BeadHue Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
