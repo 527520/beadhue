@@ -21,6 +21,7 @@
     "docs/compatibility/legacy-brand-allowlist.json": "Scanner rules document the legacy boundary",
     "db/migrate.cjs": "Existing migration lock",
     "db/admin-role.cjs": "Existing governance lock",
+    "src/lib/admin/queries.ts": "Reads the existing migration journal table for system status",
     "src/lib/auth/db.ts": "Existing migration journal table",
     "src/lib/auth/writeAccess.ts": "Existing governance lock",
     "src/lib/auth/cookies.ts": "Legacy session cookie read and removal",
