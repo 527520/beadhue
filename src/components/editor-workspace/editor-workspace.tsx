@@ -499,8 +499,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
 
   const [reviseWorkId, setReviseWorkId] = useState<string | null>(null);
   const startPublish = useCallback((workId: string | null = null) => {
-    setReviseWorkId(workId);
-    requireLogin(() => setDialog('publish'));
+    requireLogin(() => {
+      setReviseWorkId(workId);
+      setDialog('publish');
+    });
   }, [requireLogin]);
 
   /** 底部面板里的动作：先收起面板，下一拍再执行（打开的弹窗接管焦点前面板已经关好）。 */
