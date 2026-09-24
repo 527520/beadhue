@@ -150,7 +150,8 @@ export function DiscoverView({ state, categories, items, nextCursor, total, hot,
             <Link href={discoverHref(state, NO_FILTERS)} className={buttonVariants({ variant: 'ghost', size: 'sm' })}>{t.clearChips}</Link>
           </div>
         ) : null}
-        <section aria-label={t.works}>
+        <section aria-labelledby="discover-works">
+          <h2 id="discover-works" className="sr-only">{t.works}</h2>
           {hasAny ? (
             <>
               <WorkGrid>

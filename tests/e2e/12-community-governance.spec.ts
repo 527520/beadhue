@@ -105,11 +105,11 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
   await login(page, 'e2e-user@example.com');
   // Earlier browser projects publish other E2E works into this shared fixture
   // database. Select the seeded work, not whichever matching title sorts first.
-  const seededWork = page.locator('.community-card').filter({
+  const seededWork = page.locator('[data-slot="work-card"]').filter({
     has: page.getByRole('heading', { name: /^E2E (已公开作品|待审修改版)$/ }),
   });
   await expect(seededWork).toHaveCount(1);
-  await seededWork.locator('a').first().click();
+  await seededWork.getByRole('link', { name: /^查看「/ }).click();
   const expired = page.locator('.community-comment-list li', { hasText: `E2E 可删除旧评论 ${testInfo.project.name}` });
   await expect(expired).toBeVisible();
   await expect(expired.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0);
