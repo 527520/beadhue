@@ -23,8 +23,8 @@ test('HTTPS 同意初始化失败仍可看到错误并重试，失败期间不�
   } finally { await context.close(); await proxy.close(); }
 });
 
-test('损坏的批次历史不能替换已选择的本地图片，重读后可恢复', async ({ page }) => {
-  // 列表改成页码分页后 GET 会带 ?page=&size=，glob 必须用 * 才能命中（admin-round-3 06）。
+test('损坏的批次历史只显示读取失败，不影响新建批次与本地图片，重读后可恢复', async ({ page }) => {
+  // 列表是页码分页，GET 会带 ?page=&size=，glob 必须用 * 才能命中（admin-round-3 06）。
   await page.route('**/api/admin/batches*', async (route) => {
     if (route.request().method() === 'GET') await route.fulfill({ json: { items: [{ id: '00000000-0000-4000-8000-000000000001', status: 'completed' }] } });
     else await route.continue();
@@ -32,16 +32,15 @@ test('损坏的批次历史不能替换已选择的本地图片，重读后可�
   await page.goto('/login?next=/admin/batches');
   await fillField(page, '邮箱', 'e2e-admin@example.com'); await fillField(page, '密码', 'E2e-pass-123!');
   await page.getByRole('button', { name: '登录', exact: true }).click(); await expect(page).toHaveURL(/\/admin\/batches$/);
-  await page.getByLabel('选择图片', { exact: true }).setInputFiles(resolve('tests/fixtures/photo-gradient-64.png'));
-  await page.getByText('恢复已保存批次（最近 50 批）').click();
-  const history = page.locator('.batch-history');
+  const history = page.getByRole('region', { name: '批次列表' });
   await expect(history.getByRole('alert')).toContainText('队列加载失败');
-  await expect(page.locator('.batch-cards > li')).toHaveCount(1);
-  await expect(history.locator('li button')).toHaveCount(0);
+  await expect(history.locator('tbody tr')).toHaveCount(0);
   await page.unroute('**/api/admin/batches*');
   await history.getByRole('button', { name: '重新读取' }).click();
   await expect(history.getByRole('alert')).toHaveCount(0);
-  await expect(page.locator('.batch-cards > li')).toHaveCount(1);
+  await page.getByRole('button', { name: '新建批次' }).click();
+  await page.getByLabel('选择图片', { exact: true }).setInputFiles(resolve('tests/fixtures/photo-gradient-64.png'));
+  await expect(page.locator('[data-batch-card]')).toHaveCount(1);
 });
 
 test('首页精选与最新同时可见，五宽度无横向溢出且可访问', async ({ page }, info) => {
