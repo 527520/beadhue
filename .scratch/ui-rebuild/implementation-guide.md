@@ -130,3 +130,13 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **空状态插画**：`EmptyState kind="notifications"`（豆粒金铃铛，`beads.ts` 的 ART）。
 - **E2E**：铃铛可访问名称是「通知」或「有 N 条未读通知」，徽标 `[data-slot="unread-badge"]`，面板是名为「通知」的 dialog；打开即把露出的条目标为已读，断言未读数要在打开之前做。用例 `tests/e2e/19-notifications.spec.ts` 经接口投稿、后台界面审核。
 - **开发服务**：隔离工作树里长时间运行的 `next dev` 偶尔会对已存在的 API 路由返回 HTML 404（路由表过期），重启即恢复；看到「路由存在却 404、响应是 HTML」先重启再排查。
+
+## 后续票须知（票 09 完成后补充）
+
+- **编辑器只有一个**：`EditorWorkspace` 内部按 `useIsMobile()`（<768）切桌面 / 手机布局，两者共用 `useEditorDocument`、`useStitchSession`、`EditorCanvas` 与各面板；工作台里已没有旧手机工作台、预览页签与 `LegacyScope`，有图纸就渲染编辑器，没有就是创作入口。
+- **跟拼**：进度仍由 `Workbench` 读写本机（`stitchProgress` / `onStitchChange`）；界面状态（撤销重做、当前行、浏览 / 标记）在 `useStitchSession`，纯函数在 `stitch-model.ts`。顶栏撤销重做在跟拼模式作用于跟拼历史；「清空跟拼进度」在「…」。
+- **E2E 选择器**：跟拼画布 `getByLabel(/^跟拼画布：W × H 格/)`（不再是 role=img）；桌面进度文字「已拼 N / M 颗」拆在 `<b>/<span>`；手机进度胶囊按钮名以「P%」开头；手势分段 `group` 名「跟拼手势」（浏览 / 标记）；手机底部工具栏 `toolbar` 名「工具」；手机「…」按钮名「更多」，打开的底部面板标题是设计名；手机没有设计名输入框，用页面标题或「…」→「重命名」。重新裁剪弹窗名仍是「裁剪图片」，取景框 `group`「取景框，方向键移动」，尺寸在 sr-only「取景：W × H 像素」，按钮「原图 / 1:1 / 按底板」「取消」「确认并更新」。
+- **弹窗嵌套**：需要叠在另一个弹窗上的确认，把确认元素作为子节点渲染进上层弹窗（见 `RecropDialog` 的 `children`），否则两个并列的 Base UI 模态会抢焦点。
+- **底部面板里的动作**：打开另一个弹窗前先收面板、下一拍再开（`fromSheet`）；但文件选择器必须同一次点按里调用。
+- **提示条位置**：手机编辑器挂载时给 `<html>` 加 `data-mobile-editor`，`theme.css` 把 `[data-slot="toast-viewport"]` 抬到底栏上方。
+- **票 13 清理清单**见票 09 Comments 末尾。
