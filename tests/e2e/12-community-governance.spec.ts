@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { attachSubmissionOriginal, fillField, selectChoice } from './helpers';
+import { fillField, openPublishDeepLink } from './helpers';
 
 const BATCH_PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
@@ -47,17 +47,15 @@ test('已验证用户引用独立副本并发布评论', async ({ page }, testIn
   await expect(page.getByRole('list', { name: '评论' }).getByText(`E2E ${testInfo.project.name} 普通评论`).first()).toBeVisible();
 });
 
-test('投稿从可信云端预览确认，失败保留草稿并可撤回重提', async ({ page }, testInfo) => {
-  await login(page, 'e2e-user@example.com', '/community/submit');
-  await selectChoice(page, '选择云端设计', 'E2E 私人设计');
-  await expect(page.getByLabel('公开作品标题')).toHaveValue('E2E 私人设计');
+test('投稿深链打开编辑器公开弹窗，失败保留草稿并可撤回重提', async ({ page }, testInfo) => {
+  await login(page, 'e2e-user@example.com', '/me');
+  const { designId, dialog } = await openPublishDeepLink(page, BATCH_PHOTO);
   const title = `E2E ${testInfo.project.name} 投稿恢复`;
-  await page.getByLabel('公开作品标题').fill(title);
-  await expect(page.getByRole('checkbox', { name: /合法发布权/ })).not.toBeChecked();
-  await page.getByRole('checkbox', { name: /合法发布权/ }).check();
-  // D49：公开作品必须附带原图
-  await expect(page.getByRole('button', { name: '提交审核' })).toBeDisabled();
-  await attachSubmissionOriginal(page, BATCH_PHOTO);
+  await dialog.getByLabel('公开标题').fill(title);
+  // D49：公开作品必须附带原图，并确认原图用途与发布权
+  await expect(dialog.getByRole('button', { name: '提交审核' })).toBeDisabled();
+  await dialog.getByRole('checkbox', { name: /同意上传原图/ }).check();
+  await dialog.getByRole('checkbox', { name: /合法发布权/ }).check();
   const creationRequests: Array<{ body: string | null; key: string | undefined }> = [];
   await page.route('**/api/community/works', async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -74,14 +72,14 @@ test('投稿从可信云端预览确认，失败保留草稿并可撤回重提',
     }
     else await route.continue();
   });
-  await page.getByRole('button', { name: '提交审核' }).click();
-  await expect(page.locator('.community-submit-form').getByRole('alert')).toContainText('模拟已提交后超时');
-  await expect(page.getByLabel('公开作品标题')).toBeDisabled();
-  await page.getByRole('button', { name: '重试原投稿' }).click();
-  await expect(page.locator('.community-submit-form').getByRole('alert')).toContainText('草稿已保留');
-  await page.getByRole('button', { name: '重试提交审核' }).click();
-  await expect(page).toHaveURL(/\/me\/public$/);
+  await dialog.getByRole('button', { name: '提交审核' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('模拟已提交后超时');
+  await dialog.getByRole('button', { name: '提交审核' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('模拟提交故障');
+  await dialog.getByRole('button', { name: '提交审核' }).click();
+  await expect(dialog).toHaveCount(0);
   expect(creationRequests).toHaveLength(2); expect(creationRequests[1]).toEqual(creationRequests[0]);
+  await page.goto('/me/public');
   const item = page.locator('[data-slot="own-work-card"]').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
   await expect(item).toHaveCount(1);
   const withdrawalRequests: Array<{ body: string | null; key: string | undefined }> = [];
@@ -103,8 +101,11 @@ test('投稿从可信云端预览确认，失败保留草稿并可撤回重提',
   await item.getByRole('button', { name: `「${title}」的更多操作` }).click();
   await page.getByRole('menuitem', { name: '修改后重投' }).click();
   expect(withdrawalRequests).toHaveLength(2); expect(withdrawalRequests[1]).toEqual(withdrawalRequests[0]);
-  await expect(page.getByLabel('公开作品标题')).toHaveValue('E2E 私人设计');
-  await expect(page.getByRole('checkbox', { name: /合法发布权/ })).not.toBeChecked();
+  // 修改后重投走同一深链：回到这张设计的编辑器，弹窗为该作品提交新修订。
+  await expect(page).toHaveURL(new RegExp(`/app\\?id=${designId}`));
+  const revise = page.getByRole('dialog', { name: '修改并重新投稿' });
+  await expect(revise).toBeVisible({ timeout: 30_000 });
+  await expect(revise.getByRole('checkbox', { name: /合法发布权/ })).not.toBeChecked();
 });
 
 test('评论只能删除不能编辑，待审评论只对本人显示', async ({ page }, testInfo) => {

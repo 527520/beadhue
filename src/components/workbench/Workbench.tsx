@@ -543,8 +543,9 @@ export default function Workbench({
   const [storageReady, setStorageReady] = useState(false);
   const [tab, setTab] = useState<Tab>("edit");
   const [blankOpen, setBlankOpen] = useState(false);
-  /** D72 深链：/app?id=…&publish=1 打开后直接弹出「公开到豆社」。 */
+  /** D72 深链：/app?id=…&publish=1 打开后直接弹出「公开到豆社」；带 workId 时是已有作品的修改后重投。 */
   const [publishRequested, setPublishRequested] = useState(false);
+  const [publishWorkId, setPublishWorkId] = useState<string | null>(null);
   const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [paletteIntent, setPaletteIntent] = useState<{
     designId: string;
@@ -2438,7 +2439,11 @@ export default function Workbench({
         if (requestedId && requestedPalette && requestedPalette.length <= 200) {
           setPaletteIntent({ designId: requestedId, value: requestedPalette });
         }
-        if (urlParams.get("publish") === "1") setPublishRequested(true);
+        if (urlParams.get("publish") === "1") {
+          const workId = urlParams.get("workId");
+          setPublishWorkId(workId && /^[0-9a-f-]{36}$/i.test(workId) ? workId : null);
+          setPublishRequested(true);
+        }
         const requestedMode = urlParams.get("mode");
         if (
           requestedId &&
@@ -3131,10 +3136,12 @@ export default function Workbench({
             : ""
         }
         publishRequested={publishRequested}
+        publishWorkId={publishWorkId}
         onPublishRequestHandled={() => {
           setPublishRequested(false);
           const url = new URL(window.location.href);
           url.searchParams.delete("publish");
+          url.searchParams.delete("workId");
           window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
         }}
       />

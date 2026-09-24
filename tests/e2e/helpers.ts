@@ -9,13 +9,6 @@ import { E2E_ORIGIN } from './serverProcess';
 
 export const BASE_URL = process.env.E2E_BASE_URL ?? E2E_ORIGIN;
 
-/** Exercise the visible selection surface, never its hidden native form bridge. */
-/** 新 Select：桌面触发器是 combobox，手机是打开底部面板的按钮。 */
-export async function selectChoice(page: Page, label: string, option: string) {
-  await page.getByRole('combobox', { name: label, exact: true }).or(page.getByRole('button', { name: label, exact: true })).click();
-  await page.getByRole('option',{name:option,exact:true}).click();
-}
-
 export function uniqueEmail(prefix = 'e2e'): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 }
@@ -100,11 +93,20 @@ export async function typeSpin(page: Page, name: string, value: string): Promise
  * 投稿页原图步骤（D49）：公开作品必须附带原图并同意上传条款。
  * 没有从工作台交接原图时，投稿页要求重新选择文件。
  */
-export async function attachSubmissionOriginal(page: Page, filePath: string): Promise<void> {
-  await waitHydrated(page);
-  await page.locator('[data-slot="submission-original"] input[type="file"]').setInputFiles(filePath);
-  await expect(page.locator('[data-slot="submission-original-card"]')).toBeVisible();
-  await page.getByRole('checkbox', { name: /本人同意按《隐私政策》/ }).check();
+/**
+ * D72 投稿深链：已登录时从一张照片新建设计（原图在本次会话里），等保存后打开 /community/submit?designId=…，
+ * 它跳回这张设计的编辑器并弹出「公开到豆社」。返回设计 id 与弹窗。
+ */
+export async function openPublishDeepLink(page: Page, photo: string): Promise<{ designId: string; dialog: Locator }> {
+  await page.goto('/app');
+  await uploadAndGenerate(page, photo);
+  await waitSaved(page, 30_000);
+  const designId = new URL(page.url()).searchParams.get('id')!;
+  await page.goto(`/community/submit?designId=${designId}`);
+  await expect(page).toHaveURL(new RegExp(`/app\\?id=${designId}`));
+  const dialog = page.getByRole('dialog', { name: '公开到豆社' });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  return { designId, dialog };
 }
 
 /**

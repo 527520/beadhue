@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { attachSubmissionOriginal, fillField, selectChoice, uploadDraftOriginal, waitHydrated } from './helpers';
+import { fillField, openPublishDeepLink, uploadDraftOriginal, waitHydrated } from './helpers';
 
 const widths=[350,390,768,1280,1440];
 const output=(name:string)=>resolve('.scratch/ui-polish-2026/evidence',name);
@@ -96,14 +96,14 @@ test('后台待审、批次和人员队列五宽度排版与无障碍',async({pa
   const authorContext=await browser.newContext({baseURL});
   try{
     const author=await authorContext.newPage();
-    await author.goto('/login?next=/community/submit');await fillField(author,'邮箱','e2e-user@example.com');await fillField(author,'密码','E2e-pass-123!');
-    await author.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(author.url()).pathname).toBe('/community/submit');
-    await selectChoice(author,'选择云端设计','E2E 私人设计');
-    await author.getByLabel('公开作品标题').fill(title);
-    await author.getByRole('checkbox',{name:/合法发布权/}).check();
-    await attachSubmissionOriginal(author, resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png'));
-    await author.getByRole('button',{name:'提交审核'}).click();
-    await expect.poll(()=>new URL(author.url()).pathname).toBe('/me/public');
+    await author.goto('/login?next=/me');await fillField(author,'邮箱','e2e-user@example.com');await fillField(author,'密码','E2e-pass-123!');
+    await author.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(author.url()).pathname).toBe('/me');
+    const {dialog}=await openPublishDeepLink(author, resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png'));
+    await dialog.getByLabel('公开标题').fill(title);
+    await dialog.getByRole('checkbox',{name:/同意上传原图/}).check();
+    await dialog.getByRole('checkbox',{name:/合法发布权/}).check();
+    await dialog.getByRole('button',{name:'提交审核'}).click();
+    await expect(dialog).toHaveCount(0);
   }finally{await authorContext.close();}
   await page.goto('/login?next=/admin/reviews');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/reviews');

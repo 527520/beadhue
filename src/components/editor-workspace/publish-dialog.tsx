@@ -3,6 +3,7 @@
 /**
  * 「公开到豆社」弹窗（D72，原型 editor.js publishDialog）：标题、建议标签（D68，≤5 个、每个 ≤8 字）、
  * 原图同意与发布权两个勾选框、提交审核。投稿三步沿用豆社接口：创建草稿（带建议标签）→ 上传作品原图 → 提交审核。
+ * 带 workId 时是已有作品的「修改后重投」：草稿建在该作品下；本次会话没有原图就沿用上一版原图。
  */
 import { Image as ImageIcon, Lock, Plus, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
@@ -50,6 +51,8 @@ export interface PublishDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   designId: string;
+  /** 已有作品：为它提交新修订。 */
+  workId?: string;
   designName: string;
   pattern: Pattern;
   /** 当前会话里的完整原图；没有时要求先选择原图。 */
@@ -87,7 +90,7 @@ function useSuggestions(): string[] {
   return names;
 }
 
-function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, prepare, onChooseSource, onSubmitted, busy, setBusy, onClose }: Omit<PublishDialogProps, 'open' | 'onOpenChange'> & { busy: boolean; setBusy: (busy: boolean) => void; onClose: () => void }) {
+function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOriginal, prepare, onChooseSource, onSubmitted, busy, setBusy, onClose }: Omit<PublishDialogProps, 'open' | 'onOpenChange'> & { busy: boolean; setBusy: (busy: boolean) => void; onClose: () => void }) {
   const t = zhCN.editorWorkspace.publish;
   const toast = useToast();
   const titleId = useId();
@@ -125,7 +128,7 @@ function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, 
       return;
     }
     const original = getOriginal();
-    if (!original) return;
+    if (!original && !workId) return;
     setBusy(true);
     setError(null);
     // 同一次投稿重试时沿用幂等键与已建草稿，不重复建草稿、不重复上传原图（与投稿页一致）。
@@ -144,7 +147,7 @@ function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, 
           attemptRef.current = null;
           return;
         }
-        const created = await postCommunityCommand('/api/community/works', attempt.key, {
+        const created = await postCommunityCommand(workId ? `/api/community/works/${workId}/revisions` : '/api/community/works', attempt.key, {
           designId,
           expectedDesignRevision: cloud.revision,
           title: trimmed,
@@ -154,7 +157,7 @@ function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, 
         attempt.draft = { revisionId: String(created.revisionId), version: Number(created.version) };
         track({ name: 'community_submission_created', properties: {} });
       }
-      if (!attempt.uploaded) {
+      if (original && !attempt.uploaded) {
         const bytes = original.type === 'heic' ? await convertHeicWithWasm(original.bytes) : original.bytes;
         await uploadRevisionOriginal(attempt.draft.revisionId, bytes);
         attempt.uploaded = true;
@@ -176,13 +179,14 @@ function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, 
     }
   };
 
-  const canSubmit = hasOriginal && consentOriginal && consentRights && !busy;
+  const canSubmit = (hasOriginal ? consentOriginal : Boolean(workId)) && consentRights && !busy;
   return (
     <DialogContent size="md">
       <DialogHeader>
-        <DialogTitle>{t.title}</DialogTitle>
+        <DialogTitle>{workId ? t.reviseTitle : t.title}</DialogTitle>
       </DialogHeader>
       <DialogBody className="grid gap-4">
+        {workId ? <p className="text-body-sm text-ink-3">{t.reviseHelp}</p> : null}
         <div className="flex items-start gap-4">
           <BeadImage pattern={pattern} alt={t.thumbAlt} lazy={false} pad={0.06} className="size-24 shrink-0 rounded-lg bg-bg-subtle max-md:size-18" />
           <div className="grid min-w-0 flex-1 gap-1.5">
@@ -236,6 +240,12 @@ function PublishBody({ designId, designName, pattern, getOriginal, hasOriginal, 
               <Link href="/community/copyright" target="_blank" className="justify-self-start text-caption text-accent underline-offset-2 hover:underline">{t.rules}</Link>
             </div>
           </>
+        ) : workId ? (
+          <div className="grid gap-3">
+            <Note icon={<Lock aria-hidden="true" strokeWidth={1.75} />}>{t.reviseOriginal}</Note>
+            <Checkbox checked={consentRights} disabled={busy} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
+            <Link href="/community/copyright" target="_blank" className="justify-self-start text-caption text-accent underline-offset-2 hover:underline">{t.rules}</Link>
+          </div>
         ) : (
           <Note tone="warning" icon={<TriangleAlert aria-hidden="true" strokeWidth={1.75} />}>
             <p>{t.originalMissing}</p>

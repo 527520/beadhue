@@ -136,6 +136,8 @@ export interface EditorWorkspaceProps {
   announcement?: string;
   /** /app?id=&publish=1（D72 深链）：打开后直接弹出公开弹窗。 */
   publishRequested?: boolean;
+  /** 深链带 workId：公开弹窗为这件已有作品提交新修订（修改后重投）。 */
+  publishWorkId?: string | null;
   onPublishRequestHandled?: () => void;
 }
 
@@ -283,7 +285,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     original, originalImage, referenceStatus, missingReason, onOriginalChange, onChooseSource, onFetchCommunity, canRecrop, onRecrop,
     regenerationUndo, onUndoRegeneration, communityOrigin, onExportProject, cellMm, prepareShare, getOriginal,
     onBack, onNewDesign, onDuplicate, onDelete, onImportFile, notices, paletteIntent, onPaletteIntentApply, onPaletteIntentCancel,
-    busy, announcement, publishRequested, onPublishRequestHandled,
+    busy, announcement, publishRequested, publishWorkId, onPublishRequestHandled,
   } = props;
   const toast = useToast();
   const requireLogin = useRequireLogin();
@@ -495,7 +497,9 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     requestAnimationFrame(() => document.getElementById('editor-shopping')?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }, [onModeChange, stitch]);
 
-  const startPublish = useCallback(() => {
+  const [reviseWorkId, setReviseWorkId] = useState<string | null>(null);
+  const startPublish = useCallback((workId: string | null = null) => {
+    setReviseWorkId(workId);
     requireLogin(() => setDialog('publish'));
   }, [requireLogin]);
 
@@ -508,8 +512,8 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   useEffect(() => {
     if (!publishRequested) return;
     onPublishRequestHandled?.();
-    if (!communityOrigin) startPublish();
-  }, [communityOrigin, onPublishRequestHandled, publishRequested, startPublish]);
+    if (!communityOrigin) startPublish(publishWorkId ?? null);
+  }, [communityOrigin, onPublishRequestHandled, publishRequested, publishWorkId, startPublish]);
 
   // ---------- 键盘 ----------
   const keyState = useRef({ undo, redo, setTool, viewport, stitch, session, locked, saveNow: save.onSaveNow });
@@ -611,7 +615,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         ) : community.kind === 'pending' ? (
           <MenuLinkItem href="/me/public" icon={<Hourglass aria-hidden="true" strokeWidth={1.75} />}>{menuNote(t.shareMenu.pending, t.shareMenu.pendingNote)}</MenuLinkItem>
         ) : (
-          <MenuItem icon={<Send aria-hidden="true" strokeWidth={1.75} />} onClick={startPublish}>{menuNote(t.shareMenu.publish, t.shareMenu.publishNote)}</MenuItem>
+          <MenuItem icon={<Send aria-hidden="true" strokeWidth={1.75} />} onClick={() => startPublish()}>{menuNote(t.shareMenu.publish, t.shareMenu.publishNote)}</MenuItem>
         )}
       </MenuContent>
     </Menu>
@@ -866,6 +870,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         open={dialog === 'publish'}
         onOpenChange={(open) => setDialog(open ? 'publish' : null)}
         designId={designId}
+        workId={reviseWorkId ?? undefined}
         designName={title}
         pattern={pattern}
         getOriginal={getOriginal}
@@ -1049,7 +1054,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
             <button type="button" className={sheetItemClass} onClick={() => setSheet('info')}>{icon(Info)}{t.mobile.info}</button>
             <button type="button" className={sheetItemClass} onClick={() => setSheet('export')}>{icon(Download)}{t.mobile.export}</button>
             <button type="button" className={sheetItemClass} disabled={shareBlocked} onClick={() => fromSheet(() => requireLogin(() => setDialog('share')))}>{icon(Share2)}{t.mobile.shareLink}</button>
-            <button type="button" className={sheetItemClass} disabled={publishBlocked || shareBlocked} onClick={() => fromSheet(startPublish)}>
+            <button type="button" className={sheetItemClass} disabled={publishBlocked || shareBlocked} onClick={() => fromSheet(() => startPublish())}>
               {icon(Send)}
               <span className="grid min-w-0 flex-1">
                 <span>{t.mobile.publish}</span>
