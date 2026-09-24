@@ -37,11 +37,11 @@ function Delta({ now, before, unit = '', backlog = true }: { now: number; before
 function Metric({ href, icon: Icon, label, value, spark, delta }: { href: string; icon: LucideIcon; label: string; value: ReactNode; spark: number[]; delta: ReactNode }) {
   return (
     <Link href={href} className="grid min-w-0 gap-1.5 rounded-lg border border-line bg-bg py-4 pr-4 pl-5 transition-[border-color,box-shadow] duration-state ease-standard hover:border-line-strong hover:shadow-float focus-visible:focus-ring max-md:p-3.5 max-md:pb-3">
-      <span className="flex items-center gap-1.5 text-body-sm font-medium whitespace-nowrap text-ink-2">
-        <Icon aria-hidden="true" strokeWidth={1.75} className="size-4 text-ink-3 max-md:hidden" />{label}
-        <ChevronRight aria-hidden="true" strokeWidth={1.75} className="ml-auto size-4 text-ink-4" />
+      <span className="flex min-w-0 items-center gap-1.5 text-body-sm font-medium whitespace-nowrap text-ink-2">
+        <Icon aria-hidden="true" strokeWidth={1.75} className="size-4 shrink-0 text-ink-3 max-md:hidden" /><span className="min-w-0 truncate">{label}</span>
+        <ChevronRight aria-hidden="true" strokeWidth={1.75} className="ml-auto size-4 shrink-0 text-ink-4" />
       </span>
-      <span className="flex min-h-9 items-center justify-between gap-3">{value}<Sparkline values={spark} className="max-md:w-14" /></span>
+      <span className="flex min-h-9 min-w-0 items-center justify-between gap-3">{value}<Sparkline values={spark} className="w-14 xl:w-22" /></span>
       {delta}
     </Link>
   );
@@ -175,7 +175,7 @@ export function OverviewView({ counts, trends, todo, todoTotal, services, modera
           ))}
         </footer>
       </AdminCard>
-      <AdminCard aria-labelledby="adm-trend-title" className={cn('col-span-full flex flex-col', withSystem ? 'xl:col-span-4' : 'xl:col-span-5')}>
+      <AdminCard aria-labelledby="adm-trend-title" className={cn('col-span-full flex flex-col', withSystem ? 'lg:max-xl:order-last xl:col-span-4' : 'xl:col-span-5')}>
         <CardHead id="adm-trend-title" title={t.trend} aside={<span className="tabular-nums">{t.trendRange(days[0]?.long ?? '')}</span>} />
         <ChartLegend series={series} />
         <div className="flex min-h-55 flex-1 px-5 py-4 max-md:px-4 max-md:py-3"><LineChart days={days} series={series} label={t.trendLabel} /></div>
