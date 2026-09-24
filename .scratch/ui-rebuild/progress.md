@@ -26,7 +26,7 @@
 | 10 后台 | 完成 09-24 12:06，已合并 | 8267c9b7-e49b-4f0a-bbbd-e5db5ed88e60 | 6cf9234 … 262453f（21 个）；合并 656e9b0 |
 | 11 通知 | 完成 09-24 15:4x，已合并 | 4509e2fe-b099-4182-95d5-c7880803ee2b | 5925e44 … 1bee41e（5 个）；合并 d352c9d |
 | 12 分享与静态页 | 完成 09-24 16:44，集成分支已备好，待 09 结束后合入 | 8293cc7e-586f-4d37-8578-58cecbc193eb | a3cdd70、4813a68、c3b359d；集成分支 `integrate/r15-12`（ef3ab0f = 主分支 5b0dc6a + 12，冲突已解，typecheck / lint / brand 通过）。重启版 558f1e92 作废，停掉后删 `beadhue-r15-12b` 与 `feat/beadhue-r15-12-pages-v2` |
-| 13 清理与文档 | 待办 | | |
+| 13 清理与文档 | 拆成两段。13a 文档进行中（09-24 17:25，工作树 `~/.codex/worktrees/beadhue-r15-13/doupu`，分支 `feat/beadhue-r15-13-docs`，只改 CONTEXT / ADR-0027 / CHANGELOG）；13b 清理（删旧样式 / 组件 / 依赖、护栏扩展、README 截图、spec Completion）等 09 合并后在主工作区派发 | 13a：8edbd2c9-0fef-4256-aa13-b19953fb7653 | 13a 基于 ef3ab0f |
 | 14 全量验收 | 待办 | | |
 
 ## 派发顺序
@@ -99,3 +99,5 @@
 - 16:14 d352c9d 的全量 vitest（票 05 的旧工作树里跑）：255 个文件里 1 个失败，2 条都是 `admin/community/tags/route.test.ts` 准备钩子 10 秒超时（当时多个工作树在跑 E2E）；16:55 单独复跑 3/3 通过，确认是负载所致。
 - 16:44 12 完成（8293cc7e：a3cdd70、4813a68、c3b359d；分支内全量 vitest 1871 通过、0 失败）。遗留给 13：`AnalyticsConsentSettings`、`zhCN.onboarding.dismiss/start`、`zhCN.share` 旧文案无引用。16:51 09 因 resource_exhausted 中断（主工作区 19 处未提交、尚无提交），16:52 续跑。558f1e92 仍被平台当成运行中，16:23 后无新动作（没看到停止通知），不影响其他票。
 - 16:55 在票 05 的旧工作树里建集成分支 `integrate/r15-12`（基于主分支 5b0dc6a）合入 12：冲突 5 处都取并集（`zh-CN.ts` 两段之间补上 `me` 段的收尾括号；`beads.ts` 插画类型并入 `lost` / `broken`）。typecheck / lint / brand 通过，全量 vitest 后台运行。09 结束后把 `integrate/r15-12` 合进主分支，再派发 13。16:58 监视器重启（PID 14355，终端 48159）。
+- 17:05 `integrate/r15-12` 全量 vitest：254 个文件、1924 通过、0 失败。17:11 #1 心跳：09 已提交 0becbef … 5b059ae（6 组），工作区干净，仍在跑。
+- 17:22 用户：558f1e92 不用管（它卡在等用户手动授权）。13 依赖 03–12，其中删旧工作台 / 旧样式会与 09 冲突，所以拆出不冲突的文档部分 13a 先做（8edbd2c9，只改 CONTEXT.md、`docs/adr/0027-*`、CHANGELOG；只读主工作区了解 09）；13b 等 09 与 `integrate/r15-12` 合入主分支后派发。14 依赖 13。
