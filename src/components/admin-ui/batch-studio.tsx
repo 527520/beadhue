@@ -195,11 +195,13 @@ function CropEditor({ item, session, onClose }: { item: BatchItem; session: Batc
     return () => { alive = false; decoder.dispose(); };
   }, [item.file]);
   if (image) return <CropDialog image={image} initialRect={item.crop ?? undefined} onCancel={onClose} onConfirm={(crop) => { session.updateItem(item.localId, { crop }); onClose(); }} />;
+  // 解码期间不渲染弹窗：旧裁剪弹窗挂载时会快照背景的 aria-hidden，若此刻还有新弹窗的临时标记，关闭后会被原样恢复。
+  if (!error) return null;
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent aria-label={b.cropTitle}>
         <DialogHeader><DialogTitle>{b.cropTitle}</DialogTitle></DialogHeader>
-        <DialogBody>{error ? <FormAlert>{error}</FormAlert> : <Skeleton className="h-40" />}</DialogBody>
+        <DialogBody><FormAlert>{error}</FormAlert></DialogBody>
       </DialogContent>
     </Dialog>
   );
