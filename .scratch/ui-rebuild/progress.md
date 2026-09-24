@@ -22,11 +22,11 @@
 | 06 我的 | 完成 09-24 15:4x，已合并 | 0ebc83cd-8c94-46cd-8036-61058c305683 | 0b75cf9 … a27ac7f（10 个）；合并 9a49124 |
 | 07 创作入口 | 完成 09-24 11:35 | 54735219-c1cb-4fee-b320-ac49addd37f6 | 599994f … 189027a（主工作区）；旧编辑器段的 E2E 失败归 08 / 09 |
 | 08 编辑器 | 完成 09-24 15:5x（主工作区） | 4e4ab9f5-e6b9-4a45-b039-b40886874218 | 7d2abe1 … 2e6715d、3e15a3e、88fb641；手机用例留给 09 |
-| 09 跟拼与手机编辑器 | 进行中（09-24 15:58，主工作区，端口 3100/3101） | a363837e-3b86-4736-83ac-207580577b4c | 基于 d352c9d |
+| 09 跟拼与手机编辑器 | 完成 09-24 17:2x（主工作区） | a363837e-3b86-4736-83ac-207580577b4c | 0becbef … 6104f60（8 个） |
 | 10 后台 | 完成 09-24 12:06，已合并 | 8267c9b7-e49b-4f0a-bbbd-e5db5ed88e60 | 6cf9234 … 262453f（21 个）；合并 656e9b0 |
 | 11 通知 | 完成 09-24 15:4x，已合并 | 4509e2fe-b099-4182-95d5-c7880803ee2b | 5925e44 … 1bee41e（5 个）；合并 d352c9d |
-| 12 分享与静态页 | 完成 09-24 16:44，集成分支已备好，待 09 结束后合入 | 8293cc7e-586f-4d37-8578-58cecbc193eb | a3cdd70、4813a68、c3b359d；集成分支 `integrate/r15-12`（ef3ab0f = 主分支 5b0dc6a + 12，冲突已解，typecheck / lint / brand 通过）。重启版 558f1e92 作废，停掉后删 `beadhue-r15-12b` 与 `feat/beadhue-r15-12-pages-v2` |
-| 13 清理与文档 | 拆成两段。13a 文档进行中（09-24 17:25，工作树 `~/.codex/worktrees/beadhue-r15-13/doupu`，分支 `feat/beadhue-r15-13-docs`，只改 CONTEXT / ADR-0027 / CHANGELOG）；13b 清理（删旧样式 / 组件 / 依赖、护栏扩展、README 截图、spec Completion）等 09 合并后在主工作区派发 | 13a：8edbd2c9-0fef-4256-aa13-b19953fb7653 | 13a 基于 ef3ab0f |
+| 12 分享与静态页 | 完成 09-24 16:44，已合并（0907e18） | 8293cc7e-586f-4d37-8578-58cecbc193eb | a3cdd70、4813a68、c3b359d；集成分支 `integrate/r15-12`（ef3ab0f = 主分支 5b0dc6a + 12，冲突已解，typecheck / lint / brand 通过）。重启版 558f1e92 作废，停掉后删 `beadhue-r15-12b` 与 `feat/beadhue-r15-12-pages-v2` |
+| 13 清理与文档 | 拆成两段。13a 文档进行中（09-24 17:25，工作树 `~/.codex/worktrees/beadhue-r15-13/doupu`，分支 `feat/beadhue-r15-13-docs`，只改 CONTEXT / ADR-0027 / CHANGELOG）；13b 清理（删旧样式 / 组件 / 依赖、护栏扩展、README 截图、spec Completion）进行中（09-24 17:33，主工作区） | 13a：8edbd2c9-0fef-4256-aa13-b19953fb7653；13b：fca364f1-6bc1-4c04-bf49-4dcbfd4ac1bb | 13a 基于 ef3ab0f；13b 基于 0907e18 |
 | 14 全量验收 | 待办 | | |
 
 ## 派发顺序
@@ -101,3 +101,5 @@
 - 16:55 在票 05 的旧工作树里建集成分支 `integrate/r15-12`（基于主分支 5b0dc6a）合入 12：冲突 5 处都取并集（`zh-CN.ts` 两段之间补上 `me` 段的收尾括号；`beads.ts` 插画类型并入 `lost` / `broken`）。typecheck / lint / brand 通过，全量 vitest 后台运行。09 结束后把 `integrate/r15-12` 合进主分支，再派发 13。16:58 监视器重启（PID 14355，终端 48159）。
 - 17:05 `integrate/r15-12` 全量 vitest：254 个文件、1924 通过、0 失败。17:11 #1 心跳：09 已提交 0becbef … 5b059ae（6 组），工作区干净，仍在跑。
 - 17:22 用户：558f1e92 不用管（它卡在等用户手动授权）。13 依赖 03–12，其中删旧工作台 / 旧样式会与 09 冲突，所以拆出不冲突的文档部分 13a 先做（8edbd2c9，只改 CONTEXT.md、`docs/adr/0027-*`、CHANGELOG；只读主工作区了解 09）；13b 等 09 与 `integrate/r15-12` 合入主分支后派发。14 依赖 13。
+- 17:2x 09 完成（0becbef … 6104f60）：所有宽度不再渲染旧工作台，重新裁剪换成新取景组件；列出给 13 的可删清单（后台仍用旧 `CropDialog`、`PixelEditorCanvas`、`canvas/*`、`PatternPreview`、`OriginalUploadStatus`）。留给 14：17-visual-refinement 7 条、18-workbench 第 4 条、04 删除跨设备收敛的旧失败，03 大图长任务冷启动偶发 259ms。
+- 17:31 `integrate/r15-12` 合入主分支（0907e18，只有指南一处冲突，两节并存）；typecheck / lint / brand 通过；全量 vitest 在票 05 的旧工作树（分离头 0907e18）后台运行。17:33 在主工作区派发 13b（fca364f1），不碰 CONTEXT / ADR / CHANGELOG。
