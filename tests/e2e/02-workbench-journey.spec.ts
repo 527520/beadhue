@@ -5,7 +5,7 @@
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { fillField, typeSpin, uploadFile, selectChoice } from './helpers';
+import { fillField, typeSpin, uploadAndGenerate, selectChoice } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
@@ -19,9 +19,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   });
   await page.goto('/app');
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
-  await uploadFile(page, PHOTO);
-
-  // 裁剪步骤：默认全图，直接确认
+  // 新建图纸弹窗：默认全图、默认宽度，直接生成
+  await uploadAndGenerate(page, PHOTO);
 
   // 工作台：生成图纸（默认宽度 100 → 100×100）
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });

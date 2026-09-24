@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 import AxeBuilder from '@axe-core/playwright';
 import { localHttps } from './localHttps';
+import { generateFromDialog } from './helpers';
 import { toShanghaiDay } from '../../src/lib/analytics/time';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
@@ -58,6 +59,7 @@ test('standalone production CSP permits RSC navigation and the generation Worker
   await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
   await expect(page).toHaveURL(/\/app/);
   await page.waitForFunction(() => document.documentElement.dataset.beadhueHydrated === 'true');
+  await generateFromDialog(page);
   await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
 

@@ -5,7 +5,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { uploadFile } from './helpers';
+import { generateFromDialog, uploadFile } from './helpers';
 
 const fixture = (name: string) => resolve(process.cwd(), 'tests/fixtures', name);
 
@@ -30,13 +30,14 @@ test('E2：截断 PNG —— 报解码错误或浏览器容忍生成预览，两
   await openApp(page);
   await uploadFile(page, fixture('truncated.png'));
   const decodeError = page.getByText(/无法解析该图片/).first();
-  const cropScreen = page.getByRole('button', { name: '裁剪图片', exact: true });
-  await expect(decodeError.or(cropScreen).first()).toBeVisible({ timeout: 10_000 });
+  const newDrawing = page.getByRole('dialog', { name: '新建图纸' });
+  await expect(decodeError.or(newDrawing).first()).toBeVisible({ timeout: 10_000 });
 });
 
 test('E10：全透明 PNG 生成后统计为 0 且 PNG 导出禁用', async ({ page }) => {
   await openApp(page);
   await uploadFile(page, fixture('transparent-64.png'));
+  await generateFromDialog(page);
   await expect(page.getByText(/共 0 粒/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true }).click();
   await expect(page.getByRole('button', { name: '下载 PNG', exact: true })).toBeDisabled();
@@ -51,6 +52,8 @@ test('损坏 HEIC：尺寸探针失败时在原生/WASM 解码前拒绝', async 
 test('真实 HEIC：原生或 WASM 路径都必须自动生成首版', async ({ page }) => {
   await openApp(page);
   await uploadFile(page, fixture('static-real.heic'));
+  await expect(page.getByRole('dialog', { name: '新建图纸' })).toBeVisible({ timeout: 30_000 });
+  await generateFromDialog(page);
   await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled({ timeout: 30_000 });
 });
 
@@ -112,6 +115,9 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
       return marks.filter((entry) => entry.name === 'upload-read-start').at(-1)?.at ?? 0;
     })
     : 0;
+  await expect(page.getByRole('dialog', { name: '新建图纸' })).toBeVisible({ timeout: 30_000 });
+  await generateFromDialog(page);
+  await expect(page.getByText(/共 10000 粒/).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('square-crop-visible');
@@ -135,6 +141,8 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   await page.getByRole('button', { name: '重新上传' }).click();
   await mark('tall-upload-start');
   await uploadFile(page, fixture('max-100x8000.png'));
+  await generateFromDialog(page);
+  await expect(page.getByText(/共 20000 粒/).first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('tall-crop-visible');

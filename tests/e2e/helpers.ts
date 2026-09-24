@@ -142,7 +142,21 @@ export async function uploadFile(page: Page, filePath: string): Promise<void> {
   await expect(async () => {
     await page.getByLabel('图片文件选择器').setInputFiles(filePath);
     await expect(
-      page.getByText(/正在读取|正在解码|正在转换|不支持|无法解析|裁剪图片|松开以添加/).first(),
+      page.getByText(/正在读取|正在解码|正在转换|不支持|无法解析|不是图片|新建图纸|松开即可添加/).first(),
     ).toBeVisible({ timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
+}
+
+/** 创作入口的「新建图纸」弹窗：点「生成图纸」，等首版提交后弹窗关闭、进入编辑器（/app?id=）。 */
+export async function generateFromDialog(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: '新建图纸' });
+  await dialog.getByRole('button', { name: '生成图纸', exact: true }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 40_000 });
+  await expect(page).toHaveURL(/\/app\?id=/);
+}
+
+/** 选图 → 新建图纸弹窗按默认设置生成。 */
+export async function uploadAndGenerate(page: Page, filePath: string): Promise<void> {
+  await uploadFile(page, filePath);
+  await generateFromDialog(page);
 }

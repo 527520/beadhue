@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, typeSpin, uploadFile } from './helpers';
+import { BASE_URL, generateFromDialog, typeSpin, uploadFile } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 const cropButton = (page: Page) => page.getByRole('button', { name: '裁剪图片', exact: true });
@@ -22,6 +22,7 @@ async function revealMissingOriginalHelp(page: Page) {
 async function start(page: Page) {
   await page.goto('/app?new=1');
   await uploadFile(page, PHOTO);
+  await generateFromDialog(page);
   await expect(beads(page, 6300)).toBeVisible();
   await expect(cropDialog(page)).toHaveCount(0);
 }

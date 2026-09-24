@@ -3,7 +3,7 @@ import { PDFDocument } from 'pdf-lib';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
-import { uploadFile, selectChoice } from './helpers';
+import { uploadAndGenerate, selectChoice } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/static-2x2.png');
 const at = '2026-08-17T00:00:00.000Z';
@@ -109,7 +109,7 @@ async function decodePngSummary(page: Page, bytes: Buffer): Promise<{
 
 test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF paginates', async ({ page }) => {
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
 
   const pngProject = project(200, 1, [
@@ -192,7 +192,7 @@ test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF pag
 
 test('合并超限时 ZIP 恰好包含两张可解码且不透明的 PNG', async ({ page }) => {
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
 
   const colors = Array.from({ length: 500 }, (_, index) => ({

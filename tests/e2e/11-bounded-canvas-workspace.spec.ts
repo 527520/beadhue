@@ -8,7 +8,7 @@
 import { writeFile } from 'node:fs/promises';
 import { devices, expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, uploadFile } from './helpers';
+import { BASE_URL, uploadAndGenerate } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/static-2x2.png');
 const FIXED_TIME = '2026-08-30T00:00:00.000Z';
@@ -61,7 +61,7 @@ async function importProject(page: Page, width: number, height: number, testInfo
 
 async function enterWorkbenchWithProject(page: Page, testInfo: TestInfo, width = 200, height = 200): Promise<void> {
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
   await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeVisible({ timeout: 20_000 });
 
   // 移动布局把项目文件入口放在「导出」抽屉；桌面入口始终存在。

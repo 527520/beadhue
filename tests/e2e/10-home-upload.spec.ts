@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { uploadFile } from './helpers';
+import { generateFromDialog, uploadAndGenerate } from './helpers';
 
 const PHOTO_A = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 const PHOTO_B = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
@@ -14,7 +14,7 @@ const PHOTO_B = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 test('首页落区上传新图 → 自动生成整图，不回到上一个设计', async ({ page }) => {
   // 1) 先在工作台创建一张设计，留下本地历史
   await page.goto('/app?new=1');
-  await uploadFile(page, PHOTO_A);
+  await uploadAndGenerate(page, PHOTO_A);
   await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 40_000 });
   await page.waitForTimeout(1500); // 让自动保存落库（1s 防抖）
 
@@ -23,7 +23,8 @@ test('首页落区上传新图 → 自动生成整图，不回到上一个设计
   await page.getByLabel('图片文件选择器').setInputFiles(PHOTO_B);
   await page.waitForURL(/\/app/, { timeout: 20_000 });
 
-  // 第二张是正方形：自动首版为 100×100，不能恢复旧的 100×63。
+  // 交接过来的新图打开「新建图纸」弹窗；第二张是正方形：首版为 100×100，不能恢复旧的 100×63。
+  await generateFromDialog(page);
   await expect(page.getByText(/共 10000 粒/).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
   await expect(page.getByRole('dialog', { name: '裁剪图片' })).toHaveCount(0);

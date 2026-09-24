@@ -5,9 +5,9 @@ import {
   BASE_URL,
   fillField,
   uniqueEmail,
-  uploadFile,
   waitForMailLink,
   waitHydrated,
+  uploadAndGenerate,
 } from './helpers';
 
 const widths = [350, 390, 768, 944, 1180, 1280, 1440] as const;
@@ -103,7 +103,7 @@ for (const width of widths) {
     await page.goto('/app');
 
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
-    await expect(page.getByRole('button', { name: '选择图片文件' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '选择图片', exact: true })).toBeVisible();
     // 不得带 capture：移动端浏览器一旦带 capture 只允许调用摄像头，相册选择被堵死
     // （0.3.0 真机验收抓到的回归，模拟器发现不了）。
     await expect(page.getByLabel('图片文件选择器')).not.toHaveAttribute('capture');
@@ -154,7 +154,7 @@ test('工作区项目操作栏在游客与登录态的全部目标宽度下不�
   test.skip(testInfo.project.name !== 'chromium');
   await page.setViewportSize({ width: widths[0], height: 800 });
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
   let projectBar = page.getByRole('region', { name: '当前设计操作' });
   await expect(projectBar.getByLabel('设计名称')).toBeVisible({ timeout: 20_000 });
   await expect(projectBar.getByText('设计名称', { exact: true })).toBeVisible();
@@ -207,7 +207,7 @@ test('移动工作台可切换编辑、用色与导出工具', async ({ page }, 
   test.skip(testInfo.project.name !== 'chromium');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
 
   await expect(page.getByLabel('设计名称').last()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeVisible();
@@ -264,7 +264,7 @@ test('iOS Safari 触屏环境可上传且页面可滚动', async ({ browser }, t
   const page = await context.newPage();
   const response = await page.goto(`${BASE_URL}/app`);
   expect(response?.status(), await page.locator('body').innerText()).toBe(200);
-  await expect(page.getByRole('button', { name: '选择图片文件' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '选择图片', exact: true })).toBeVisible();
   // 不得带 capture（见上方说明）：手机上必须能选相册，相机入口由系统选择器提供。
   await expect(page.getByLabel('图片文件选择器')).not.toHaveAttribute('capture');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -278,7 +278,7 @@ test('Android Chrome 触屏环境可上传且页面可滚动', async ({ browser 
   const page = await context.newPage();
   const response = await page.goto(`${BASE_URL}/app`);
   expect(response?.status(), await page.locator('body').innerText()).toBe(200);
-  await expect(page.getByRole('button', { name: '选择图片文件' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '选择图片', exact: true })).toBeVisible();
   // 不得带 capture（见上方说明）：手机上必须能选相册，相机入口由系统选择器提供。
   await expect(page.getByLabel('图片文件选择器')).not.toHaveAttribute('capture');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

@@ -5,13 +5,13 @@
  */
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { uploadFile } from './helpers';
+import { uploadAndGenerate } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 
 async function openCropper(page: import('@playwright/test').Page) {
   await page.goto('/app');
-  await uploadFile(page, PHOTO);
+  await uploadAndGenerate(page, PHOTO);
   await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
   await page.getByRole('heading', { name: '裁剪图片' }).waitFor({ timeout: 15_000 });
 }

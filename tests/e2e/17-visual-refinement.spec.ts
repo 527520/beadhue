@@ -66,7 +66,7 @@ test('合法的长英文公开标题不裁切，减少动态效果取消卡片�
   await page.screenshot({path:output(`long-title-${info.project.name}.png`),fullPage:true});
   await page.goto('/');
   const blank=page.locator('.home-blank-action');await blank.hover();await expectNoMotionTransform(blank);
-  const upload=page.getByRole('button',{name:'选择图片文件'});await upload.hover();await page.mouse.down();await expectNoMotionTransform(upload);await page.mouse.up();
+  const upload=page.getByRole('button',{name:'选择图片',exact:true});await upload.hover();await page.mouse.down();await expectNoMotionTransform(upload);await page.mouse.up();
   await page.mouse.move(0,0);await upload.dispatchEvent('dragenter');
   await expect(upload).toHaveClass(/is-dragging/);
   // 钉板落区：拖入时底色只是轻微变粉，钉阵与描边变莓果色，不再整块实心。
@@ -153,7 +153,7 @@ test('字体实际加载，首屏选择图片完整可见，五宽度无溢出',
   await page.setViewportSize({width:390,height:844});
   await page.goto('/'); await waitHydrated(page);
   await expect(page.getByRole('complementary',{name:'匿名使用统计'})).toBeVisible();
-  const button=page.getByRole('button',{name:'选择图片文件',exact:true});
+  const button=page.getByRole('button',{name:'选择图片',exact:true});
   const box=await button.boundingBox(); expect(box).not.toBeNull(); expect(box!.y+box!.height).toBeLessThan(770);
   const loaded=await page.evaluate(async()=>{
     const text=await document.fonts.load('400 16px "BeadHue Text"','豆色绘龘');
@@ -225,7 +225,7 @@ test('长选项搜索、键盘取消、减少动态效果与200%布局放大',as
   await page.goto('/');await page.evaluate(()=>{document.body.style.zoom='2';});
   // Layout-zoom simulation, not a claim of physical-device browser zoom.
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await expect(page.getByRole('button',{name:'选择图片文件',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'选择图片',exact:true})).toBeVisible();
   await page.screenshot({path:output(`zoom-layout-${info.project.name}.png`),fullPage:true});
 });
 
