@@ -3047,7 +3047,7 @@ export default function Workbench({
             onClose={() => setBlankOpen(false)}
           />
         )}
-        <LegacyScope>{confirmDialog}</LegacyScope>
+        {confirmDialog && <LegacyScope>{confirmDialog}</LegacyScope>}
       </SiteShell>
     );
   }
