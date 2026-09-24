@@ -9,7 +9,7 @@ import { useAdminCommand } from '@/components/admin/useAdminCommand';
 import { useAdminPage } from '@/components/admin/useAdminPage';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox, Switch } from '@/components/ui/checkbox';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FormAlert } from '@/components/ui/field';
 import { Input, Textarea } from '@/components/ui/input';
@@ -20,7 +20,7 @@ import { useToast } from '@/components/ui/toast';
 import { bulkWrite } from './bulk';
 import { DataTable, TitleCell, type Column, type RowMenuEntry } from './data-table';
 import { AdminDrawer, CommandAlert, ReasonDialog, Spacer, type CommandState } from './overlays';
-import { Collapsible, Note, Thumb } from './parts';
+import { Collapsible, NamedSwitch, Note, Thumb } from './parts';
 import { BUILTIN_ICONS, PixelEditorDialog, TagIcon } from './tag-icon';
 import { useAdminTable } from './use-admin-table';
 import { AdminPageHead } from './page-head';
@@ -68,16 +68,8 @@ function TagForm({ value, onChange, tag, errors, disabled }: { value: FormState;
       <Field label={f.order} hint={errors.sortOrder ? undefined : f.orderHint} error={errors.sortOrder}>
         <Input value={value.sortOrder} inputMode="numeric" disabled={disabled} className="w-32" onChange={(event) => onChange({ ...value, sortOrder: event.target.value.replace(/[^\d-]/g, '') })} />
       </Field>
-      <label className="flex cursor-pointer items-center justify-between gap-4">
-        <span><b className="block text-body-sm font-semibold text-ink">{f.featured}</b><small className="text-caption font-normal text-ink-3">{f.featuredHint}</small></span>
-        <Switch checked={value.featured} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, featured: checked })} />
-      </label>
-      {tag ? (
-        <label className="flex cursor-pointer items-center justify-between gap-4">
-          <span><b className="block text-body-sm font-semibold text-ink">{f.active}</b><small className="text-caption font-normal text-ink-3">{f.activeHint}</small></span>
-          <Switch checked={value.active} disabled={disabled} aria-label={f.active} onCheckedChange={(checked) => onChange({ ...value, active: checked })} />
-        </label>
-      ) : null}
+      <NamedSwitch visibleLabel label={f.featured} hint={f.featuredHint} checked={value.featured} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, featured: checked })} />
+      {tag ? <NamedSwitch visibleLabel label={f.active} hint={f.activeHint} checked={value.active} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, active: checked })} /> : null}
       {needsReason ? (
         <Field label={f.reason} hint={errors.reason ? undefined : f.reasonHint} error={errors.reason}>
           <Textarea rows={3} maxLength={500} value={value.reason} disabled={disabled} onChange={(event) => onChange({ ...value, reason: event.target.value })} />
@@ -209,7 +201,7 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
     { key: 'name', label: t.columns.name, main: true, cell: (tag) => <TitleCell lead={<PixelTile value={tag.icon} />} title={tag.name} onOpen={() => startEdit(tag)} /> },
     { key: 'works', label: t.columns.works, align: 'end', sort: (a, b) => (a.workCount ?? 0) - (b.workCount ?? 0), cell: (tag) => <span className="tabular-nums">{usage(tag)}</span> },
     { key: 'order', label: t.columns.order, align: 'end', cell: (tag) => <span className="tabular-nums">{tag.sortOrder}</span> },
-    { key: 'featured', label: t.columns.featured, cell: (tag) => <Switch checked={tag.featured} disabled={Boolean(tag.mergedIntoTagId)} aria-label={t.featuredToggle(tag.name)} onCheckedChange={(checked) => void setFeatured(tag, checked)} /> },
+    { key: 'featured', label: t.columns.featured, cell: (tag) => <NamedSwitch label={t.featuredToggle(tag.name)} checked={tag.featured} disabled={Boolean(tag.mergedIntoTagId)} onCheckedChange={(checked) => void setFeatured(tag, checked)} /> },
     { key: 'status', label: t.columns.status, cell: (tag) => <StateBadge tag={tag} /> },
   ];
   const menu = (tag: TagRow): RowMenuEntry[] => [

@@ -69,7 +69,7 @@ export function PopoverContent({ className, align = 'end', side = 'bottom', wide
   }
   return (
     <BasePopover.Portal>
-      <BasePopover.Positioner anchor={anchor} align={align} side={side} sideOffset={8} collisionPadding={12} className="z-60" data-ui="">
+      <BasePopover.Positioner anchor={anchor} align={align} side={side} sideOffset={8} collisionPadding={12} className="z-85" data-ui="">
         <BasePopover.Popup data-slot="popover" className={cn(menuPopupClass, wide && 'popover-width-wide max-w-none p-3', className as string)} {...props}>
           {children}
         </BasePopover.Popup>

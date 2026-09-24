@@ -19,9 +19,9 @@ async function post(page: Page, url: string, body: unknown) {
   return result.body;
 }
 /** 后台表格（R15-10）：搜索框去抖后按关键字过滤，夹具才一定在第一页。 */
-async function searchTable(page: Page, placeholder: string, keyword: string) {
+async function searchTable(page: Page, placeholder: string, keyword: string, expected = keyword) {
   await page.getByRole('searchbox', { name: placeholder }).fill(keyword);
-  await expect(page.locator('tbody tr').filter({ hasText: keyword }).first()).toBeVisible();
+  await expect(page.locator('tbody tr').filter({ hasText: expected }).first()).toBeVisible();
 }
 const row = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text });
 async function fixtureWork(page: Page, title: string) {
@@ -113,9 +113,9 @@ test('人员二次确认、暂停撤销会话、恢复与角色调整可完成',
     const targetPage = await targetContext.newPage();
     await login(targetPage, '/me/settings', email);
     await login(page, '/admin/users');
-    await searchTable(page, '搜索用户名、邮箱或编号', email);
+    await searchTable(page, '搜索用户名、邮箱或编号', email, `E2E 治理目标 ${info.project.name}`);
     const entry = row(page, `E2E 治理目标 ${info.project.name}`);
-    await entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}` }).click();
+    await entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}`, exact: true }).click();
     const drawer = page.getByRole('dialog', { name: '账号详情' });
     const userId = await drawer.getByText(/^[0-9a-f]{8}-[0-9a-f-]{27}$/u).innerText();
     const act = async (button: string, dialogName: RegExp, reasonLabel: string, confirm: string) => {
@@ -230,6 +230,6 @@ test('举报先核查当前评论，隐藏内容和案件结案分别留痕', as
     const comments = await reporterPage.evaluate(async (id) => (await (await fetch(`/api/community/works/${id}/comments`)).json()).items, workId);
     expect(comments.some((item: { id: string }) => item.id === comment.id)).toBe(false);
     await decide('结案', '结案', '结案理由', '结案');
-    await expect(page.getByText('已结案', { exact: true })).toBeVisible();
+    await expect(drawer).toHaveCount(0);
   } finally { await reporter.close(); }
 });

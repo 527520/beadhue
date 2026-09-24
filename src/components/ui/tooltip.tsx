@@ -34,7 +34,7 @@ export function Tooltip({ content, children, side = 'bottom', delay = 300, disab
     >
       <BaseTooltip.Trigger delay={delay} render={children} />
       <BaseTooltip.Portal>
-        <BaseTooltip.Positioner side={side} sideOffset={8} className="z-70" data-ui="">
+        <BaseTooltip.Positioner side={side} sideOffset={8} className="z-88" data-ui="">
           <BaseTooltip.Popup
             data-slot="tooltip"
             className={cn(

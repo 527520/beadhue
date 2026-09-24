@@ -1,10 +1,11 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
+import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { adminThumbnailUrl } from '@/lib/community/thumbnailUrl';
 import { Avatar } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/checkbox';
 
 /** 后台卡片：白底 + 发丝边 + 圆角 16（原型 .adm-card）。 */
 export function AdminCard({ className, ...props }: ComponentProps<'section'>) {
@@ -107,5 +108,18 @@ export function Collapsible({ summary, children, defaultOpen }: { summary: React
       </summary>
       <div className="grid gap-3 border-t border-line p-3.5">{children}</div>
     </details>
+  );
+}
+
+/** 带名字的开关：Base UI Switch 会用自己的 aria-labelledby 覆盖 aria-label，名字必须指向页面上的文字元素。 */
+export function NamedSwitch({ label, hint, checked, disabled, onCheckedChange, visibleLabel = false }: { label: string; hint?: string; checked: boolean; disabled?: boolean; onCheckedChange: (checked: boolean) => void; visibleLabel?: boolean }) {
+  const id = useId();
+  const control = <Switch aria-labelledby={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />;
+  if (!visibleLabel) return <><span id={id} className="sr-only">{label}</span>{control}</>;
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span><b id={id} className="block text-body-sm font-semibold text-ink">{label}</b>{hint ? <small className="text-caption font-normal text-ink-3">{hint}</small> : null}</span>
+      {control}
+    </div>
   );
 }
