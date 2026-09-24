@@ -54,10 +54,10 @@ test('standalone production CSP permits RSC navigation and the generation Worker
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
 
   await page.goto('/');
-  // D-3：首页「开始制作」链接已由真实上传落区取代——走首页落图交接进工作台，
-  // 同样覆盖 RSC 客户端导航（/ → /app?new=1）。
-  await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
+  // 从发现页顶栏「创作」客户端导航进创作入口（覆盖 RSC 客户端导航 / → /app），再选图生成。
+  await page.getByRole('link', { name: '创作', exact: true }).first().click();
   await expect(page).toHaveURL(/\/app/);
+  await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
   await page.waitForFunction(() => document.documentElement.dataset.beadhueHydrated === 'true');
   await generateFromDialog(page);
   await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
