@@ -199,7 +199,8 @@ test('色板详情独立展示不撑高卡片，关闭恢复焦点',async({page}
   for(const width of [390,1280]){
     await page.setViewportSize({width,height:844});
     const trigger=page.getByRole('button',{name:/^查看「MARD（豆色绘经典 291 色）」全部/});
-    const card=page.locator('li').filter({has:trigger});const before=await card.boundingBox();
+    // 弹窗打开后背景不在可访问树里，卡片按属性定位。
+    const card=page.locator('li',{has:page.locator('button[aria-label^="查看「MARD（豆色绘经典 291 色）」全部"]')});const before=await card.boundingBox();
     await trigger.click();
     const panel=page.getByRole('dialog');await expect(panel).toBeVisible();
     await expect(panel.getByRole('listitem').first()).toBeVisible();
@@ -218,18 +219,24 @@ test('长选项搜索、键盘取消、减少动态效果与200%布局放大',as
   await expect(page.getByRole('heading',{name:'使用统计',exact:true})).toBeVisible();
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:output(`admin-${info.project.name}.png`),fullPage:true});
-  await page.goto('/me/palettes');await waitHydrated(page);
-  const trigger=page.getByRole('button',{name:'新建色板',exact:true});
-  await trigger.click();
-  const editor=page.getByRole('dialog',{name:'新建色板'});
-  const search=editor.getByRole('searchbox',{name:'搜索色号、名称或 HEX'});await expect(search).toBeVisible();await search.fill('A01');
-  await expect(editor.getByRole('button',{name:/^A01 /})).toBeVisible();
-  await search.press('Escape');await expect(editor).toBeHidden();await expect(trigger).toBeFocused();
   await page.goto('/');await page.evaluate(()=>{document.body.style.zoom='2';});
   // Layout-zoom simulation, not a claim of physical-device browser zoom.
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole('button',{name:'选择图片',exact:true})).toBeVisible();
   await page.screenshot({path:output(`zoom-layout-${info.project.name}.png`),fullPage:true});
+});
+
+test('新建色板编辑器：色块搜索，Esc 关闭后焦点回到入口',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto('/login?next=/me/palettes');await fillField(page,'邮箱','e2e-user@example.com');await fillField(page,'密码','E2e-pass-123!');
+  await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/me/palettes');await waitHydrated(page);
+  const trigger=page.getByRole('button',{name:'新建色板',exact:true});
+  await trigger.click();
+  const editor=page.getByRole('dialog',{name:'新建色板'});
+  const search=editor.getByRole('searchbox',{name:'搜索色号、名称或 HEX'});await expect(search).toBeVisible();await search.fill('A01');
+  await expect(editor.getByRole('button',{name:/^A01 /})).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+  await search.press('Escape');await expect(editor).toBeHidden();await expect(trigger).toBeFocused();
 });
 
 test('多色续作、长标题，以及加载失败后的重试状态',async({page},info)=>{

@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, CircleAlert, Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { LIMITS } from '@/lib/appInfo';
 import { getBuiltinPalette, isBuiltinPaletteId, listBuiltinPalettes, type BuiltinPaletteId } from '@/lib/palettes';
@@ -188,6 +188,12 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
   const [targetDesignId, setTargetDesignId] = useState<string | null>(null);
   const [now, setNow] = useState(0);
   const cards = useMemo(() => builtinCards(), []);
+  // 弹窗按需挂载、关闭即卸载，Base UI 来不及归还焦点：打开时记下入口，关闭后手动还回去。
+  const opener = useRef<HTMLElement | null>(null);
+  const remember = () => {
+    if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('[role=dialog]')) opener.current = document.activeElement;
+  };
+  const restore = () => window.setTimeout(() => { if (opener.current?.isConnected) opener.current.focus(); }, 0);
   const defaultName = cards.find((card) => card.isDefault)?.name ?? '';
 
   const load = useCallback(async () => {
@@ -243,10 +249,10 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
                   <span>{relativeTime(record.updatedAt, now)}</span>
                 </p>
               </div>
-              <button type="button" aria-label={s.openCustom(record.name)} onClick={() => setViewing({ kind: 'custom', record })} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
+              <button type="button" aria-label={s.openCustom(record.name)} onClick={() => { remember(); setViewing({ kind: 'custom', record }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
               <div className="absolute right-2 bottom-3 z-1">
                 <ActionMenu label={zhCN.me.more(record.name)} title={record.name} variant="default" size="sm" entries={[
-                  { key: 'edit', label: s.actions.edit, icon: icon(Pencil), onSelect: () => setEditing(record) },
+                  { key: 'edit', label: s.actions.edit, icon: icon(Pencil), onSelect: () => { remember(); setEditing(record); } },
                   { key: 'duplicate', label: s.actions.duplicate, icon: icon(Copy), onSelect: () => void duplicate(record) },
                   'separator',
                   { key: 'delete', label: s.actions.delete, icon: icon(Trash2), danger: true, onSelect: () => { setDeleteError(null); setDeleting(record); } },
@@ -260,7 +266,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
     mine = (
       <section aria-labelledby="h-my-palettes">
         <SectionHead id="h-my-palettes" title={s.mineTitle}>
-          {signedIn ? <Button size="sm" onClick={() => setEditing('new')}>{icon(Plus)}{s.create}</Button> : null}
+          {signedIn ? <Button size="sm" onClick={() => { remember(); setEditing('new'); }}>{icon(Plus)}{s.create}</Button> : null}
         </SectionHead>
         {body}
       </section>
@@ -293,19 +299,20 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
                   {card.specs.map((spec) => <span key={spec} className="inline-flex h-5.5 items-center rounded-full px-2 text-caption text-ink-2 inset-ring-1 inset-ring-line-strong">{spec}</span>)}
                 </p>
               </div>
-              <button type="button" aria-label={s.openBuiltin(card.name, card.count)} onClick={() => setViewing({ kind: 'builtin', id: card.id })} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
+              <button type="button" aria-label={s.openBuiltin(card.name, card.count)} onClick={() => { remember(); setViewing({ kind: 'builtin', id: card.id }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
             </li>
           ))}
         </ul>
       </section>
 
-      {viewing ? <PaletteViewer viewing={viewing} targetDesignId={targetDesignId} onClose={() => setViewing(null)} onEdit={(record) => { setViewing(null); setEditing(record); }} /> : null}
+      {viewing ? <PaletteViewer viewing={viewing} targetDesignId={targetDesignId} onClose={() => { setViewing(null); restore(); }} onEdit={(record) => { setViewing(null); setEditing(record); }} /> : null}
       {editing ? (
         <PaletteEditor
           record={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
+          onClose={() => { setEditing(null); restore(); }}
           onSaved={(saved) => {
             setEditing(null);
+            restore();
             setRecords((current) => [saved, ...(current ?? []).filter((item) => item.id !== saved.id)]);
             toast(s.saved(saved.name));
           }}
