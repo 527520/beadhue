@@ -14,7 +14,11 @@ export default function LoginPage() {
   const next = useAuthReturnTo('');
   const adminLogin = isAdminReturnTo(next);
   return (
-    <AuthShell title={zhCN.shell.loginDialog.title} description={zhCN.shell.loginDialog.intro}>
+    <AuthShell
+      title={adminLogin ? zhCN.authPages.adminLoginTitle : zhCN.shell.loginDialog.title}
+      description={adminLogin ? zhCN.authPages.adminLoginIntro : zhCN.shell.loginDialog.intro}
+      eyebrow={adminLogin ? zhCN.authPages.adminLoginEyebrow : undefined}
+    >
       <LoginForm
         onSuccess={() => router.push(loginRedirectTarget())}
         registerHref={next && !adminLogin ? authPageHref('register', next) : null}

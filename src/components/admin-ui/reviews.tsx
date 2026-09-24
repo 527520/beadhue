@@ -8,6 +8,7 @@ import type { CommunityRevisionInspection } from '@/lib/community/queries';
 import { track } from '@/lib/analytics/client';
 import { cn } from '@/lib/cn';
 import { colorUsage } from '@/lib/render/beads';
+import { AVATAR_BEAD_COLORS } from '@/lib/render/beadTokens';
 import { zhCN } from '@/messages/zh-CN';
 import { useAdminCommand } from '@/components/admin/useAdminCommand';
 import { useAdminInspection } from '@/components/admin/useAdminInspection';
@@ -35,7 +36,7 @@ const icon = (Icon: typeof Check) => <Icon aria-hidden="true" strokeWidth={1.75}
 interface ReviewItem {
   revisionId: string; workId: string; revisionNumber: number; title: string; version: number;
   width: number; height: number; colorCount: number; boardProfile: string; submittedAt: string | null; suggestedTags: string[];
-  author: { displayName: string; publicAuthorId: string; authorType: string }; preview: CommunityPreviewV1;
+  author: { displayName: string; publicAuthorId: string; authorType: string; avatarColor?: string | null }; preview: CommunityPreviewV1;
 }
 
 function Original({ revisionId, title }: { revisionId: string; title: string }) {
@@ -194,7 +195,7 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
               <Badge tone={item.revisionNumber > 1 ? 'info' : 'neutral'}>{item.revisionNumber > 1 ? t.revision(item.revisionNumber) : t.first}</Badge>
             </span>
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-ink-3 [&>span]:whitespace-nowrap [&>span:not(:last-child)]:after:ml-2 [&>span:not(:last-child)]:after:content-['·']">
-              <span className="inline-flex items-center gap-1.5"><Avatar id={item.author.publicAuthorId} name={item.author.displayName} size="xs" />{item.author.displayName}</span>
+              <span className="inline-flex items-center gap-1.5"><Avatar id={item.author.publicAuthorId} name={item.author.displayName} size="xs" color={item.author.authorType === 'official' ? AVATAR_BEAD_COLORS[0] : item.author.avatarColor ?? undefined} />{item.author.displayName}</span>
               <span>{t.submitted(fmtAgo(item.submittedAt))}</span>
               <span className="tabular-nums">{t.stats(item.width, item.height, item.colorCount, detail ? fmtNum(beads) : '…')}</span>
               {suggested.length ? <span className="max-xl:hidden">{t.suggested(suggested.join('、'))}</span> : null}
@@ -206,6 +207,11 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
             <IconButton size="sm" label={t.next} tooltip={t.nextTip} disabled={index === items.length - 1} onClick={() => select(index + 1)} className="max-md:hidden">{icon(ChevronDown)}</IconButton>
           </div>
         </header>
+        {detail?.lastRejection ? (
+          <p className="mx-6 mt-4 rounded-md bg-bg-subtle px-3.5 py-2.5 text-body-sm text-ink-2 max-md:mx-4 max-md:mt-3">
+            <b className="mr-2 font-semibold text-ink">{t.lastRejection(detail.lastRejection.revisionNumber)}</b>{detail.lastRejection.reason}
+          </p>
+        ) : null}
         {detail?.previous ? <Note icon={icon(Info)} className="mx-6 mt-4 max-md:mx-4 max-md:mt-3">{t.previous(detail.previous.revisionNumber)}</Note> : null}
         <div className="grid grid-cols-2 gap-4 px-6 pt-4 max-md:gap-2.5 max-md:px-4 max-md:pt-3">
           <figure className="m-0 grid min-w-0 gap-2">

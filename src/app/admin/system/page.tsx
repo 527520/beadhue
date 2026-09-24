@@ -33,12 +33,15 @@ export default async function AdminSystemPage() {
   const taskLabel = (task: string) => t.tasks[task as keyof typeof t.tasks] ?? task;
   const moderationState = !moderation.enabled ? m.disabled : moderation.health.consecutiveFailures > 0 ? m.failing : moderation.calls >= moderation.budget ? m.budgetExhausted : m.healthy;
   const fact = (label: string, value: string, note: string) => (
-    <div className="grid content-start gap-1 px-5 py-4 max-md:px-4 max-md:py-3.5 [&+&]:border-l [&+&]:border-line max-lg:[&:nth-child(3)]:border-l-0 max-lg:[&:nth-child(n+3)]:border-t">
+    <div className="grid min-w-0 content-start gap-1 px-5 py-4 max-md:px-4 max-md:py-3.5 [&+&]:border-l [&+&]:border-line max-lg:[&:nth-child(3)]:border-l-0 max-lg:[&:nth-child(n+3)]:border-t">
       <span className="text-body-sm font-medium text-ink-2">{label}</span>
       <b className="text-title-1 text-ink tabular-nums">{value}</b>
-      <span className="text-caption font-normal text-ink-3">{note}</span>
+      <span className="text-caption font-normal [overflow-wrap:anywhere] text-ink-3">{note}</span>
     </div>
   );
+  const migrationTag = info.databaseMigration.tag;
+  const migrationNumber = migrationTag?.match(/^\d+/u)?.[0] ?? (info.databaseMigration.id === null ? t.empty : String(info.databaseMigration.id));
+  const pendingMigration = migrationTag && info.migrationJournalLatest && migrationTag !== info.migrationJournalLatest ? s.migrationPending(info.migrationJournalLatest) : null;
   const date = (value: string | null) => (value ? fmtDate(value) : t.notRecorded);
   return (
     <>
@@ -46,7 +49,7 @@ export default async function AdminSystemPage() {
       <div className="grid grid-cols-12 gap-5 max-lg:gap-4 max-md:gap-3">
         <AdminCard className="col-span-full grid grid-cols-4 max-lg:grid-cols-2">
           {fact(s.facts.version, info.applicationVersion, t.app)}
-          {fact(s.facts.migration, info.databaseMigration.id === null ? t.empty : String(info.databaseMigration.id), info.migrationJournalLatest ?? t.notRecorded)}
+          {fact(s.facts.migration, migrationNumber, pendingMigration ?? migrationTag?.replace(/^\d+_/u, '') ?? info.migrationJournalLatest ?? t.notRecorded)}
           {fact(s.facts.errors, serverErrors === null ? t.empty : String(serverErrors), canReadLogs ? t.logsServerErrors : t.logsDenied)}
           {fact(s.facts.backup, t.backup, t.backupDetail)}
         </AdminCard>

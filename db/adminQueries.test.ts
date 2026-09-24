@@ -32,6 +32,7 @@ describe('admin query privacy and system evidence', () => {
     expect(info.backup).toEqual({ status: 'not_integrated', label: '未接入' });
     expect(info.migrationJournalLatest).toBe('0021_account_profile_and_batch_names');
     expect(info.databaseMigration.id).not.toBeNull();
+    expect(info.databaseMigration.tag).toBe(info.migrationJournalLatest);
     expect(info.databaseMigration.appliedAt).toBeNull();
     expect(info.databaseMigration.journalTimestamp).not.toBeNull();
   });

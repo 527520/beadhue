@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestClient } from './testClient';
-import { communityComments, communityReports, users } from './schema';
+import { communityComments, communityReports, communityRevisions, users } from './schema';
 import { seedAuthor, seedWork } from './testCommunity';
 import { listGovernanceComments, listGovernanceReports } from '@/lib/community/interactions';
+import { inspectCommunityRevision } from '@/lib/community/queries';
 
 async function setup() {
   const db = await createTestClient();
@@ -22,6 +23,19 @@ async function setup() {
   ]);
   return { db, author, reporter, workId, revisionId };
 }
+
+describe('审核台的上次驳回', () => {
+  it('重投的修订带上一次被驳回的理由；首次提交没有', async () => {
+    const db = await createTestClient();
+    const author = await seedAuthor(db, { email: 'author@example.com', username: '橙子手作' });
+    const { workId, revisionId } = await seedWork(db, { author, title: '戴花小黄鸡', status: 'pending_review' });
+    expect((await inspectCommunityRevision(db, revisionId)).lastRejection).toBeNull();
+    await db.update(communityRevisions).set({ status: 'rejected', reviewReason: '图纸与原图主体不一致' }).where(eq(communityRevisions.id, revisionId));
+    const [original] = await db.select().from(communityRevisions).where(eq(communityRevisions.id, revisionId));
+    const [second] = await db.insert(communityRevisions).values({ ...original, id: crypto.randomUUID(), workId, revisionNumber: 2, status: 'pending_review', reviewReason: null }).returning();
+    expect((await inspectCommunityRevision(db, second.id)).lastRejection).toEqual({ revisionNumber: 1, reason: '图纸与原图主体不一致' });
+  });
+});
 
 describe('治理队列的可读名称与搜索', () => {
   it('评论带作者（头像色）与所在作品（缩略图用的版本）；按内容、作者或作品标题搜索', async () => {

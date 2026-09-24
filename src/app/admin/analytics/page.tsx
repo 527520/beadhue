@@ -25,9 +25,12 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const { requested, query, dimension, funnel, invalid, filtersIgnored } = resolveDashboardQuery(params, now);
   const db = getDb();
-  const [summary, trend, breakdown, funnelResult] = await Promise.all([
+  // 指标卡与趋势按原型看「生成图纸」「导出文件」：各按事件名单独取每日数（不受筛选里的事件名影响）。
+  const byEvent = (eventName: string) => queryAnalyticsTrend(db, { ...query, eventName }, now);
+  const [summary, trend, breakdown, funnelResult, generatedTrend, exportedTrend] = await Promise.all([
     queryAnalyticsSummary(db, query, now), queryAnalyticsTrend(db, query, now),
     queryAnalyticsDimensions(db, query, dimension, now), queryAnalyticsFunnel(db, query, funnel, now),
+    byEvent('generation_succeeded'), byEvent('design_exported'),
   ]);
   const t = zhCN.communityAdmin.analyticsDashboard;
   const a = zhCN.adminUi.analytics;
@@ -35,8 +38,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const ranges = (['7', '30', '90'] as const).map((key) => ({ key, href: `/admin/analytics?start=${shanghaiDay(now.getTime() - (Number(key) - 1) * 86400000)}&end=${today}` }));
   const days = Math.round((Date.parse(query.end) - Date.parse(query.start)) / 86400000) + 1;
   const active = query.end === today && ['7', '30', '90'].includes(String(days)) ? String(days) : null;
-  const points = trend.points.map((point) => ({ day: point.day, events: point.events, uniqueVisitors: point.uniqueVisitors ?? null }));
-  const steps = funnelResult.steps ?? [];
+  const perDay = (points: Array<{ day: string; events: number }>) => new Map(points.map((point) => [point.day, point.events]));
+  const generatedByDay = perDay(generatedTrend.points);
+  const exportedByDay = perDay(exportedTrend.points);
+  const points = trend.points.map((point) => ({
+    day: point.day, events: point.events, uniqueVisitors: point.uniqueVisitors ?? null,
+    generated: generatedByDay.get(point.day) ?? 0, exported: exportedByDay.get(point.day) ?? 0,
+  }));
+  const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
   const note = active ? a.ranges[active as keyof typeof a.ranges] : a.rangeNote(query.start, query.end);
   const requestedStrings = Object.fromEntries(Object.entries(requested).map(([key, value]) => [key, value === undefined ? undefined : String(value)]));
   return (
@@ -49,8 +58,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <div className="col-span-full grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-lg:gap-4 max-md:gap-3">
           <Kpi label={a.kpis.visitors} value={summary.totals.uniqueVisitors ?? null} spark={points.map((point) => point.uniqueVisitors ?? 0)} note={note} />
           <Kpi label={a.kpis.sessions} value={summary.totals.sessions ?? null} spark={[]} note={note} />
-          <Kpi label={a.kpis.events} value={summary.totals.events} spark={points.map((point) => point.events)} note={note} />
-          <Kpi label={a.kpis.converted} value={steps.at(-1)?.sessions ?? null} spark={steps.map((step) => step.sessions)} note={t.funnelNames[funnel]} />
+          <Kpi label={a.kpis.generated} value={sum(generatedTrend.points.map((point) => point.events))} spark={points.map((point) => point.generated)} note={note} />
+          <Kpi label={a.kpis.exported} value={sum(exportedTrend.points.map((point) => point.events))} spark={points.map((point) => point.exported)} note={note} />
         </div>
         <AdminCard className="col-span-full flex flex-col xl:col-span-7">
           <CardHead title={a.trend} aside={note} />

@@ -85,11 +85,12 @@ export function Kpi({ label, value, spark, note }: { label: string; value: numbe
   );
 }
 
-export function TrendChart({ points }: { points: Array<{ day: string; events: number; uniqueVisitors: number | null }> }) {
+export function TrendChart({ points }: { points: Array<{ day: string; uniqueVisitors: number | null; generated: number; exported: number }> }) {
   if (!points.length) return <p className="px-5 py-4 text-body-sm text-ink-3">{a.noData}</p>;
   const series: ChartSeries[] = [
     { label: a.series.visitors, tone: 'ink', values: points.map((point) => point.uniqueVisitors ?? 0) },
-    { label: a.series.events, tone: 'chart-2', values: points.map((point) => point.events) },
+    { label: a.series.generated, tone: 'chart-2', values: points.map((point) => point.generated) },
+    { label: a.series.exported, tone: 'chart-3', values: points.map((point) => point.exported) },
   ];
   const days = points.map((point) => { const [, month, day] = point.day.split('-').map(Number); return { short: `${month}/${day}`, long: `${month}月${day}日` }; });
   return (

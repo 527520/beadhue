@@ -620,6 +620,7 @@ export async function listCommunityReviewQueue(db: AnyDatabase, input: unknown =
       suggestedTags: communityRevisions.suggestedTags,
       submittedAt: communityRevisions.submittedAt,
       accountStatus: users.accountStatus,
+      avatarColor: users.avatarColor,
     }).from(communityRevisions).innerJoin(communityWorks, eq(communityWorks.id, communityRevisions.workId))
       .leftJoin(users, eq(users.id, communityWorks.authorUserId))
       .where(where)
@@ -629,12 +630,12 @@ export async function listCommunityReviewQueue(db: AnyDatabase, input: unknown =
   ]);
   const items = rows.flatMap((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
-    const { publicAuthorId, frozenDisplayName, authorType, accountStatus, ...safeRow } = row;
+    const { publicAuthorId, frozenDisplayName, authorType, accountStatus, avatarColor, ...safeRow } = row;
     return preview.success ? [{
       ...safeRow,
       author: authorType === 'official'
-        ? { authorType: 'official' as const, publicAuthorId: 'beadhue-official', displayName: '豆色绘官方' }
-        : { authorType: 'user' as const, publicAuthorId, displayName: accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : frozenDisplayName },
+        ? { authorType: 'official' as const, publicAuthorId: 'beadhue-official', displayName: '豆色绘官方', avatarColor: null }
+        : { authorType: 'user' as const, publicAuthorId, displayName: accountStatus === 'anonymized' ? ANONYMIZED_DISPLAY_NAME : frozenDisplayName, avatarColor: accountStatus === 'anonymized' ? null : avatarColor },
       preview: preview.data,
       submittedAt: row.submittedAt?.toISOString() ?? null,
     }] : [];
@@ -660,12 +661,21 @@ export async function inspectCommunityRevision(db: AnyDatabase, revisionId: stri
     ? await db.select({ title: communityRevisions.title, revisionNumber: communityRevisions.revisionNumber, snapshot: communityRevisions.snapshot })
       .from(communityRevisions).where(eq(communityRevisions.id, row.currentPublishedRevisionId)) : [];
   const previousSnapshot = parseCommunitySnapshot(old?.snapshot);
+  // 上一次被驳回的理由（原型「上次驳回」）：作者改完重投时，审核员对照着看改没改到。
+  const [rejected] = await db.select({ revisionNumber: communityRevisions.revisionNumber, reason: communityRevisions.reviewReason })
+    .from(communityRevisions)
+    .where(and(eq(communityRevisions.workId, row.workId), eq(communityRevisions.status, 'rejected'), lt(communityRevisions.revisionNumber, row.revisionNumber)))
+    .orderBy(desc(communityRevisions.revisionNumber)).limit(1);
   // 作品当前正式标签（含停用的，便于审核员看出哪些建议已被采纳）。
   const workTags = await db.select({ id: communityTags.id, name: communityTags.name }).from(communityWorkTags)
     .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
     .where(eq(communityWorkTags.workId, row.workId)).orderBy(communityTags.sortOrder, communityTags.name);
   const { currentPublishedRevisionId: _privatePointer, ...safe } = row;
-  return { ...safe, snapshot, workTags, licenseConfirmedAt: row.licenseConfirmedAt.toISOString(), previous: old && previousSnapshot ? { ...old, snapshot: previousSnapshot } : null };
+  return {
+    ...safe, snapshot, workTags, licenseConfirmedAt: row.licenseConfirmedAt.toISOString(),
+    previous: old && previousSnapshot ? { ...old, snapshot: previousSnapshot } : null,
+    lastRejection: rejected?.reason ? { revisionNumber: rejected.revisionNumber, reason: rejected.reason } : null,
+  };
 }
 
 export type CommunityRevisionInspection = Awaited<ReturnType<typeof inspectCommunityRevision>>;
