@@ -75,3 +75,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 ## 提交
 
 每张票完成后本地提交一次（可分几个提交），信息用中文，如 `feat(ui): R15-01 设计令牌与组件底座`。只 `git add` 与本票相关的文件；**不要**提交 `.scratch/site-ux/*.png`、`.scratch/ui-polish-2026/evidence/`（用户已有改动）和 `.scratch/ui-rebuild/evidence/` 下的截图（体积大）。不 push，不建 PR。
+
+## 后续票须知（票 04 完成后补充）
+
+- **作品卡**：公开作品一律用 `CommunityWorkCard`（`src/components/works/community-work-card.tsx`，带可直接点的喜欢、徽标、容器查询元信息）和 `WorkGrid` / `WorkCardSkeleton`（2/3/4/5/6 列）；一页作品的简单网格用 `SimpleWorkGrid`。喜欢逻辑在 `useWorkLike`（未登录弹登录，成功后继续并刷新页面）。
+- **发现页地址**：拼 `/` 的链接用 `discoverHref(state, patch)`（`works/discover/discover-state.ts`，服务端也可用）；详情页面包屑「发现 / 动物」链到 `discoverHref(readDiscoverState({}), { cat: '动物' })` 即 `/?cat=动物`。
+- **类目图标**：`tagIconPattern(parseTagIcon(tag.icon))` → `<PixelIcon>`（`src/lib/render/tagIconArt.ts`，豆色数据文件，已加入护栏 TOKEN_FILES）；后台标签管理的图标预览可直接复用。
+- **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。
+- **E2E 与手动开发服务不能同目录并存**：Next 16 检测到同一目录已有 `next dev` 会拒绝再起（E2E 报「dev server did not become ready」），跑 E2E 前先停掉手动服务。开发服务首次编译某个 API 路由可能整页重载并打断进行中的请求，E2E 里第一次调用前可先 GET 预热。
+- **手机顶栏**：`MobileTopbarFrame` 现在是 `<header>`（banner 地标，与桌面顶栏按宽度二选一显示），页面自定义的手机顶栏内容无需再包地标。
