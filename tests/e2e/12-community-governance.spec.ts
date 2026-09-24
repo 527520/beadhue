@@ -21,7 +21,7 @@ async function login(page: Page, email: string, next = '/?sort=new') {
 }
 
 test('游客只能看到已发布版本，后台要求登录', async ({ page }) => {
-  await page.goto('/community');
+  await page.goto('/');
   await expect(page.getByRole('heading', { name: /E2E 已公开作品|E2E 待审修改版/ })).toBeVisible();
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/login\?next=/);
@@ -30,8 +30,8 @@ test('游客只能看到已发布版本，后台要求登录', async ({ page }) 
 
 test('已验证用户引用独立副本并发布评论', async ({ page }, testInfo) => {
   await login(page, 'e2e-user@example.com');
-  await page.goto('/community');
-  await page.locator('.community-card a').first().click();
+  await page.goto('/');
+  await page.getByRole('region', { name: '作品' }).getByRole('link', { name: /^查看「/ }).first().click();
   await expect(page).toHaveURL(/\/community\/[0-9a-f-]{36}/);
   const originalWorkUrl = page.url();
   await page.getByRole('button', { name: '用这张制作' }).click();
@@ -105,11 +105,11 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
   await login(page, 'e2e-user@example.com');
   // Earlier browser projects publish other E2E works into this shared fixture
   // database. Select the seeded work, not whichever matching title sorts first.
-  const seededWork = page.locator('.community-card').filter({
+  const seededWork = page.locator('[data-slot="work-card"]').filter({
     has: page.getByRole('heading', { name: /^E2E (已公开作品|待审修改版)$/ }),
   });
   await expect(seededWork).toHaveCount(1);
-  await seededWork.locator('a').first().click();
+  await seededWork.getByRole('link', { name: /^查看「/ }).click();
   const expired = page.locator('.community-comment-list li', { hasText: `E2E 可删除旧评论 ${testInfo.project.name}` });
   await expect(expired).toBeVisible();
   await expect(expired.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0);
@@ -242,7 +242,7 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   await page.getByRole('button', { name: '确认公开' }).click();
   await expect(page.getByRole('status')).toHaveText('已发布 1 个官方作品。');
   await expect(page.locator('.batch-cards input[type="checkbox"]')).toHaveCount(0);
-  await page.goto('/community');
+  await page.goto('/?sort=new');
   await expect(page.getByRole('heading', { name: '官方作品 01' }).first()).toBeVisible();
   const detail = await page.evaluate(async () => {
     const list = await (await fetch('/api/community/works?q=' + encodeURIComponent('官方作品 01'))).json();
@@ -254,15 +254,16 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
 test('豆社与审核后台覆盖目标宽度且无严重可访问性问题', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium');
   const widths = [350, 390, 768, 1280, 1440] as const;
-  await page.goto('/community');
+  await page.goto('/');
   for (const width of widths) {
     await page.setViewportSize({ width, height: 844 });
-    await expect(page.getByRole('heading', { level: 1, name: '豆社' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: '发现图纸' })).toHaveCount(1);
+    await expect(page.getByRole('navigation', { name: '类目' })).toBeVisible();
     const geometry = await page.evaluate(() => ({
       viewport: document.documentElement.clientWidth,
       page: document.documentElement.scrollWidth,
     }));
-    expect(geometry.page, `豆社在 ${width}px 下不得横向溢出`).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.page, `发现页在 ${width}px 下不得横向溢出`).toBeLessThanOrEqual(geometry.viewport);
   }
   const communityAxe = await new AxeBuilder({ page }).include('main')
     .withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
