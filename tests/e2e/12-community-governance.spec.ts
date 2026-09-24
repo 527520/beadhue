@@ -148,13 +148,13 @@ test('无补充说明的举报仍显示图纸或评论内容和定位入口', as
     await page.locator('tbody tr').filter({ hasText: text }).first().locator('[data-open]').click();
     return page.getByRole('dialog', { name: '举报 · 其他' });
   };
-  let drawer = await open('作品 / 其他');
+  let drawer = await open('作品「E2E 已公开作品」');
   await expect(drawer.getByText('被举报对象编号')).toBeVisible();
   await expect(drawer.getByText('E2E 已公开作品', { exact: true })).toBeVisible();
   await expect(drawer.locator('canvas').first()).toBeVisible();
   await expect(drawer.getByRole('link', { name: '公开页' })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);
-  drawer = await open('评论 / 其他');
+  drawer = await open('评论“E2E 被举报评论”');
   await expect(drawer).toContainText('E2E 被举报评论');
   await expect(drawer.getByRole('link', { name: '公开页' })).toHaveAttribute('href', /#comment-/);
 });

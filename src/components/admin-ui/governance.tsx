@@ -3,6 +3,7 @@
 import { Check, ExternalLink, Eye, EyeOff, Flag, Grid3x3, Info, MessageCircle, X } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import type { AdminPerson } from '@/lib/admin/lookups';
 import type { ReportTargetInspection } from '@/lib/community/reportInspection';
 import { zhCN } from '@/messages/zh-CN';
 import { useAdminCommand } from '@/components/admin/useAdminCommand';
@@ -17,7 +18,7 @@ import { bulkWrite } from './bulk';
 import { BatchButton, DataTable, TitleCell, type Column, type RowMenuEntry } from './data-table';
 import { fmtAgo, fmtDate } from './format';
 import { AdminDrawer, CommandAlert, ReasonDialog, Spacer, type CommandState } from './overlays';
-import { Dl, DrawerSection, IconTile, Mono, Note } from './parts';
+import { CopyId, Dl, DrawerSection, IconTile, Note, Person, Thumb } from './parts';
 import { exportCsv, useAdminTable } from './use-admin-table';
 
 const icon = (Icon: typeof Check) => <Icon aria-hidden="true" strokeWidth={1.75} />;
@@ -30,7 +31,12 @@ const idleCommand: CommandState = { busy: false, uncertain: false, error: null, 
 // ================= 评论治理 =================
 const c = zhCN.adminUi.comments;
 interface ModerationCheck { provider: string; suggestion: string | null; label: string | null; subLabel: string | null; score: number | null; keywords: string[]; reason: string; checkedAt: string }
-interface CommentRow { id: string; workId: string; status: string; version: number; body: string; riskCategories: string[]; createdAt: string; authorName: string; workTitle: string | null; moderation: ModerationCheck | null }
+interface CommentRow { id: string; workId: string; status: string; version: number; body: string; riskCategories: string[]; createdAt: string; authorName: string; author: AdminPerson; workTitle: string | null; workRevisionId: string | null; moderation: ModerationCheck | null }
+
+/** 作品引用：缩略图 + 标题（原型 workRef）。 */
+const WorkRef = ({ revisionId, title }: { revisionId: string | null; title: string | null }) => (
+  <span className="inline-flex max-w-50 min-w-0 items-center gap-2 text-ink-2"><Thumb revisionId={revisionId} size="sm" /><span className="truncate">{title ?? zhCN.adminUi.works.noTitle}</span></span>
+);
 
 const verdict = (row: CommentRow) => row.status === 'rejected' ? <Badge tone="danger" dot>{c.verdicts.rejected}</Badge>
   : row.status === 'pending_review' ? <Badge tone="warning" dot>{c.verdicts.review}</Badge>
@@ -87,8 +93,8 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
   const keepLabel = (row: CommentRow) => (row.status === 'rejected' ? c.publishRejected : c.keep);
   const columns: Column<CommentRow>[] = [
     { key: 'text', label: c.columns.text, main: true, cell: (row) => <TitleCell quote title={`“${row.body}”`} onOpen={() => setOpenId(row.id)} /> },
-    { key: 'author', label: c.columns.author, cell: (row) => <span className="block max-w-45 truncate">{row.authorName}</span> },
-    { key: 'work', label: c.columns.work, cell: (row) => <span className="block max-w-45 truncate">{row.workTitle ?? zhCN.adminUi.works.noTitle}</span> },
+    { key: 'author', label: c.columns.author, cell: (row) => <Person {...row.author} /> },
+    { key: 'work', label: c.columns.work, cell: (row) => <WorkRef revisionId={row.workRevisionId} title={row.workTitle} /> },
     { key: 'verdict', label: c.columns.verdict, cell: (row) => <span className="inline-flex flex-col items-start gap-0.5">{verdict(row)}{checkLabel(row.moderation) ? <span className="text-caption font-normal text-ink-3">{checkLabel(row.moderation)}</span> : null}</span> },
     { key: 'time', label: c.columns.time, sort: (a, b) => a.createdAt.localeCompare(b.createdAt), cell: (row) => <span className="tabular-nums">{fmtAgo(row.createdAt)}</span> },
   ];
@@ -107,6 +113,7 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
         card={(row) => ({ lead: <IconTile>{icon(MessageCircle)}</IconTile>, title: `“${row.body}”`, meta: `${row.authorName} · ${row.workTitle ?? zhCN.adminUi.works.noTitle} · ${fmtAgo(row.createdAt)}`,
           tail: <>{verdict(row)}{checkLabel(row.moderation) ? <span className="text-body-sm text-ink-3">{checkLabel(row.moderation)}</span> : null}</> })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
+        search={{ value: table.input, onChange: table.setInput, placeholder: c.search }}
         filters={[{ key: 'status', label: c.filters.verdict, options: [{ value: 'pending_review', label: c.verdicts.review }, { value: 'rejected', label: c.verdicts.rejected }] }]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         selectable selected={selected} onSelectedChange={setSelected}
@@ -131,9 +138,9 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
             <Dl items={[
               [c.status, verdict(open)],
               [g.risk, open.riskCategories?.length ? open.riskCategories.map(riskLabel).join('、') : zhCN.communityAdmin.unmarked],
-              [c.author, open.authorName],
+              [c.author, <Person key="a" {...open.author} />],
               [c.time, <span key="t" className="tabular-nums">{fmtDate(open.createdAt)}</span>],
-              [c.work, <Link key="w" href={`/community/${open.workId}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline hover:underline-offset-3 focus-visible:focus-ring [&>svg]:size-4">{open.workTitle ?? zhCN.adminUi.works.noTitle}{icon(ExternalLink)}</Link>, true],
+              [c.work, <Link key="w" href={`/community/${open.workId}`} target="_blank" rel="noopener noreferrer" className="inline-flex max-w-full items-center gap-2 rounded-sm text-accent hover:underline hover:underline-offset-3 focus-visible:focus-ring [&>svg]:size-4"><Thumb revisionId={open.workRevisionId} size="sm" /><span className="truncate">{open.workTitle ?? zhCN.adminUi.works.noTitle}</span>{icon(ExternalLink)}</Link>, true],
             ]} />
           </DrawerSection>
           <DrawerSection title={c.check}>{open.moderation ? <ModerationFacts check={open.moderation} /> : <p className="text-body-sm text-ink-3">{m.missing}</p>}</DrawerSection>
@@ -154,13 +161,21 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
 // ================= 举报案件 =================
 const r = zhCN.adminUi.reports;
 const x = zhCN.adminUi.csv.reports;
-interface ReportRow { id: string; targetType: 'work' | 'comment'; targetId: string; targetVersion: number; status: 'open' | 'accepted'; version: number; category: string; details: string | null; createdAt: string }
+interface ReportTargetLabel { title: string | null; excerpt: string | null; revisionId: string | null; authorName: string | null; workTitle: string | null }
+interface ReportRow { id: string; targetType: 'work' | 'comment'; targetId: string; targetVersion: number; status: 'open' | 'accepted'; version: number; category: string; details: string | null; createdAt: string; target: ReportTargetLabel; reporter: AdminPerson | null }
 type Decision = 'accepted' | 'resolved' | 'dismissed' | 'hide';
 
 const reportStatus = (row: ReportRow) => <Badge tone={row.status === 'open' ? 'warning' : 'info'} dot>{states.report[row.status]}</Badge>;
-const reportTitle = (row: ReportRow) => r.targetTitle(r.kinds[row.targetType], riskLabel(row.category));
+/** 对象名：作品「标题」/ 评论“开头”（原型 targetTitle）；对象已不可读时退回类型 + 原因。 */
+const reportTitle = (row: ReportRow) => row.targetType === 'work'
+  ? (row.target.title ? r.workTarget(row.target.title) : r.targetTitle(r.kinds.work, riskLabel(row.category)))
+  : (row.target.excerpt ? r.commentTarget(row.target.excerpt) : r.targetTitle(r.kinds.comment, riskLabel(row.category)));
+const reporterName = (row: ReportRow) => row.reporter?.name ?? r.anonymousReporter;
+const ReportLead = ({ row, size = 'md' }: { row: ReportRow; size?: 'md' | 'lg' }) => row.targetType === 'work' && row.target.revisionId
+  ? <Thumb revisionId={row.target.revisionId} size={size} />
+  : <IconTile size={size}>{icon(row.targetType === 'work' ? Grid3x3 : MessageCircle)}</IconTile>;
 
-function ReportTarget({ target }: { target: ReportTargetInspection }) {
+function ReportTarget({ target, label }: { target: ReportTargetInspection; label: ReportTargetLabel }) {
   const status = target.targetType === 'work' ? states.revision[target.contentStatus as keyof typeof states.revision] : states.comment[target.contentStatus as keyof typeof states.comment];
   return (
     <div className="grid gap-3">
@@ -173,11 +188,13 @@ function ReportTarget({ target }: { target: ReportTargetInspection }) {
           </span>
         </div>
       ) : target.body !== null ? (
-        <blockquote className="m-0 rounded-md bg-bg-subtle p-4 text-body text-ink">{target.body}<footer className="mt-2 text-caption font-normal text-ink-3">{status ?? g.targetUnavailable}</footer></blockquote>
+        <blockquote className="m-0 rounded-md bg-bg-subtle p-4 text-body text-ink">{target.body}<footer className="mt-2 text-caption font-normal text-ink-3">
+          {label.authorName ? `${r.commentBy(label.authorName, label.workTitle ?? zhCN.adminUi.works.noTitle)} · ` : ''}{status ?? g.targetUnavailable}
+        </footer></blockquote>
       ) : <p className="text-body-sm text-ink-3">{g.contentUnavailable}</p>}
       {target.changed ? <Note tone="warning" icon={icon(Info)}>{target.targetType === 'work' ? g.workChanged : g.commentChanged}</Note> : null}
       <Dl items={[
-        [g.targetId, <Mono key="id">{target.targetId}</Mono>, true],
+        [g.targetId, <CopyId key="id" value={target.targetId} label={g.targetId} />, true],
         [g.reportedVersion, <span key="rv" className="tabular-nums">{target.reportedVersion}</span>],
         [g.currentVersion, <span key="cv" className="tabular-nums">{target.currentVersion ?? g.unavailable}</span>],
       ]} />
@@ -214,9 +231,9 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
     });
   };
   const columns: Column<ReportRow>[] = [
-    { key: 'target', label: r.columns.target, main: true, cell: (row) => <TitleCell lead={<IconTile>{icon(row.targetType === 'work' ? Grid3x3 : MessageCircle)}</IconTile>} title={reportTitle(row)} sub={<Mono>{row.targetId.slice(0, 8)}</Mono>} onOpen={() => setOpenId(row.id)} /> },
+    { key: 'target', label: r.columns.target, main: true, cell: (row) => <TitleCell quote lead={<ReportLead row={row} />} title={reportTitle(row)} sub={r.kinds[row.targetType]} onOpen={() => setOpenId(row.id)} /> },
     { key: 'reason', label: r.columns.reason, cell: (row) => riskLabel(row.category) },
-    { key: 'details', label: r.columns.details, cell: (row) => <span className="block max-w-75 truncate text-ink-3">{row.details || r.noDetails}</span> },
+    { key: 'reporter', label: r.columns.reporter, cell: (row) => (row.reporter ? <Person {...row.reporter} /> : <span className="text-ink-3">{r.anonymousReporter}</span>) },
     { key: 'status', label: r.columns.status, cell: reportStatus },
     { key: 'time', label: r.columns.time, sort: (a, b) => a.createdAt.localeCompare(b.createdAt), cell: (row) => <span className="tabular-nums">{fmtAgo(row.createdAt)}</span> },
   ];
@@ -232,15 +249,16 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
     <>
       <DataTable<ReportRow>
         label={r.label} rows={table.items} rowId={(row) => row.id} rowName={reportTitle} columns={columns} minWidth={900}
-        card={(row) => ({ lead: <IconTile size="lg">{icon(row.targetType === 'work' ? Grid3x3 : MessageCircle)}</IconTile>, title: reportTitle(row), meta: `${row.details || r.noDetails} · ${fmtAgo(row.createdAt)}`, tail: reportStatus(row) })}
+        card={(row) => ({ lead: <ReportLead row={row} size="lg" />, title: reportTitle(row), meta: `${riskLabel(row.category)} · ${reporterName(row)} · ${fmtAgo(row.createdAt)}`, tail: reportStatus(row) })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
+        search={{ value: table.input, onChange: table.setInput, placeholder: r.search }}
         filters={[
           { key: 'status', label: r.filters.status, options: [{ value: 'open', label: states.report.open }, { value: 'accepted', label: states.report.accepted }] },
           { key: 'targetType', label: r.filters.kind, options: [{ value: 'work', label: r.kinds.work }, { value: 'comment', label: r.kinds.comment }] },
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<ReportRow>('/api/admin/community/reports', table.query, [
-          [x.id, (row) => row.id], [x.target, reportTitle], [x.targetId, (row) => row.targetId], [x.reason, (row) => riskLabel(row.category)], [x.details, (row) => row.details ?? ''], [x.status, (row) => states.report[row.status]], [x.time, (row) => fmtDate(row.createdAt)],
+          [x.id, (row) => row.id], [x.target, reportTitle], [x.targetId, (row) => row.targetId], [x.reason, (row) => riskLabel(row.category)], [x.reporter, reporterName], [x.details, (row) => row.details ?? ''], [x.status, (row) => states.report[row.status]], [x.time, (row) => fmtDate(row.createdAt)],
         ], zhCN.adminUi.csv.reportsFile)}
         menu={menu} onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
@@ -258,14 +276,15 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
         </> : undefined}>
         {open ? <>
           <DrawerSection title={r.target(r.kinds[open.targetType])}>
-            {target ? <ReportTarget target={target} /> : inspection.error ? <CommandAlert command={{ ...idleCommand, error: inspection.error }} /> : <Skeleton className="h-24" role="status" aria-label={r.loadingTarget} />}
+            {target ? <ReportTarget target={target} label={open.target} /> : inspection.error ? <CommandAlert command={{ ...idleCommand, error: inspection.error }} /> : <Skeleton className="h-24" role="status" aria-label={r.loadingTarget} />}
           </DrawerSection>
           <DrawerSection title={r.info}>
             <Dl items={[
               [r.reason, <b key="r" className="font-semibold text-ink">{riskLabel(open.category)}</b>],
               [r.status, reportStatus(open)],
+              [r.reporter, open.reporter ? <Person key="p" {...open.reporter} /> : r.anonymousReporter],
               [r.time, <span key="t" className="tabular-nums">{fmtDate(open.createdAt)}</span>],
-              [r.id, <Mono key="id">{open.id}</Mono>],
+              [r.id, <CopyId key="id" value={open.id} label={r.id} />],
               [r.details, <span key="d" className="whitespace-normal text-ink-2">{open.details || r.noDetails}</span>, true],
             ]} />
           </DrawerSection>

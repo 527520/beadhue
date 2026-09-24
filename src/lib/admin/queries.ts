@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, isNotNull, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { adminAuditLogs, maintenanceRuns, slowQueries, systemLogs, users } from '@/../db/schema';
@@ -8,7 +8,9 @@ import { maskEmailForPublic } from '@/lib/identity/publicAuthor';
 import { pushSpan } from '@/lib/observability/context';
 import migrationJournal from '@/../db/migrations/meta/_journal.json';
 import { AppError } from '@/lib/errors';
+import { zhCN } from '@/messages/zh-CN';
 import { sanitizeAuditState } from './audit';
+import { containsPattern, excerpt, loadBatchLabels, loadCommentLabels, loadPeople, loadReportTargets, loadRevisionLabels, loadTagNames, loadWorkLabels } from './lookups';
 
 const usersQuerySchema = z.object({
   q: z.string().trim().max(80).optional(),
@@ -48,16 +50,65 @@ export async function listGovernedUsers(db: AnyDatabase, input: unknown = {}) {
   return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }
 
+const commaList = (item: z.ZodType<string, string>) => z.string().max(4000).transform((value) => value.split(',').filter(Boolean)).pipe(z.array(item).max(100)).optional();
 const auditQuerySchema = z.object({
   q: z.string().trim().max(120).optional(), from: z.iso.date().optional(), to: z.iso.date().optional(),
+  /** 动作（逗号分隔的动作键）与操作人（逗号分隔的账号编号），多选。 */
+  action: commaList(z.string().min(1).max(80)), actor: commaList(z.uuid()),
   ...pageQueryFields,
 }).strict().refine((value) => !value.from || !value.to || value.from <= value.to);
+
+/** 审计对象的可读名称（作品标题、评论开头、账号名、标签名、批次名）；查不到（已删除等）为 null。 */
+async function auditTargetNames(db: AnyDatabase, rows: Array<{ targetType: string; targetId: string }>): Promise<Map<string, { name: string | null; revisionNumber?: number }>> {
+  // 目标编号是文本列，个别历史记录不是 UUID；只查合法的，免得 uuid 列比较直接报错。
+  const of = (type: string) => rows.filter((row) => row.targetType === type && z.uuid().safeParse(row.targetId).success).map((row) => row.targetId);
+  const reports = await loadReportTargets(db, of('community_report'));
+  const reported = [...reports.values()];
+  const [works, revisions, comments, people, tags, batches] = await Promise.all([
+    loadWorkLabels(db, [...of('community_work'), ...reported.filter((item) => item.targetType === 'work').map((item) => item.targetId)]),
+    loadRevisionLabels(db, of('community_revision')),
+    loadCommentLabels(db, [...of('community_comment'), ...reported.filter((item) => item.targetType === 'comment').map((item) => item.targetId)]),
+    loadPeople(db, of('user')),
+    loadTagNames(db, of('community_tag')),
+    loadBatchLabels(db, of('official_batch')),
+  ]);
+  const names = new Map<string, { name: string | null; revisionNumber?: number }>();
+  for (const row of rows) {
+    const key = `${row.targetType}:${row.targetId}`;
+    const id = row.targetId;
+    switch (row.targetType) {
+      case 'community_work': names.set(key, { name: works.get(id)?.title ?? null }); break;
+      case 'community_revision': { const revision = revisions.get(id); names.set(key, { name: revision?.title ?? null, revisionNumber: revision?.revisionNumber }); break; }
+      case 'community_comment': { const comment = comments.get(id); names.set(key, { name: comment ? excerpt(comment.body, 24) : null }); break; }
+      case 'community_report': {
+        const target = reports.get(id);
+        const name = target?.targetType === 'work' ? works.get(target.targetId)?.title : target ? comments.get(target.targetId)?.body : undefined;
+        names.set(key, { name: name ? excerpt(name, 24) : null });
+        break;
+      }
+      case 'user': names.set(key, { name: people.get(id)?.name ?? null }); break;
+      case 'community_tag': names.set(key, { name: tags.get(id) ?? null }); break;
+      case 'official_batch': names.set(key, { name: batches.get(id)?.name ?? null }); break;
+      default: names.set(key, { name: null });
+    }
+  }
+  return names;
+}
 
 export async function listAdminAudit(db: AnyDatabase, input: unknown = {}) {
   pushSpan({ kind: 'service', name: 'admin.listAdminAudit' });
   const query = auditQuerySchema.parse(input);
+  const pattern = query.q ? containsPattern(query.q) : null;
+  // 动作按中文名也能搜：「精选」命中 community.work_feature 等。
+  const labelled = query.q ? Object.entries(zhCN.communityAdmin.audit.actions).filter(([, label]) => label.includes(query.q!)).map(([key]) => key) : [];
   const where = and(
-    query.q ? or(ilike(adminAuditLogs.action, `%${query.q}%`), ilike(adminAuditLogs.targetId, `%${query.q}%`), ilike(adminAuditLogs.requestId, `%${query.q}%`)) : undefined,
+    pattern ? or(
+      ilike(adminAuditLogs.action, pattern), ilike(adminAuditLogs.targetId, pattern), ilike(adminAuditLogs.requestId, pattern),
+      labelled.length ? inArray(adminAuditLogs.action, labelled) : undefined,
+      sql`exists (select 1 from users au where au.id = ${adminAuditLogs.actorUserId} and au.username ilike ${pattern})`,
+    ) : undefined,
+    query.action?.length ? inArray(adminAuditLogs.action, query.action) : undefined,
+    query.actor?.length ? inArray(adminAuditLogs.actorUserId, query.actor) : undefined,
     query.from ? gte(adminAuditLogs.createdAt, new Date(`${query.from}T00:00:00+08:00`)) : undefined,
     query.to ? lt(adminAuditLogs.createdAt, new Date(new Date(`${query.to}T00:00:00+08:00`).getTime() + 86400000)) : undefined,
   );
@@ -66,10 +117,23 @@ export async function listAdminAudit(db: AnyDatabase, input: unknown = {}) {
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(adminAuditLogs).where(where),
   ]);
+  const [people, targets] = await Promise.all([loadPeople(db, rows.map((row) => row.actorUserId)), auditTargetNames(db, rows)]);
   return {
-    items: rows.map((row) => ({ ...row, beforeState: sanitizeAuditState(row.beforeState), afterState: sanitizeAuditState(row.afterState), createdAt: row.createdAt.toISOString() })),
+    items: rows.map((row) => ({
+      ...row, beforeState: sanitizeAuditState(row.beforeState), afterState: sanitizeAuditState(row.afterState), createdAt: row.createdAt.toISOString(),
+      actor: row.actorUserId ? people.get(row.actorUserId) ?? null : null,
+      target: targets.get(`${row.targetType}:${row.targetId}`) ?? { name: null },
+    })),
     ...pageMeta(readCount(totalRows), query.page, query.size),
   };
+}
+
+/** 审计「操作人」筛选的候选：在记录里出现过的后台账号。 */
+export async function listAuditActors(db: AnyDatabase) {
+  const rows = await db.selectDistinct({ userId: adminAuditLogs.actorUserId }).from(adminAuditLogs).where(isNotNull(adminAuditLogs.actorUserId)).limit(200);
+  const people = await loadPeople(db, rows.map((row) => row.userId));
+  return rows.flatMap((row) => (row.userId && people.has(row.userId) ? [{ userId: row.userId, ...people.get(row.userId)! }] : []))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'));
 }
 export type AdminAuditEntry = Awaited<ReturnType<typeof listAdminAudit>>['items'][number];
 

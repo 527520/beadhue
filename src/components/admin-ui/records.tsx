@@ -14,7 +14,7 @@ import { useToast } from '@/components/ui/toast';
 import { DataTable, TitleCell, type Column } from './data-table';
 import { fmtDate } from './format';
 import { AdminDrawer, Spacer } from './overlays';
-import { AdminCard, CardHead, CodeBlock, Collapsible, Dl, DrawerSection, Mono, Note } from './parts';
+import { AdminCard, CardHead, CodeBlock, Collapsible, CopyId, Dl, DrawerSection, Mono, Note, Person } from './parts';
 import { exportCsv, useAdminTable, type FilterState } from './use-admin-table';
 
 const icon = (Icon: typeof Copy) => <Icon aria-hidden="true" strokeWidth={1.75} />;
@@ -56,32 +56,63 @@ function StateBox({ title, state }: { title: string; state: AdminAuditEntry['bef
   );
 }
 
+/** 对象：作品「标题」、评论“开头”、账号「名字」……名字查不到（已删除）时退回类型 + 编号前 8 位。 */
+function targetText(item: AdminAuditEntry): string {
+  const { name, revisionNumber } = item.target;
+  if (!name) return `${targetLabel(item.targetType)} ${item.targetId.slice(0, 8)}`;
+  if (item.targetType === 'community_comment') return a.commentTarget(name);
+  if (item.targetType === 'community_revision') return a.revisionTarget(name, revisionNumber ?? 1);
+  if (item.targetType === 'community_report') return a.reportTarget(name);
+  return a.namedTarget(targetLabel(item.targetType), name);
+}
+const actorName = (item: AdminAuditEntry) => item.actor?.name ?? `${roles[item.actorRole]}（${audit.anonymized}）`;
+const ActorCell = ({ item }: { item: AdminAuditEntry }) => (item.actor ? <Person {...item.actor} /> : <span className="text-ink-3">{actorName(item)}</span>);
+
+/** 「操作人」筛选的候选：在记录里出现过的后台账号。 */
+function useAuditActors() {
+  const [actors, setActors] = useState<Array<{ userId: string; name: string }>>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/admin/audit/actors', { cache: 'no-store', signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { items?: Array<{ userId: string; name: string }> } | null) => { if (body?.items) setActors(body.items); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  return actors;
+}
+
 export function AuditConsole() {
   const table = useAdminTable<AdminAuditEntry>('/api/admin/audit', 'audit', {
-    mapFilters: (filters: FilterState) => ({ from: typeof filters.range === 'string' && filters.range ? sinceDate(Number(filters.range)) : '' }),
+    mapFilters: (filters: FilterState) => ({ action: filters.action ?? '', actor: filters.actor ?? '', from: typeof filters.range === 'string' && filters.range ? sinceDate(Number(filters.range)) : '' }),
   });
+  const actors = useAuditActors();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = table.items.find((item) => item.id === openId) ?? null;
   const columns: Column<AdminAuditEntry>[] = [
     { key: 'time', label: a.columns.time, sort: (x, y) => x.createdAt.localeCompare(y.createdAt), cell: (item) => <span className="tabular-nums">{fmtDate(item.createdAt)}</span> },
-    { key: 'actor', label: a.columns.actor, cell: (item) => <span className="inline-flex items-center gap-2">{roles[item.actorRole]}<Mono>{item.actorUserId?.slice(0, 8) ?? audit.anonymized}</Mono></span> },
+    { key: 'actor', label: a.columns.actor, cell: (item) => <ActorCell item={item} /> },
     { key: 'action', label: a.columns.action, main: true, cell: (item) => <TitleCell title={actionLabel(item.action)} onOpen={() => setOpenId(item.id)} /> },
-    { key: 'target', label: a.columns.target, cell: (item) => <span className="inline-flex items-center gap-2">{targetLabel(item.targetType)}<Mono>{item.targetId.slice(0, 8)}</Mono></span> },
+    { key: 'target', label: a.columns.target, cell: (item) => <span className="block max-w-60 truncate" title={targetText(item)}>{targetText(item)}</span> },
     { key: 'reason', label: a.columns.reason, cell: (item) => <span className="block max-w-75 truncate text-ink-3">{item.reason || '—'}</span> },
-    { key: 'request', label: a.columns.request, cell: (item) => <Mono>{item.requestId.slice(0, 12)}</Mono> },
+    { key: 'request', label: a.columns.request, cell: (item) => <Mono>{item.requestId.slice(0, 8)}</Mono> },
   ];
   return (
     <>
       <DataTable<AdminAuditEntry>
-        label={a.label} rows={table.items} rowId={(item) => item.id} rowName={(item) => `${actionLabel(item.action)} ${item.targetId}`} columns={columns} minWidth={900}
-        card={(item) => ({ title: `${actionLabel(item.action)} · ${targetLabel(item.targetType)}`, meta: <>{roles[item.actorRole]} · <span className="tabular-nums">{fmtDate(item.createdAt)}</span></>, tail: item.reason ? <span className="text-body-sm text-ink-3">{item.reason}</span> : undefined })}
+        label={a.label} rows={table.items} rowId={(item) => item.id} rowName={(item) => `${actionLabel(item.action)} ${targetText(item)}`} columns={columns} minWidth={960}
+        card={(item) => ({ title: `${actionLabel(item.action)} · ${targetText(item)}`, meta: <>{actorName(item)} · <span className="tabular-nums">{fmtDate(item.createdAt)}</span></>, tail: item.reason ? <span className="text-body-sm text-ink-3">{item.reason}</span> : undefined })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
         search={{ value: table.input, onChange: table.setInput, placeholder: a.search }}
-        filters={[{ key: 'range', label: a.filters.range, options: Object.entries(a.ranges).map(([value, label]) => ({ value, label })) }]}
+        filters={[
+          { key: 'action', label: a.filters.action, multi: true, options: Object.entries(audit.actions).map(([value, label]) => ({ value, label })) },
+          ...(actors.length ? [{ key: 'actor', label: a.filters.actor, multi: true, options: actors.map((actor) => ({ value: actor.userId, label: actor.name })) }] : []),
+          { key: 'range', label: a.filters.range, options: Object.entries(a.ranges).map(([value, label]) => ({ value, label })) },
+        ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<AdminAuditEntry>('/api/admin/audit', table.query, [
-          [ac.time, (item) => fmtDate(item.createdAt)], [ac.role, (item) => roles[item.actorRole]], [ac.actor, (item) => item.actorUserId ?? ''], [ac.action, (item) => actionLabel(item.action)],
-          [ac.target, (item) => `${targetLabel(item.targetType)} ${item.targetId}`], [ac.reason, (item) => item.reason], [ac.request, (item) => item.requestId],
+          [ac.time, (item) => fmtDate(item.createdAt)], [ac.actorName, actorName], [ac.role, (item) => roles[item.actorRole]], [ac.actor, (item) => item.actorUserId ?? ''], [ac.action, (item) => actionLabel(item.action)],
+          [ac.target, (item) => `${targetText(item)} ${item.targetId}`], [ac.reason, (item) => item.reason], [ac.request, (item) => item.requestId],
         ], a.exportFile)}
         onOpen={(item) => setOpenId(item.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
@@ -91,13 +122,12 @@ export function AuditConsole() {
         footer={<><Spacer /><Button onClick={() => setOpenId(null)}>{zhCN.adminUi.common.close}</Button></>}>
         {open ? <>
           <Dl items={[
-            [a.drawer.role, roles[open.actorRole]],
+            [a.drawer.actor, <span key="a" className="inline-flex flex-wrap items-center gap-2"><ActorCell item={open} /><Badge>{roles[open.actorRole]}</Badge></span>],
             [a.drawer.time, <span key="t" className="tabular-nums">{fmtDate(open.createdAt)}</span>],
-            [a.drawer.actorId, <Mono key="a">{open.actorUserId ?? audit.anonymized}</Mono>, true],
-            [a.drawer.target, <span key="g">{targetLabel(open.targetType)} <Mono>{open.targetId}</Mono></span>, true],
+            [a.drawer.target, <span key="g" className="inline-flex flex-wrap items-center gap-x-2">{targetText(open)}<CopyId value={open.targetId} label={a.drawer.targetId} /></span>, true],
             [a.drawer.reason, open.reason || '—', true],
-            [a.drawer.request, <Mono key="r">{open.requestId}</Mono>],
-            [a.drawer.id, <Mono key="i">{open.id}</Mono>],
+            [a.drawer.request, <CopyId key="r" value={open.requestId} label={a.drawer.request} />],
+            [a.drawer.id, <CopyId key="i" value={open.id} label={a.drawer.id} />],
           ]} />
           <div className="grid grid-cols-2 gap-3 max-md:grid-cols-1">
             <StateBox title={a.drawer.before} state={open.beforeState} />

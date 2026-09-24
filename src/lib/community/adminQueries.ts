@@ -4,6 +4,7 @@ import type { AnyDatabase } from '@/../db/client';
 import { communityRevisions, communityTags, communityWorks, communityWorkTags, users } from '@/../db/schema';
 import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
 import { ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
+import { OFFICIAL_PERSON, type AdminPerson } from '@/lib/admin/lookups';
 import { AppError } from '@/lib/errors';
 import { communityPreviewSchema, parseCommunitySnapshot } from './snapshot';
 
@@ -61,6 +62,7 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     commentCount: communityWorks.commentCount, title: communityRevisions.title, preview: communityRevisions.preview,
     displayRevisionId: communityRevisions.id, width: communityRevisions.width, height: communityRevisions.height,
     authorType: communityRevisions.authorType, displayName: communityRevisions.frozenDisplayName,
+    publicAuthorId: communityRevisions.publicAuthorId, avatarColor: users.avatarColor,
     accountStatus: users.accountStatus, revisionNumber: communityRevisions.revisionNumber,
   }).from(communityWorks).leftJoin(communityRevisions, eq(communityRevisions.id, displayRevision))
     .leftJoin(users, eq(users.id, communityWorks.authorUserId))
@@ -73,7 +75,11 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
   const tagsOf = (workId: string) => tagRows.filter((tag) => tag.workId === workId).map((tag) => tag.name);
   const items = rows.map((row) => {
     const preview = communityPreviewSchema.safeParse(row.preview);
+    const anonymized = row.accountStatus === 'anonymized';
+    const author: AdminPerson = row.authorType === 'official' ? OFFICIAL_PERSON
+      : { id: row.publicAuthorId ?? row.id, name: anonymized ? ANONYMIZED_DISPLAY_NAME : row.displayName ?? ANONYMIZED_DISPLAY_NAME, color: anonymized ? null : row.avatarColor };
     return {
+      author,
       likeCount: row.likeCount, commentCount: row.commentCount, updatedAt: row.updatedAt.toISOString(), tags: tagsOf(row.id),
       id: row.id, version: row.version, lifecycleStatus: row.lifecycleStatus, commentsLocked: row.commentsLocked,
       isPublic: row.lifecycleStatus === 'active' && row.currentPublishedRevisionId !== null,

@@ -24,7 +24,7 @@ import { bulkWrite } from './bulk';
 import { BatchButton, DataTable, TitleCell, type Column, type RowMenuEntry } from './data-table';
 import { fmtDate, fmtNum } from './format';
 import { AdminDrawer, CommandAlert, ConfirmDialog, ReasonDialog, Spacer, type CommandState } from './overlays';
-import { Dl, DrawerSection, Mono, Note, Thumb } from './parts';
+import { CopyId, Dl, DrawerSection, Mono, Note, Person, Thumb } from './parts';
 import { exportCsv, useAdminTable } from './use-admin-table';
 
 const t = zhCN.adminUi.works;
@@ -59,12 +59,12 @@ function TagsCell({ tags }: { tags: string[] }) {
 }
 
 function useActiveTags() {
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/admin/community/tags?state=on&size=100', { cache: 'no-store', signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
-      .then((body: { items?: Array<{ name: string }> } | null) => { if (body?.items) setTags(body.items.map((item) => item.name)); })
+      .then((body: { items?: Array<{ id: string; name: string }> } | null) => { if (body?.items) setTags(body.items.map(({ id, name }) => ({ id, name }))); })
       .catch(() => {});
     return () => controller.abort();
   }, []);
@@ -145,9 +145,13 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
   const toast = useToast();
   const auth = useAuthStatus();
   const { refresh: refreshCounts } = useAdminCounts();
-  const table = useAdminTable<Work>(ENDPOINT, 'works', { initialQ, mapFilters: (filters) => ({ status: filters.status ?? '', public: filters.public ?? '' }) });
+  const table = useAdminTable<Work>(ENDPOINT, 'works', {
+    initialQ,
+    mapFilters: (filters) => ({ status: filters.status ?? '', public: filters.public ?? '', tagId: filters.tag ?? '', tagState: filters.tag ? 'has' : '' }),
+  });
   const command = useAdminCommand();
-  const suggestions = useActiveTags();
+  const activeTags = useActiveTags();
+  const suggestions = useMemo(() => activeTags.map((tag) => tag.name), [activeTags]);
   const [selected, setSelected] = useState<string[]>([]);
   const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
   const [dialog, setDialog] = useState<{ action: Action | 'bulkTag'; works: Work[] } | null>(null);
@@ -200,7 +204,7 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
   const columns: Column<Work>[] = [
     { key: 'work', label: t.columns.work, main: true, cell: (work) => <TitleCell lead={<Thumb revisionId={work.thumbnail?.revisionId} />} title={titleOf(work)} sub={<Mono>{work.id.slice(0, 8)}</Mono>} onOpen={() => setOpenId(work.id)}
       extra={<>{work.featured ? <FeaturedBadge /> : null}{work.commentsLocked ? <span title={t.locked} className="inline-grid text-ink-3 [&>svg]:size-4">{icon(Lock)}<span className="sr-only">{t.locked}</span></span> : null}</>} /> },
-    { key: 'author', label: t.columns.author, cell: (work) => <span className="block max-w-45 truncate">{work.displayName}</span> },
+    { key: 'author', label: t.columns.author, cell: (work) => <Person {...work.author} /> },
     { key: 'status', label: t.columns.status, cell: (work) => <WorkStatus status={work.lifecycleStatus} /> },
     { key: 'public', label: t.columns.public, cell: (work) => <PublicCell work={work} /> },
     { key: 'tags', label: t.columns.tags, cell: (work) => <TagsCell tags={work.tags} /> },
@@ -252,6 +256,7 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
         filters={[
           { key: 'status', label: t.filters.status, options: (['active', 'withdrawn', 'removed'] as const).map((value) => ({ value, label: t.status[value] })) },
           { key: 'public', label: t.filters.public, options: [{ value: 'public', label: t.public }, { value: 'hidden', label: t.hidden }] },
+          ...(activeTags.length ? [{ key: 'tag', label: t.filters.tag, options: activeTags.map((tag) => ({ value: tag.id, label: tag.name })) }] : []),
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<Work>(ENDPOINT, table.query, [
@@ -297,8 +302,8 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
             ? <Note icon={icon(Info)}>{detail.latestRevision.status === 'pending_review' ? d.pending : d.newer(detail.latestRevision.revisionNumber, revisionStates[detail.latestRevision.status])}</Note> : null}
           <DrawerSection title={d.info} aside={detail.isPublic ? <Link href={`/community/${detail.id}`} target="_blank" rel="noopener noreferrer" className="text-body-sm font-medium text-accent hover:underline hover:underline-offset-3 focus-visible:focus-ring">{d.openPublic}</Link> : null}>
             <Dl items={[
-              [d.author, listed?.displayName ?? '—'],
-              [d.id, <Mono key="id">{detail.id}</Mono>],
+              [d.author, listed ? <Person key="a" {...listed.author} /> : '—'],
+              [d.id, <CopyId key="id" value={detail.id} label={d.id} />],
               [d.size, pattern ? <span className="tabular-nums">{pattern.width}×{pattern.height}</span> : '—'],
               [d.colors, <span key="c" className="tabular-nums">{d.colorsValue(usage.length, fmtNum(usage.reduce((sum, item) => sum + item.count, 0)))}</span>],
               [d.interactions, <span key="i" className="tabular-nums">{fmtNum(detail.counts.likes)} · {detail.counts.comments}</span>],

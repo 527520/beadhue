@@ -1,11 +1,13 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Copy } from 'lucide-react';
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { adminThumbnailUrl } from '@/lib/community/thumbnailUrl';
+import { zhCN } from '@/messages/zh-CN';
 import { Avatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/checkbox';
+import { useToast } from '@/components/ui/toast';
 
 /** 后台卡片：白底 + 发丝边 + 圆角 16（原型 .adm-card）。 */
 export function AdminCard({ className, ...props }: ComponentProps<'section'>) {
@@ -45,11 +47,11 @@ export function IconTile({ children, size = 'md', className }: { children: React
   );
 }
 
-/** 头像 + 名字（表格单元格与抽屉）。 */
-export function Person({ id, name, size = 'xs', className }: { id: string; name: string; size?: 'xs' | 'sm' | 'md' | 'lg'; className?: string }) {
+/** 头像 + 名字（表格单元格与抽屉）；头像取色与前台一致：账号选的颜色，没选按 id 取。 */
+export function Person({ id, name, color, size = 'xs', className }: { id: string; name: string; color?: string | null; size?: 'xs' | 'sm' | 'md' | 'lg'; className?: string }) {
   return (
     <span className={cn('inline-flex max-w-45 min-w-0 items-center gap-2 text-ink-2', className)}>
-      <Avatar id={id} name={name} size={size} />
+      <Avatar id={id} name={name} color={color ?? undefined} size={size} />
       <span className="truncate">{name}</span>
     </span>
   );
@@ -58,6 +60,24 @@ export function Person({ id, name, size = 'xs', className }: { id: string; name:
 export const Mono = ({ children, className }: { children: ReactNode; className?: string }) => (
   <span className={cn('font-mono text-caption font-normal tracking-normal text-ink-3', className)}>{children}</span>
 );
+
+/** 编号只显示前 8 位，旁边一键复制完整编号（抽屉里不再铺整串 UUID）。 */
+export function CopyId({ value, label }: { value: string; label: string }) {
+  const toast = useToast();
+  const copy = () => {
+    void navigator.clipboard?.writeText(value).catch(() => {});
+    toast(zhCN.adminUi.common.copied(value.slice(0, 8)), { icon: <Copy aria-hidden="true" strokeWidth={1.75} /> });
+  };
+  return (
+    <span className="inline-flex items-center gap-1" title={value}>
+      <Mono className="text-body-sm">{value.slice(0, 8)}</Mono>
+      <button type="button" aria-label={zhCN.adminUi.common.copyId(label)} onClick={copy}
+        className="inline-grid size-7 place-items-center rounded-full text-ink-3 transition-colors duration-state hover:bg-bg-muted hover:text-ink focus-visible:focus-ring [&>svg]:size-3.5">
+        <Copy aria-hidden="true" strokeWidth={1.75} />
+      </button>
+    </span>
+  );
+}
 
 /** 抽屉里的键值网格（原型 .adm-dl）：两列，wide 占整行。 */
 export function Dl({ items }: { items: Array<[ReactNode, ReactNode, boolean?] | null | false> }) {

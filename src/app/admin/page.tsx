@@ -36,8 +36,9 @@ export default async function AdminOverviewPage() {
       who: item.authorName, href: `/admin/comments?id=${item.id}`,
     })),
     ...reports.items.map((item) => ({
-      kind: 'report' as const, id: item.id, at: item.createdAt.toISOString(), title: item.category, target: item.targetType,
-      href: `/admin/reports?id=${item.id}`,
+      kind: 'report' as const, id: item.id, at: item.createdAt.toISOString(), target: item.targetType, reason: item.category,
+      title: item.targetType === 'work' ? item.target.title : item.target.excerpt, revisionId: item.target.revisionId,
+      who: item.reporter?.name ?? null, href: `/admin/reports?id=${item.id}`,
     })),
   ].sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
   return (

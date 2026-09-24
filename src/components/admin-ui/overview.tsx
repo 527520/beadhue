@@ -20,7 +20,7 @@ const risk = zhCN.communityAdmin.states.risk;
 export type TodoItem =
   | { kind: 'review'; id: string; at: string | null; title: string; revisionId: string; revisionNumber: number; who: string; href: string }
   | { kind: 'comment'; id: string; at: string; title: string; status: string; who: string; href: string }
-  | { kind: 'report'; id: string; at: string; title: string; target: string; href: string };
+  | { kind: 'report'; id: string; at: string; target: 'work' | 'comment'; reason: string; title: string | null; revisionId: string | null; who: string | null; href: string };
 
 function Delta({ now, before, unit = '', backlog = true }: { now: number; before: number; unit?: string; backlog?: boolean }) {
   const diff = now - before;
@@ -108,15 +108,19 @@ function trendDays(items: TrendDay[]) {
 
 /** now 取数据快照时间（服务端渲染与客户端水合用同一时刻，跨分钟边界时「N 分钟前」不会对不上）。 */
 function TodoRow({ item, now }: { item: TodoItem; now: Date }) {
-  const lead = item.kind === 'review' ? <Thumb revisionId={item.revisionId} /> : <IconTile>{item.kind === 'comment' ? <MessageCircle strokeWidth={1.75} /> : <Flag strokeWidth={1.75} />}</IconTile>;
+  const lead = item.kind === 'review' || (item.kind === 'report' && item.revisionId)
+    ? <Thumb revisionId={item.revisionId} />
+    : <IconTile>{item.kind === 'comment' ? <MessageCircle strokeWidth={1.75} /> : <Flag strokeWidth={1.75} />}</IconTile>;
+  const reason = item.kind === 'report' ? risk[item.reason as keyof typeof risk] ?? item.reason : '';
   const title = item.kind === 'review' ? item.title : item.kind === 'comment' ? `“${item.title}”`
-    : item.target === 'work' ? t.reportedWork(risk[item.title as keyof typeof risk] ?? item.title) : t.reportedComment(risk[item.title as keyof typeof risk] ?? item.title);
+    : item.title ? (item.target === 'work' ? item.title : `“${item.title}”`)
+      : item.target === 'work' ? t.reportedWork(reason) : t.reportedComment(reason);
   const badge = item.kind === 'review'
     ? <Badge tone="info">{item.revisionNumber > 1 ? `${t.kinds.review} · R${item.revisionNumber}` : t.kinds.review}</Badge>
     : item.kind === 'comment'
       ? <Badge tone={item.status === 'rejected' ? 'danger' : 'warning'}>{`${t.kinds.comment} · ${item.status === 'rejected' ? zhCN.communityAdmin.states.comment.rejected : zhCN.adminUi.comments.verdicts.review}`}</Badge>
-      : <Badge tone="danger">{t.kinds.report}</Badge>;
-  const meta = item.kind === 'report' ? t.reportedBy(fmtAgo(item.at, now)) : `${item.who} · ${fmtAgo(item.at, now)}`;
+      : <Badge tone="danger">{`${t.kinds.report} · ${reason}`}</Badge>;
+  const meta = item.kind === 'report' ? `${item.who ?? zhCN.adminUi.reports.anonymousReporter} · ${fmtAgo(item.at, now)}` : `${item.who} · ${fmtAgo(item.at, now)}`;
   return (
     <li className="flex min-h-17 items-center gap-3 border-b border-line py-2.5 pr-3 pl-5 max-md:pr-2 max-md:pl-4">
       {lead}

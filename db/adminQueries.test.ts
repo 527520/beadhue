@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { createTestClient } from './testClient';
-import { adminAuditLogs, maintenanceRuns, users } from './schema';
+import { adminAuditLogs, communityTags, maintenanceRuns, users } from './schema';
 import { getSystemInfo, listAdminAudit, listGovernedUsers } from '@/lib/admin/queries';
 
 describe('admin query privacy and system evidence', () => {
@@ -55,6 +55,29 @@ describe('admin query privacy and system evidence', () => {
     // 每页条数只接受 10 / 20 / 50 / 100 白名单。
     await expect(listAdminAudit(db, { size: 7 })).rejects.toBeTruthy();
     await expect(listAdminAudit(db, { from: '2026-09-03', to: '2026-09-01' })).rejects.toBeTruthy();
+  });
+
+  it('audit rows carry readable actor and target names; filters by action and actor', async () => {
+    const db = await createTestClient();
+    const [admin, member] = await db.insert(users).values([
+      { email: 'admin@example.com', username: '小鹿拼豆', role: 'admin', publicAuthorId: crypto.randomUUID(), avatarColor: '#3F7FD9', emailVerifiedAt: new Date() },
+      { email: 'member@example.com', username: '阿布的豆盒', emailVerifiedAt: new Date() },
+    ]).returning();
+    const [tag] = await db.insert(communityTags).values({ name: '猫咪', slug: 'cat' }).returning();
+    await db.insert(adminAuditLogs).values([
+      { actorUserId: admin.id, actorRole: 'admin', action: 'user.role_changed', targetType: 'user', targetId: member.id, reason: '协助审核', requestId: 'req-a' },
+      { actorUserId: admin.id, actorRole: 'admin', action: 'community.tag_updated', targetType: 'community_tag', targetId: tag.id, reason: '改名', requestId: 'req-b' },
+      { actorUserId: null, actorRole: 'moderator', action: 'community.tag_updated', targetType: 'community_tag', targetId: 'not-a-uuid', reason: '历史记录', requestId: 'req-c' },
+    ]);
+    const { items } = await listAdminAudit(db, {});
+    const byRequest = new Map(items.map((item) => [item.requestId, item]));
+    expect(byRequest.get('req-a')).toMatchObject({ actor: { id: admin.publicAuthorId, name: '小鹿拼豆', color: '#3F7FD9' }, target: { name: '阿布的豆盒' } });
+    expect(byRequest.get('req-b')).toMatchObject({ target: { name: '猫咪' } });
+    expect(byRequest.get('req-c')).toMatchObject({ actor: null, target: { name: null } });
+    expect((await listAdminAudit(db, { action: 'community.tag_updated' })).total).toBe(2);
+    expect((await listAdminAudit(db, { actor: admin.id })).total).toBe(2);
+    expect((await listAdminAudit(db, { q: '小鹿' })).total).toBe(2);
+    await expect(listAdminAudit(db, { actor: 'nope' })).rejects.toBeTruthy();
   });
 
   it('retains latest success and failure per task beyond the recent history window', async () => {

@@ -1,7 +1,7 @@
 import { lockOriginalReferences } from '@/lib/originals/lock';
 import { config } from '@/lib/config';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, ilike, inArray, isNull, or, sql, type Column, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import {
@@ -23,6 +23,8 @@ import type { Actor } from '@/lib/auth/authorization';
 import { lockActiveAccount } from '@/lib/auth/writeAccess';
 import { resolvePublicDisplayName, ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { sanitizeAuditState } from '@/lib/admin/audit';
+import { containsPattern, excerpt, loadCommentLabels, loadPeople, loadWorkLabels, startsWithPattern, type AdminPerson } from '@/lib/admin/lookups';
+import { zhCN } from '@/messages/zh-CN';
 import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
 import { AppError } from '@/lib/errors';
 import type { ProjectFile } from '@/lib/types';
@@ -397,30 +399,37 @@ export async function handleCommunityReport(db: AnyDatabase, input: {
 }
 
 /** 治理台队列的分页参数（admin-round-3 06）：评论与举报各自独立翻页。 */
-/** 后台表格筛选（R15-10）：评论按判定、举报按状态与对象类型。 */
-const commentQueueQuerySchema = z.object({ status: z.enum(['pending_review', 'rejected']).optional(), ...pageQueryFields }).strict();
-const reportQueueQuerySchema = z.object({ status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...pageQueryFields }).strict();
+/** 后台表格筛选（R15-10）：评论按判定、举报按状态与对象类型；两者都可搜索。 */
+const queueSearch = z.string().trim().max(80).optional();
+const commentQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['pending_review', 'rejected']).optional(), ...pageQueryFields }).strict();
+const reportQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...pageQueryFields }).strict();
 
-/** 治理台的评论队列：待审评论 + 最近 30 天被拦截的评论，附带最近一次内容安全判定。 */
+/** 作品任一版本的标题命中搜索词。 */
+const workTitleMatches = (workId: SQL | Column, pattern: string) => sql`exists (select 1 from community_revisions sr where sr.work_id = ${workId} and sr.title ilike ${pattern})`;
+
+/** 治理台的评论队列：待审评论 + 最近 30 天被拦截的评论，附带最近一次内容安全判定。搜索评论内容、作者或作品标题。 */
 export async function listGovernanceComments(db: AnyDatabase, input: unknown = {}, now: Date = new Date()) {
   const query = commentQueueQuerySchema.parse(input);
   const rejectedSince = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const pending = eq(communityComments.status, 'pending_review');
   const rejected = and(eq(communityComments.status, 'rejected'), gte(communityComments.createdAt, rejectedSince));
-  const where = query.status === 'pending_review' ? pending : query.status === 'rejected' ? rejected : or(pending, rejected);
+  const pattern = query.q ? containsPattern(query.q) : null;
+  const where = and(
+    query.status === 'pending_review' ? pending : query.status === 'rejected' ? rejected : or(pending, rejected),
+    pattern ? or(ilike(communityComments.body, pattern), ilike(communityComments.frozenDisplayName, pattern), workTitleMatches(communityComments.workId, pattern)) : undefined,
+  );
   const [rawComments, totalRows] = await Promise.all([
     db.select({ id: communityComments.id, workId: communityComments.workId, status: communityComments.status,
       version: communityComments.version, body: communityComments.body, riskCategories: communityComments.riskCategories,
       createdAt: communityComments.createdAt, reviewReason: communityComments.reviewReason,
-      // 后台表格的作者与所在作品列（R15-10）。子查询里列名必须带表名，否则会被解析成 r.work_id。
-      authorName: communityComments.frozenDisplayName,
-      workTitle: sql<string | null>`(select r.title from community_revisions r join community_works w on w.id = r.work_id
-        where r.work_id = "community_comments"."work_id"
-        order by (r.id = w.current_published_revision_id) desc nulls last, r.revision_number desc limit 1)` }).from(communityComments)
+      authorName: communityComments.frozenDisplayName, publicAuthorId: communityComments.publicAuthorId,
+      accountStatus: users.accountStatus, avatarColor: users.avatarColor }).from(communityComments)
+      .leftJoin(users, eq(users.id, communityComments.authorUserId))
       .where(where)
       .orderBy(communityComments.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityComments).where(where),
   ]);
+  const works = await loadWorkLabels(db, rawComments.map((row) => row.workId));
   const checks = rawComments.length === 0 ? [] : await db.select({
     commentId: commentModerationChecks.commentId, provider: commentModerationChecks.provider, suggestion: commentModerationChecks.suggestion,
     label: commentModerationChecks.label, subLabel: commentModerationChecks.subLabel, score: commentModerationChecks.score,
@@ -429,10 +438,16 @@ export async function listGovernanceComments(db: AnyDatabase, input: unknown = {
     .orderBy(desc(commentModerationChecks.createdAt));
   const latestCheck = new Map<string, typeof checks[number]>();
   for (const check of checks) if (check.commentId && !latestCheck.has(check.commentId)) latestCheck.set(check.commentId, check);
-  const items = rawComments.map((row) => {
+  const items = rawComments.map(({ publicAuthorId, accountStatus, avatarColor, ...row }) => {
     const check = latestCheck.get(row.id);
+    const anonymized = !accountStatus || accountStatus === 'anonymized';
+    const work = works.get(row.workId);
     return {
       ...row,
+      authorName: anonymized ? ANONYMIZED_DISPLAY_NAME : row.authorName,
+      author: { id: publicAuthorId, name: anonymized ? ANONYMIZED_DISPLAY_NAME : row.authorName, color: anonymized ? null : avatarColor } satisfies AdminPerson,
+      workTitle: work?.title ?? null,
+      workRevisionId: work?.revisionId ?? null,
       moderation: check ? {
         provider: check.provider, suggestion: check.suggestion, label: check.label, subLabel: check.subLabel, score: check.score,
         keywords: Array.isArray(check.keywords) ? (check.keywords as string[]) : [], reason: check.reason, checkedAt: check.createdAt.toISOString(),
@@ -442,18 +457,50 @@ export async function listGovernanceComments(db: AnyDatabase, input: unknown = {
   return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }
 
-/** 治理台的举报队列：待受理与已受理的案件。 */
+/**
+ * 治理台的举报队列：待受理与已受理的案件。每条带上被举报对象的可读名称（作品标题与缩略图 / 评论开头）与举报人。
+ * 搜索对象（作品标题、评论内容）、原因、举报人、举报说明或案件编号开头。
+ */
 export async function listGovernanceReports(db: AnyDatabase, input: unknown = {}) {
   const query = reportQueueQuerySchema.parse(input);
+  const pattern = query.q ? containsPattern(query.q) : null;
+  const categories = query.q
+    ? Object.entries(zhCN.communityAdmin.states.risk).filter(([key, label]) => label.includes(query.q!) || key === query.q).map(([key]) => key)
+    : [];
+  const search = pattern ? or(
+    sql`${communityReports.id}::text ilike ${startsWithPattern(query.q!)}`,
+    ilike(communityReports.details, pattern),
+    categories.length ? inArray(communityReports.category, categories) : undefined,
+    sql`exists (select 1 from users ru where ru.id = ${communityReports.reporterUserId} and ru.username ilike ${pattern})`,
+    and(eq(communityReports.targetType, 'work'), workTitleMatches(communityReports.targetId, pattern)),
+    and(eq(communityReports.targetType, 'comment'), sql`exists (select 1 from community_comments sc where sc.id = ${communityReports.targetId} and sc.body ilike ${pattern})`),
+  ) : undefined;
   const where = and(query.status ? eq(communityReports.status, query.status) : inArray(communityReports.status, ['open', 'accepted']),
-    query.targetType ? eq(communityReports.targetType, query.targetType) : undefined);
-  const [items, totalRows] = await Promise.all([
+    query.targetType ? eq(communityReports.targetType, query.targetType) : undefined, search);
+  const [rows, totalRows] = await Promise.all([
     db.select({ id: communityReports.id, targetType: communityReports.targetType, targetId: communityReports.targetId,
       targetVersion: communityReports.targetVersion, status: communityReports.status, version: communityReports.version,
       category: communityReports.category, details: communityReports.details, createdAt: communityReports.createdAt,
+      reporterUserId: communityReports.reporterUserId,
     }).from(communityReports).where(where)
       .orderBy(communityReports.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityReports).where(where),
   ]);
+  const comments = await loadCommentLabels(db, rows.filter((row) => row.targetType === 'comment').map((row) => row.targetId));
+  const [works, people] = await Promise.all([
+    loadWorkLabels(db, [...rows.filter((row) => row.targetType === 'work').map((row) => row.targetId), ...[...comments.values()].map((comment) => comment.workId)]),
+    loadPeople(db, rows.map((row) => row.reporterUserId)),
+  ]);
+  const items = rows.map(({ reporterUserId, ...row }) => {
+    const comment = row.targetType === 'comment' ? comments.get(row.targetId) : undefined;
+    const work = works.get(row.targetType === 'work' ? row.targetId : comment?.workId ?? '');
+    return {
+      ...row,
+      target: row.targetType === 'work'
+        ? { title: work?.title ?? null, excerpt: null, revisionId: work?.revisionId ?? null, authorName: null, workTitle: null }
+        : { title: null, excerpt: comment ? excerpt(comment.body) : null, revisionId: null, authorName: comment?.authorName ?? null, workTitle: work?.title ?? null },
+      reporter: reporterUserId ? people.get(reporterUserId) ?? null : null,
+    };
+  });
   return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }
