@@ -1,7 +1,7 @@
 /**
  * 采购清单（F-3）。
  *
- * 用量统计只给「每个色号多少粒」，但用户真正要做的是「照着买」：
+ * 用量统计只给「每个色号多少颗」，但用户真正要做的是「照着买」：
  * 需要知道每色占比（决定优先买哪些）、按包换算要买几包（散装豆按包卖），
  * 以及一份能直接发给店家的纯文本。
  *
@@ -16,7 +16,7 @@ export interface ShoppingItem {
   code: string;
   hex: string;
   count: number;
-  /** 占总粒数的百分比（0–100，保留一位小数） */
+  /** 占总颗数的百分比（0–100，保留一位小数） */
   share: number;
   /** 按每包颗数向上取整的包数 */
   packs: number;
@@ -26,7 +26,7 @@ export interface ShoppingList {
   items: ShoppingItem[];
   total: number;
   colors: number;
-  /** 所有色号包数之和（按色分别取整后相加，与「总粒数 ÷ 每包」不同，这才是实际要买的） */
+  /** 所有色号包数之和（按色分别取整后相加，与「总颗数 ÷ 每包」不同，这才是实际要买的） */
   packs: number;
   beadsPerPack: number;
 }
@@ -58,7 +58,7 @@ export function buildShoppingList(
 
 /**
  * 纯文本清单：用于「复制」按钮，可直接粘进聊天窗口发给店家。
- * 刻意用「色号 ×粒数」这种一眼能核对的格式，不用表格符号（微信里会错位）。
+ * 刻意用「色号 ×颗数」这种一眼能核对的格式，不用表格符号（微信里会错位）。
  */
 export function shoppingListText(
   list: ShoppingList,
@@ -69,7 +69,7 @@ export function shoppingListText(
     : '拼豆采购清单';
   const lines = [
     header,
-    `共 ${list.total} 粒 · ${list.colors} 色 · 按每包 ${list.beadsPerPack} 粒算需 ${list.packs} 包`,
+    `共 ${list.total} 颗 · ${list.colors} 色 · 按每包 ${list.beadsPerPack} 颗算需 ${list.packs} 包`,
     '',
     ...list.items.map((item) => `${item.code} ×${item.count}（${item.share}%，${item.packs} 包）`),
   ];

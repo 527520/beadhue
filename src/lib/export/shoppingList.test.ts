@@ -16,11 +16,11 @@ describe('buildShoppingList（F-3）', () => {
     expect(list.beadsPerPack).toBe(DEFAULT_BEADS_PER_PACK);
     expect(list.items.map((item) => item.code)).toEqual(['A01', 'B02', 'C03']);
     expect(list.items[0]).toEqual({ code: 'A01', hex: '#FF0000', count: 1200, share: 60, packs: 2 });
-    // 1 粒也要买一包——这正是用户容易漏算的地方
+    // 1 颗也要买一包——这正是用户容易漏算的地方
     expect(list.items[2].packs).toBe(1);
   });
 
-  it('总包数是各色分别取整后相加，而不是总粒数除以每包', () => {
+  it('总包数是各色分别取整后相加，而不是总颗数除以每包', () => {
     const list = buildShoppingList(stats);
     expect(list.packs).toBe(2 + 1 + 1);
     expect(list.packs).not.toBe(Math.ceil(list.total / list.beadsPerPack));
@@ -53,7 +53,7 @@ describe('shoppingListText（F-3 复制文本）', () => {
     const text = shoppingListText(buildShoppingList(stats), { designName: '小熊', width: 50, height: 40 });
     const lines = text.split('\n');
     expect(lines[0]).toBe('小熊（50 × 40 格）');
-    expect(lines[1]).toBe('共 2001 粒 · 3 色 · 按每包 1000 粒算需 4 包');
+    expect(lines[1]).toBe('共 2001 颗 · 3 色 · 按每包 1000 颗算需 4 包');
     expect(lines[3]).toBe('A01 ×1200（60%，2 包）');
     expect(lines).toHaveLength(6);
   });

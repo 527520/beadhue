@@ -34,7 +34,7 @@ describe('PDF 子集字符集', () => {
     // 未来往 PDF 里加中文静态文案时，这条会先红——提示要么用覆盖内的字，要么扩子集。
     expect(coveredBySubset('第 3/7 页 · 列 1–31 · 行 1–45')).toBe(true);
     expect(coveredBySubset('图例 · 草莓熊（第 2/3 页）')).toBe(true);
-    expect(coveredBySubset('总计：1234 粒')).toBe(true);
+    expect(coveredBySubset('总计：1234 颗')).toBe(true);
     expect(coveredBySubset('未命名设计')).toBe(true);
     expect(coveredBySubset('Legend · Total: 42 beads')).toBe(true);
   });

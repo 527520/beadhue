@@ -43,7 +43,7 @@ describe('remapPattern（H-1 换色板重映射）', () => {
     expect(result.pattern.cells[3]).toMatchObject({ external: true, hex: '#111111' });
   });
 
-  it('统计与总粒数随之更新，且不含透明/背景格', () => {
+  it('统计与总颗数随之更新，且不含透明/背景格', () => {
     clearLutCache();
     const result = remapPattern(pattern(), twoColor);
     expect(result.totalBeadCount).toBe(2);

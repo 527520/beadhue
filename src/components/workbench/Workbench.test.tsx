@@ -648,7 +648,7 @@ describe('Workbench 全流程', () => {
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
 
-    // 工作台：默认 targetWidth=100 → 8×8 图 → 100×100 = 10000 粒
+    // 工作台：默认 targetWidth=100 → 8×8 图 → 100×100 = 10000 颗
     await screen.findByText(beads(10000));
     expect(screen.queryByLabelText(zhCN.crop.ariaCropCanvas)).not.toBeInTheDocument();
     expect(modeButton(tw.modeEdit)).toHaveAttribute('aria-pressed', 'true');

@@ -70,11 +70,11 @@ export const zhCN = {
     pngTooLargeError: (suggested: number) =>
       `这张图纸太大，当前格子大小超出浏览器画布上限。把格子大小调到 ${suggested}px 或更小即可导出。`,
     legendTitle: '图例与色号清单',
-    legendSummary: (colors: number, total: number) => `${colors} 种颜色 · 共 ${total} 粒`,
+    legendSummary: (colors: number, total: number) => `${colors} 种颜色 · 共 ${total} 颗`,
     pngSplitPatternFile: (stem: string) => `${stem}-图纸.png`,
     pngSplitLegendFile: (stem: string) => `${stem}-图例.png`,
     pngSplitArchiveFile: (stem: string) => `${stem}-PNG.zip`,
-    countUnit: '粒',
+    countUnit: '颗',
   },
   share: {
     createFailed: '生成分享链接失败，请稍后重试。',
@@ -83,7 +83,7 @@ export const zhCN = {
     /* 只读页 */
     pageTitle: '共享的拼豆图纸',
     summary: (width: number, height: number, total: number, colors: number) =>
-      `${width} × ${height} 格 · ${total} 粒 · ${colors} 色`,
+      `${width} × ${height} 格 · ${total} 颗 · ${colors} 色`,
     customPalette: (colors: number) => `自定义色板 · ${colors} 色`,
   },
   upload: {
@@ -150,9 +150,9 @@ export const zhCN = {
     undoRegeneration: '撤销自动改动',
     previewTab: '预览',
     /** 生成完成的结果句（D-1）：说清尺寸、用量与颜色数，兼作读屏播报。
-        故意不与右侧统计面板的「共 N 粒」同句式，避免同一信息看起来重复两遍。 */
+        故意不与右侧统计面板的「共 N 颗」同句式，避免同一信息看起来重复两遍。 */
     generateDone: (width: number, height: number, total: number, colors: number) =>
-      `图纸已生成：${width} × ${height} 格 · ${total} 粒 · ${colors} 色`,
+      `图纸已生成：${width} × ${height} 格 · ${total} 颗 · ${colors} 色`,
     colorCount: (count: number) => `${count} 种颜色`,
     confirmLeaveTitle: '还有改动没保存',
     confirmLeave: '这次改动保存失败了。现在离开会丢掉它，留在页面可以再试一次保存。',
