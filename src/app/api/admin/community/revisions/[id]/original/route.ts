@@ -4,7 +4,10 @@ import { requireApiActor } from '@/lib/auth/dal';
 import { enforceBinaryUploadGuard, enforceMutatingGuard } from '@/lib/auth/guard';
 import { checkRateLimit } from '@/lib/auth/rateLimit';
 import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
-import { assertRevisionOriginalUpload, storeRevisionOriginal } from '@/lib/community/originals';
+import { assertRevisionOriginalUpload, readOriginalBody as readStoredOriginal, resolveOriginalAccess, storeRevisionOriginal } from '@/lib/community/originals';
+import { getOriginalByteCache } from '@/lib/community/originalCache';
+import { entityTag, matchesIfNoneMatch } from '@/lib/security/etag';
+import { enforceOriginalReadLimit } from '@/lib/security/publicRateLimit';
 import { getOriginalStore } from '@/lib/community/originalStore';
 import { config } from '@/lib/config';
 import { AppError } from '@/lib/errors';
@@ -48,5 +51,27 @@ async function post(request: Request, { params }: { params: Promise<{ id: string
   return okJson(await attachPrivateOriginalToRevision(getDb(), { actor, revisionId, assetId }));
 }
 
+/**
+ * 审核台读取原图（R15-10）：后台页面不再请求豆社公开接口（admin-round-3 10），
+ * 这里与公开路径同一套访问判定、ETag 与原图读取限流，只要求审核权限。
+ */
+async function get(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const actor = await requireApiActor('community:moderate');
+  const revisionId = z.uuid().parse((await params).id);
+  const db = getDb();
+  await enforceOriginalReadLimit(db, { userId: actor.userId, request });
+  const resolved = await resolveOriginalAccess(db, actor, revisionId);
+  if (!resolved) throw new AppError('NOT_FOUND', '原图不存在或无权访问');
+  const etag = entityTag(resolved.row.sha256);
+  const headers = { 'cache-control': 'private, max-age=300, must-revalidate', etag, 'x-content-type-options': 'nosniff' };
+  if (matchesIfNoneMatch(request.headers.get('if-none-match'), etag)) return new Response(null, { status: 304, headers });
+  const original = await readStoredOriginal(getOriginalStore(), resolved.row, getOriginalByteCache());
+  return new Response(new Uint8Array(original.body), {
+    status: 200,
+    headers: { ...headers, 'content-type': original.contentType, 'content-length': String(original.body.length), 'content-disposition': 'inline' },
+  });
+}
+
+export const GET = withApiErrors(get);
 export const PUT = withApiErrors(put);
 export const POST = withApiErrors(post);

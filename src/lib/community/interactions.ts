@@ -401,7 +401,12 @@ export async function listGovernanceComments(db: AnyDatabase, input: unknown = {
   const [rawComments, totalRows] = await Promise.all([
     db.select({ id: communityComments.id, workId: communityComments.workId, status: communityComments.status,
       version: communityComments.version, body: communityComments.body, riskCategories: communityComments.riskCategories,
-      createdAt: communityComments.createdAt, reviewReason: communityComments.reviewReason }).from(communityComments)
+      createdAt: communityComments.createdAt, reviewReason: communityComments.reviewReason,
+      // 后台表格的作者与所在作品列（R15-10）。子查询里列名必须带表名，否则会被解析成 r.work_id。
+      authorName: communityComments.frozenDisplayName,
+      workTitle: sql<string | null>`(select r.title from community_revisions r join community_works w on w.id = r.work_id
+        where r.work_id = "community_comments"."work_id"
+        order by (r.id = w.current_published_revision_id) desc nulls last, r.revision_number desc limit 1)` }).from(communityComments)
       .where(where)
       .orderBy(communityComments.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityComments).where(where),
