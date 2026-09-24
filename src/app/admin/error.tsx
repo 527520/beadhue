@@ -1,6 +1,9 @@
 'use client';
 import { useEffect } from 'react';
-import Button, { ButtonLink } from '@/components/legacy-ui/Button';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { FormAlert } from '@/components/ui/field';
+import { AdminCard } from '@/components/admin-ui/parts';
 import { zhCN } from '@/messages/zh-CN';
 
 /**
@@ -23,5 +26,12 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
       }),
     }).catch(() => {});
   }, [error, t.reportFallback]);
-  return <main className="admin-page"><h1>{t.title}</h1><p role="alert" className="notice notice-danger">{t.body}</p><div className="admin-filter-actions"><Button variant="primary" onClick={reset}>{t.retry}</Button><ButtonLink variant="secondary" href="/admin">{t.back}</ButtonLink></div></main>;
+  // 渲染在后台外壳的 <main> 里，这里不再写 main。
+  return (
+    <AdminCard className="grid max-w-prose justify-items-start gap-3 p-6">
+      <h1 className="text-title-2 text-ink">{t.title}</h1>
+      <FormAlert>{t.body}</FormAlert>
+      <div className="flex gap-2"><Button nativeButton={false} render={<Link href="/admin" />}>{t.back}</Button><Button variant="primary" onClick={reset}>{t.retry}</Button></div>
+    </AdminCard>
+  );
 }
