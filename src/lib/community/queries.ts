@@ -548,6 +548,9 @@ export async function listOwnCommunityWorks(db: AnyDatabase, userId: string) {
     lifecycleStatus: communityWorks.lifecycleStatus,
     version: communityWorks.version,
     currentPublishedRevisionId: communityWorks.currentPublishedRevisionId,
+    likeCount: communityWorks.likeCount,
+    commentCount: communityWorks.commentCount,
+    reuseCount: communityWorks.reuseCount,
     createdAt: communityWorks.createdAt,
     updatedAt: communityWorks.updatedAt,
   }).from(communityWorks).where(eq(communityWorks.authorUserId, userId))
@@ -565,6 +568,7 @@ export async function listOwnCommunityWorks(db: AnyDatabase, userId: string) {
     preview: communityRevisions.preview,
     suggestedTags: communityRevisions.suggestedTags,
     submittedAt: communityRevisions.submittedAt,
+    reviewedAt: communityRevisions.reviewedAt,
     reviewReason: communityRevisions.reviewReason,
     createdAt: communityRevisions.createdAt,
   }).from(communityRevisions).where(inArray(communityRevisions.workId, works.map((work) => work.id)))
@@ -581,6 +585,7 @@ export async function listOwnCommunityWorks(db: AnyDatabase, userId: string) {
         ...revision,
         preview: preview.data,
         submittedAt: revision.submittedAt?.toISOString() ?? null,
+        reviewedAt: revision.reviewedAt?.toISOString() ?? null,
         createdAt: revision.createdAt.toISOString(),
       }] : [];
     }),

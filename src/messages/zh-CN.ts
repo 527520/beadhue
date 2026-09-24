@@ -2231,7 +2231,7 @@ export const zhCN = {
     },
     likes: {
       region: '喜欢的图纸',
-      count: (count: number) => `${count} 张图纸`,
+      countUnit: '张图纸',
       loginTitle: '登录后查看喜欢的图纸',
       loginText: '在发现页点爱心收藏图纸，换设备也不会丢。',
       emptyTitle: '还没有喜欢的图纸',
