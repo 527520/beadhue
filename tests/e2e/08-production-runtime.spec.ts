@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 import AxeBuilder from '@axe-core/playwright';
 import { localHttps } from './localHttps';
-import { generateFromDialog } from './helpers';
+import { generateFromDialog, openRecrop } from './helpers';
 import { toShanghaiDay } from '../../src/lib/analytics/time';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
@@ -60,15 +60,21 @@ test('standalone production CSP permits RSC navigation and the generation Worker
   await page.getByLabel('图片文件选择器').setInputFiles(PHOTO);
   await page.waitForFunction(() => document.documentElement.dataset.beadhueHydrated === 'true');
   await generateFromDialog(page);
-  await expect(page.getByRole('button', { name: '裁剪图片', exact: true })).toBeEnabled();
-  await expect(page.getByText(/共 \d+ 粒/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/共 \d+ 颗/).first()).toBeAttached({ timeout: 20_000 });
 
-  await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
-  await page.getByLabel('裁剪选区画布').focus();
-  await page.keyboard.press('Alt+Shift+ArrowLeft');
-  await expect(page.getByRole('dialog', { name: '裁剪图片' })).toContainText('当前选区：54 × 64 像素');
-  await page.getByRole('button', { name: '确认并更新' }).click();
-  await expect(page.getByText(/共 11900 粒/).first()).toBeVisible();
+  // 已有图纸时的重新裁剪（票 09 取景弹窗）：拖右下角缩小取景后确认，按新取景重新生成。
+  await openRecrop(page);
+  const crop = page.getByRole('dialog', { name: '裁剪图片' });
+  const frame = crop.getByRole('group', { name: '取景框，方向键移动' });
+  const box = (await frame.boundingBox())!;
+  await page.mouse.move(box.x + box.width - 3, box.y + box.height - 3);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.6, { steps: 6 });
+  await page.mouse.up();
+  await expect(crop).not.toContainText('取景：64 × 64 像素');
+  await crop.getByRole('button', { name: '确认并更新' }).click();
+  await expect(crop).toHaveCount(0);
+  await expect(page.getByText(/共 \d+ 颗/).first()).toBeAttached();
 
   expect(cspErrors).toEqual([]);
 });

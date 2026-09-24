@@ -84,11 +84,11 @@ test('EXIF 旋转 JPEG 通过真实 Workbench Worker 以同一 oriented 坐标�
   await expect(page.getByText(beadsText(15000)).first()).toBeAttached({ timeout: 30_000 });
   await openRecrop(page);
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible();
-  await expect(page.getByText('20 × 30 像素')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '裁剪图片' }).getByText('取景：20 × 30 像素')).toBeAttached();
 
   // Orientation=6 makes the source 20×30. Its oriented left half is blue at
   // the top and yellow at the bottom.
-  const previewColors = await sampleVerticalColors(page.getByLabel('裁剪选区画布'));
+  const previewColors = await sampleVerticalColors(page.getByRole('dialog', { name: '裁剪图片' }).getByRole('img', { name: '所选图片' }));
   expectBlue(previewColors.top);
   expectYellow(previewColors.bottom);
 

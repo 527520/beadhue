@@ -125,7 +125,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   await recropButton(page).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('square-crop-visible');
-  const squarePreview = page.getByLabel('裁剪选区画布');
+  const squarePreview = page.getByRole('dialog', { name: '裁剪图片' }).getByRole('img', { name: '所选图片' });
   // CSS 预览尺寸 ≤ 800：容器未测出前高度为 auto（随夹取宽度按固有比例算高），
   // 此时高度 NaN 按「不高于宽度」处理；画布缓冲上界由下一行断言兜底。
   const previewCssMax = (canvas: HTMLCanvasElement): number => {
@@ -150,7 +150,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   await recropButton(page).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('tall-crop-visible');
-  const tallPreview = page.getByLabel('裁剪选区画布');
+  const tallPreview = page.getByRole('dialog', { name: '裁剪图片' }).getByRole('img', { name: '所选图片' });
   expect(await tallPreview.evaluate(previewCssMax)).toBeLessThanOrEqual(800);
   expect(await tallPreview.evaluate((canvas: HTMLCanvasElement) => Math.max(canvas.width, canvas.height)))
     .toBeLessThanOrEqual(await page.evaluate(() => 800 * (window.devicePixelRatio || 1)));
