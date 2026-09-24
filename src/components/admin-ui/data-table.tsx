@@ -17,7 +17,7 @@ import { SearchField } from '@/components/ui/search-field';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { Tooltip } from '@/components/ui/tooltip';
-import type { FilterState, FilterValue } from './use-admin-table';
+import type { FilterState, FilterValue, SortState } from './use-admin-table';
 
 const t = zhCN.adminUi.table;
 
@@ -26,7 +26,7 @@ export interface Column<T> {
   label: string;
   cell: (row: T) => ReactNode;
   align?: 'end';
-  /** 列排序（只作用于当前页，服务端按各自默认顺序分页）。 */
+  /** 可排序列。表格接了 onSortChange 时按列键交给服务端整表排序，否则只排当前页。 */
   sort?: (a: T, b: T) => number;
   /** 主列：可聚焦的标题按钮所在列，文字可截断。 */
   main?: boolean;
@@ -75,6 +75,9 @@ export interface DataTableProps<T> {
   emptyText?: string;
   /** 表格最小宽度（px），窄于它时横向滚动；手机统一变卡片列表。 */
   minWidth?: number;
+  /** 服务端排序（useAdminTable 的 sort / setSort）。 */
+  sort?: SortState;
+  onSortChange?: (sort: SortState) => void;
 }
 
 const isActive = (value: FilterValue | undefined) => (Array.isArray(value) ? value.length > 0 : Boolean(value));
@@ -175,15 +178,18 @@ export function TitleCell({ lead, title, sub, extra, onOpen, quote }: { lead?: R
 export function DataTable<T>(props: DataTableProps<T>) {
   const { label, rows, rowId, rowName, columns, card, loading, error, onRetry, search, filters = [], filterValues = {}, onFilterChange, onExport,
     selectable = false, selected = [], onSelectedChange, batchActions, menu, onOpen, openId, page, pageCount, total, size, onPage, onSize,
-    filtered, onReset, emptyTitle, emptyText, minWidth = 760 } = props;
+    filtered, onReset, emptyTitle, emptyText, minWidth = 760, onSortChange } = props;
   const toast = useToast();
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
+  const [localSort, setLocalSort] = useState<SortState>(null);
+  const serverSort = Boolean(onSortChange);
+  const sort = serverSort ? props.sort ?? null : localSort;
+  const setSort = serverSort ? onSortChange! : setLocalSort;
   const [exporting, setExporting] = useState(false);
   const sorted = useMemo(() => {
-    const column = sort ? columns.find((item) => item.key === sort.key) : null;
+    const column = !serverSort && sort ? columns.find((item) => item.key === sort.key) : null;
     if (!column?.sort) return rows;
     return [...rows].sort((a, b) => column.sort!(a, b) * (sort!.dir === 'asc' ? 1 : -1));
-  }, [rows, columns, sort]);
+  }, [rows, columns, sort, serverSort]);
   const selectedSet = new Set(selected);
   const onPageIds = sorted.map(rowId);
   const allOnPage = onPageIds.length > 0 && onPageIds.every((id) => selectedSet.has(id));
@@ -262,7 +268,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                     <th key={column.key} scope="col" aria-sort={column.sort ? (dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none') : undefined}
                       className={cn('h-10 border-b border-line bg-bg px-3 text-left font-medium whitespace-nowrap text-ink-3', column.align === 'end' && 'text-right', index === 0 && !selectable && 'pl-5', index === columns.length - 1 && !menu && 'pr-5')}>
                       {column.sort ? (
-                        <button type="button" title={t.sortPageOnly}
+                        <button type="button" title={serverSort ? undefined : t.sortPageOnly}
                           onClick={() => setSort(dir === null ? { key: column.key, dir: 'desc' } : dir === 'desc' ? { key: column.key, dir: 'asc' } : null)}
                           className={cn('inline-flex items-center gap-1 rounded-sm hover:text-ink focus-visible:focus-ring [&>svg]:size-4', dir ? 'text-ink' : '[&>svg]:text-ink-4', column.align === 'end' && 'flex-row-reverse')}>
                           {column.label}<Icon aria-hidden="true" strokeWidth={1.75} />

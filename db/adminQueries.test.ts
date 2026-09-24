@@ -24,7 +24,7 @@ describe('admin query privacy and system evidence', () => {
     await db.insert(users).values({ email: 'private@example.com', passwordHash: 'secret', emailVerifiedAt: new Date() });
     const { items: userRows, total } = await listGovernedUsers(db);
     const [user] = userRows;
-    expect(user).toMatchObject({ maskedEmail: 'p***e@example.com', emailVerified: true });
+    expect(user).toMatchObject({ maskedEmail: 'p***e@example.com', emailVerified: true, stats: { works: 0, likes: 0, comments: 0, lastActiveAt: null } });
     expect(total).toBe(1);
     expect(user).not.toHaveProperty('email');
     expect(user).not.toHaveProperty('passwordHash');

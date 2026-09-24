@@ -275,7 +275,7 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
         </>}
         menu={menu} onOpen={(item) => setOpenId(item.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={t.emptyTitle}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={t.emptyTitle}
       />
 
       <AdminDrawer

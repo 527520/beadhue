@@ -1,10 +1,11 @@
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { adminAuditLogs, communityOriginals, communityRevisions, communityWorks, officialBatches } from '@/../db/schema';
 import type { Actor } from '@/lib/auth/authorization';
 import { sanitizeAuditState } from '@/lib/admin/audit';
-import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { containsPattern, loadPeople, startsWithPattern } from '@/lib/admin/lookups';
+import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
 import { AppError } from '@/lib/errors';
 import { compatibleBoardProfilesForPalette } from '@/lib/boardProfiles';
 import { officialBatchDefaultsSchema } from './batchDefaults';
@@ -15,17 +16,23 @@ const titleSchema = z.string().trim().min(1).max(80);
 /** 生成参数 + 可选制作规格（底板 / 色板 / 套装档位）。 */
 export const officialBatchDefaultParamsSchema = officialBatchDefaultsSchema;
 
+/** 批次名：新建批次弹窗里起的名字，最多 20 个字。 */
+export const officialBatchNameSchema = z.string().trim().min(1).max(20);
+
 export async function createOfficialBatch(db: AnyDatabase, input: {
-  actor: Actor; itemCount: number; defaultParams: unknown; engineVersion: string; reason: string; requestId: string; now?: Date;
+  actor: Actor; itemCount: number; name?: string; defaultParams: unknown; engineVersion: string; reason: string; requestId: string; now?: Date;
 }) {
   if (!Number.isInteger(input.itemCount) || input.itemCount < 1 || input.itemCount > 50) throw new AppError('VALIDATION', '单批文件数需为 1–50');
   if (!input.engineVersion.trim() || input.engineVersion.length > 80) throw new AppError('VALIDATION', '引擎版本无效');
   const defaultParams = officialBatchDefaultParamsSchema.safeParse(input.defaultParams);
   if (!defaultParams.success) throw new AppError('VALIDATION', '批次默认参数无效', 'defaultParams');
+  const name = input.name === undefined ? null : officialBatchNameSchema.safeParse(input.name);
+  if (name && !name.success) throw new AppError('VALIDATION', '批次名称需为 1–20 个字', 'name');
   const reason = reasonSchema.parse(input.reason);
   const now = input.now ?? new Date();
   return db.transaction(async (tx) => {
     const [batch] = await tx.insert(officialBatches).values({
+      name: name ? name.data : null,
       status: 'running', itemCount: input.itemCount, defaultParams: defaultParams.data,
       engineVersion: input.engineVersion, adminUserId: input.actor.userId,
       startedAt: now, createdAt: now, updatedAt: now,
@@ -229,14 +236,26 @@ export async function publishOfficialBatch(db: AnyDatabase, input: {
 }
 
 /** 后台批次历史分页参数（admin-round-3 06）。 */
-const batchesQuerySchema = z.object({ ...pageQueryFields }).strict();
+const batchesQuerySchema = z.object({
+  q: z.string().trim().max(80).optional(),
+  status: z.enum(['running', 'paused', 'completed', 'cancelled']).optional(),
+  ...sortQueryFields(['created']),
+  ...pageQueryFields,
+}).strict();
 
+/**
+ * 批次历史：所有管理员的批次都列出（带创建人），只有创建人能继续处理自己的批次（mine）。
+ * 搜索批次名称或编号开头，按状态筛选。
+ */
 export async function listOfficialBatches(db: AnyDatabase, actorUserId: string, input: unknown = {}) {
   const query = batchesQuerySchema.parse(input);
-  const where = eq(officialBatches.adminUserId, actorUserId);
+  const where = and(
+    query.status ? eq(officialBatches.status, query.status) : undefined,
+    query.q ? or(ilike(officialBatches.name, containsPattern(query.q)), sql`${officialBatches.id}::text ilike ${startsWithPattern(query.q)}`) : undefined,
+  );
   const [batches, totalRows] = await Promise.all([
     db.select().from(officialBatches).where(where)
-      .orderBy(desc(officialBatches.createdAt), desc(officialBatches.id))
+      .orderBy(ordered(officialBatches.createdAt, query.order ?? 'desc'), ordered(officialBatches.id, query.order ?? 'desc'))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(officialBatches).where(where),
   ]);
@@ -249,8 +268,11 @@ export async function listOfficialBatches(db: AnyDatabase, actorUserId: string, 
   }).from(communityRevisions).where(inArray(communityRevisions.officialBatchId, batches.map((batch) => batch.id)));
   const withOriginal = revisions.length === 0 ? new Set<string>() : new Set((await db.select({ revisionId: communityOriginals.revisionId }).from(communityOriginals)
     .where(and(inArray(communityOriginals.revisionId, revisions.map((revision) => revision.id)), isNull(communityOriginals.deletedAt)))).map((row) => row.revisionId));
-  const items = batches.map((batch) => ({
+  const people = await loadPeople(db, batches.map((batch) => batch.adminUserId));
+  const items = batches.map(({ adminUserId, ...batch }) => ({
     ...batch, defaultParams: batch.defaultParams,
+    creator: adminUserId ? people.get(adminUserId) ?? null : null,
+    mine: adminUserId === actorUserId,
     startedAt: batch.startedAt?.toISOString() ?? null, completedAt: batch.completedAt?.toISOString() ?? null,
     createdAt: batch.createdAt.toISOString(), updatedAt: batch.updatedAt.toISOString(),
     drafts: revisions.filter((revision) => revision.officialBatchId === batch.id).flatMap((revision) => {

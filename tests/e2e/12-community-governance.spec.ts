@@ -215,6 +215,10 @@ test('分析后台在精确与长期聚合范围间明确切换能力', async ({
 test('官方批次允许单项失败、保留成功草稿并只发布勾选项', async ({ page }) => {
   await login(page, 'e2e-admin@example.com', '/admin/batches');
   await page.getByRole('button', { name: '新建批次' }).click();
+  const naming = page.getByRole('dialog', { name: '新建官方批次' });
+  await naming.getByLabel('批次名称').fill('E2E 单项失败批次');
+  await naming.getByRole('button', { name: '开始选图' }).click();
+  await expect(page.getByRole('heading', { name: 'E2E 单项失败批次' })).toBeVisible();
   await page.getByLabel('选择图片', { exact: true }).setInputFiles([
     { name: 'photo-gradient-64.png', mimeType: 'image/png', buffer: readFileSync(BATCH_PHOTO) },
     { name: 'second-photo.png', mimeType: 'image/png', buffer: readFileSync(BATCH_PHOTO) },

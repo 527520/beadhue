@@ -13,9 +13,9 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { DataTable, TitleCell, type Column, type RowMenuEntry } from './data-table';
-import { fmtDay } from './format';
+import { fmtAgo, fmtDay, fmtNum } from './format';
 import { AdminDrawer, ReasonDialog, Spacer } from './overlays';
-import { Dl, DrawerSection, Mono, Note } from './parts';
+import { CopyId, Dl, DrawerSection, Mono, Note } from './parts';
 import { exportCsv, useAdminTable } from './use-admin-table';
 
 const t = zhCN.adminUi.users;
@@ -24,7 +24,12 @@ const icon = (Icon: typeof Eye) => <Icon aria-hidden="true" strokeWidth={1.75} /
 const ENDPOINT = '/api/admin/users';
 const x = zhCN.adminUi.csv.users;
 
-interface UserRow { userId: string; maskedEmail: string | null; username: string | null; role: UserRole; accountStatus: AccountStatus; governanceVersion: number; emailVerified: boolean; createdAt: string }
+interface UserRow {
+  userId: string; maskedEmail: string | null; username: string | null; role: UserRole; accountStatus: AccountStatus; governanceVersion: number; emailVerified: boolean; createdAt: string;
+  avatar: { id: string; color: string | null };
+  stats: { works: number; likes: number; comments: number; lastActiveAt: string | null };
+}
+const UserAvatar = ({ user, size }: { user: UserRow; size?: 'md' | 'lg' | 'xl' }) => <Avatar id={user.avatar.id} name={nameOf(user)} color={user.avatar.color ?? undefined} size={size} />;
 type Change = { kind: 'role'; role: UserRole } | { kind: 'suspend' } | { kind: 'resume' };
 
 const nameOf = (user: UserRow) => user.username || user.maskedEmail || t.anonymized;
@@ -58,11 +63,12 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
     });
   };
   const columns: Column<UserRow>[] = [
-    { key: 'name', label: t.columns.name, main: true, cell: (user) => <TitleCell lead={<Avatar id={user.userId} name={nameOf(user)} />} title={nameOf(user)} sub={<Mono>{user.userId.slice(0, 8)}</Mono>} onOpen={() => view(user)}
+    { key: 'name', label: t.columns.name, main: true, cell: (user) => <TitleCell lead={<UserAvatar user={user} />} title={nameOf(user)} sub={<Mono>{user.userId.slice(0, 8)}</Mono>} onOpen={() => view(user)}
       extra={user.userId === currentUserId ? <span className="text-body-sm text-ink-3">{zhCN.adminUi.common.you}</span> : null} /> },
     { key: 'email', label: t.columns.email, cell: (user) => user.maskedEmail ?? '—' },
     { key: 'role', label: t.columns.role, cell: (user) => <RoleBadge role={user.role} /> },
     { key: 'status', label: t.columns.status, cell: (user) => <StatusBadge user={user} /> },
+    { key: 'works', label: t.columns.works, align: 'end', sort: (a, b) => a.stats.works - b.stats.works, cell: (user) => <span className="tabular-nums">{user.stats.works}</span> },
     { key: 'joined', label: t.columns.joined, sort: (a, b) => a.createdAt.localeCompare(b.createdAt), cell: (user) => <span className="tabular-nums">{fmtDay(user.createdAt)}</span> },
   ];
   const menu = (user: UserRow): RowMenuEntry[] => [
@@ -81,7 +87,7 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
     <>
       <DataTable<UserRow>
         label={t.label} rows={table.items} rowId={(user) => user.userId} rowName={nameOf} columns={columns} minWidth={920}
-        card={(user) => ({ lead: <Avatar id={user.userId} name={nameOf(user)} size="lg" />, title: nameOf(user), meta: <>{user.maskedEmail ?? '—'} · <span className="tabular-nums">{fmtDay(user.createdAt)}</span></>, tail: <><RoleBadge role={user.role} /><StatusBadge user={user} /></> })}
+        card={(user) => ({ lead: <UserAvatar user={user} size="lg" />, title: nameOf(user), meta: <>{user.maskedEmail ?? '—'} · <span className="tabular-nums">{t.joinedOn(fmtDay(user.createdAt))}</span></>, tail: <><RoleBadge role={user.role} /><StatusBadge user={user} /></> })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
         search={{ value: table.input, onChange: table.setInput, placeholder: t.search }}
         filters={[
@@ -90,11 +96,11 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<UserRow>(ENDPOINT, table.query, [
-          [x.id, (user) => user.userId], [x.name, nameOf], [x.email, (user) => user.maskedEmail ?? ''], [x.role, (user) => states.role[user.role]], [x.status, (user) => states.account[user.accountStatus]], [x.joined, (user) => fmtDay(user.createdAt)],
+          [x.id, (user) => user.userId], [x.name, nameOf], [x.email, (user) => user.maskedEmail ?? ''], [x.role, (user) => states.role[user.role]], [x.status, (user) => states.account[user.accountStatus]], [x.works, (user) => user.stats.works], [x.joined, (user) => fmtDay(user.createdAt)],
         ], t.exportFile)}
         menu={menu} onOpen={view} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={t.emptyTitle}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={t.emptyTitle}
       />
       <AdminDrawer open={Boolean(open)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={t.drawerTitle}
         footer={open && !locked(open) ? <>
@@ -106,7 +112,7 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
         </> : undefined}>
         {open ? <>
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4">
-            <Avatar id={open.userId} name={nameOf(open)} size="xl" />
+            <UserAvatar user={open} size="xl" />
             <div className="grid gap-0.5">
               <b className="text-title-3 text-ink">{nameOf(open)}</b>
               <span className="text-body-sm text-ink-3">{open.maskedEmail ?? t.anonymized}</span>
@@ -116,9 +122,13 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
           {open.accountStatus === 'suspended' ? <Note tone="danger" icon={icon(Ban)}>{t.suspended}</Note> : null}
           <DrawerSection title={t.info}>
             <Dl items={[
-              [t.id, <Mono key="id">{open.userId}</Mono>, true],
+              [t.id, <CopyId key="id" value={open.userId} label={t.id} />],
               [t.joined, <span key="j" className="tabular-nums">{fmtDay(open.createdAt)}</span>],
+              [t.lastActive, <span key="a" className="tabular-nums">{open.stats.lastActiveAt ? fmtAgo(open.stats.lastActiveAt) : '—'}</span>],
               [t.verified, open.emailVerified ? t.verifiedYes : t.verifiedNo],
+              [t.works, <span key="w" className="tabular-nums">{t.worksValue(open.stats.works)}</span>],
+              [t.likes, <span key="l" className="tabular-nums">{fmtNum(open.stats.likes)}</span>],
+              [t.comments, <span key="c" className="tabular-nums">{t.commentsValue(open.stats.comments)}</span>],
             ]} />
           </DrawerSection>
           <DrawerSection title={t.role}>

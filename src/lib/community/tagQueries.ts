@@ -2,12 +2,13 @@ import { and, asc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { communityTags, communityWorks, communityWorkTags } from '@/../db/schema';
-import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
 
 const querySchema = z.object({
   q: z.string().trim().max(60).default(''),
   /** 后台表格「状态」筛选（R15-10）：on = 启用且未合并，off = 停用或已合并。 */
   state: z.enum(['on', 'off']).optional(),
+  ...sortQueryFields(['works']),
   ...pageQueryFields,
 }).strict();
 
@@ -37,7 +38,7 @@ export async function listCommunityTagsAdmin(db: AnyDatabase, input: unknown = {
       .leftJoin(communityWorks, eq(communityWorks.id, communityWorkTags.workId))
       .where(where)
       .groupBy(communityTags.id)
-      .orderBy(asc(communityTags.sortOrder), asc(communityTags.name))
+      .orderBy(...(query.sort === 'works' ? [ordered(workCount, query.order ?? 'desc')] : []), asc(communityTags.sortOrder), asc(communityTags.name))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityTags).where(where),
   ]);

@@ -7,7 +7,7 @@ import { requireApiActor } from '@/lib/auth/dal';
 import { okJson, withApiErrors } from '@/lib/auth/http';
 import { listSystemLogs } from '@/lib/admin/queries';
 
-const FILTER_KEYS = ['level', 'source', 'event', 'actorUserId', 'requestId', 'q', 'from', 'to', 'page', 'size'];
+const FILTER_KEYS = ['level', 'source', 'event', 'actorUserId', 'requestId', 'q', 'from', 'to', 'page', 'size', 'sort', 'order'];
 
 async function get(request: Request) {
   await requireApiActor('audit:read');

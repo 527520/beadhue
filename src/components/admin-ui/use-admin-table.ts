@@ -5,6 +5,8 @@ import { useAdminPage } from '@/components/admin/useAdminPage';
 
 export type FilterValue = string | string[];
 export type FilterState = Record<string, FilterValue>;
+/** 表头排序：列键 + 方向，交给服务端整表排序。 */
+export type SortState = { key: string; dir: 'asc' | 'desc' } | null;
 
 const active = (value: FilterValue | undefined) => (Array.isArray(value) ? value.length > 0 : Boolean(value));
 
@@ -25,9 +27,11 @@ export function useAdminTable<T>(endpoint: string, module: string, options: { in
   const [input, setInput] = useState(options.initialQ ?? '');
   const [q, setQ] = useState(options.initialQ ?? '');
   const [filters, setFilters] = useState<FilterState>({});
-  const query = tableQuery(q, options.mapFilters ? options.mapFilters(filters) : filters, options.extra);
+  const [sort, setSortState] = useState<SortState>(null);
+  const query = tableQuery(q, options.mapFilters ? options.mapFilters(filters) : filters, { ...options.extra, sort: sort?.key, order: sort?.dir });
   const page = useAdminPage<T>(query ? `${endpoint}?${query}` : endpoint, module, options.isItem);
   const { setPage } = page;
+  const setSort = useCallback((next: SortState) => { setSortState(next); setPage(1); }, [setPage]);
   useEffect(() => {
     if (input === q) return;
     const timer = window.setTimeout(() => { setQ(input); setPage(1); }, 160);
@@ -36,7 +40,7 @@ export function useAdminTable<T>(endpoint: string, module: string, options: { in
   const setFilter = useCallback((key: string, value: FilterValue) => { setFilters((current) => ({ ...current, [key]: value })); setPage(1); }, [setPage]);
   const reset = useCallback(() => { setInput(''); setQ(''); setFilters({}); setPage(1); }, [setPage]);
   const filtered = useMemo(() => Boolean(q.trim()) || Object.values(filters).some(active), [q, filters]);
-  return { ...page, input, setInput, q, filters, setFilter, reset, filtered, query };
+  return { ...page, input, setInput, q, filters, setFilter, reset, filtered, query, sort, setSort };
 }
 
 /** 导出 CSV：按当前条件逐页取（每页 100，最多 2000 条），加 BOM 以便表格软件识别 UTF-8。 */

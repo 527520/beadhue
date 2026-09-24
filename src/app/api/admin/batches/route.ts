@@ -6,11 +6,11 @@ import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
 import { createOfficialBatch, listOfficialBatches, officialBatchDefaultParamsSchema } from '@/lib/community/officialBatch';
 import { executeIdempotently } from '@/lib/idempotency';
 
-const schema = z.object({ itemCount: z.number().int().min(1).max(50), defaultParams: officialBatchDefaultParamsSchema, engineVersion: z.string(), reason: z.string() }).strict();
+const schema = z.object({ itemCount: z.number().int().min(1).max(50), name: z.string().max(40).optional(), defaultParams: officialBatchDefaultParamsSchema, engineVersion: z.string(), reason: z.string() }).strict();
 async function get(request: Request) {
   const actor = await requireApiActor('official:manage');
   const search = new URL(request.url).searchParams;
-  const input = Object.fromEntries(['page', 'size'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
+  const input = Object.fromEntries(['q', 'status', 'page', 'size', 'sort', 'order'].flatMap((key) => search.get(key) ? [[key, search.get(key)]] : []));
   return okJson(await listOfficialBatches(getDb(), actor.userId, input), { headers: { 'cache-control': 'private, no-store' } });
 }
 async function post(request: Request) {

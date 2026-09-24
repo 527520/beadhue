@@ -116,7 +116,7 @@ export function AuditConsole() {
         ], a.exportFile)}
         onOpen={(item) => setOpenId(item.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={a.emptyTitle}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={a.emptyTitle}
       />
       <AdminDrawer open={Boolean(open)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={open ? actionLabel(open.action) : ''}
         footer={<><Spacer /><Button onClick={() => setOpenId(null)}>{zhCN.adminUi.common.close}</Button></>}>
@@ -195,7 +195,7 @@ function EventsView() {
         ], l.exportFile)}
         onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={l.emptyTitle}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={l.emptyTitle}
       />
       <AdminDrawer open={Boolean(openId)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={listed?.event ?? item?.event ?? logs.detail}
         badges={listed ? <LevelBadge level={listed.level} /> : null}
@@ -269,7 +269,7 @@ function SlowView() {
         filterValues={table.filters} onFilterChange={table.setFilter}
         onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={l.slowEmpty} emptyText={s.help}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={l.slowEmpty} emptyText={s.help}
       />
       <AdminDrawer open={Boolean(open)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={open ? l.ms(open.durationMs) : ''}>
         {open ? <>

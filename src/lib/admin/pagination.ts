@@ -6,7 +6,7 @@
  * 避免列表与总数因为条件漂移而不一致。豆社公开列表（按热度排序、签名游标）保持游标分页，
  * 不使用本模块。
  */
-import { sql } from 'drizzle-orm';
+import { asc, desc, sql, type AnyColumn, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 /** 每页条数白名单：只允许这四档，避免前端传 100000 把库拖死。 */
@@ -21,6 +21,15 @@ export const pageQueryFields = {
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   size: z.coerce.number().int().refine(isPageSize, { message: '每页条数只能是 10 / 20 / 50 / 100' }).default(DEFAULT_PAGE_SIZE),
 };
+
+/** 表头排序（整表排序，不只排当前页）：列键白名单 + 方向；不传时各列表按自己的默认顺序。 */
+export function sortQueryFields<const K extends readonly [string, ...string[]]>(keys: K) {
+  return { sort: z.enum(keys).optional(), order: z.enum(['asc', 'desc']).optional() };
+}
+
+export function ordered(column: AnyColumn | SQL, order: 'asc' | 'desc'): SQL {
+  return order === 'asc' ? asc(column) : desc(column);
+}
 
 export function pageOffset(page: number, size: number): number {
   return (page - 1) * size;

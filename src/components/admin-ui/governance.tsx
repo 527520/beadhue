@@ -123,7 +123,7 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
         </>}
         menu={menu} onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={c.emptyTitle} emptyText={c.emptyText}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={c.emptyTitle} emptyText={c.emptyText}
       />
       <AdminDrawer open={Boolean(open)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={c.drawerTitle} badges={open ? verdict(open) : null}
         footer={open ? <>
@@ -262,7 +262,7 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
         ], zhCN.adminUi.csv.reportsFile)}
         menu={menu} onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={r.emptyTitle} emptyText={r.emptyText}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={r.emptyTitle} emptyText={r.emptyText}
       />
       <AdminDrawer open={Boolean(open)} onOpenChange={(next) => { if (!next) setOpenId(null); }} title={open ? r.drawerTitle(riskLabel(open.category)) : ''} badges={open ? reportStatus(open) : null}
         footer={open ? <>

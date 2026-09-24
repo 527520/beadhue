@@ -2,7 +2,7 @@ import { and, desc, eq, ilike, inArray, isNotNull, isNull, ne, or, sql } from 'd
 import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { communityRevisions, communityTags, communityWorks, communityWorkTags, users } from '@/../db/schema';
-import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
 import { ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { OFFICIAL_PERSON, type AdminPerson } from '@/lib/admin/lookups';
 import { AppError } from '@/lib/errors';
@@ -16,6 +16,7 @@ const querySchema = z.object({
   /** 按标签过滤（标签管理里的批量打标候选列表）：missing = 还没打这个标签。 */
   tagId: z.uuid().optional(),
   tagState: z.enum(['all', 'missing', 'has']).default('all'),
+  ...sortQueryFields(['likes', 'updated']),
   ...pageQueryFields,
 }).strict();
 
@@ -66,7 +67,8 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     accountStatus: users.accountStatus, revisionNumber: communityRevisions.revisionNumber,
   }).from(communityWorks).leftJoin(communityRevisions, eq(communityRevisions.id, displayRevision))
     .leftJoin(users, eq(users.id, communityWorks.authorUserId))
-    .where(where).orderBy(desc(communityWorks.createdAt), desc(communityWorks.id))
+    .where(where).orderBy(...(query.sort === 'likes' ? [ordered(communityWorks.likeCount, query.order ?? 'desc')]
+      : query.sort === 'updated' ? [ordered(communityWorks.updatedAt, query.order ?? 'desc')] : []), desc(communityWorks.createdAt), desc(communityWorks.id))
     .limit(size).offset(pageOffset(meta.page, size));
   // 后台表格的「标签」列（R15-10）：一页一次查询，按标签排序。
   const tagRows = rows.length === 0 ? [] : await db.select({ workId: communityWorkTags.workId, name: communityTags.name })

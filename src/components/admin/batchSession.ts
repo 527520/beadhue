@@ -30,11 +30,16 @@ export interface BatchItem {
 export interface BatchRow { id: string; version: number; status: 'running' | 'paused' | 'completed' | 'cancelled'; failureCount?: number }
 export interface StoredBatch extends BatchRow {
   createdAt: string; itemCount: number; successCount: number; failureCount: number;
+  /** 新建批次时起的名字；迁移前的批次为 null。 */
+  name?: string | null;
+  /** 创建人（其他管理员的批次只能查看，不能继续处理）。 */
+  creator?: { id: string; name: string; color: string | null } | null;
+  mine?: boolean;
   defaultParams?: unknown;
   drafts: Array<{ id: string; workId: string; title: string; status: string; version: number; preview: CommunityPreviewV1; hasOriginal?: boolean }>;
 }
 interface State {
-  items: BatchItem[]; batch: BatchRow | null; defaults: GenerationParams; spec: OfficialBatchSpec; reason: string;
+  items: BatchItem[]; batch: BatchRow | null; name: string; defaults: GenerationParams; spec: OfficialBatchSpec; reason: string;
   mode: 'idle' | 'running' | 'paused' | 'cancelled'; busy: boolean; uncertain: boolean; conflict: boolean;
   command: string | null; error: string | null; notice: string | null;
 }
@@ -72,6 +77,9 @@ const storedBatchSchema = z.object({
   id: uuid, version: z.number().int().positive(), status: z.enum(['running', 'paused', 'completed', 'cancelled']),
   createdAt: z.string().refine((value) => Number.isFinite(Date.parse(value))),
   itemCount: z.number().int().min(1).max(50), successCount: z.number().int().min(0).max(50), failureCount: z.number().int().min(0).max(50),
+  name: z.string().max(40).nullable().optional(),
+  creator: z.object({ id: z.string(), name: z.string(), color: z.string().nullable() }).nullable().optional(),
+  mine: z.boolean().optional(),
   defaultParams: officialBatchDefaultsSchema.optional(),
   drafts: z.array(z.object({ id: uuid, workId: uuid, title: z.string().min(1).max(80),
     status: z.enum(['draft', 'pending_review', 'published', 'rejected', 'withdrawn', 'superseded']), version: z.number().int().positive(), preview: communityPreviewSchema, hasOriginal: z.boolean().optional() })).max(50),
@@ -89,7 +97,7 @@ function draftStatus(draft: StoredBatch['drafts'][number]): Pick<BatchItem, 'sta
 /** One in-memory file set. Scheduling and immutable write attempts outlive React renders,
  * but never this page. Server state is recovered only through explicitly chosen history. */
 export class BatchSession {
-  private state: State = { items: [], batch: null, defaults: { ...DEFAULT_GENERATION_PARAMS }, spec: { ...DEFAULT_OFFICIAL_BATCH_SPEC }, reason: t.defaultReason, mode: 'idle', busy: false, uncertain: false, conflict: false, command: null, error: null, notice: null };
+  private state: State = { items: [], batch: null, name: '', defaults: { ...DEFAULT_GENERATION_PARAMS }, spec: { ...DEFAULT_OFFICIAL_BATCH_SPEC }, reason: t.defaultReason, mode: 'idle', busy: false, uncertain: false, conflict: false, command: null, error: null, notice: null };
   private listeners = new Set<() => void>();
   private active = new Map<string, { cancel: () => void }>();
   private saves = new Map<string, Attempt>();
@@ -147,6 +155,8 @@ export class BatchSession {
   setDefaults(value: GenerationParams) { if (!this.locked) this.emit({ defaults: value }); }
   /** 制作规格只在开始前可改；色板换了就顺带校正不兼容的底板与档位。 */
   setSpec(value: OfficialBatchSpec) { if (!this.state.batch && !this.locked) this.emit({ spec: value }); }
+  /** 新建批次弹窗起的名字；批次在服务端建好后不再改。 */
+  setName(value: string) { if (!this.state.batch && !this.locked) this.emit({ name: value.trim().slice(0, 20) }); }
   setReason(reason: string) { if (!this.locked) this.emit({ reason }); }
   selectFiles(files: File[]) {
     if (!this.replaceable) return;
@@ -183,7 +193,7 @@ export class BatchSession {
       || this.state.items.some((item) => !item.title.trim() || item.title.trim().length > 80 || !generationParamsSchema.safeParse({ ...this.state.defaults, ...item.paramsOverride }).success)) {
       this.emit({ error: t.invalidConfiguration }); return;
     }
-    await this.command('create', '/api/admin/batches', 'POST', { itemCount: this.state.items.length, defaultParams: mergeOfficialBatchDefaults(this.state.defaults, this.state.spec), engineVersion: ENGINE_VERSION, reason: this.state.reason }, (body) => {
+    await this.command('create', '/api/admin/batches', 'POST', { itemCount: this.state.items.length, ...(this.state.name ? { name: this.state.name } : {}), defaultParams: mergeOfficialBatchDefaults(this.state.defaults, this.state.spec), engineVersion: ENGINE_VERSION, reason: this.state.reason }, (body) => {
       if (!isBatch(body) || body.version !== 1 || body.status !== 'running') throw new Error();
       this.emit({ batch: body, mode: 'running', notice: null });
       track({ name: 'official_batch_started', properties: { itemCountBucket: countBucket(this.state.items.length) } });
@@ -446,7 +456,7 @@ export class BatchSession {
     if (!this.replaceable) return;
     const parsedDefaults = officialBatchDefaultsSchema.safeParse(batch.defaultParams);
     const restored = parsedDefaults.success ? splitOfficialBatchDefaults(parsedDefaults.data) : { params: { ...DEFAULT_GENERATION_PARAMS }, spec: { ...DEFAULT_OFFICIAL_BATCH_SPEC } };
-    this.emit({ batch, defaults: restored.params, spec: restored.spec, mode: 'paused', error: null, conflict: false, notice: t.restored, items: batch.drafts.map((draft, index) => ({ localId: `restored:${draft.id}`, file: null, localName: t.restoredDraft(index + 1), title: draft.title, crop: null, paramsOverride: {}, ...draftStatus(draft), progress: 100, revisionId: draft.id, workId: draft.workId, revisionVersion: draft.version, dirty: false, selected: false, preview: draft.preview })) });
+    this.emit({ batch, name: batch.name ?? '', defaults: restored.params, spec: restored.spec, mode: 'paused', error: null, conflict: false, notice: t.restored, items: batch.drafts.map((draft, index) => ({ localId: `restored:${draft.id}`, file: null, localName: t.restoredDraft(index + 1), title: draft.title, crop: null, paramsOverride: {}, ...draftStatus(draft), progress: 100, revisionId: draft.id, workId: draft.workId, revisionVersion: draft.version, dirty: false, selected: false, preview: draft.preview })) });
   }
   refreshState(batch: StoredBatch) {
     if (!isStoredBatch(batch)) { this.emit({ error: zhCN.communityAdmin.command.refreshFailed }); return; }

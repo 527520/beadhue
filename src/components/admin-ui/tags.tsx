@@ -54,7 +54,7 @@ function TagForm({ value, onChange, tag, errors, disabled }: { value: FormState;
   return (
     <div className="grid gap-5">
       <Field label={f.name} hint={errors.name ? undefined : f.nameHint} error={errors.name}>
-        <Input value={value.name} maxLength={30} autoComplete="off" disabled={disabled} onChange={(event) => onChange({ ...value, name: event.target.value })} />
+        <Input autoFocus={!tag} value={value.name} maxLength={30} autoComplete="off" disabled={disabled} onChange={(event) => onChange({ ...value, name: event.target.value })} />
       </Field>
       <fieldset className="m-0 grid gap-2 border-0 p-0">
         <legend className="mb-2 p-0 text-footnote font-medium text-ink">{f.icon}</legend>
@@ -69,7 +69,7 @@ function TagForm({ value, onChange, tag, errors, disabled }: { value: FormState;
         <Input value={value.sortOrder} inputMode="numeric" disabled={disabled} className="w-32" onChange={(event) => onChange({ ...value, sortOrder: event.target.value.replace(/[^\d-]/g, '') })} />
       </Field>
       <NamedSwitch visibleLabel label={f.featured} hint={f.featuredHint} checked={value.featured} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, featured: checked })} />
-      {tag ? <NamedSwitch visibleLabel label={f.active} hint={f.activeHint} checked={value.active} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, active: checked })} /> : null}
+      <NamedSwitch visibleLabel label={f.active} hint={tag ? f.activeHint : f.activeCreateHint} checked={value.active} disabled={disabled} onCheckedChange={(checked) => onChange({ ...value, active: checked })} />
       {needsReason ? (
         <Field label={f.reason} hint={errors.reason ? undefined : f.reasonHint} error={errors.reason}>
           <Textarea rows={3} maxLength={500} value={value.reason} disabled={disabled} onChange={(event) => onChange({ ...value, reason: event.target.value })} />
@@ -180,7 +180,7 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
     const fields = { name: form.name.trim(), sortOrder: Number(form.sortOrder), icon: form.icon, featured: form.featured };
     await command.run(tag
       ? { url: `${ENDPOINT}/${tag.id}`, method: 'PATCH', body: { ...fields, active: form.active, expectedVersion: tag.version, ...(form.reason.trim() ? { reason: form.reason.trim() } : {}) } }
-      : { url: ENDPOINT, method: 'POST', body: { ...fields, expectedVersion: 0 } },
+      : { url: ENDPOINT, method: 'POST', body: { ...fields, active: form.active, expectedVersion: 0 } },
     async () => { toast(tag ? f.saved(fields.name) : f.created(fields.name), { icon: icon(Tag) }); setCreating(false); setOpenId(null); await table.reload(); });
   };
   const setFeatured = async (tag: TagRow, featured: boolean) => {
@@ -215,7 +215,7 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
     <>
       <AdminPageHead section="tags" actions={<Button variant="primary" onClick={startCreate}>{icon(Plus)}{t.create}</Button>} />
       <DataTable<TagRow>
-        label={t.label} rows={sorted} rowId={(tag) => tag.id} rowName={(tag) => tag.name} columns={columns} minWidth={760}
+        label={t.label} rows={table.sort ? table.items : sorted} rowId={(tag) => tag.id} rowName={(tag) => tag.name} columns={columns} minWidth={760}
         card={(tag) => ({ lead: <PixelTile value={tag.icon} />, title: tag.name, meta: <>{usage(tag)} · {t.orderAt(tag.sortOrder)}</>, tail: <><StateBadge tag={tag} />{tag.featured ? <Badge>{t.columns.featured}</Badge> : null}</> })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
         search={{ value: table.input, onChange: table.setInput, placeholder: t.search }}
@@ -223,7 +223,7 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
         filterValues={table.filters} onFilterChange={table.setFilter}
         menu={menu} onOpen={startEdit} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
-        filtered={table.filtered} onReset={table.reset} emptyTitle={t.emptyTitle}
+        filtered={table.filtered} onReset={table.reset} sort={table.sort} onSortChange={table.setSort} emptyTitle={t.emptyTitle}
       />
       <Dialog open={creating} onOpenChange={(next) => { if (!next && command.locked) return; setCreating(next); }}>
         <DialogContent aria-label={t.createTitle}>

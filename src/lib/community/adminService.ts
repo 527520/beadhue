@@ -181,6 +181,8 @@ export async function createCommunityTag(db: AnyDatabase, input: {
   sortOrder?: number;
   icon?: string | null;
   featured?: boolean;
+  /** 新建时就停用（先备好、稍后启用）；默认启用。 */
+  active?: boolean;
   reason?: string;
   requestId: string;
 }) {
@@ -190,7 +192,7 @@ export async function createCommunityTag(db: AnyDatabase, input: {
   const sortOrder = tagOrderSchema.parse(input.sortOrder ?? 0);
   const icon = tagIcon(input.icon) ?? null;
   return db.transaction(async (tx) => {
-    const [tag] = await tx.insert(communityTags).values({ name, slug, sortOrder, icon, featured: input.featured ?? false }).onConflictDoNothing().returning();
+    const [tag] = await tx.insert(communityTags).values({ name, slug, sortOrder, icon, featured: input.featured ?? false, active: input.active ?? true }).onConflictDoNothing().returning();
     if (!tag) throw new AppError('STATE_CONFLICT', '标签名称已存在，请直接使用现有标签');
     await audit(tx, { actor: input.actor, action: 'community.tag_created', targetType: 'community_tag', targetId: tag.id, reason: why, requestId: input.requestId, beforeState: null, afterState: tagAuditState(tag) });
     return tag;

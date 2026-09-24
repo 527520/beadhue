@@ -25,7 +25,7 @@ import { resolvePublicDisplayName, ANONYMIZED_DISPLAY_NAME } from '@/lib/identit
 import { sanitizeAuditState } from '@/lib/admin/audit';
 import { containsPattern, excerpt, loadCommentLabels, loadPeople, loadWorkLabels, startsWithPattern, type AdminPerson } from '@/lib/admin/lookups';
 import { zhCN } from '@/messages/zh-CN';
-import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
 import { AppError } from '@/lib/errors';
 import type { ProjectFile } from '@/lib/types';
 import { assertDesignQuota, lockDesignStorage } from '@/lib/sync/designQuota';
@@ -401,8 +401,8 @@ export async function handleCommunityReport(db: AnyDatabase, input: {
 /** 治理台队列的分页参数（admin-round-3 06）：评论与举报各自独立翻页。 */
 /** 后台表格筛选（R15-10）：评论按判定、举报按状态与对象类型；两者都可搜索。 */
 const queueSearch = z.string().trim().max(80).optional();
-const commentQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['pending_review', 'rejected']).optional(), ...pageQueryFields }).strict();
-const reportQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...pageQueryFields }).strict();
+const commentQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['pending_review', 'rejected']).optional(), ...sortQueryFields(['time']), ...pageQueryFields }).strict();
+const reportQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...sortQueryFields(['time']), ...pageQueryFields }).strict();
 
 /** 作品任一版本的标题命中搜索词。 */
 const workTitleMatches = (workId: SQL | Column, pattern: string) => sql`exists (select 1 from community_revisions sr where sr.work_id = ${workId} and sr.title ilike ${pattern})`;
@@ -426,7 +426,7 @@ export async function listGovernanceComments(db: AnyDatabase, input: unknown = {
       accountStatus: users.accountStatus, avatarColor: users.avatarColor }).from(communityComments)
       .leftJoin(users, eq(users.id, communityComments.authorUserId))
       .where(where)
-      .orderBy(communityComments.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
+      .orderBy(ordered(communityComments.createdAt, query.order ?? 'asc'), ordered(communityComments.id, query.order ?? 'asc')).limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityComments).where(where),
   ]);
   const works = await loadWorkLabels(db, rawComments.map((row) => row.workId));
@@ -483,7 +483,7 @@ export async function listGovernanceReports(db: AnyDatabase, input: unknown = {}
       category: communityReports.category, details: communityReports.details, createdAt: communityReports.createdAt,
       reporterUserId: communityReports.reporterUserId,
     }).from(communityReports).where(where)
-      .orderBy(communityReports.createdAt).limit(query.size).offset(pageOffset(query.page, query.size)),
+      .orderBy(ordered(communityReports.createdAt, query.order ?? 'asc'), ordered(communityReports.id, query.order ?? 'asc')).limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(communityReports).where(where),
   ]);
   const comments = await loadCommentLabels(db, rows.filter((row) => row.targetType === 'comment').map((row) => row.targetId));

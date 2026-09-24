@@ -39,6 +39,9 @@ test('损坏的批次历史只显示读取失败，不影响新建批次与本�
   await history.getByRole('button', { name: '重新读取' }).click();
   await expect(history.getByRole('alert')).toHaveCount(0);
   await page.getByRole('button', { name: '新建批次' }).click();
+  const naming = page.getByRole('dialog', { name: '新建官方批次' });
+  await naming.getByLabel('批次名称').fill('E2E 历史损坏后新建');
+  await naming.getByRole('button', { name: '开始选图' }).click();
   await page.getByLabel('选择图片', { exact: true }).setInputFiles(resolve('tests/fixtures/photo-gradient-64.png'));
   await expect(page.locator('[data-batch-card]')).toHaveCount(1);
 });

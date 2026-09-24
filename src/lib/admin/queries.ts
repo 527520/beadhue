@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { adminAuditLogs, maintenanceRuns, slowQueries, systemLogs, users } from '@/../db/schema';
 import { APP_VERSION } from '@/lib/appInfo';
-import { countExpression, pageMeta, pageOffset, pageQueryFields, readCount } from '@/lib/admin/pagination';
+import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
 import { maskEmailForPublic } from '@/lib/identity/publicAuthor';
 import { pushSpan } from '@/lib/observability/context';
 import migrationJournal from '@/../db/migrations/meta/_journal.json';
@@ -16,6 +16,7 @@ const usersQuerySchema = z.object({
   q: z.string().trim().max(80).optional(),
   role: z.enum(['user', 'moderator', 'admin']).optional(),
   accountStatus: z.enum(['active', 'suspended', 'anonymized']).optional(),
+  ...sortQueryFields(['works', 'joined']),
   ...pageQueryFields,
 }).strict();
 
@@ -28,12 +29,21 @@ export async function listGovernedUsers(db: AnyDatabase, input: unknown = {}) {
     query.role ? eq(users.role, query.role) : undefined,
     query.accountStatus ? eq(users.accountStatus, query.accountStatus) : undefined,
   );
+  // 作品 / 获赞 / 评论与最近活跃（最近一次登录或保存设计）：一页最多 100 行，用关联子查询即可。
+  // 子查询里外层列必须写全名：drizzle 在 SELECT 列表里把 ${users.id} 渲染成不带表名的 "id"，会被解析成子查询表自己的 id。
+  const workCount = sql<number>`(select count(*) from community_works cw where cw.author_user_id = "users"."id" and cw.author_type = 'user')`.mapWith(Number);
+  const likeCount = sql<number>`(select coalesce(sum(cw.like_count), 0) from community_works cw where cw.author_user_id = "users"."id" and cw.author_type = 'user')`.mapWith(Number);
+  const commentCount = sql<number>`(select count(*) from community_comments cc where cc.author_user_id = "users"."id" and cc.deleted_at is null)`.mapWith(Number);
+  const lastActiveAt = sql<string | null>`greatest((select max(s.created_at) from sessions s where s.user_id = "users"."id"), (select max(d.updated_at) from designs d where d.user_id = "users"."id"))`;
   const [rows, totalRows] = await Promise.all([
     db.select({
       id: users.id, email: users.email, username: users.username, role: users.role,
       accountStatus: users.accountStatus, governanceVersion: users.governanceVersion,
       emailVerifiedAt: users.emailVerifiedAt, createdAt: users.createdAt,
-    }).from(users).where(where).orderBy(desc(users.createdAt), desc(users.id))
+      publicAuthorId: users.publicAuthorId, avatarColor: users.avatarColor,
+      workCount, likeCount, commentCount, lastActiveAt,
+    }).from(users).where(where)
+      .orderBy(...(query.sort === 'works' ? [ordered(workCount, query.order ?? 'desc')] : []), ordered(users.createdAt, query.sort === 'joined' ? query.order ?? 'desc' : 'desc'), desc(users.id))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(users).where(where),
   ]);
@@ -46,6 +56,8 @@ export async function listGovernedUsers(db: AnyDatabase, input: unknown = {}) {
     governanceVersion: row.governanceVersion,
     emailVerified: row.emailVerifiedAt !== null,
     createdAt: row.createdAt.toISOString(),
+    avatar: { id: row.publicAuthorId ?? row.id, color: row.accountStatus === 'anonymized' ? null : row.avatarColor },
+    stats: { works: row.workCount, likes: row.likeCount, comments: row.commentCount, lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt).toISOString() : null },
   }));
   return { items, ...pageMeta(readCount(totalRows), query.page, query.size) };
 }
@@ -55,6 +67,7 @@ const auditQuerySchema = z.object({
   q: z.string().trim().max(120).optional(), from: z.iso.date().optional(), to: z.iso.date().optional(),
   /** 动作（逗号分隔的动作键）与操作人（逗号分隔的账号编号），多选。 */
   action: commaList(z.string().min(1).max(80)), actor: commaList(z.uuid()),
+  ...sortQueryFields(['time']),
   ...pageQueryFields,
 }).strict().refine((value) => !value.from || !value.to || value.from <= value.to);
 
@@ -113,7 +126,7 @@ export async function listAdminAudit(db: AnyDatabase, input: unknown = {}) {
     query.to ? lt(adminAuditLogs.createdAt, new Date(new Date(`${query.to}T00:00:00+08:00`).getTime() + 86400000)) : undefined,
   );
   const [rows, totalRows] = await Promise.all([
-    db.select().from(adminAuditLogs).where(where).orderBy(desc(adminAuditLogs.createdAt), desc(adminAuditLogs.id))
+    db.select().from(adminAuditLogs).where(where).orderBy(ordered(adminAuditLogs.createdAt, query.order ?? 'desc'), ordered(adminAuditLogs.id, query.order ?? 'desc'))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(adminAuditLogs).where(where),
   ]);
@@ -197,6 +210,7 @@ const systemLogsQuerySchema = z.object({
   requestId: z.string().trim().max(64).optional(),
   q: z.string().trim().max(120).optional(),
   from: z.iso.date().optional(), to: z.iso.date().optional(),
+  ...sortQueryFields(['time']),
   ...pageQueryFields,
 }).strict().refine((value) => !value.from || !value.to || value.from <= value.to);
 
@@ -244,7 +258,7 @@ export async function listSystemLogs(db: AnyDatabase, input: unknown = {}) {
     range.end ? lt(systemLogs.createdAt, range.end) : undefined,
   );
   const [rows, totalRows] = await Promise.all([
-    db.select(systemLogListColumns).from(systemLogs).where(where).orderBy(desc(systemLogs.createdAt), desc(systemLogs.id))
+    db.select(systemLogListColumns).from(systemLogs).where(where).orderBy(ordered(systemLogs.createdAt, query.order ?? 'desc'), ordered(systemLogs.id, query.order ?? 'desc'))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(systemLogs).where(where),
   ]);
@@ -272,6 +286,7 @@ const slowQueriesQuerySchema = z.object({
   route: z.string().trim().max(160).optional(),
   minDurationMs: z.coerce.number().int().min(0).max(600_000).optional(),
   from: z.iso.date().optional(), to: z.iso.date().optional(),
+  ...sortQueryFields(['duration']),
   ...pageQueryFields,
 }).strict().refine((value) => !value.from || !value.to || value.from <= value.to);
 
@@ -287,7 +302,7 @@ export async function listSlowQueries(db: AnyDatabase, input: unknown = {}) {
     range.end ? lt(slowQueries.createdAt, range.end) : undefined,
   );
   const [rows, totalRows] = await Promise.all([
-    db.select().from(slowQueries).where(where).orderBy(desc(slowQueries.durationMs), desc(slowQueries.createdAt))
+    db.select().from(slowQueries).where(where).orderBy(ordered(slowQueries.durationMs, query.order ?? 'desc'), desc(slowQueries.createdAt))
       .limit(query.size).offset(pageOffset(query.page, query.size)),
     db.select({ count: countExpression }).from(slowQueries).where(where),
   ]);

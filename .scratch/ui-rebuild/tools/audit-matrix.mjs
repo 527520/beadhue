@@ -202,7 +202,8 @@ add('admin-collapsed', 'admin', { who: 'admin', widths: [1440, 1024], proto: { r
 add('admin-account', 'admin', { who: 'admin', widths: DESK, proto: { route: '#/admin', steps: [click('[data-adm-account]')] }, impl: { route: '/admin', steps: [btn('管理员账号菜单')] } });
 add('admin-search', 'admin', { who: 'admin', widths: DESK, note: '后台搜索范围菜单', proto: { route: '#/admin', steps: [focus('[data-adm-search] input'), typeIn('[data-adm-search] input', '猫')] }, impl: { route: '/admin', steps: [focus('input[type=search][aria-label="搜索作品、用户或评论"]'), typeIn('input[type=search][aria-label="搜索作品、用户或评论"]', '猫')] } });
 add('admin-search-mobile', 'admin', { who: 'admin', widths: MOB, proto: { route: '#/admin', steps: [click(vis('[data-adm-search-open]'))] }, impl: { route: '/admin', steps: [btn('搜索后台')] } });
-add('admin-batches-new', 'admin', { who: 'admin', proto: { route: '#/admin/batches', steps: [click(vis('[data-new-batch]'))] }, impl: { route: '/admin/batches', steps: [btn('新建批次')] } });
+add('admin-batches-new', 'admin', { who: 'admin', proto: { route: '#/admin/batches', steps: [click(vis('[data-new-batch]'))] }, impl: { route: '/admin/batches', steps: [btn('新建批次'), waitFor({ role: 'dialog', name: '新建官方批次' })] } });
+add('admin-batches-studio', 'admin', { who: 'admin', note: '起名后进入工作室（原型没有工作室）', proto: { route: '#/admin/batches' }, impl: { route: '/admin/batches', steps: [btn('新建批次'), fill({ role: 'textbox', name: '批次名称' }, '秋日动物系列'), btn('开始选图', { wait: 600 })] } });
 add('admin-tags-new', 'admin', { who: 'admin', proto: { route: '#/admin/tags', steps: [click(vis('[data-new-tag]'))] }, impl: { route: '/admin/tags', steps: [btn(/^(新建|新增)标签/)] } });
 add('admin-guard', 'admin', { who: 'guest', note: '未登录进入后台', proto: { route: '#/admin' }, impl: { route: '/admin' } });
 add('admin-forbidden', 'admin', { who: 'moderator', note: '审核员进入仅管理员模块（403）：原型没有', proto: null, impl: { route: '/admin/users' } });

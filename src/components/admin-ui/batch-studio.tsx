@@ -371,13 +371,14 @@ const BatchCard = memo(function BatchCard({ item, index, session, editable, serv
  * 官方批次工作室（四步：选图 → 参数与裁剪 → 生成 → 核对与发布），业务沿用 BatchSession（幂等键、同键恢复、
  * 草稿原地修订、原图随草稿上传）；界面换成新组件。restore 给定时从服务器恢复该批次的已保存草稿。
  */
-export function BatchStudio({ restore, onBack, onChanged }: { restore: StoredBatch | null; onBack: () => void; onChanged: () => void }) {
+export function BatchStudio({ restore, name, onBack, onChanged }: { restore: StoredBatch | null; name?: string; onBack: () => void; onChanged: () => void }) {
   const [{ session, pool }] = useState(() => {
     const concurrency = officialBatchConcurrency(typeof navigator === 'undefined' ? undefined : navigator.hardwareConcurrency,
       typeof navigator === 'undefined' ? undefined : (navigator as Navigator & { deviceMemory?: number }).deviceMemory);
     const nextPool = createOfficialBatchGeneratePool(concurrency);
     const next = new BatchSession({ generate: nextPool.generate, concurrency });
     if (restore) next.restore(restore);
+    else if (name) next.setName(name);
     return { session: next, pool: nextPool };
   });
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
@@ -449,9 +450,12 @@ export function BatchStudio({ restore, onBack, onChanged }: { restore: StoredBat
     </Button>
   );
   return (
-    <section aria-label={t.studio} className="grid gap-4" data-batch-studio="">
+    <section aria-label={state.name || t.studio} className="grid gap-4" data-batch-studio="">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <BatchSteps current={step} />
+        <div className="grid min-w-0 gap-2">
+          {state.name ? <h2 className="truncate text-title-2 text-ink">{state.name}</h2> : null}
+          <BatchSteps current={step} />
+        </div>
         <Button size="sm" variant="ghost" disabled={session.processing || session.locked} onClick={onBack}>{t.back}</Button>
       </div>
       <OriginalUploadStatus />

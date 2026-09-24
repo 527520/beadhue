@@ -13,9 +13,12 @@ async function login(page: Page) {
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/batches$/); await expect(page.locator('h1')).toBeVisible();
 }
-/** R15-10：批次页先是历史表格，「新建批次」进入四步工作室。 */
+/** R15-10：批次页先是历史表格，「新建批次」先起名，再进入四步工作室。 */
 async function openStudio(page: Page) {
   await page.getByRole('button', { name: '新建批次' }).click();
+  const naming = page.getByRole('dialog', { name: '新建官方批次' });
+  await naming.getByLabel('批次名称').fill('E2E 恢复批次');
+  await naming.getByRole('button', { name: '开始选图' }).click();
   await expect(page.getByLabel('选择图片', { exact: true })).toBeAttached();
 }
 async function smallDefault(page: Page) {

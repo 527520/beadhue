@@ -24,6 +24,22 @@ describe('official browser-local batch persistence', () => {
     admin = { userId: user.id, role: 'admin', accountStatus: 'active', emailVerified: true };
   });
 
+  it('批次带名字；列表列出所有管理员的批次与创建人，只有自己的可继续；按名字 / 编号搜索、按状态筛选', async () => {
+    const [other] = await db.insert(users).values({ email: 'other-admin@example.com', username: '阿布的豆盒', role: 'admin', emailVerifiedAt: new Date() }).returning();
+    const colleague: Actor = { userId: other.id, role: 'admin', accountStatus: 'active', emailVerified: true };
+    const named = await createOfficialBatch(db, { actor: admin, itemCount: 2, name: ' 秋日动物系列 ', defaultParams: DEFAULT_GENERATION_PARAMS, engineVersion: '2.0.0', reason: '开始官方内容批次', requestId: 'named' });
+    await createOfficialBatch(db, { actor: colleague, itemCount: 1, defaultParams: DEFAULT_GENERATION_PARAMS, engineVersion: '2.0.0', reason: '同事的批次', requestId: 'other' });
+    await expect(createOfficialBatch(db, { actor: admin, itemCount: 1, name: '   ', defaultParams: DEFAULT_GENERATION_PARAMS, engineVersion: '2.0.0', reason: '空名字', requestId: 'blank' })).rejects.toMatchObject({ code: 'VALIDATION' });
+    const { items } = await listOfficialBatches(db, admin.userId);
+    expect(items).toHaveLength(2);
+    expect(items.find((item) => item.id === named.id)).toMatchObject({ name: '秋日动物系列', mine: true, creator: { name: 'a***n@example.com' } });
+    expect(items.find((item) => item.id !== named.id)).toMatchObject({ name: null, mine: false, creator: { name: '阿布的豆盒' } });
+    expect(JSON.stringify(items)).not.toContain(admin.userId);
+    expect((await listOfficialBatches(db, admin.userId, { q: '秋日' })).items.map((item) => item.id)).toEqual([named.id]);
+    expect((await listOfficialBatches(db, admin.userId, { q: named.id.slice(0, 8) })).total).toBe(1);
+    expect((await listOfficialBatches(db, admin.userId, { status: 'completed' })).total).toBe(0);
+  });
+
   it('saves only generated snapshots as official drafts and publishes the explicit selection', async () => {
     const batch = await createOfficialBatch(db, { actor: admin, itemCount: 2, defaultParams: DEFAULT_GENERATION_PARAMS,
       engineVersion: '2.0.0', reason: '开始官方内容批次', requestId: 'start' });
