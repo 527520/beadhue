@@ -1,14 +1,14 @@
 /**
  * 编辑/跟拼有界画布的真实浏览器回归：
- * - 手机工作区是同路由沉浸层，浏览器 Back 只退回预览；
+ * - 手机编辑器（票 09）是 100dvh 固定工作区，与桌面同一个画布；
  * - 200×200 图纸的 Canvas 后备缓冲区仍以视窗而非整图分配；
- * - Playwright 的 iPhone / Pixel 设备模拟都能落笔；跟拼触摸拖动零写入，短点可标记且可撤销；
+ * - Playwright 的 iPhone / Pixel 设备模拟都能落笔（精准模式 / 连续绘制）；跟拼浏览与拖动零写入，标记短点可标记且可撤销；
  * - 三浏览器桌面 944/1280/1440px 下编辑与跟拼都不会撑宽页面。
  */
 import { writeFile } from 'node:fs/promises';
 import { devices, expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, modeButton, uploadAndGenerate } from './helpers';
+import { BASE_URL, modeButton, uploadAndGenerate, waitSaved } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/static-2x2.png');
 const FIXED_TIME = '2026-08-30T00:00:00.000Z';
@@ -55,19 +55,15 @@ async function importProject(page: Page, width: number, height: number, testInfo
   const projectPath = testInfo.outputPath(`bounded-canvas-${width}x${height}.beadhue.json`);
   await writeFile(projectPath, JSON.stringify(value), 'utf8');
   await page.getByLabel('项目文件选择器').setInputFiles(projectPath);
-  await expect(page.getByRole('textbox', { name: '设计名称' }).last()).toHaveValue(value.name);
-  // 手机仍是旧工作台（「粒」），桌面是新编辑器的画布摘要（「颗」）。
-  await expect(page.getByText(new RegExp(`共 ${width * height} (粒|颗)`)).first()).toBeAttached();
+  // 手机顶栏没有设计名输入框：用页面标题核对导入的是这一份。
+  await expect(page).toHaveTitle(new RegExp(value.name));
+  await expect(page.getByText(new RegExp(`共 ${width * height} 颗`)).first()).toBeAttached();
 }
 
 async function enterWorkbenchWithProject(page: Page, testInfo: TestInfo, width = 200, height = 200): Promise<void> {
   await page.goto('/app');
   await uploadAndGenerate(page, PHOTO);
-  await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeVisible({ timeout: 20_000 });
-
-  // 移动布局把项目文件入口放在「导出」抽屉；桌面入口始终存在。
-  const exportTools = page.getByRole('navigation', { name: '工作台工具' }).getByRole('button', { name: '导出', exact: true });
-  if (await exportTools.isVisible().catch(() => false)) await exportTools.click();
+  await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeAttached({ timeout: 20_000 });
   await importProject(page, width, height, testInfo);
 }
 
@@ -219,74 +215,47 @@ async function dispatchEditorTouchAim(
 async function exerciseMobileWorkspace(page: Page, testInfo: TestInfo): Promise<void> {
   await enterWorkbenchWithProject(page, testInfo);
   await expectNoDocumentOverflow(page);
-
-  const previewTab = page.getByRole('tab', { name: '预览', exact: true });
-  await previewTab.click();
-  await page.getByRole('tab', { name: '编辑', exact: true }).click();
-
-  const workspace = page.getByTestId('mobile-immersive-workspace');
-  await expect(workspace).toBeVisible();
-  await expect(workspace).toHaveCSS('position', 'fixed');
-  const editCanvas = page.getByLabel('图纸编辑画布');
+  const editCanvas = page.getByLabel(/^图纸编辑画布/);
   await expectViewportSizedBacking(editCanvas, page);
-  await expectNoDocumentOverflow(page);
+  const tools = page.getByRole('toolbar', { name: '工具' });
+  const undo = page.getByRole('button', { name: '撤销', exact: true });
+  await expect(undo).toBeDisabled();
 
-  // 手机默认手形。先用吸管验证「拖到 ZG6，松手时手指轻微回漂」仍以放大镜最终目标为准。
-  const editor = workspace.locator('.pixel-editor-studio');
-  const editorUndo = editor.getByRole('button', { name: '撤销', exact: true });
-  await expect(editorUndo).toBeDisabled();
-  await editor.getByRole('button', { name: '更多', exact: true }).click();
-  await editor.getByRole('button', { name: '吸管', exact: true }).click();
-  await dispatchEditorTouchAim(editCanvas, 0, 15, 0);
-  await expect(editor.getByRole('button', { name: '选择当前颜色' })).toHaveAttribute('title', /ZG6/);
-
-  // 精准画笔只在松手时修改最终格；连续模式必须由用户显式打开。
-  await editor.getByRole('button', { name: /A01 #F35B78/i }).click();
-  await editor.getByRole('button', { name: '画笔', exact: true }).click();
-  const cellSize = editor.getByLabel('当前格子大小');
-  await expect(cellSize).toHaveText('20px');
-  await editor.getByRole('button', { name: '放大画布' }).click();
-  await expect(cellSize).toHaveText('25px');
-  await expect(editor.getByRole('button', { name: '精准模式', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  // 200×200 图纸中心为 A01，右侧相邻格为 ZG6；终点改为 A01 会产生真实改动。
+  // 精准模式（D5）：拖动只对准，松手才改最终格；橡皮擦掉任一有色格都是真实改动。
+  await tools.getByRole('button', { name: '橡皮', exact: true }).click();
   await dispatchEditorTouchAim(editCanvas, 0, 20, 0);
-  await expect(editorUndo).toBeEnabled();
-  await editorUndo.click();
-  await expect(editorUndo).toBeDisabled();
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(undo).toBeDisabled();
 
-  await editor.getByRole('button', { name: '连续模式', exact: true }).click();
-  await expect(editor.getByRole('button', { name: '连续模式', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // 连续绘制要在画笔浮层里显式打开。
+  await tools.getByRole('button', { name: '画笔', exact: true }).click();
+  await tools.getByRole('button', { name: '画笔', exact: true }).click();
+  const continuous = page.getByRole('menuitemcheckbox', { name: /连续绘制/ });
+  await continuous.click();
+  await expect(continuous).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+  await tools.getByRole('button', { name: '橡皮', exact: true }).click();
   await dispatchEditorTouchAim(editCanvas, 0, 70);
-  await expect(editorUndo).toBeEnabled();
-  await editorUndo.click();
+  await expect(undo).toBeEnabled();
+  await undo.click();
 
-  // 沉浸层内切换使用 replaceState，最终一次 Back 仍只退回普通预览。
-  await workspace.getByRole('tab', { name: '跟拼', exact: true }).click();
-  await expect(workspace).toBeVisible();
-  const stitchCanvas = page.getByRole('img', { name: /跟拼画布：200 × 200 格/ });
+  // 跟拼：手机默认浏览，拖动与轻点都不写进度；切到标记后短点标一格，顶栏撤销可立即撤回。
+  await modeButton(page, '跟拼').click();
+  const stitchCanvas = page.getByLabel(/^跟拼画布：200 × 200 格/);
   await expectViewportSizedBacking(stitchCanvas, page);
-  const progress = page.getByText(/^已拼 \d+ \/ \d+ 粒/).first();
-  await expect(progress).toContainText('已拼 0 / 40000 粒');
-  const before = await progress.textContent();
+  await expect(page.getByRole('button', { name: '浏览', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await dispatchTouchDrag(stitchCanvas);
-  await expect(progress).toHaveText(before!);
-  await expectNoDocumentOverflow(page);
-
-  // 明确切到标记模式后，短点成功标一格；会话历史可立即撤销。
-  const stitch = workspace.locator('.stitch-studio');
-  await stitch.getByRole('button', { name: '标记', exact: true }).click();
   await tapCanvasOffset(page, stitchCanvas);
-  await expect(progress).toContainText('已拼 1 / 40000 粒');
-  const stitchUndo = stitch.getByRole('button', { name: '撤销', exact: true });
-  await expect(stitchUndo).toBeEnabled();
-  await stitchUndo.click();
-  await expect(progress).toContainText('已拼 0 / 40000 粒');
-  await expect(stitchUndo).toBeDisabled();
-
-  // 同一路由压入一层界面状态：浏览器返回只退出工作区，不离开 /app。
-  await page.goBack();
-  await expect(workspace).toBeHidden();
-  await expect(previewTab).toHaveAttribute('aria-selected', 'true');
+  await expect(undo).toBeDisabled();
+  await expectNoDocumentOverflow(page);
+  await page.getByRole('button', { name: '标记', exact: true }).click();
+  await dispatchTouchDrag(stitchCanvas);
+  await expect(undo).toBeDisabled();
+  await tapCanvasOffset(page, stitchCanvas);
+  await expect(undo).toBeEnabled();
+  await undo.click();
+  await expect(undo).toBeDisabled();
   expect(new URL(page.url()).pathname).toBe('/app');
 }
 
@@ -345,32 +314,29 @@ test('29×29、58×58、100×63 在桌面 944/1280/1440px 保持有界且不撑�
     await expectNoDocumentOverflow(page);
 
     await modeButton(page, '跟拼').click();
-    await expectViewportSizedBacking(
-      page.getByRole('img', { name: new RegExp(`跟拼画布：${patternWidth} × ${patternHeight} 格`) }),
-      page,
-    );
+    await expectViewportSizedBacking(page.getByLabel(new RegExp(`^跟拼画布：${patternWidth} × ${patternHeight} 格`)), page);
     await expectNoDocumentOverflow(page);
   }
 });
 
-test('手机直接恢复跟拼时焦点留在沉浸层，Escape 恢复页面', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+test('手机直接打开 ?mode=stitch 进入跟拼：默认浏览、进度胶囊与底栏在视口内', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1024, height: 800 });
   await enterWorkbenchWithProject(page, testInfo, 29, 29);
-  await page.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.getByText('本地：已保存', { exact: true }).first()).toBeVisible();
-  await page.goto('/me');
-  await page.locator('[data-slot="design-card"]').first().getByRole('link', { name: /^打开「/ }).click();
-  await expect(page).toHaveURL(/\/app\?id=/);
+  await waitSaved(page);
   const direct = new URL(page.url()); direct.searchParams.set('mode', 'stitch');
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(direct.toString());
-  const workspace = page.getByTestId('mobile-immersive-workspace');
-  await expect(workspace.getByRole('button', { name: /返回预览/ })).toBeFocused();
-  expect(await page.locator('.workspace-content').evaluate((node) => Boolean(node.closest('[inert]')))).toBe(true);
-  for (let index = 0; index < 35; index++) {
-    await page.keyboard.press(index % 2 ? 'Shift+Tab' : 'Tab');
-    expect(await workspace.evaluate((node) => node.contains(document.activeElement))).toBe(true);
-  }
-  await page.keyboard.press('Escape'); await expect(workspace).toHaveCount(0);
-  expect(await page.locator('.workspace-content').evaluate((node) => Boolean(node.closest('[inert]')))).toBe(false);
-  expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+  await expect(modeButton(page, '跟拼')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: '浏览', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const capsule = page.getByRole('button', { name: /^0%\s*第 1 块板 · 第 1 行/ });
+  await expect(capsule).toBeVisible();
+  const complete = page.getByRole('button', { name: '完成本行', exact: true });
+  await expect(complete).toBeInViewport();
+  await complete.click();
+  const advanced = page.getByRole('button', { name: /^3%\s*第 1 块板 · 第 2 行/ });
+  await expect(advanced).toBeVisible();
+  await advanced.click();
+  const sheet = page.getByRole('dialog', { name: '跟拼进度' });
+  await expect(sheet.getByRole('button', { name: '第 1 块板，已拼 3%' })).toBeVisible();
+  await expectNoDocumentOverflow(page);
 });
