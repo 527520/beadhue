@@ -41,10 +41,6 @@ export function decrementUnreadCount(by: number): void {
   publish(unread - by);
 }
 
-export function readUnreadCount(): number {
-  return unread;
-}
-
 export function refreshUnreadCount({ force = false }: { force?: boolean } = {}): Promise<void> {
   if (owner === null) return Promise.resolve();
   if (inflight) return inflight;

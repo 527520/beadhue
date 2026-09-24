@@ -124,7 +124,9 @@ describe('站点外壳', () => {
     expect(screen.getByText('页面内容').parentElement).toHaveClass('max-md:hidden');
     fireEvent.click(screen.getByRole('button', { name: t.back, hidden: true }));
     expect(screen.queryByRole('region', { name: t.search.panel, hidden: true })).toBeNull();
-    expect(screen.getByRole('button', { name: t.notifications.label, hidden: true })).toBeTruthy();
+    // 游客不显示通知铃铛，发现页手机顶栏的铃铛位是「登录」。
+    expect(await screen.findAllByRole('button', { name: t.login, hidden: true })).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: t.notifications.label, hidden: true })).toBeNull();
   });
 
   it('游客点「登录」打开登录弹窗；统计同意浮卡两个按钮同为次按钮', async () => {

@@ -32,6 +32,7 @@
 @source "../lib/render/beads.ts";
 @source "../lib/render/tagIconArt.ts";
 @source "./page.tsx";
+@source "../components/notifications";
 
 @theme {
   --color-*: initial;
