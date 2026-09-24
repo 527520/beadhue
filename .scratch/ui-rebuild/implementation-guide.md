@@ -112,3 +112,12 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **需要登录后继续的操作**：`ensureAuthStatus()` 记下原登录态 → `useRequireLogin()(action)`，原来是游客就 `router.refresh()` 再执行；依赖登录后才有的数据（如图纸）时记一个待办标记，等新 props 到了再执行（见 `DetailView` 的下载）。不要给整页加 `key={loggedIn}`，会丢掉待办。
 - **Playwright**：`aria-disabled="true"` 的按钮会被判为不可点，测试锁定态点击要 `force: true` 或只断言属性。
 - **E2E 顺序依赖**：`12` 整文件连跑时，前面投稿 / 引用用例成功后审核队列多出项目，后台两条用例会失败（单独跑通过）。
+
+## 后续票须知（票 06 完成后补充）
+
+- **「我的」上下文**：`/me` 布局在服务端读登录者与统计，页面里用 `useMe()`（`src/components/me/me-context.tsx`）拿 `viewer`、`stats`、`refreshStats()`；没有 Provider 时按游客处理。
+- **更多操作菜单**：`ActionMenu`（`src/components/me/action-menu.tsx`）桌面锚定菜单、手机底部面板（标题为对象名），动作延后一拍执行，弹窗关闭时焦点能回到「…」；单选菜单用 `ChoiceMenu`，确认弹窗用 `ConfirmDialog`（`locked` 用于结果未确认、只能重试的写操作）。
+- **按需挂载的弹窗**（`{open ? <Dialog open /> : null}`）关闭即卸载，Base UI 来不及归还焦点：打开时记下入口元素，关闭后手动 focus（见色板页 `remember` / `restore`）。
+- **设计缩略图**：已同步设计直接用 `designThumbnailUrl(id, revision)`（`lib/community/thumbnailUrl.ts`，浏览器可用），不必改同步层结构；未同步用本机图纸 `<BeadImage>`。
+- **E2E 选择器**：设计卡 `[data-slot="design-card"]`，整卡链接名「打开「名称」（状态）」；公开作品卡 `[data-slot="own-work-card"]`；更多操作按钮名「「名称」的更多操作」，菜单项为 `menuitem`。
+- **新接口**：`GET /api/me/sessions`、`POST /api/me/sessions/revoke-others`、`GET /api/originals/designs`（示例见票 06 Comments）。

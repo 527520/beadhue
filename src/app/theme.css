@@ -35,6 +35,8 @@
 @source "../components/editor-workspace";
 @source "../lib/render/viewer.ts";
 @source "../lib/render/poster.ts";
+@source "../components/me";
+@source "./palettes";
 
 @theme {
   --color-*: initial;
