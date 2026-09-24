@@ -75,7 +75,7 @@ export function resizeCrop(start: Rect, handle: CropHandle, dx: number, dy: numb
   const ax = left ? start.x + start.width : start.x;
   const ay = top ? start.y + start.height : start.y;
   const minSide = Math.min(natW, natH) * MIN_SIDE_RATIO;
-  const minWidth = aspect >= 1 ? minSide / aspect : minSide;
+  const minWidth = aspect >= 1 ? minSide : minSide / aspect;
   let width = Math.max(left ? start.width - dx : start.width + dx, (top ? start.height - dy : start.height + dy) / aspect, minWidth);
   width = Math.min(width, left ? ax : natW - ax, (top ? ay : natH - ay) / aspect);
   const height = width * aspect;

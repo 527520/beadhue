@@ -20,7 +20,10 @@ import type { EngineOutput } from '@/lib/engine/types';
 import { resetAuthStatusCache } from '@/components/account/useAuthStatus';
 
 // 登录态快照是页面级共享的（切页不闪），用例之间要清掉，避免上一个用例的登录态串到下一个。
-afterEach(() => resetAuthStatusCache());
+afterEach(() => {
+  resetAuthStatusCache();
+  window.history.replaceState(null, '', '/app');
+});
 
 const {
   pushMock,
@@ -265,6 +268,8 @@ const clickGuestRestart = (): void => {
 /** 常见准备：预置一个已保存设计并渲染，等待恢复完成（真实计时器阶段）。 */
 async function renderRestored(storage: FakeStorage): Promise<HTMLInputElement> {
   storage.designs.set('id-last', record('id-last', savedProject('初始', '2026-08-14T12:00:00.000Z')));
+  // /app 无 id 是创作入口（D66）：恢复一份设计要带上它的 id。
+  window.history.replaceState(null, '', '/app?id=id-last');
   render(<Workbench storage={storage} />);
   return (await screen.findAllByDisplayValue('初始'))[0] as HTMLInputElement;
 }
@@ -310,13 +315,14 @@ describe('Workbench 全流程', () => {
     } finally { view.unmount(); window.history.replaceState(null, '', '/app'); }
   });
 
-  it('色板选择缺少明确目标 ID 时不应用到自动恢复的其他图纸', async () => {
+  it('色板选择缺少明确目标 ID 时停在创作入口，不打开也不改动其他图纸', async () => {
     window.history.replaceState(null, '', '/app?palette=builtin:MARD');
     const storage = new FakeStorage();
     storage.designs.set('last', record('last', savedProject('其他设计', '2026-08-14T12:00:00Z')));
     const view = render(<Workbench storage={storage} />);
     try {
-      await screen.findByDisplayValue('其他设计');
+      expect(await screen.findByRole('heading', { level: 1, name: zhCN.create.title })).toBeVisible();
+      expect(screen.queryByDisplayValue('其他设计')).toBeNull();
       expect(screen.queryByRole('button', { name: '应用到图纸' })).toBeNull();
     } finally { view.unmount(); window.history.replaceState(null, '', '/app'); }
   });
@@ -366,6 +372,7 @@ describe('Workbench 全流程', () => {
     window.history.replaceState(null, '', '/app?id=missing');
     const storage = new FakeStorage();
     storage.designs.set('other', record('other', savedProject('其他作品', '2026-09-01T00:00:00Z')));
+    window.history.replaceState(null, '', '/app?id=other');
     render(<Workbench storage={storage} />);
     expect(await screen.findByText('这张设计不在本机，请回到我的设计下载或选择其他图纸。')).toBeVisible();
     expect(screen.queryByDisplayValue('其他作品')).not.toBeInTheDocument();
@@ -378,6 +385,7 @@ describe('Workbench 全流程', () => {
     storage.designs.set('source-read', record('source-read', savedProject('可以继续编辑', '2026-09-01T00:00:00Z')));
     vi.spyOn(storage, 'getGenerationSource').mockRejectedValueOnce(new Error('source read failed'));
     const put = vi.spyOn(storage, 'put');
+    window.history.replaceState(null, '', '/app?id=source-read');
     render(<Workbench storage={storage} />);
     const name = await screen.findByDisplayValue('可以继续编辑');
     expect(screen.getByRole('tab', { name: zhCN.workbench.editTab })).toBeEnabled();
@@ -393,6 +401,7 @@ describe('Workbench 全流程', () => {
     const storage = new FakeStorage();
     storage.designs.set('chosen', record('chosen', savedProject('选中的作品', '2026-09-01T00:00:00Z')));
     storage.designs.set('other', record('other', savedProject('另一张作品', '2026-09-02T00:00:00Z')));
+    window.history.replaceState(null, '', '/app?id=other');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('选中的作品');
     expect(screen.getByRole('tab', { name: mode === 'edit' ? zhCN.workbench.editTab : zhCN.stitch.tab })).toHaveAttribute('aria-selected', 'true');
@@ -581,8 +590,8 @@ describe('Workbench 全流程', () => {
 
   it('生成完成有可感知反馈：结果句被播报，且步骤指示器停在工作台（D-1/D-2）', async () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={instantGenerate} />);
-    // 裁剪不是必经步骤；选图后直接进入工作台。
-    expect(screen.getByText(zhCN.workbench.stepUpload).closest('[aria-current="step"]')).toBeTruthy();
+    // 创作入口：选图后在「新建图纸」弹窗里生成，完成后进入工作台。
+    expect(screen.getByRole('heading', { level: 1, name: zhCN.create.title })).toBeVisible();
 
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
@@ -760,7 +769,7 @@ describe('Workbench 全流程', () => {
     expect([...storage.sources.values()][0]).toEqual(originalSource);
   });
 
-  it('首次生成取消后返回可重新上传状态，不留下空白工作台', async () => {
+  it('首次生成取消后留在新建图纸弹窗，可改设置再生成，不留下空白工作台', async () => {
     const cancel = vi.fn();
     const generateFn: typeof runGenerate = () => ({
       promise: new Promise(() => undefined),
@@ -768,13 +777,17 @@ describe('Workbench 全流程', () => {
     });
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
-    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
-    fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
+    const generate = await screen.findByRole('button', { name: zhCN.create.generate });
+    fireEvent.click(generate);
+    await waitFor(() => expect(generate).toHaveAttribute('aria-busy', 'true'));
+    const dialog = screen.getByRole('dialog', { name: zhCN.create.newTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.cancel }));
 
     expect(cancel).toHaveBeenCalledOnce();
-    expect(await screen.findByLabelText(zhCN.upload.inputLabel)).toBeTruthy();
+    await waitFor(() => expect(generate).not.toHaveAttribute('aria-busy'));
+    expect(screen.getByRole('dialog', { name: zhCN.create.newTitle })).toBeVisible();
     expect(screen.queryByText(zhCN.workbench.previewTab)).toBeNull();
+    expect(window.location.search).toBe('');
   });
 
   it('重新生成进行中禁用分享，不会创建旧图纸快照', async () => {
@@ -1174,6 +1187,7 @@ describe('Workbench 本地保存', () => {
       done: new Uint8Array([1, 1, 1, 1, 1, 1, 1, 1, 1]),
       updatedAt: '2026-08-14T12:00:00.000Z',
     });
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('尺寸变化');
     fireEvent.click(screen.getByRole('tab', { name: zhCN.stitch.tab }));
@@ -1254,39 +1268,24 @@ describe('Workbench 本地保存', () => {
 });
 
 describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
-  it('把 13 套内置色板按品牌与系列完整展示，主文案不泄露稳定 ID', async () => {
+  it('新建弹窗的色板列表完整列出 13 套内置色板，主文案不泄露稳定 ID', async () => {
     render(<Workbench storage={new FakeStorage()} />);
-    openBlank();
-    await screen.findByLabelText(zhCN.params.brand);
-
-    const brandSelect = selectPaletteBrand();
-    const brands = [...brandSelect.options].map((option) => option.value).filter(Boolean);
-    expect(brands).toEqual(['MARD', 'COCO', '漫漫', '盼盼', '咪小窝', '优肯 Artkal']);
-
-    let seriesCount = 0;
-    const visibleCopy:string[]=[];const user=userEvent.setup();
-    for (const brand of brands) {
-      await chooseValue(zhCN.params.brand, brand);
-      await user.click(screen.getByLabelText(zhCN.params.series));
-      const options=screen.getAllByRole('option');seriesCount += options.length;
-      visibleCopy.push(...options.map(option=>option.textContent??''));
-      await user.keyboard('{Escape}');
-    }
-    expect(seriesCount).toBe(13);
-    const visibleOptionCopy = visibleCopy.join(' ');
-    expect(visibleOptionCopy).not.toMatch(/pcd:|[0-9a-f]{40}/i);
-    expect([...document.querySelectorAll('details.palette-picker-technical')]
-      .every((details) => !(details as HTMLDetailsElement).open)).toBe(true);
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(zhCN.create.blankTitle) }));
+    fireEvent.click(await screen.findByRole('button', { name: /^色板：/ }));
+    const list = await screen.findByRole('listbox', { name: zhCN.create.paletteMenuTitle });
+    const options = within(list).getAllByRole('option');
+    expect(options).toHaveLength(13);
+    expect(options.map((option) => option.textContent).join(' ')).not.toMatch(/pcd:|[0-9a-f]{40}/i);
   });
 
   it('不上传图片也能进入工作台：空白图纸落在修补页签，参数锁定但可导出', async () => {
     render(<Workbench storage={new FakeStorage()} />);
-    // 上传页同时给出空白起稿入口：默认 1 板，摘要说清尺寸，唯一主按钮「创建空白图纸」
-    openBlank();
-    const blank = await screen.findByRole('button', { name: zhCN.workbench.blankCreate });
-    expect(screen.getByRole('radio', { name: zhCN.workbench.blankBoardsOption(1) })).toBeChecked();
-    expect(screen.getByText(/将创建 29 × 29 格/)).toBeTruthy();
-    fireEvent.click(blank);
+    // 创作入口的次入口「从空白画布开始」：弹窗默认 2 板，摘要说清尺寸，唯一主按钮「创建画布」
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(zhCN.create.blankTitle) }));
+    const dialog = await screen.findByRole('dialog', { name: zhCN.create.blankDialogTitle });
+    expect(within(dialog).getByRole('button', { name: zhCN.create.blankChip(2, 58) })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(dialog).getByText(/58 × 58 格 · 共 4 块底板/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.createCanvas }));
 
     // 进入工作台，且直接在「修补」页签（空白图纸的第一步一定是画）
     await waitFor(() => expect(screen.getByRole('tab', { name: zhCN.workbench.editTab })).toHaveAttribute('aria-selected', 'true'));
@@ -1301,17 +1300,17 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} />);
 
-    openBlank();
-    await screen.findByLabelText(zhCN.params.brand);
-    await chooseValue(zhCN.params.brand, '优肯 Artkal');
-    expect(selectPaletteSeries().value).toBe('builtin:pcd:artkal-c-197-official@178dafbc9e77d3de556550dbd058270200129186');
-
-    const profileSelect = selectField(zhCN.params.boardProfile);
-    expect(profileSelect.value).toBe('2.6mm-50');
-    await chooseValue(zhCN.params.boardProfile, '2.6mm-52');
-    expect(screen.getByText(/将创建 52 × 52 格/)).toBeTruthy();
-    openBlank();
-    fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.blankCreate }));
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(zhCN.create.blankTitle) }));
+    const dialog = await screen.findByRole('dialog', { name: zhCN.create.blankDialogTitle });
+    fireEvent.click(within(dialog).getByRole('button', { name: /^色板：/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C 197 色/ }));
+    expect(within(dialog).getByRole('button', { name: /^制作规格：/ })).toHaveTextContent('2.6mm / 50×50');
+    expect(within(dialog).getByText(/已改为 2\.6mm \/ 50×50/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: /^制作规格：/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm \/ 52×52/ }));
+    fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.blankChip(1, 52) }));
+    expect(within(dialog).getByText(/52 × 52 格/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.createCanvas }));
     await screen.findByRole('tab', { name: zhCN.workbench.editTab });
     fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.save }));
 
@@ -1349,6 +1348,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const project = savedProject('同品牌系列', '2026-08-14T12:00:00.000Z');
     project.paletteSelection.kitTier = 24;
     storage.designs.set('id-last', record('id-last', project));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('同品牌系列');
 
@@ -1372,6 +1372,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   it('选套装档位后图纸只用档位内的色号（H-3）', async () => {
     const storage = new FakeStorage();
     storage.designs.set('id-last', record('id-last', savedProject('档位', '2026-08-14T12:00:00.000Z')));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('档位');
 
@@ -1398,6 +1399,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     project.paletteSelection.kitTier = 24;
     storage.designs.set('id-last', record('id-last', project));
 
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('恢复档位');
 
@@ -1407,6 +1409,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   it('导入另一项目时不继承上一设计的套装档位', async () => {
     const storage = new FakeStorage();
     storage.designs.set('id-last', record('id-last', savedProject('旧设计', '2026-08-14T12:00:00.000Z')));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('旧设计');
 
@@ -1440,43 +1443,40 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     clickGuestRestart();
 
     await screen.findByLabelText(zhCN.upload.inputLabel);
-    openBlank();
-    fireEvent.click(screen.getByRole('button', { name: zhCN.workbench.blankCreate }));
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(zhCN.create.blankTitle) }));
+    fireEvent.click(await screen.findByRole('button', { name: zhCN.create.createCanvas }));
     await screen.findByRole('tab', { name: zhCN.workbench.editTab });
     expect((selectField(zhCN.params.kitTier)).value).toBe('0');
   });
 
-  it('公开配置延迟返回不会覆盖用户已选的 Mini 色板与 52×52 规格', async () => {
-    let resolveConfig!: (response: Response) => void;
-    const configResponse = new Promise<Response>((resolve) => { resolveConfig = resolve; });
+  it('站点配置的默认宽度与颜色数进入新建弹窗，弹窗里选的 Mini 色板与 52×52 规格用于首版', async () => {
     vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
-      if (String(input) === '/api/config') return configResponse;
+      if (String(input) === '/api/config') return Promise.resolve(new Response(JSON.stringify({
+        generation: { defaultWidth: 88, defaultColorCount: 32 },
+        exportPng: { cellPx: 24, cropToContent: true, includeLegend: false },
+        exportPdf: { cellMm: 6, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
+      }), { status: 200 }));
       return Promise.resolve(new Response(null, { status: 401 }));
     }));
     try {
       const generateFn = vi.fn(instantGenerate);
       render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
-      await chooseValue(zhCN.params.brand, '优肯 Artkal');
-      const selectedArtkalSeries = selectPaletteSeries().value;
-      await chooseValue(zhCN.params.boardProfile, '2.6mm-52');
-
-      await act(async () => {
-        resolveConfig(new Response(JSON.stringify({
-          generation: { defaultWidth: 88, defaultColorCount: 32 },
-          exportPng: { cellPx: 24, cropToContent: true, includeLegend: false },
-          exportPdf: { cellMm: 6, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
-        }), { status: 200 }));
-        await configResponse;
-      });
-
+      await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/config', expect.anything()));
+      await act(async () => { await Promise.resolve(); });
       fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
-    fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-      await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+      const dialog = await screen.findByRole('dialog', { name: zhCN.create.newTitle });
+      await waitFor(() => expect(within(dialog).getByRole('spinbutton', { name: zhCN.create.customWidthAria })).toHaveValue(88));
+      fireEvent.click(within(dialog).getByRole('button', { name: /^色板：/ }));
+      fireEvent.click(await screen.findByRole('option', { name: /^优肯 Artkal C 197 色/ }));
+      fireEvent.click(within(dialog).getByRole('button', { name: /^制作规格：/ }));
+      fireEvent.click(await screen.findByRole('option', { name: /^2\.6mm \/ 52×52/ }));
+      fireEvent.click(within(dialog).getByRole('button', { name: zhCN.create.generate }));
       await screen.findByText(/共 7744 粒/);
       expect(selectPaletteBrand().value).toBe('优肯 Artkal');
-      expect(selectPaletteSeries().value).toBe(selectedArtkalSeries);
+      expect(selectPaletteSeries().value).toBe('builtin:pcd:artkal-c-197-official@178dafbc9e77d3de556550dbd058270200129186');
       expect((selectField(zhCN.params.boardProfile)).value).toBe('2.6mm-52');
       expect(generateFn.mock.calls[0][0].params).toMatchObject({ targetWidth: 88, targetColorCount: 32 });
+      expect(window.location.search).toMatch(/^\?id=/);
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1487,6 +1487,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     const project = savedProject('Mini', '2026-08-14T12:00:00.000Z');
     project.paletteSelection.palette = { kind: 'custom', colors: [{ code: 'H07', hex: '#000000' }] };
     storage.designs.set('id-last', record('id-last', project));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('Mini');
     expect(screen.getByText(zhCN.workbench.sourceRequired)).toBeTruthy();
@@ -1513,6 +1514,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
   it('选择 Mini 专用内置色板时原子切到 2.6mm-50，并保存版本化色板 ID', async () => {
     const storage = new FakeStorage();
     storage.designs.set('id-last', record('id-last', savedProject('Artkal', '2026-08-14T12:00:00.000Z')));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('Artkal');
 
@@ -1638,6 +1640,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
 
     const storage = new FakeStorage();
     storage.designs.set('id-last', record('id-last', savedProject('初始', '2026-08-14T12:00:00.000Z')));
+    window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('初始');
 
@@ -1680,7 +1683,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('活动设计发生 CAS 冲突后切换到冲突副本，后续保存不会覆盖云端原件', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=id-last');
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/api/config') return new Response(JSON.stringify({
@@ -1727,7 +1730,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('活动设计发生冲突后即使用户不再操作，也会自动保存副本并完成下一轮同步', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -1818,7 +1821,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('冲突副本切换后同步队列因其他设计失败，不得把副本误标为已同步', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -1863,7 +1866,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('冲突副本合并写入期间的新编辑保留在新 ID，并由自动保存落盘', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -1956,7 +1959,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('云端覆盖的冲突副本写入期间导入新项目，迟到结果不得切回旧设计', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -2031,7 +2034,8 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
       });
 
       expect(screen.getByDisplayValue('新会话项目')).toBeTruthy();
-      expect(window.location.search).toBe('');
+      expect(window.location.search).toMatch(/^\?id=/);
+      expect(window.location.search).not.toContain('original-id');
       expect(createdConflictId).not.toBeNull();
       expect(storage.designs.get(createdConflictId!)?.name).toContain('同步捕获的本机编辑');
     } finally {
@@ -2043,7 +2047,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('云端覆盖的冲突副本写入期间继续编辑，保留最新名称并重排自动保存', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -2133,7 +2137,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('读取云端覆盖结果的本机源期间开始编辑，改为冲突副本而不覆盖 UI', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -2217,7 +2221,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('读取云端删除结果期间导入新项目，迟到结果不得清空新会话', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -2292,7 +2296,8 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
 
       expect(screen.getByDisplayValue('新会话项目')).toBeTruthy();
       expect(screen.queryByLabelText(zhCN.upload.inputLabel)).toBeNull();
-      expect(window.location.search).toBe('');
+      expect(window.location.search).toMatch(/^\?id=/);
+      expect(window.location.search).not.toContain('original-id');
     } finally {
       enqueueDesignSyncFacadeMock.mockReset();
       enqueueDesignSyncFacadeMock.mockImplementation(defaultEnqueueDesignSyncMock);
@@ -2302,7 +2307,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('活动设计被云端新版覆盖后立即刷新工作台，不再保留旧画面和旧 revision', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=id-last');
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/api/config') return new Response(JSON.stringify({
@@ -2332,7 +2337,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('保存等待存储锁期间切到冲突副本，会丢弃旧设计快照并自动重排新设计保存', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -2445,7 +2450,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('旧设计保存令牌失效时，不得覆盖同步回调为冲突副本设置的 dirty 状态', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=original-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     const onSavedStatus = vi.fn();
@@ -2539,7 +2544,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
   });
 
   it('后加入同一单飞同步的等待者在部分失败时，从当前设计持久状态保持已同步', async () => {
-    window.history.replaceState(null, '', '/app');
+    window.history.replaceState(null, '', '/app?id=current-id');
     resetAuthStatusCache();
     enqueueDesignSyncFacadeMock.mockClear();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
