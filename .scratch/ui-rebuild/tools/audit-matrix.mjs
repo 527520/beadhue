@@ -116,7 +116,7 @@ add('detail-fullscreen', 'detail', { widths: DESK, proto: { route: '#/works/w-ra
 add('create-entry', 'create', { tags: ['final-07'], full: true, proto: { route: '#/create' }, impl: { route: '/app' } });
 add('create-drag', 'create', { note: '拖入态（?drag=1）', proto: { route: '#/create?drag=1' }, impl: { route: '/app?drag=1' } });
 add('create-new', 'create', { tags: ['final-08'], note: '新建图纸弹窗（示例橘猫 / 橘子小猫）', proto: { route: '#/create?pick=w-cat' }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), wait(1500)] } });
-add('create-new-board', 'create', { note: '新建图纸：按底板 / 2 板', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-ratio="board"]'), click('[data-cr-width="87"]')] }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn(/^2 板/, { wait: 1200 })] } });
+add('create-new-board', 'create', { note: '新建图纸：按底板 / 3 板', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-ratio="board"]'), click('[data-cr-width="87"]')] }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), btn('按底板'), btn(/^3 板/, { wait: 1200 })] } });
 add('create-new-palette', 'create', { note: '新建图纸：换色板菜单', proto: { route: '#/create', steps: [click('[data-sample]'), click('[data-cr-pick="palette"]')] }, impl: { route: '/app', steps: [btn('用示例「橘子小猫」新建图纸'), waitFor({ role: 'dialog', name: '新建图纸' }), click('[role=dialog] button[aria-label^="色板"], [role=dialog] [role=combobox][aria-label^="色板"]', { wait: 900 })] } });
 add('create-blank', 'create', { note: '空白画布弹窗', proto: { route: '#/create?blank=1' }, impl: { route: '/app', steps: [btn(/从空白画布开始/), waitFor({ role: 'dialog', name: '从空白画布开始' })] } });
 
@@ -412,6 +412,18 @@ async function shoot(browser, scene, width, side) {
     await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())))).catch(() => {});
     record.url = page.url();
     Object.assign(record, await metrics(page, side));
+    if (scene.full) {
+      // 整页截图不会让首屏以下进入视区：先分段滚到底再回顶，触发懒加载的图片与 BeadImage 懒绘制。
+      await page.evaluate(async () => {
+        const step = Math.max(200, Math.round(window.innerHeight * 0.8));
+        for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
+          window.scrollTo(0, y);
+          await new Promise((done) => setTimeout(done, 120));
+        }
+        window.scrollTo(0, 0);
+        await new Promise((done) => setTimeout(done, 300));
+      }).catch(() => {});
+    }
     await page.screenshot({ path: resolve(OUT, record.file), fullPage: Boolean(scene.full), timeout: 30_000 });
   } catch (error) {
     record.failed = error.message.split('\n')[0].slice(0, 240);
