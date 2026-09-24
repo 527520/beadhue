@@ -95,3 +95,11 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 - **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。
 - **E2E 与手动开发服务不能同目录并存**：Next 16 检测到同一目录已有 `next dev` 会拒绝再起（E2E 报「dev server did not become ready」），跑 E2E 前先停掉手动服务。开发服务首次编译某个 API 路由可能整页重载并打断进行中的请求，E2E 里第一次调用前可先 GET 预热。
 - **手机顶栏**：`MobileTopbarFrame` 现在是 `<header>`（banner 地标，与桌面顶栏按宽度二选一显示），页面自定义的手机顶栏内容无需再包地标。
+
+## 后续票须知（票 08 完成后补充）
+
+- **组件拆分**：编辑器 UI 全在 `src/components/editor-workspace/`（见票 08 实现记录）。`EditorWorkspace` 只收 props，不碰存储与生成；业务回调都来自 `Workbench`。画布编辑事务在 `useEditorDocument`，相机在 `useEditorViewport`，几何 / 缩放档 / 颜色文案等纯函数在 `editor-model.ts`（可单测）。
+- **模式切换入口**：顶栏「编辑 | 跟拼」分段（`role=group name=模式`，按钮 `aria-pressed`）→ `onModeChange`，由 `Workbench` 的 `tab` 状态驱动（`mode={tab === "stitch" ? "stitch" : "edit"}`、`onModeChange={setTab}`）；跟拼内容由 `stitchView` prop 传入（目前是旧 `StitchView` 包在 `LegacyScope`）。票 09/后续重做跟拼时替换这个 prop 即可。
+- **手机布局挂载点**：`Workbench` 里 `if (!narrow && pattern)` 分支渲染 `EditorWorkspace`（`narrow = useIsMobile()`，<768）；手机仍走其后的旧工作台。票 09 做手机编辑器时在这里加 `narrow` 分支，复用 `useEditorDocument` / `EditorCanvas`（已支持触控：精确落笔松手提交、双指缩放、移动超阈值转平移）和各面板组件；`notifyUndoable` 目前只在非手机时弹提示条。
+- **E2E 辅助**（`tests/e2e/helpers.ts`）：`beadsText(n)`（画布读屏摘要「共 N 颗」，是 sr-only，用 `toBeAttached`）、`openPanelTab`、`recropButton` / `openRecrop`、`chooseEditorMenu(page, '导出'|'分享'|'更多', 项)`、`waitSaved`、`modeButton`。项目文件输入「项目文件选择器」、原图输入「原图文件选择器」常驻，可直接 `setInputFiles`。
+- **性能**：编辑器里成百个同类按钮不要逐个包 `Tooltip`（每个都订阅 media query、建 Base UI 根，开发服务上会越过 03 的 100ms 长任务门禁），用原生 `title` 或单个委托提示。

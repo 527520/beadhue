@@ -1,7 +1,7 @@
 # 08 编辑器工作区（桌面编辑模式）
 
 Status: ready-for-agent
-Completion: not-started
+Completion: complete
 Blocked by: 01、02、07
 
 先读 [实施指南](../implementation-guide.md)。原型：`prototype/js/screens/editor.js`、`editor/{model,viewport,reference,panels,source,catalog}.js` + `styles/screens/editor.css`；截图 `prototype-final/09–11`、`evidence/prototype/ce-*`。
@@ -20,3 +20,14 @@ Blocked by: 01、02、07
 ## 验收
 
 - 与原型截图在 1440 / 1024 一致；E2E 02、04、09、11、18-workbench 中编辑器相关用例更新并通过（Chromium）；性能测试不退化。门禁全绿。
+
+## Comments
+
+### 实现记录（票 08，2026-09-24）
+
+- **结构**：新目录 `src/components/editor-workspace/`（已登记 theme.css `@source` 与护栏扫描）。`editor-workspace.tsx` 是布局与菜单；`workspace-chrome.tsx` 顶栏零件 / 左工具栏 / 缩放胶囊；`editor-canvas.tsx` + `use-editor-viewport.ts` + `editor-model.ts` 是画布绘制、手势、相机；`use-editor-document.ts` 移植了旧 `PixelEditorCanvas` 的编辑事务（撤销重做、描边、油漆桶、吸管、替换、变换）；`reference.tsx` 原图胶囊与浮窗；`panel-colors/adjust/info.tsx` 右面板；`export-dialogs.tsx`、`share.tsx`、`publish-dialog.tsx` 弹窗；`use-confirm-dialog.tsx` 取代旧 `useConfirm`。
+- **业务不动**：`Workbench` 仍持有生成会话、保存同步、原图、跟拼进度；`!narrow && pattern` 时渲染 `EditorWorkspace`，其余（手机 <768、入口）走原路径。撤销统一为「先撤画布编辑，没有再撤最近一次重新生成」。换色板 / 规格 / 套装 / 重新生成用提示条（带撤销）。
+- **过渡**：跟拼模式暂在编辑器舞台里渲染旧 `StitchView`（`stitchView` prop，`LegacyScope` 包裹）；已有图纸时的重新裁剪仍是旧 `CropDialog`。
+- **性能**：进编辑器只挂载当前面板页（其余首次打开才挂载并保留）；色板格与行内操作用原生 `title`，不再每格一个 Base UI 气泡；重新生成提示延后一个任务。03 长任务门禁在开发服务上复测通过。
+- **与原型的偏差**：调整页多「原图与取景」（重新裁剪 / 重新选择原图）；PNG 选项按现有业务（格宽 8–48、裁边、图例，无色号 / 分板）；分享弹「只读链接」弹窗（二维码、停止分享）而不只提示；替换浮层多「改为留空」；「…」多新建图纸 / 导入项目文件 / 清空图纸；不提供逆时针旋转；保存只靠自动保存 + Ctrl/⌘+S（无保存按钮与保存小结弹窗）；默认当前色为用得最多的颜色；默认设计名取图片文件名；1024–1279 与 1440 同一布局（原型只写了 768–1023 规则）；色板格提示改为原生 title。
+- **E2E**：02、03、04、07、09、10、11（桌面）、12、13（桌面两条）、17 #73 已改到新编辑器；手机用例（05 350px、11 手机、13 手机、18-workbench 手机）仍是旧界面，留给票 09。
