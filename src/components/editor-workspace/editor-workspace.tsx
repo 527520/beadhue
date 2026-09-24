@@ -223,6 +223,9 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
   const doc = useEditorDocument({ pattern, palette, original, onOriginalChange, onPatternChange });
   const viewport = useEditorViewport(doc.width, doc.height);
   const [tab, setTab] = useState<PanelTab>('colors');
+  // 面板首次打开才挂载，之后保持挂载（保留调整草稿）；进编辑器时只建当前页，避免一帧建三页。
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<PanelTab>>(() => new Set([tab]));
+  if (!visitedTabs.has(tab)) setVisitedTabs(new Set([...visitedTabs, tab]));
   const [panelOpen, setPanelOpen] = useState(true);
   const [showGrid, setShowGrid] = useState(true);
   const [showSeams, setShowSeams] = useState(true);
@@ -654,6 +657,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
               </TabsList>
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-16">
                 <TabsPanel value="colors" keepMounted>
+                  {visitedTabs.has('colors') ? (
                   <ColorsPanel
                     color={doc.color}
                     onColor={doc.setColor}
@@ -669,8 +673,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     onReplace={replaceWith}
                     disabled={locked}
                   />
+                  ) : null}
                 </TabsPanel>
                 <TabsPanel value="adjust" keepMounted>
+                  {visitedTabs.has('adjust') ? (
                   <AdjustPanel
                     params={params}
                     onRegenerate={onRegenerate}
@@ -696,8 +702,10 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     onAdvancedOpenChange={setAdvancedOpen}
                     disabled={Boolean(busy)}
                   />
+                  ) : null}
                 </TabsPanel>
                 <TabsPanel value="info" keepMounted>
+                  {visitedTabs.has('info') ? (
                   <InfoPanel
                     designId={designId}
                     designName={title}
@@ -712,6 +720,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
                     pack={pack}
                     onPackChange={setPack}
                   />
+                  ) : null}
                 </TabsPanel>
               </div>
             </Tabs>

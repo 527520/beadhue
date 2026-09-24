@@ -245,6 +245,10 @@ function record(id: string, project: ProjectFile): DesignRecord {
 
 const selectUploadInput = (): HTMLInputElement => screen.getByLabelText(zhCN.upload.inputLabel) as HTMLInputElement;
 // 票 08 起桌面（jsdom 默认 1024 宽）是新编辑器：以下辅助只走用户可见的按钮、页签、菜单与选项。
+// 整个编辑器（1 万格画布 + 两百来颗色板按钮）在 jsdom 里单步就要几百毫秒，
+// 多步旅程在并发跑满时会越过默认 5s。
+vi.setConfig({ testTimeout: 20_000 });
+
 const tw = zhCN.editorWorkspace;
 /** 画布摘要（读屏说明）里的总颗数，等同于旧界面的「共 N 粒」。 */
 const beads = (count: number) => new RegExp(`共 ${count} 颗`);
@@ -258,6 +262,7 @@ const widthField = (): HTMLInputElement => { openTab(tw.tabAdjust); return scree
 const queryWidthField = (): HTMLInputElement | null => { openTab(tw.tabAdjust); return screen.queryByRole('spinbutton', { name: tw.adjust.widthAria }) as HTMLInputElement | null; };
 /** 没有生成源：调整页只显示「需要原图才能重新生成」，没有参数控件。 */
 function expectNeedsSource(): void {
+  openTab(tw.tabAdjust);
   expect(queryWidthField()).toBeNull();
   expect(screen.getByText(tw.adjust.needSourceTitle)).toBeVisible();
 }
@@ -577,7 +582,7 @@ describe('Workbench 全流程', () => {
     fireEvent.click(recropButton());
     fireEvent.click(screen.getByRole('button', { name: zhCN.crop.confirm }));
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
-    await waitFor(() => expect(undoButton()).toBeEnabled());
+    await waitFor(() => expect(undoButton()).toBeEnabled(), { timeout: 5_000 });
     expect(generate).toHaveBeenCalledTimes(2);
   });
 
@@ -922,6 +927,7 @@ describe('Workbench 本地保存', () => {
     expect(recropButton()).toBeEnabled();
     fireEvent.click(recropButton());
     expect(screen.getByText(zhCN.workbench.cropSourceMissing)).toBeInTheDocument();
+    openTab(tw.tabAdjust);
     expect(screen.queryByText(tw.adjust.needSourceTitle)).toBeNull();
     expect(widthField().disabled).toBe(false);
     regenerateWithWidth('20');
@@ -1138,7 +1144,6 @@ describe('Workbench 本地保存', () => {
 
     render(<Workbench storage={storage} generateFn={instantGenerate} />);
     await screen.findByDisplayValue('取消重绑生成');
-    expect(screen.getByText(tw.adjust.needSourceTitle)).toBeInTheDocument();
     expectNeedsSource();
   });
 
@@ -1472,7 +1477,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     window.history.replaceState(null, '', '/app?id=id-last');
     render(<Workbench storage={storage} />);
     await screen.findByDisplayValue('Mini');
-    expect(screen.getByText(tw.adjust.needSourceTitle)).toBeTruthy();
+    expectNeedsSource();
 
     expect((await enabledSpecs()).map((name) => name.split('每块')[0])).toEqual(['5mm / 29×29', '2.6mm / 50×50', '2.6mm / 52×52']);
     await pickOption(specButton(), /^2\.6mm \/ 50×50/);
@@ -1487,7 +1492,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     });
     fireEvent.click(undoButton());
     expectSpec('5mm / 29×29');
-    expect(screen.getByText(tw.adjust.needSourceTitle)).toBeTruthy();
+    expectNeedsSource();
   });
 
   it('选择 Mini 专用内置色板时原子切到 2.6mm-50，并保存版本化色板 ID', async () => {
@@ -2305,7 +2310,7 @@ describe('Workbench 云端自定义色板（优化票 06）', () => {
     await screen.findByDisplayValue('云端新版');
     expect(screen.getByText(zhCN.workbench.syncCloudUpdated)).toBeTruthy();
     expect(screen.queryByDisplayValue('旧画面')).toBeNull();
-    expect(screen.getByText(tw.adjust.needSourceTitle)).toBeTruthy();
+    expectNeedsSource();
     vi.unstubAllGlobals();
   });
 

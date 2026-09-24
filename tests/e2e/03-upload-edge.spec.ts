@@ -120,8 +120,9 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
     : 0;
   await expect(page.getByRole('dialog', { name: '新建图纸' })).toBeVisible({ timeout: 30_000 });
   await generateFromDialog(page);
-  await expect(page.getByText(/共 10000 粒/).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
+  await expect(page.getByText(beadsText(10000)).first()).toBeAttached({ timeout: 30_000 });
+  await openPanelTab(page, '调整');
+  await recropButton(page).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('square-crop-visible');
   const squarePreview = page.getByLabel('裁剪选区画布');
@@ -136,17 +137,17 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   expect(await squarePreview.evaluate((canvas: HTMLCanvasElement) => Math.max(canvas.width, canvas.height)))
     .toBeLessThanOrEqual(await page.evaluate(() => 800 * (window.devicePixelRatio || 1)));
   await page.getByRole('button', { name: '确认并更新' }).click();
-  await expect(page.getByText(/共 10000 粒/).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(beadsText(10000)).first()).toBeAttached({ timeout: 30_000 });
   await mark('square-generated');
 
-  // 游客的「重新上传」留在顶栏溢出面板，先展开再点击。
-  await page.getByRole('button', { name: '更多操作' }).click();
-  await page.getByRole('button', { name: '重新上传' }).click();
+  // 编辑器「…」→ 新建图纸，回到上传入口再选下一张图。
+  await chooseEditorMenu(page, '更多', '新建图纸');
   await mark('tall-upload-start');
   await uploadFile(page, fixture('max-100x8000.png'));
   await generateFromDialog(page);
-  await expect(page.getByText(/共 20000 粒/).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByRole('button', { name: '裁剪图片', exact: true }).click();
+  await expect(page.getByText(beadsText(20000)).first()).toBeAttached({ timeout: 30_000 });
+  await openPanelTab(page, '调整');
+  await recropButton(page).click();
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible({ timeout: 30_000 });
   await mark('tall-crop-visible');
   const tallPreview = page.getByLabel('裁剪选区画布');
@@ -154,7 +155,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   expect(await tallPreview.evaluate((canvas: HTMLCanvasElement) => Math.max(canvas.width, canvas.height)))
     .toBeLessThanOrEqual(await page.evaluate(() => 800 * (window.devicePixelRatio || 1)));
   await page.getByRole('button', { name: '确认并更新' }).click();
-  await expect(page.getByText(/共 20000 粒/).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(beadsText(20000)).first()).toBeAttached({ timeout: 30_000 });
   await mark('tall-generated');
   if (testInfo.project.name === 'chromium') {
     const performanceLog = await page.evaluate(() => {

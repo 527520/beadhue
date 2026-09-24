@@ -336,10 +336,11 @@ test('29×29、58×58、100×63 在桌面 944/1280/1440px 保持有界且不撑�
     [1440, 100, 63],
   ] as const) {
     await page.setViewportSize({ width, height: 800 });
+    // 颗数摘要属于编辑画布，先回编辑模式再导入。
+    await modeButton(page, '编辑').click();
     if (patternWidth !== 29 || patternHeight !== 29) {
       await importProject(page, patternWidth, patternHeight, testInfo);
     }
-    await modeButton(page, '编辑').click();
     await expectViewportSizedBacking(page.getByLabel(/^图纸编辑画布/), page);
     await expectNoDocumentOverflow(page);
 

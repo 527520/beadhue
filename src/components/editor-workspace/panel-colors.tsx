@@ -4,14 +4,13 @@
  * 右面板「颜色」（原型 editor/panels.js colorsPanel）：当前色、色板选择、图纸用色（颗数、点选即用、替换、高亮）、全部颜色搜索。
  */
 import { Eye, Replace, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { PalettePicker } from '@/components/create/choice-pickers';
 import type { PaletteChoice } from '@/components/create/palette-choices';
 import { IconButton } from '@/components/ui/icon-button';
 import { menuItemClass } from '@/components/ui/menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip } from '@/components/ui/tooltip';
 import type { PaletteColor, PatternStatsItem } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { colorLabel, colorName, formatCount, matchesColorQuery, sameColor } from './editor-model';
@@ -61,11 +60,9 @@ function ReplaceMenu({ from, color, palette, onReplace, disabled }: { from: Patt
   const others = palette.filter((entry) => !sameColor(entry, from));
   return (
     <Popover open={open} onOpenChange={setOpen} sheetTitle={t.replaceFrom(label)}>
-      <Tooltip content={t.replace}>
-        <PopoverTrigger disabled={disabled} aria-label={t.replaceAria(label)} className="inline-grid size-control-sm place-items-center rounded-full text-ink hover:bg-bg-emphasis focus-visible:focus-ring disabled:text-ink-4 [&>svg]:size-4">
-          <Replace aria-hidden="true" strokeWidth={1.75} />
-        </PopoverTrigger>
-      </Tooltip>
+      <PopoverTrigger disabled={disabled} aria-label={t.replaceAria(label)} title={t.replace} className="inline-grid size-control-sm place-items-center rounded-full text-ink hover:bg-bg-emphasis focus-visible:focus-ring disabled:text-ink-4 [&>svg]:size-4">
+        <Replace aria-hidden="true" strokeWidth={1.75} />
+      </PopoverTrigger>
       <PopoverContent align="end" className="grid w-75 gap-0.5">
         <p className="flex flex-wrap items-center gap-1.5 px-2.5 py-1.5 text-body-sm text-ink-2">
           <BeadSwatch hex={from.hex} size="sm" />
@@ -85,17 +82,40 @@ function ReplaceMenu({ from, color, palette, onReplace, disabled }: { from: Patt
         <span className="px-2.5 pb-1 text-caption text-ink-3">{t.replaceOther}</span>
         <div className="grid max-h-popover-list grid-cols-[repeat(auto-fill,minmax(24px,1fr))] gap-1.5 overflow-y-auto px-1.5 pb-1.5">
           {others.map((entry) => (
-            <Tooltip key={`${entry.code}-${entry.hex}`} content={colorLabel(entry)} side="top">
-              <button type="button" aria-label={colorLabel(entry)} onClick={() => pick(entry)} className="aspect-square rounded-full transition-transform duration-press hover:scale-108 focus-visible:focus-ring">
-                <BeadSwatch hex={entry.hex} className="size-full" />
-              </button>
-            </Tooltip>
+            <button key={`${entry.code}-${entry.hex}`} type="button" aria-label={colorLabel(entry)} title={colorLabel(entry)} onClick={() => pick(entry)} className="aspect-square rounded-full transition-transform duration-press hover:scale-108 focus-visible:focus-ring">
+              <BeadSwatch hex={entry.hex} className="size-full" />
+            </button>
           ))}
         </div>
       </PopoverContent>
     </Popover>
   );
 }
+
+/** 全部颜色网格：两百来颗按钮，只在候选、当前色变化时重渲染（换图纸不必重建）。 */
+const PaletteGrid = memo(function PaletteGrid({ colors, color, onColor }: { colors: readonly PaletteColor[]; color: PaletteColor | null; onColor: (color: PaletteColor) => void }) {
+  const t = zhCN.editorWorkspace.colors;
+  return (
+    <div role="group" aria-label={t.all} className="grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-2">
+      {colors.map((entry) => {
+        const pressed = sameColor(color, entry);
+        return (
+          <button
+            key={`${entry.code}-${entry.hex}`}
+            type="button"
+            aria-label={colorLabel(entry)}
+            title={colorLabel(entry)}
+            aria-pressed={pressed}
+            onClick={() => onColor(entry)}
+            className={cn('relative aspect-square rounded-full transition-transform duration-press hover:scale-108 focus-visible:focus-ring', pressed && 'ring-2 ring-ink ring-offset-2 ring-offset-bg')}
+          >
+            <BeadSwatch hex={entry.hex} className="size-full" />
+          </button>
+        );
+      })}
+    </div>
+  );
+});
 
 export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteValue, onPalette, paletteDisabled, paletteNotice, stats, highlight, onHighlight, onReplace, disabled }: ColorsPanelProps) {
   const t = zhCN.editorWorkspace.colors;
@@ -141,7 +161,8 @@ export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteVa
                     <IconButton
                       size="sm"
                       label={t.highlightAria(label)}
-                      tooltip={lit ? t.unhighlight : t.highlight}
+                      tooltip={false}
+                      title={lit ? t.unhighlight : t.highlight}
                       aria-pressed={lit}
                       className="hover:bg-bg-emphasis [&_svg]:size-4"
                       onClick={() => onHighlight(lit ? null : entry)}
@@ -171,24 +192,7 @@ export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteVa
         {matches.length === 0 ? (
           <p className="text-body-sm text-ink-3">{t.noMatch(query)}</p>
         ) : (
-          <div role="group" aria-label={t.all} className="grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-2">
-            {matches.map((entry) => {
-              const pressed = sameColor(color, entry);
-              return (
-                <Tooltip key={`${entry.code}-${entry.hex}`} content={colorLabel(entry)} side="top">
-                  <button
-                    type="button"
-                    aria-label={colorLabel(entry)}
-                    aria-pressed={pressed}
-                    onClick={() => onColor(entry)}
-                    className={cn('relative aspect-square rounded-full transition-transform duration-press hover:scale-108 focus-visible:focus-ring', pressed && 'ring-2 ring-ink ring-offset-2 ring-offset-bg')}
-                  >
-                    <BeadSwatch hex={entry.hex} className="size-full" />
-                  </button>
-                </Tooltip>
-              );
-            })}
-          </div>
+          <PaletteGrid colors={matches} color={color} onColor={onColor} />
         )}
       </PanelSection>
     </>

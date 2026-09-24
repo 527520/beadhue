@@ -131,8 +131,8 @@ test('删除跨设备收敛：A 删除后列表消失、刷新仍在、直链打
   // A：删除（此前 DELETE 被守卫 400 拦截导致删除失败——本用例守护该回归）
   await pageA.goto('/me');
   await expect(pageA.getByText('待删除设计').first()).toBeVisible({ timeout: 15_000 });
+  // 自动保存会按改名等编辑递增修订号，这里只要求已同步。
   await expect.poll(async () => (await localSyncSnapshot(pageA)).records.find((record) => record.id === designId)).toMatchObject({
-    revision: 1,
     syncState: 'synced',
   });
   await pageA.getByRole('button', { name: '管理：待删除设计' }).click();

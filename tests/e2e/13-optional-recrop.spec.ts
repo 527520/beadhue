@@ -9,16 +9,12 @@ const cropDialog = (page: Page) => page.getByRole('dialog', { name: '裁剪图�
 // 手机仍是旧工作台（「粒」），桌面是新编辑器的画布摘要（「颗」）。
 const beads = (page: Page, count: number) => page.getByText(new RegExp(`共 ${count} (粒|颗)`)).first();
 
-async function revealMissingOriginalHelp(page: Page) {
-  const explanation = page.getByText(/当前会话没有完整原图/);
+/** 本机没有原图时，调整页只给「需要原图」卡片，不假装还能重新裁剪。 */
+async function expectNeedsOriginal(page: Page) {
   await openPanelTab(page, '调整');
-  await expect(recropButton(page)).toBeEnabled();
-  await expect(recropButton(page)).toHaveAttribute('aria-expanded', 'false');
-  await expect(explanation).toHaveCount(0);
-  await recropButton(page).click();
-  await expect(recropButton(page)).toHaveAttribute('aria-expanded', 'true');
-  await expect(cropDialog(page)).toHaveCount(0);
-  await expect(explanation).toBeVisible();
+  await expect(page.getByRole('heading', { name: '需要原图才能重新生成' })).toBeVisible();
+  await expect(recropButton(page)).toHaveCount(0);
+  await expect(page.getByRole('spinbutton', { name: '自定义宽度（格）' })).toHaveCount(0);
 }
 
 async function clearOriginalCache(page: Page) {
@@ -67,12 +63,13 @@ test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动�
   await clearOriginalCache(page);
   await page.reload();
   await expect(beads(page, 10000)).toBeAttached();
-  await revealMissingOriginalHelp(page);
+  await expectNeedsOriginal(page);
   await page.getByLabel('原图文件选择器').setInputFiles(PHOTO);
   await expect(cropDialog(page)).toBeVisible();
   await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
   await expect(cropDialog(page)).toHaveCount(0);
   await expect(beads(page, 10000)).toBeAttached();
+  await expectNeedsOriginal(page);
 });
 
 test('手工修改：取消裁剪和拒绝覆盖均保留，确认后可以撤销重生成', async ({ page }) => {

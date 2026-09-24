@@ -932,9 +932,12 @@ export default function Workbench({
           setStep("workspace");
           showDesignQuery(designIdRef.current);
         } else if (!narrowRef.current) {
-          toast(zhCN.editorWorkspace.regenerated, {
-            icon: <RefreshCw aria-hidden="true" strokeWidth={1.75} />,
-          });
+          // 提示放到下一个任务：提示栈是同步外部状态，和换图纸的重渲染挤在一帧里会成长任务。
+          window.setTimeout(() =>
+            toast(zhCN.editorWorkspace.regenerated, {
+              icon: <RefreshCw aria-hidden="true" strokeWidth={1.75} />,
+            }),
+          );
         }
         // D-1：生成完成的可感知反馈（播报 + 三段编排 + 数字滚动）
         setDoneToken((token) => token + 1);
