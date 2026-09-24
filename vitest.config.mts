@@ -25,7 +25,6 @@ export default defineConfig({
             'src/**/*.performance.test.{ts,tsx}',
             'src/app/api/**/*.test.{ts,tsx}',
             'src/lib/auth/password.test.ts',
-            'src/components/palettes/PaletteEditor.test.tsx',
           ],
         },
       },
@@ -35,9 +34,8 @@ export default defineConfig({
           name: 'serial',
           include: [
             'src/lib/auth/password.test.ts',
-            'src/components/palettes/PaletteEditor.test.tsx',
           ],
-          // Argon2 原生模块与 500 行大 DOM 场景隔离到单一子进程，避免线程并发崩溃/超时。
+          // Argon2 原生模块隔离到单一子进程，避免线程并发崩溃/超时。
           pool: 'forks',
           fileParallelism: false,
           maxWorkers: 1,

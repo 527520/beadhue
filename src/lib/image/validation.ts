@@ -18,6 +18,9 @@ export interface ImageFileInput {
   name: string;
 }
 
+/** 校验通过（未解码）的图片文件。 */
+export interface ValidImageFile { bytes: Uint8Array; name: string; type: ImageType }
+
 export type ValidationResult = { ok: true; type: ImageType } | { ok: false; code: ImageErrorCode };
 
 /** 文件级校验：空文件 → 大小上限 → 魔数嗅探 → 动图拒绝。 */

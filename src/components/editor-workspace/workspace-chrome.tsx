@@ -13,7 +13,7 @@ import { Popover, PopoverContent } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import type { BrushSize } from '@/lib/editor/ops';
 import type { PaletteColor } from '@/lib/types';
-import type { CloudSaveState, SaveState } from '@/components/workbench/SaveStatus';
+import type { CloudSaveState, SaveState } from './editor-model';
 import { LIMITS } from '@/lib/appInfo';
 import { zhCN } from '@/messages/zh-CN';
 import { CODES_MIN_CELL, TOOL_KEYS, ZOOM_PRESETS, colorLabel, type EditorTool } from './editor-model';

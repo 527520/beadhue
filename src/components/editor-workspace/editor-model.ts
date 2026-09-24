@@ -10,6 +10,9 @@ import { zhCN } from '@/messages/zh-CN';
 export type EditorTool = 'hand' | 'brush' | 'eraser' | 'fill' | 'pick' | 'replace';
 export type EditorMode = 'edit' | 'stitch';
 export type PanelTab = 'colors' | 'adjust' | 'info';
+/** 本机保存状态与云端同步状态（工作台维护，顶栏保存徽标展示）。 */
+export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'quota' | 'error' | 'unavailable';
+export type CloudSaveState = 'pending' | 'syncing' | 'synced';
 
 /** 工具与快捷键（原型 TOOLS）。 */
 export const TOOL_KEYS: ReadonlyArray<[EditorTool, string]> = [

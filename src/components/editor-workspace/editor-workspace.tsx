@@ -25,7 +25,7 @@ import { useToast } from '@/components/ui/toast';
 import { useIsMobile } from '@/components/ui/use-media-query';
 import { useRequireLogin } from '@/components/shell/login-dialog';
 import { fitSpec, paletteSizes, type PaletteChoice, type SpecChoice } from '@/components/create/palette-choices';
-import type { CloudSaveState, SaveState } from '@/components/workbench/SaveStatus';
+import type { CloudSaveState, SaveState } from './editor-model';
 import { LIMITS } from '@/lib/appInfo';
 import { getBoardProfile, type BoardProfileId } from '@/lib/boardProfiles';
 import type { ImageDataLike } from '@/lib/engine/types';

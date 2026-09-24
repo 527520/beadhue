@@ -31,8 +31,7 @@ import {
 import { perfMark } from "@/lib/perf/mark";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ValidImageFile } from "@/components/upload/UploadDropzone";
-import { takePendingUpload } from "@/lib/upload/pendingUpload";
+import type { ValidImageFile } from "@/lib/image/validation";
 import {
   canFetchRevisionOriginal,
   fetchRevisionOriginal,
@@ -48,7 +47,6 @@ import {
   type StitchProgress,
 } from "@/lib/progress/stitchProgress";
 import { useAuthStatus } from "@/components/account/useAuthStatus";
-import type { PalettePickerOption } from "@/components/palettes/PalettePicker";
 import { SiteShell } from "@/components/shell/site-shell";
 import { RefreshCw } from "lucide-react";
 import {
@@ -78,7 +76,7 @@ import {
   specChoices as buildSpecChoices,
   type PaletteChoice,
 } from "@/components/create/palette-choices";
-import type { CloudSaveState, SaveState } from "./SaveStatus";
+import type { CloudSaveState, SaveState } from "@/components/editor-workspace/editor-model";
 import { zhCN } from "@/messages/zh-CN";
 import {
   DEFAULT_GENERATION_PARAMS,
@@ -596,90 +594,11 @@ export default function Workbench({
     scheduleAutosave();
   }, [scheduleAutosave]);
 
-  const paletteOptions = useMemo<PalettePickerOption[]>(() => {
-    const builtin = listBuiltinPalettes().map((summary) => {
-      const palette = getBuiltinPalette(summary.id);
-      const selection: ProjectPalette = { kind: "builtin", brand: summary.id };
-      return {
-        value: `builtin:${summary.id}`,
-        brand: summary.brand,
-        series: summary.series,
-        colors: palette.engineColors.map((color) => color.hex),
-        collectedCount: summary.colorCount,
-        usableCount: summary.engineColorCount,
-        sourceQuality: summary.source.qualityLabel,
-        boardProfiles: compatibleBoardProfilesForPalette(selection).map(
-          (profile) => profile.displayName,
-        ),
-        technicalVersion: summary.source.versionId,
-        defaultForBrand: summary.defaultForBrand,
-      };
-    });
-    const customEntries = cloudPalettes.map((p) => ({
-      value: `custom:${p.id}`,
-      brand: zhCN.params.customPaletteGroup,
-      series: p.name,
-      colors: p.colors.map((color) => color.hex),
-      collectedCount: p.colors.length,
-      usableCount: p.colors.length,
-      sourceQuality: zhCN.params.customPaletteQuality,
-      boardProfiles: compatibleBoardProfilesForPalette({
-        kind: "custom",
-        colors: [],
-      }).map((profile) => profile.displayName),
-      defaultForBrand: false,
-    }));
-    if (
-      paletteKind.kind === "custom" &&
-      customPaletteId &&
-      !cloudPalettes.some((candidate) => candidate.id === customPaletteId)
-    ) {
-      customEntries.push({
-        value: `custom:${customPaletteId}`,
-        brand: zhCN.params.customPaletteGroup,
-        series: zhCN.params.currentProjectPalette,
-        colors:
-          projectPalette.kind === "custom"
-            ? projectPalette.colors.map((color) => color.hex)
-            : [],
-        collectedCount:
-          projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
-        usableCount:
-          projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
-        sourceQuality: zhCN.params.customPaletteQuality,
-        boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map(
-          (profile) => profile.displayName,
-        ),
-        defaultForBrand: false,
-      });
-    }
-    // 导入项目自带的自定义色板（无云端 id）保留 '__custom' 占位，不可再切换
-    if (paletteKind.kind === "custom" && !customPaletteId) {
-      return [
-        ...builtin,
-        ...customEntries,
-        {
-          value: "__custom",
-          brand: zhCN.params.customPaletteGroup,
-          series: zhCN.workbench.customPaletteLabel,
-          colors:
-            projectPalette.kind === "custom"
-              ? projectPalette.colors.map((color) => color.hex)
-              : [],
-          collectedCount:
-            projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
-          usableCount:
-            projectPalette.kind === "custom" ? projectPalette.colors.length : 0,
-          sourceQuality: zhCN.params.customPaletteQuality,
-          boardProfiles: compatibleBoardProfilesForPalette(projectPalette).map(
-            (profile) => profile.displayName,
-          ),
-          defaultForBrand: false,
-        },
-      ];
-    }
-    return [...builtin, ...customEntries];
-  }, [paletteKind.kind, customPaletteId, cloudPalettes, projectPalette]);
+  // 地址里 ?palette= 的换色板意图只认内置色板与云端自定义色板。
+  const paletteOptions = useMemo(() => [
+    ...listBuiltinPalettes().map((summary) => ({ value: `builtin:${summary.id}`, brand: summary.brand, series: summary.series })),
+    ...cloudPalettes.map((p) => ({ value: `custom:${p.id}`, brand: zhCN.params.customPaletteGroup, series: p.name })),
+  ], [cloudPalettes]);
 
   const selectedPalette =
     paletteKind.kind === "custom"
@@ -1146,19 +1065,6 @@ export default function Workbench({
       t,
     ],
   );
-
-  // StrictMode 双挂载保留交接；实际派发后立刻清除，回调更新不会重复上传。
-  const handedUploadRef = useRef<ValidImageFile | null>(null);
-  useEffect(() => {
-    handedUploadRef.current ??= takePendingUpload();
-    const handed = handedUploadRef.current;
-    if (!handed) return;
-    const timer = setTimeout(() => {
-      handedUploadRef.current = null;
-      void handleUpload(handed);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [handleUpload]);
 
   const handleCropConfirm = useCallback(
     async (rect: Rect, draftOverride?: GenerationDraft): Promise<void> => {
