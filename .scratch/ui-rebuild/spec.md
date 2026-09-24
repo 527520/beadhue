@@ -1,7 +1,7 @@
 # 豆色绘前端全面重构（R15）
 
 Status: ready-for-agent
-Completion: in-progress（01–12 完成；13 清理部分完成、文档部分待编排合并；14 未开始）
+Completion: in-progress（01–13 完成；14 全量验收与编排代理终审走查未开始）
 Baseline: `feat/beadhue-ui-rebuild` @ 78317a9（BeadHue 分支 + R14 合并）
 依据：[audit.md](audit.md)（现状问题）· [design.md](design.md)（设计规格）· [prototype/](prototype/)（交互原型，**唯一视觉与交互验收基准**）· 验收截图 [evidence/prototype-final/](evidence/prototype-final/)
 

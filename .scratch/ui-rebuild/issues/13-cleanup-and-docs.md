@@ -1,7 +1,7 @@
 # 13 删除旧样式与旧组件、文档与决策记录
 
 Status: ready-for-agent
-Completion: in-progress
+Completion: complete
 Blocked by: 03–12
 
 先读 [实施指南](../implementation-guide.md)。
@@ -61,4 +61,10 @@ Blocked by: 03–12
 - 自定义色板「导入」随旧色板编辑器消失（票 06 的新色板面板没有导入入口）；`customImport` 已删，需要时再按新界面补。
 - 公开弹窗的修改后重投若服务端要求新原图（ORIGINAL_REQUIRED），目前只显示错误，需要用户在编辑器里重新选原图（会触发重新生成确认）。
 - 投稿页复选框标签多行时复选框垂直居中（`Checkbox` 组件的 items-center），可在组件层统一改为顶对齐。
+
+### 文档部分（13a，分支 `feat/beadhue-r15-13-docs`，合并 530edc9）
+
+- `CONTEXT.md`：D64–D72、R15 术语与事实段，修正被替代的旧条目（D25、D30、D48、D52、D53、D54、D60 等）；「待定」的 R15 条目已按 13 完成后的实际状态更新（D72 深链、「颗」已完成，色板导入待补）。
+- `docs/adr/0027-frontend-stack-and-csp.md`：前端技术栈与 CSP 约束。
+- `CHANGELOG.md`「未发布」：前端全面重构（R15）的新增与变更，含票 02、06、10、11 的新接口、字段与迁移。
 
