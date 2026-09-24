@@ -100,7 +100,7 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
   const inspection = useAdminInspection<CommunityRevisionInspection>(item ? `/api/admin/community/revisions/${item.revisionId}` : null);
   const detail = inspection.data?.id === item?.revisionId ? inspection.data : null;
   const ready = Boolean(item && detail && detail.status === 'pending_review' && detail.lifecycleStatus === 'active' && detail.version === item.version);
-  const itemChecks = item ? checks[item.revisionId] ?? t.checks.map(() => false) : [];
+  const itemChecks = useMemo(() => (item ? checks[item.revisionId] ?? t.checks.map(() => false) : []), [item, checks]);
   const missing = itemChecks.filter((on) => !on).length;
   const usage = useMemo(() => (detail ? colorUsage(detail.snapshot.pattern) : []), [detail]);
   const beads = usage.reduce((sum, color) => sum + color.count, 0);

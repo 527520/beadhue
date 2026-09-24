@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronDown, Crop, ExternalLink, Eye, Image as ImageIcon, Images, Palette, Pause, Pencil, Play, RefreshCw, Send, SlidersHorizontal, Square, Upload, X } from 'lucide-react';
+import { Check, ChevronDown, Crop, ExternalLink, Eye, Image as ImageIcon, Images, Palette, Pause, Pencil, Play, RefreshCw, Send, Square, Upload, X } from 'lucide-react';
 import { memo, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import OriginalUploadStatus from '@/components/beadhue/OriginalUploadStatus';
 import CropDialog from '@/components/crop/CropDialog';

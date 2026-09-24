@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_GENERATION_PARAMS } from '../../src/lib/types';
-import { fillField, selectChoice, uploadDraftOriginal } from './helpers';
+import { fillField, uploadDraftOriginal } from './helpers';
 
 async function login(page: Page, next: string, email = 'e2e-admin@example.com') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
@@ -18,12 +18,12 @@ async function post(page: Page, url: string, body: unknown) {
   expect(result.status, JSON.stringify(result.body)).toBeLessThan(300);
   return result.body;
 }
-/** 标签列表默认每页 10 条：先按名称搜索再断言，避免夹具被挤到第二页（admin-round-3 06）。 */
-async function searchTag(page: Page, keyword: string) {
-  await page.getByLabel('搜索标签').fill(keyword);
-  await page.getByRole('button', { name: '查询标签' }).click();
-  await expect(page.locator('.admin-object-list button').filter({ hasText: keyword }).first()).toBeVisible();
+/** 后台表格（R15-10）：搜索框去抖后按关键字过滤，夹具才一定在第一页。 */
+async function searchTable(page: Page, placeholder: string, keyword: string) {
+  await page.getByRole('searchbox', { name: placeholder }).fill(keyword);
+  await expect(page.locator('tbody tr').filter({ hasText: keyword }).first()).toBeVisible();
 }
+const row = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text });
 async function fixtureWork(page: Page, title: string) {
   const batch = await post(page, '/api/admin/batches', { itemCount: 1, defaultParams: DEFAULT_GENERATION_PARAMS, engineVersion: 'e2e', reason: '本地治理任务夹具' });
   const draft = await post(page, `/api/admin/batches/${batch.id}/drafts`, { title, reason: '本地治理任务夹具', snapshot: {
@@ -69,40 +69,41 @@ test('标签创建丢响应同键恢复，改名停用及具名合并可完成',
     else await route.fulfill({ response });
   });
   await page.getByRole('button', { name: '新建标签', exact: true }).click();
-  await page.getByLabel('标签名称', { exact: true }).fill(name);
-  await page.getByLabel('操作理由').fill('人工核对的正式分类');
-  await page.locator('.admin-task-detail').getByRole('button', { name: '新建标签', exact: true }).click();
-  await expect(page.getByLabel('标签名称', { exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: '重试确认' }).click();
-  // 列表默认每页 10 条（admin-round-3 06）：先按名称搜索，夹具才一定在第一页。
-  await searchTag(page, name);
-  await expect(page.locator('.admin-object-list button').filter({ hasText: name })).toHaveCount(1);
+  const create = page.getByRole('dialog', { name: '新建标签' });
+  await create.getByLabel('名称', { exact: true }).fill(name);
+  await create.getByRole('button', { name: '新建标签', exact: true }).click();
+  await expect(create.getByLabel('名称', { exact: true })).toBeDisabled();
+  await create.getByRole('button', { name: '重试确认' }).click();
+  await expect(create).toHaveCount(0);
+  await searchTable(page, '搜索标签', name);
+  await expect(row(page, name)).toHaveCount(1);
   expect(writes).toHaveLength(2); expect(writes[0]).toEqual(writes[1]);
-  await page.locator('.admin-object-list button').filter({ hasText: name }).click();
-  await page.getByLabel('标签名称', { exact: true }).fill(`新${name}`);
-  await page.getByLabel('操作理由').fill('更新名称并暂时停用');
-  // WebKit 上对 RAC switch 直接 uncheck() 偶发不触发受控 onChange，用键盘空格更接近真人操作。
-  const enabled = page.getByRole('switch', { name: '启用', exact: true });
+  await row(page, name).getByRole('button', { name, exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: `编辑标签「${name}」` });
+  await drawer.getByLabel('名称', { exact: true }).fill(`新${name}`);
+  const enabled = drawer.getByRole('switch', { name: '启用', exact: true });
   await enabled.focus();
   await page.keyboard.press('Space');
   await expect(enabled).not.toBeChecked();
-  await page.getByRole('button', { name: '保存修改' }).click();
-  // 等到写入确认再搜索，避免在列表重载途中查询到旧行。
-  await expect(page.getByText('操作已完成。')).toBeVisible();
-  await searchTag(page, `新${name}`);
-  await expect(page.locator('.admin-object-list button').filter({ hasText: `新${name}` })).toContainText('停用');
-  const target = await post(page, '/api/admin/community/tags', { name: `归档 ${suffix}`, slug: `target-${suffix}`, reason: '归并重复分类', expectedVersion: 0 });
+  await drawer.getByLabel('操作理由').fill('更新名称并暂时停用');
+  await drawer.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await searchTable(page, '搜索标签', `新${name}`);
+  await expect(row(page, `新${name}`)).toContainText('停用');
+  await post(page, '/api/admin/community/tags', { name: `归档 ${suffix}`, slug: `target-${suffix}`, reason: '归并重复分类', expectedVersion: 0 });
   await page.reload();
-  await searchTag(page, `新${name}`);
-  await page.locator('.admin-object-list button').filter({ hasText: `新${name}` }).click();
-  await page.getByLabel('操作理由').fill('核对后合并到具名目标');
-  await page.getByText('合并重复标签', { exact: true }).click();
-  expect(target.id).toBeTruthy();
-  await selectChoice(page,'合并到标签',`归档 ${suffix}`);
-  await expect(page.getByRole('button', { name: '确认合并' })).toBeDisabled();
-  await page.getByRole('checkbox', { name: /我确认将/ }).check();
-  await page.getByRole('button', { name: '确认合并' }).click();
-  await expect(page.locator('.admin-object-list button').filter({ hasText: `新${name}` })).toContainText('已合并');
+  await searchTable(page, '搜索标签', `新${name}`);
+  await row(page, `新${name}`).getByRole('button', { name: `新${name}`, exact: true }).click();
+  const edit = page.getByRole('dialog', { name: `编辑标签「新${name}」` });
+  await edit.getByText('合并重复标签', { exact: true }).click();
+  await edit.getByRole('combobox', { name: '合并到标签' }).click();
+  await page.getByRole('option', { name: `归档 ${suffix}`, exact: true }).click();
+  await edit.getByRole('checkbox', { name: /我确认将/ }).click();
+  await edit.getByRole('button', { name: '确认合并' }).click();
+  const confirm = page.getByRole('dialog', { name: '合并重复标签' });
+  await confirm.getByLabel('合并理由').fill('核对后合并到具名目标');
+  await confirm.getByRole('button', { name: '确认合并' }).click();
+  await expect(row(page, `新${name}`)).toContainText('已合并');
 });
 
 test('人员二次确认、暂停撤销会话、恢复与角色调整可完成', async ({ page, browser, baseURL }, info) => {
@@ -112,23 +113,29 @@ test('人员二次确认、暂停撤销会话、恢复与角色调整可完成',
     const targetPage = await targetContext.newPage();
     await login(targetPage, '/me/settings', email);
     await login(page, '/admin/users');
-    await page.getByLabel('搜索账号').fill(email);
-    await page.getByRole('button', { name: '查询', exact: true }).click();
-    const entry = page.locator('.admin-object-list button').filter({ hasText: `E2E 治理目标 ${info.project.name}` });
-    await entry.click();
-    const userId = await page.locator('.admin-facts dd').first().innerText();
-    await page.getByLabel('操作理由').fill('本地验证暂停会话失效');
-    await expect(page.getByRole('button', { name: '暂停账号' })).toBeDisabled();
-    await page.getByLabel('再次输入该账号编号以确认').fill(userId);
-    await page.getByRole('button', { name: '暂停账号' }).click();
+    await searchTable(page, '搜索用户名、邮箱或编号', email);
+    const entry = row(page, `E2E 治理目标 ${info.project.name}`);
+    await entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}` }).click();
+    const drawer = page.getByRole('dialog', { name: '账号详情' });
+    const userId = await drawer.getByText(/^[0-9a-f]{8}-[0-9a-f-]{27}$/u).innerText();
+    const act = async (button: string, dialogName: RegExp, reasonLabel: string, confirm: string) => {
+      await drawer.getByRole('button', { name: button }).click();
+      const dialog = page.getByRole('dialog', { name: dialogName });
+      await dialog.getByLabel(reasonLabel).fill('本地验证账号治理流程');
+      await expect(dialog.getByRole('button', { name: confirm, exact: true })).toBeDisabled();
+      await dialog.getByLabel('再次输入该账号编号以确认').fill(userId);
+      await dialog.getByRole('button', { name: confirm, exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+    };
+    await act('暂停账号', /暂停「/, '暂停理由', '暂停账号');
     await expect(entry).toContainText('已暂停');
     expect(await targetPage.evaluate(async () => (await fetch('/api/auth/me')).status)).toBe(401);
-    await entry.click(); await page.getByLabel('操作理由').fill('验证完成恢复账号'); await page.getByLabel('再次输入该账号编号以确认').fill(userId);
-    await page.getByRole('button', { name: '恢复账号' }).click(); await expect(entry).toContainText('正常');
-    for (const role of ['moderator', 'user']) {
-      await entry.click(); await page.getByLabel('操作理由').fill('核对角色调整与会话撤销'); await page.getByLabel('再次输入该账号编号以确认').fill(userId);
-      await selectChoice(page,'调整为',role==='moderator'?'审核员':'用户'); await page.getByRole('button', { name: '确认调整' }).click();
-      await expect(entry).toContainText(role === 'moderator' ? '审核员' : '用户');
+    await act('恢复账号', /恢复「/, '恢复理由', '恢复账号');
+    await expect(entry).toContainText('正常');
+    for (const role of ['审核员', '用户']) {
+      await drawer.getByRole('radio', { name: new RegExp(`^${role}`) }).check();
+      await act('保存角色', new RegExp(`调整为${role}`), '操作理由', '确认调整');
+      await expect(entry).toContainText(role);
     }
   } finally { await targetContext.close(); }
 });
@@ -139,9 +146,7 @@ test('被内容安全拦截的评论不公开但进入治理队列，可复核�
   const authorContext = await browser.newContext({ baseURL });
   try {
     const author = await authorContext.newPage();
-    // 专用账号：共用的 e2e-user 在整轮里评论过多会触发突发限流（转人工），掩盖这里要验证的拦截判定。
-    await author.goto('/login?next=%2F%3Fsort%3Dnew'); await fillField(author, '邮箱', `e2e-comment-${info.project.name}@example.com`); await fillField(author, '密码', 'E2e-pass-123!');
-    await author.getByRole('button', { name: '登录', exact: true }).click(); await expect.poll(() => new URL(author.url()).pathname).toBe('/');
+    await login(author, '/me/settings', `e2e-comment-${info.project.name}@example.com`);
     const response = await author.evaluate(async ({ workId, body }) => {
       const reply = await fetch(`/api/community/works/${workId}/comments`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ body }) });
       return { status: reply.status, body: await reply.json() };
@@ -151,14 +156,17 @@ test('被内容安全拦截的评论不公开但进入治理队列，可复核�
     expect(JSON.stringify(listed)).not.toContain('E2E拦截词');
   } finally { await authorContext.close(); }
   await login(page, '/admin/comments');
-  const entry = page.locator('.review-queue button').filter({ hasText: 'E2E拦截词' }).filter({ hasText: info.project.name });
-  await entry.click();
-  await expect(page.locator('.review-preview')).toContainText('已拦截');
-  await expect(page.locator('.review-preview')).toContainText('服务建议拦截');
-  await expect(page.getByRole('button', { name: '隐藏', exact: true })).toHaveCount(0);
-  await page.getByLabel('处置理由').fill('复核确认为误判');
-  await page.getByRole('button', { name: '复核后公开' }).click();
-  await expect(page.locator('.review-actions')).toContainText('操作已完成');
+  const entry = row(page, 'E2E拦截词').filter({ hasText: info.project.name });
+  await entry.getByRole('button', { name: /E2E拦截词/ }).click();
+  const drawer = page.getByRole('dialog', { name: '评论详情' });
+  await expect(drawer).toContainText('已拦截');
+  await expect(drawer).toContainText('服务建议拦截');
+  await expect(drawer.getByRole('button', { name: '隐藏评论' })).toHaveCount(0);
+  await drawer.getByRole('button', { name: '复核后公开' }).click();
+  const dialog = page.getByRole('dialog', { name: '保留这条评论' });
+  await dialog.getByLabel('处置理由').fill('复核确认为误判');
+  await dialog.getByRole('button', { name: '复核后公开' }).click();
+  await expect(page.getByText('已保留这条评论，前台正常显示')).toBeVisible();
 });
 
 test('具名作品下架恢复与评论锁不绕过内容核查和确认', async ({ page }, info) => {
@@ -166,34 +174,36 @@ test('具名作品下架恢复与评论锁不绕过内容核查和确认', async
   const title = `E2E管理作品${info.project.name}`;
   const workId = await fixtureWork(page, title);
   await page.goto(`/admin/works?work=${workId}`);
-  const detail = page.locator('.admin-task-detail');
-  await expect(detail.locator('canvas').first()).toBeVisible();
-  await page.getByLabel('操作理由').fill('核对作品后管理评论');
-  await page.getByRole('button', { name: '锁定评论' }).click();
-  await page.locator('.admin-object-list button').filter({ hasText: title }).click();
-  await expect(detail).toContainText('评论已锁定');
-  await page.getByLabel('操作理由').fill('核对后暂时下架作品');
-  await page.getByRole('button', { name: '下架作品', exact: true }).click();
-  await expect(page.getByRole('button', { name: '确认下架' })).toBeDisabled();
-  await page.getByRole('checkbox', { name: /我已核对/ }).check(); await page.getByRole('button', { name: '确认下架' }).click();
+  const drawer = page.getByRole('dialog', { name: title });
+  await expect(drawer.locator('canvas').first()).toBeVisible();
+  const reasonAction = async (button: string, dialogName: RegExp, label: string, confirm: string, check = false) => {
+    await drawer.getByRole('button', { name: button, exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: dialogName });
+    await dialog.getByLabel(label).fill('核对作品后执行管理操作');
+    if (check) {
+      await expect(dialog.getByRole('button', { name: confirm })).toBeDisabled();
+      await dialog.getByRole('checkbox', { name: /我已核对/ }).click();
+    }
+    await dialog.getByRole('button', { name: confirm }).click();
+    await expect(dialog).toHaveCount(0);
+  };
+  await reasonAction('锁定评论', /锁定「/, '操作理由', '锁定评论');
+  await expect(drawer.getByRole('button', { name: '解锁评论' })).toBeVisible();
+  await reasonAction('下架', /下架「/, '下架理由', '确认下架', true);
   expect(await page.evaluate(async (id) => (await fetch(`/api/community/works/${id}`)).status, workId)).toBe(404);
-  await page.locator('.admin-object-list button').filter({ hasText: title }).click();
-  await page.getByLabel('操作理由').fill('复核已批准版本恢复'); await page.getByRole('button', { name: '恢复发布' }).click();
-  await page.getByRole('checkbox', { name: /我已核对/ }).check(); await page.getByRole('button', { name: '确认恢复' }).click();
-  await expect(page.locator('.admin-object-list button').filter({ hasText: title })).toContainText('公开可见');
+  await reasonAction('恢复上架', /恢复上架「/, '恢复理由', '确认恢复', true);
   expect(await page.evaluate(async (id) => (await fetch(`/api/community/works/${id}`)).status, workId)).toBe(200);
+  await expect(drawer).toContainText('正常');
 });
 
 test('审计可检索与查看状态，分析无效筛选和系统未知证据明示', async ({ page }) => {
   await login(page, '/admin/audit');
-  await page.getByLabel('搜索记录').fill('community'); await page.getByRole('button', { name: '查询' }).click();
-  await page.locator('.admin-object-list button').first().click();
+  await page.getByRole('searchbox', { name: '搜索动作、对象编号或请求编号' }).fill('community');
+  await page.locator('tbody tr').first().locator('[data-open]').click();
   await expect(page.getByRole('heading', { name: '操作前', exact: true })).toBeVisible(); await expect(page.getByRole('heading', { name: '操作后', exact: true })).toBeVisible();
   await page.goto('/admin/analytics?start=invalid'); await expect(page.locator('main [role=alert]')).toContainText('部分查询条件无效');
-  await page.getByRole('link', { name: '重置' }).click();
-  await expect(page).toHaveURL(/\/admin\/analytics$/); await expect(page.locator('main [role=alert]')).toHaveCount(0);
-  await expect(page.locator('.admin-advanced-filters')).not.toHaveAttribute('open');
-  await page.goto('/admin/system'); await expect(page.getByText('数据库实际执行时间', { exact: true })).toBeVisible(); await expect(page.getByText('未接入', { exact: true })).toBeVisible();
+  await page.goto('/admin/analytics'); await expect(page.locator('main [role=alert]')).toHaveCount(0);
+  await page.goto('/admin/system'); await expect(page.getByText('数据库实际执行时间', { exact: true })).toBeVisible(); await expect(page.getByText('未接入', { exact: true }).first()).toBeVisible();
 });
 
 test('举报先核查当前评论，隐藏内容和案件结案分别留痕', async ({ page, browser, baseURL }, info) => {
@@ -202,19 +212,24 @@ test('举报先核查当前评论，隐藏内容和案件结案分别留痕', as
   const comment = await post(page, `/api/community/works/${workId}/comments`, { body: `E2E人工核查评论${info.project.name}` });
   const reporter = await browser.newContext({ baseURL });
   try {
-    const reporterPage = await reporter.newPage(); await login(reporterPage, '/?sort=new', 'e2e-user@example.com');
-    await post(reporterPage, '/api/community/reports', { targetType: 'comment', targetId: comment.id, category: 'spam', details: `E2E案件${info.project.name}` });
-    await page.reload();
-    const entry = page.locator('.review-queue button').filter({ hasText: '评论 / 垃圾推广' }).first();
-    await entry.click(); await expect(page.locator('.report-material')).toContainText(`E2E人工核查评论${info.project.name}`);
-    await page.getByLabel('处置理由').fill('受理并核查当前评论'); await page.getByRole('button', { name: '受理', exact: true }).click();
-    await entry.click(); await page.getByLabel('处置理由').fill('核对当前版本后隐藏');
-    await page.getByRole('button', { name: '隐藏此版本' }).click();
-    await expect(page.locator('.report-material')).toContainText('已隐藏');
-    await expect(page.getByRole('button', { name: '结案', exact: true })).toBeDisabled();
+    const reporterPage = await reporter.newPage(); await login(reporterPage, '/me/settings', 'e2e-user@example.com');
+    const report = await post(reporterPage, '/api/community/reports', { targetType: 'comment', targetId: comment.id, category: 'spam', details: `E2E案件${info.project.name}` });
+    await page.goto(`/admin/reports?id=${report.id}`);
+    const drawer = page.getByRole('dialog', { name: '举报 · 垃圾推广' });
+    await expect(drawer).toContainText(`E2E人工核查评论${info.project.name}`);
+    const decide = async (button: string, dialogName: string, label: string, confirm: string) => {
+      await drawer.getByRole('button', { name: button, exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: dialogName });
+      await dialog.getByLabel(label).fill('核对当前评论后处理');
+      await dialog.getByRole('button', { name: confirm, exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+    };
+    await decide('受理', '受理举报', '处置理由', '受理');
+    await decide('隐藏此版本', '隐藏被举报的评论', '处置理由', '隐藏评论');
+    await expect(drawer).toContainText('已隐藏');
     const comments = await reporterPage.evaluate(async (id) => (await (await fetch(`/api/community/works/${id}/comments`)).json()).items, workId);
     expect(comments.some((item: { id: string }) => item.id === comment.id)).toBe(false);
-    await page.getByLabel('处置理由').fill('内容已隐藏，记录人工结案'); await page.getByRole('button', { name: '结案', exact: true }).click();
-    await expect(page.locator('.admin-task-notice, .review-actions').getByText('操作已完成。')).toBeVisible();
+    await decide('结案', '结案', '结案理由', '结案');
+    await expect(page.getByText('已结案', { exact: true })).toBeVisible();
   } finally { await reporter.close(); }
 });

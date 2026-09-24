@@ -91,7 +91,7 @@ function TagForm({ value, onChange, tag, errors, disabled }: { value: FormState;
 function validate(value: FormState, tag: TagRow | null) {
   const errors: Partial<Record<'name' | 'sortOrder' | 'reason', string>> = {};
   const name = value.name.trim();
-  if (!name) errors.name = f.nameEmpty; else if (name.length > 8 && name !== tag?.name) errors.name = f.nameLong;
+  if (!name) errors.name = f.nameEmpty;
   if (!/^-?\d+$/.test(value.sortOrder.trim())) errors.sortOrder = f.orderInvalid;
   if (tag && (name !== tag.name || value.active !== tag.active) && value.reason.trim().length < 3) errors.reason = f.reasonMin;
   return errors;
