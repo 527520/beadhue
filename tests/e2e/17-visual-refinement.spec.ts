@@ -66,16 +66,19 @@ test('合法的长英文公开标题不裁切，减少动态效果取消卡片�
     await card.hover();await expectNoMotionTransform(card);
   }
   await page.screenshot({path:output(`long-title-${info.project.name}.png`),fullPage:true});
-  await page.goto('/');
-  const blank=page.locator('.home-blank-action');await blank.hover();await expectNoMotionTransform(blank);
+  // 创作入口（D66 `/app`）：空白画布卡片与「选择图片」在减少动态效果下悬停、按下都不位移。
+  await page.goto('/app');await waitHydrated(page);
+  const blank=page.getByRole('button',{name:/^从空白画布开始/});await blank.hover();await expectNoMotionTransform(blank);
   const upload=page.getByRole('button',{name:'选择图片',exact:true});await upload.hover();await page.mouse.down();await expectNoMotionTransform(upload);await page.mouse.up();
-  await page.mouse.move(0,0);await upload.dispatchEvent('dragenter');
-  await expect(upload).toHaveClass(/is-dragging/);
-  // 钉板落区：拖入时底色只是轻微变粉，钉阵与描边变莓果色，不再整块实心。
-  await expect(upload).toHaveCSS('background-color','rgb(255, 247, 249)');
-  await expect(upload).toHaveCSS('border-top-color','rgb(185, 62, 98)');
-  expect(await axe(page,'.upload-dropzone-primary')).toEqual([]);
-  await expectNoMotionTransform(upload);await upload.dispatchEvent('dragleave');
+  await page.mouse.move(0,0);
+  // 整个窗口都是落区：带文件的拖入事件才进入拖入态。
+  const drag=(type:'dragenter'|'dragleave')=>page.evaluate(type=>{const data=new DataTransfer();data.items.add(new File(['beads'],'drop.png',{type:'image/png'}));document.body.dispatchEvent(new DragEvent(type,{bubbles:true,cancelable:true,dataTransfer:data}));},type);
+  await drag('dragenter');
+  const zone=page.getByRole('region',{name:'选择图片'});
+  await expect(zone.getByRole('heading',{name:'松开即可添加图片'})).toBeVisible();
+  expect(await axe(page,'section[aria-label="选择图片"]')).toEqual([]);
+  await expectNoMotionTransform(upload);await drag('dragleave');
+  await expect(zone.getByRole('heading',{name:'松开即可添加图片'})).toHaveCount(0);
 });
 
 test('豆社、色板和登录页五宽度排版与无障碍',async({page},info)=>{
@@ -108,28 +111,23 @@ test('后台待审、批次和人员队列五宽度排版与无障碍',async({pa
   await page.goto('/login?next=/admin/reviews');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/reviews');
   for(const route of ['/admin/reviews','/admin/batches','/admin/users']){
-    await page.goto(route);await expect.poll(()=>new URL(page.url()).pathname).toBe(route);await waitHydrated(page);await expect(page.locator('.admin-page h1')).toBeVisible();await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
+    await page.goto(route);await expect.poll(()=>new URL(page.url()).pathname).toBe(route);await waitHydrated(page);await expect(page.getByRole('main').getByRole('heading',{level:1})).toBeVisible();await page.evaluate(()=>document.fonts.ready.then(()=>undefined));
     if(route==='/admin/reviews'){
-      await page.locator('.review-queue button').filter({hasText:title}).click();
-      await expect(page.locator('.review-preview canvas').first()).toBeVisible();
+      await page.getByRole('region',{name:'待审队列'}).getByRole('button',{name:new RegExp(title)}).click();
+      await expect(page.getByRole('img',{name:new RegExp(title)}).first()).toBeVisible();
     }
     for(const width of widths){
       await page.setViewportSize({width,height:844});
       if(width>=1280){
         if(route==='/admin/reviews'){
-          // 图纸舞台与作者原图舞台顶边严格对齐（说明行 → 工具行 → 舞台三段对位）
-          const pair=page.locator('.review-material-pair').first();
-          const stage=await pair.locator('.pattern-preview-stage').first().boundingBox();const original=await pair.locator('.admin-original-stage').boundingBox();
-          expect(stage).not.toBeNull();expect(original).not.toBeNull();expect(Math.abs(stage!.y-original!.y)).toBeLessThanOrEqual(2);
-          // 禁用的主按钮不再靠半透明表达：理由为空时「批准发布」禁用但 opacity 仍为 1
-          const approve=page.getByRole('button',{name:'批准发布'});await expect(approve).toBeDisabled();await expect(approve).toHaveCSS('opacity','1');
-          // 空态 / 详情靠顶：返回按钮与左栏列表第一项在同一水平带内
-          const back=await page.getByRole('button',{name:'返回列表'}).boundingBox();const firstItem=await page.locator('.review-queue button').first().boundingBox();
-          expect(Math.abs(back!.y-firstItem!.y)).toBeLessThan(60);
+          // 图纸与作者原图两块舞台顶边对齐（说明行高度不同也不能把舞台错开）
+          const stages=page.getByRole('region',{name:title}).locator('figure > :nth-child(2)');
+          const [pattern,original]=await Promise.all([stages.nth(0).boundingBox(),stages.nth(1).boundingBox()]);
+          expect(pattern).not.toBeNull();expect(original).not.toBeNull();expect(Math.abs(pattern!.y-original!.y)).toBeLessThanOrEqual(2);
         }
         if(route==='/admin/users'){
-          // 筛选行：搜索输入与「查询」按钮同行且底边对齐
-          await expectBottomsAligned([page.getByRole('textbox',{name:'搜索账号'}),page.getByRole('button',{name:'查询'})]);
+          // 工具条：搜索框与「角色」「状态」筛选同行且底边对齐
+          await expectBottomsAligned([page.getByRole('searchbox',{name:'搜索用户名、邮箱或编号'}),page.getByRole('button',{name:'角色',exact:true}),page.getByRole('button',{name:'状态',exact:true})]);
         }
       }
       expect(await page.evaluate(()=>document.documentElement.scrollWidth),`${route} ${width}px`).toBeLessThanOrEqual(width);
@@ -154,7 +152,8 @@ test('字体实际加载，首屏选择图片完整可见，五宽度无溢出',
   const failures:string[]=[];
   page.on('response',response=>{if(response.url().includes('/fonts/ui/')&&response.status()>=400)failures.push(response.url());});
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/'); await waitHydrated(page);
+  // 「选择图片」在创作入口（D66 `/app`）；统计同意浮卡悬在底栏上方，不能把它挤出首屏。
+  await page.goto('/app'); await waitHydrated(page);
   await expect(page.getByRole('complementary',{name:'匿名使用统计'})).toBeVisible();
   const button=page.getByRole('button',{name:'选择图片',exact:true});
   const box=await button.boundingBox(); expect(box).not.toBeNull(); expect(box!.y+box!.height).toBeLessThan(770);
@@ -216,10 +215,10 @@ test('长选项搜索、键盘取消、减少动态效果与200%布局放大',as
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto('/login?next=/admin/analytics');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/analytics');
-  await expect(page.getByRole('heading',{name:'使用统计',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{level:1,name:'匿名分析',exact:true})).toBeVisible();
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:output(`admin-${info.project.name}.png`),fullPage:true});
-  await page.goto('/');await page.evaluate(()=>{document.body.style.zoom='2';});
+  await page.goto('/app');await waitHydrated(page);await page.evaluate(()=>{document.body.style.zoom='2';});
   // Layout-zoom simulation, not a claim of physical-device browser zoom.
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole('button',{name:'选择图片',exact:true})).toBeVisible();
@@ -239,10 +238,10 @@ test('新建色板编辑器：色块搜索，Esc 关闭后焦点回到入口',as
   await search.press('Escape');await expect(editor).toBeHidden();await expect(trigger).toBeFocused();
 });
 
-test('多色续作、长标题，以及加载失败后的重试状态',async({page},info)=>{
+test('多色续作与长名称：创作入口「最近的设计」不撑破卡片，缩略图正常',async({page},info)=>{
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/login?next=/community');await fillField(page,'邮箱','e2e-user@example.com');await fillField(page,'密码','E2e-pass-123!');
-  await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/community');
+  await page.goto('/login?next=/');await fillField(page,'邮箱','e2e-user@example.com');await fillField(page,'密码','E2e-pass-123!');
+  await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/');
   // 固定真实花朵样本，不依赖跨浏览器共享库的最新作品排序。
   const samples=await Promise.all(['E2E 已公开作品','E2E 待审修改版'].map(async title=>{
     const response=await page.request.get(`/api/community/works?q=${encodeURIComponent(title)}`);
@@ -254,47 +253,54 @@ test('多色续作、长标题，以及加载失败后的重试状态',async({pa
   await page.getByRole('dialog',{name:'用这张图纸制作'}).getByRole('button',{name:'开始制作'}).click();
   await expect(page).toHaveURL(/\/app\?id=/);
   const designId=new URL(page.url()).searchParams.get('id');expect(designId).toBeTruthy();
-  await page.getByRole('button',{name:'返回预览',exact:true}).click();
   const name='窗边的小花与暖暖阳光——给自己的一份手作礼物';
-  await fillField(page,'设计名称',name);
-  await page.getByRole('button',{name:'保存',exact:true}).click();await expect(page.getByText('本地：已保存', {exact:true}).first()).toBeVisible();
-  await page.route('**/api/community/works?sort=*',route=>route.fulfill({status:503,json:{}}));
-  await page.goto('/');const recent=page.getByRole('region',{name:'继续上次制作'});
+  // 手机编辑器的重命名在「…」里。
+  await page.getByRole('button',{name:'更多',exact:true}).click();await page.getByRole('button',{name:'重命名',exact:true}).click();
+  const rename=page.getByRole('dialog',{name:'重命名'});await rename.getByRole('textbox',{name:'设计名称'}).fill(name);await rename.getByRole('button',{name:'保存',exact:true}).click();
+  await expect(page).toHaveTitle(new RegExp(name));
+  // 手机顶栏不显示保存状态：等本机记录写入新名称。
+  await expect.poll(()=>page.evaluate(async id=>{
+    const db=await new Promise<IDBDatabase>((resolve,reject)=>{const request=indexedDB.open('beadhue');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    return new Promise<string|undefined>(resolve=>{const request=db.transaction('designs','readonly').objectStore('designs').get(id);request.onsuccess=()=>resolve((request.result as {name?:string}|undefined)?.name);request.onerror=()=>resolve(undefined);});
+  },designId!)).toBe(name);
+  await page.goto('/app');await waitHydrated(page);
+  const recent=page.getByRole('region',{name:'最近的设计'});
   // 同名设计合法；必须检查本次实际创建的独立副本，不能只按名称或取首项。
   const resumed=recent.locator(`a[href^="/app?id=${designId}&"]`);await expect(resumed).toHaveCount(1);
-  await expect(resumed.getByRole('heading',{name,exact:true})).toBeVisible();
-  const preview=resumed.locator('.recent-design-preview');expect((await preview.boundingBox())!.width).toBeGreaterThanOrEqual(88);
-  await expect(recent.locator('.recent-design-preview > span')).toHaveCount(0);
-  await expect(page.locator('.home-community').getByRole('alert')).toBeVisible();
-  await page.screenshot({path:output(`recent-error-${info.project.name}.png`),fullPage:true});
+  await expect(resumed).toHaveAccessibleName(`打开「${name}」`);
+  const title=resumed.getByText(name,{exact:true});await expect(title).toBeVisible();await expect(title).toHaveCSS('text-overflow','ellipsis');
+  expect(await resumed.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
+  const preview=resumed.locator('canvas').first();await expect(preview).toBeVisible();expect((await preview.boundingBox())!.width).toBeGreaterThanOrEqual(56);
+  expect(await preview.evaluate((canvas:HTMLCanvasElement)=>canvas.width>0&&canvas.height>0)).toBe(true);
   await recent.scrollIntoViewIfNeeded();
   await page.screenshot({path:output(`recent-detail-${info.project.name}.png`),fullPage:false});
-  await page.unroute('**/api/community/works?sort=*');
-  await page.locator('.home-community').getByRole('button',{name:'重试',exact:true}).click();
-  await expect(page.locator('.home-community img.community-thumbnail').first()).toBeVisible();
 });
 
-test('审计筛选行底边对齐，日期区间独占下一整行',async({page})=>{
+test('审计工具条：搜索与「动作 / 操作人 / 时间」筛选同行底边对齐，选时间范围后按范围重新查询',async({page})=>{
   await page.setViewportSize({width:1280,height:844});
-  // 审计筛选是两段式：搜索与「查询」同一行底边对齐；日期区间独占下一整行，宽度与搜索 + 查询整行一致
   await page.goto('/login?next=/admin/audit');await fillField(page,'邮箱','e2e-admin@example.com');await fillField(page,'密码','E2e-pass-123!');
   await page.getByRole('button',{name:'登录',exact:true}).click();await expect.poll(()=>new URL(page.url()).pathname).toBe('/admin/audit');await waitHydrated(page);
-  const search=page.getByRole('textbox',{name:'搜索记录'});const query=page.getByRole('button',{name:'查询',exact:true});
-  await expectBottomsAligned([search,query]);
-  const searchBox=(await search.boundingBox())!;const queryBox=(await query.boundingBox())!;const rangeBox=(await page.getByRole('group',{name:/日期范围/}).first().boundingBox())!;
-  expect(rangeBox.y).toBeGreaterThan(searchBox.y+searchBox.height);
-  expect(Math.abs(rangeBox.x-searchBox.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(rangeBox.x+rangeBox.width-(queryBox.x+queryBox.width))).toBeLessThanOrEqual(1);
+  const search=page.getByRole('searchbox',{name:'搜索操作人、动作或编号'});
+  const filters=['动作','操作人','时间'].map(name=>page.getByRole('group',{name:'筛选'}).getByRole('button',{name,exact:true}));
+  await expectBottomsAligned([search,...filters]);
+  const queried=page.waitForRequest(request=>request.url().includes('/api/admin/audit?')&&new URL(request.url()).searchParams.has('from'));
+  await filters[2].click();
+  await page.getByRole('menu',{name:/时间/}).getByRole('menuitemradio',{name:'近 7 天'}).click();
+  await queried;
+  await expect(page.getByRole('group',{name:'筛选'}).getByRole('button',{name:/^时间/})).toContainText('1');
 });
 
-test('空白起稿有唯一主按钮：选板数只改摘要，点「创建空白图纸」才进入修补',async({page})=>{
-  await page.setViewportSize({width:1280,height:844});await page.goto('/app?new=1#blank-start');await waitHydrated(page);
-  const create=page.getByRole('button',{name:'创建空白图纸',exact:true});await expect(create).toBeVisible();
-  await expect(page.getByText(/将创建 29 × 29 格/)).toBeVisible();
-  await page.getByRole('radio',{name:'2 板',exact:true}).check();
-  await expect(page.getByText(/将创建 58 × 58 格/)).toBeVisible();
-  await expect(page.getByRole('tab',{name:'编辑'})).toHaveCount(0);
-  expect(await axe(page,'#blank-start')).toEqual([]);
+test('空白画布弹窗有唯一主按钮：选板数只改摘要，点「创建画布」才进入编辑',async({page})=>{
+  await page.setViewportSize({width:1280,height:844});await page.goto('/app?blank=1');await waitHydrated(page);
+  const dialog=page.getByRole('dialog',{name:'从空白画布开始'});await expect(dialog).toBeVisible();
+  const create=dialog.getByRole('button',{name:'创建画布',exact:true});await expect(create).toBeVisible();
+  await expect(dialog.getByText('58 × 58 格 · 共 4 块底板')).toBeVisible();
+  await dialog.getByRole('button',{name:'1 板 · 29×29',exact:true}).click();
+  await expect(dialog.getByText('29 × 29 格 · 共 1 块底板')).toBeVisible();
+  await expect(page.getByRole('group',{name:'模式'})).toHaveCount(0);
+  // 每个视区最多一个主按钮（豆蓝实底）。
+  expect(await dialog.locator('button').evaluateAll(buttons=>buttons.filter(button=>getComputedStyle(button).backgroundColor==='rgb(49, 96, 230)').length)).toBe(1);
+  expect(await axe(page,'[role="dialog"]')).toEqual([]);
   await create.click();
-  await expect(page.getByRole('tab',{name:'编辑'})).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('group',{name:'模式'}).getByRole('button',{name:'编辑'})).toHaveAttribute('aria-pressed','true');
 });

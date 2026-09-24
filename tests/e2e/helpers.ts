@@ -156,6 +156,17 @@ export async function generateFromDialog(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/app\?id=/);
 }
 
+/** 新建图纸弹窗改宽度（走「自定义」）与去背景后生成；默认是 2 板 · 58 格、去背景开（D1），颗数随图而变。 */
+export async function generateWith(page: Page, options: { width: number; removeBackground: boolean }): Promise<void> {
+  const dialog = page.getByRole('dialog', { name: '新建图纸' });
+  await dialog.getByRole('button', { name: '自定义', exact: true }).click();
+  const width = dialog.getByRole('spinbutton', { name: '自定义宽度（格）' });
+  await width.fill(String(options.width));
+  await width.press('Enter');
+  await dialog.getByRole('switch', { name: '去背景' }).setChecked(options.removeBackground);
+  await generateFromDialog(page);
+}
+
 /** 选图 → 新建图纸弹窗按默认设置生成。 */
 export async function uploadAndGenerate(page: Page, filePath: string): Promise<void> {
   await uploadFile(page, filePath);

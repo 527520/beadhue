@@ -46,21 +46,21 @@ test('损坏的批次历史只显示读取失败，不影响新建批次与本�
   await expect(page.locator('[data-batch-card]')).toHaveCount(1);
 });
 
-test('首页精选与最新同时可见，五宽度无横向溢出且可访问', async ({ page }, info) => {
+test('发现页：「精选」类目与「最新发布」排序都能直达，五宽度无横向溢出且可访问', async ({ page }, info) => {
   test.skip(info.project.name !== 'chromium');
-  const work = (id: string, featured: boolean) => ({ id, revisionId: id.replace(/1$/u, '9').replace(/2$/u, '8'), title: featured ? '人工选中的旧作品' : '今天公开的新作品', featured, width: 2, height: 2, author: { displayName: '本地视觉夹具' }, preview: { version: 1, width: 2, height: 2, originalWidth: 2, originalHeight: 2, cells: ['#FAF4C8', '#F4C6D7', '#F4C6D7', '#FAF4C8'], colorBand: ['#FAF4C8', '#F4C6D7'] } });
-  await page.route('**/api/community/works?sort=*', async (route) => {
-    const featured = route.request().url().endsWith('featured');
-    await route.fulfill({ json: { items: [work(featured ? '00000000-0000-4000-8000-000000000001' : '00000000-0000-4000-8000-000000000002', featured)] } });
-  });
-  // 夹具修订不存在于数据库；用一张 1×1 PNG 代替缩略图，避免断图影响无障碍与截图。
-  await page.route('**/api/community/revisions/*/thumbnail*', async (route) => {
-    await route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8AAAgAB/wdYqHkAAAAASUVORK5CYII=', 'base64') });
-  });
+  // 发现页首屏由服务端直接查库渲染，用种子里的公开作品（标题会被前面的审核用例改掉，只认「作品卡」）。
   await page.goto('/');
   await page.getByRole('button', { name: '不同意', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '本期精选作品' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '最近公开作品' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^查看「/ }).first()).toBeVisible();
+  await page.getByRole('navigation', { name: '类目' }).getByRole('link', { name: '精选' }).click();
+  await expect(page).toHaveURL(/[?&]cat=/);
+  await expect(page.getByRole('heading', { level: 1, name: '精选' })).toBeVisible();
+  await page.goto('/');
+  await page.getByRole('button', { name: '排序：推荐' }).click();
+  await page.getByRole('navigation', { name: '排序' }).getByRole('link', { name: '最新发布' }).click();
+  await expect(page).toHaveURL(/[?&]sort=new/);
+  await expect(page.getByRole('button', { name: '排序：最新发布' })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^查看「/ }).first()).toBeVisible();
   for (const width of [350, 390, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

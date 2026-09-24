@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { generateFromDialog, waitHydrated, beadsText, openRecrop } from './helpers';
+import { generateWith, waitHydrated, beadsText, openRecrop } from './helpers';
 
 async function orientation6Jpeg(page: Page): Promise<Buffer> {
   const bytes = await page.evaluate(async () => {
@@ -80,7 +80,7 @@ test('EXIF 旋转 JPEG 通过真实 Workbench Worker 以同一 oriented 坐标�
   const stageColors = await sampleVerticalColors(newDrawing.getByRole('img', { name: '所选图片' }));
   expectBlue(stageColors.top);
   expectYellow(stageColors.bottom);
-  await generateFromDialog(page);
+  await generateWith(page, { width: 100, removeBackground: false });
   await expect(page.getByText(beadsText(15000)).first()).toBeAttached({ timeout: 30_000 });
   await openRecrop(page);
   await expect(page.getByRole('heading', { name: '裁剪图片' })).toBeVisible();

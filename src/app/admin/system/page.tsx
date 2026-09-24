@@ -42,6 +42,7 @@ export default async function AdminSystemPage() {
   const migrationTag = info.databaseMigration.tag;
   const migrationNumber = migrationTag?.match(/^\d+/u)?.[0] ?? (info.databaseMigration.id === null ? t.empty : String(info.databaseMigration.id));
   const pendingMigration = migrationTag && info.migrationJournalLatest && migrationTag !== info.migrationJournalLatest ? s.migrationPending(info.migrationJournalLatest) : null;
+  const recordedMigration = info.databaseMigration.status !== 'recorded' ? t.notRecorded : migrationTag ?? (info.databaseMigration.id === null ? t.notRecorded : String(info.databaseMigration.id));
   const date = (value: string | null) => (value ? fmtDate(value) : t.notRecorded);
   return (
     <>
@@ -89,7 +90,7 @@ export default async function AdminSystemPage() {
                 </tbody>
               </table>
             </div>
-            <Dl items={[[t.journalTime, date(info.databaseMigration.journalTimestamp)], [t.appliedTime, date(info.databaseMigration.appliedAt)], [t.migrationRecorded, info.databaseMigration.status === 'recorded' ? t.migrationRecorded : t.notRecorded, true]]} />
+            <Dl items={[[t.journalTime, date(info.databaseMigration.journalTimestamp)], [t.appliedTime, date(info.databaseMigration.appliedAt)], [t.migrationRecorded, recordedMigration, true]]} />
             <p className="text-caption font-normal text-ink-3">{t.migrationTimeHelp}</p>
             <Collapsible summary={`${s.history} · ${t.historyLimit}`}>
               {info.maintenance.length === 0 ? <p className="text-body-sm text-ink-3">{t.notRun}</p> : (

@@ -301,6 +301,39 @@ describe('我的 · 设计', () => {
     expect(await storage.getAll()).toEqual([]);
   });
 
+  it('列表加载后自动保存才落地：删除按本机已同步的最新修订提交', async () => {
+    const user = userEvent.setup();
+    const project = makeProject('刚改过名', iso(-1000));
+    const api = new FakeApi([{ id: 'late-save', name: project.name, project, updatedAt: project.updatedAt, revision: 2 }]);
+    api.meState = verified;
+    const storage = new FakeStorage([localRecord('late-save', project, 2, 'synced')]);
+    renderPanel(storage, api);
+    await user.click(await more('刚改过名'));
+    storage.records.set('late-save', { ...storage.records.get('late-save')!, revision: 3 });
+    api.cloud.set('late-save', { ...api.cloud.get('late-save')!, revision: 3 });
+    await user.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '删除' }));
+    await waitFor(() => expect(api.deleted).toContain('late-save'));
+    expect(await storage.getAll()).toEqual([]);
+  });
+
+  it('删除时云端已被其他设备改过：说明原因并刷新列表，本机与云端都不动', async () => {
+    const user = userEvent.setup();
+    const project = makeProject('别处改过', iso(-1000));
+    const api = new FakeApi([{ id: 'elsewhere', name: project.name, project, updatedAt: project.updatedAt, revision: 2 }]);
+    api.meState = verified;
+    const storage = new FakeStorage([localRecord('elsewhere', project, 2, 'synced')]);
+    renderPanel(storage, api);
+    await user.click(await more('别处改过'));
+    api.cloud.set('elsewhere', { ...api.cloud.get('elsewhere')!, revision: 3 });
+    await user.click(await screen.findByRole('menuitem', { name: '删除' }));
+    const dialog = await screen.findByRole('dialog', { name: '删除这个设计？' });
+    await user.click(within(dialog).getByRole('button', { name: '删除' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('这个设计刚在其他设备上改过');
+    expect(api.deleted).toEqual([]);
+    expect(storage.records.has('elsewhere')).toBe(true);
+  });
+
   it('列表视图：表格列与点行打开', async () => {
     render(<DesignsPanel initialQuery={{ ...DEFAULT_DESIGNS_QUERY, view: 'list' }} storageOverride={new FakeStorage([localRecord('t1', makeProject('表格设计', iso(-1000)))])} apiOverride={new FakeApi()} loadPublishedIds={noPublished} />);
     const cell = await screen.findByText('表格设计');

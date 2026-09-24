@@ -84,6 +84,8 @@ export function SearchBox({ query = '', className }: { query?: string; className
     <form
       ref={formRef}
       action="/"
+      role="search"
+      aria-label={zhCN.shell.search.label}
       onSubmit={submit}
       className={cn('relative', className)}
       onBlur={(event) => {

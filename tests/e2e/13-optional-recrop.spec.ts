@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { resolve } from 'node:path';
-import { BASE_URL, generateFromDialog, openPanelTab, openRecrop, recropButton, typeSpin, uploadFile, waitSaved } from './helpers';
+import { BASE_URL, generateWith, openPanelTab, openRecrop, recropButton, typeSpin, uploadFile, waitSaved } from './helpers';
 
 const PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-wide-320x200.png');
 const cropDialog = (page: Page) => page.getByRole('dialog', { name: '裁剪图片', exact: true });
@@ -25,7 +25,7 @@ async function clearOriginalCache(page: Page) {
 async function start(page: Page) {
   await page.goto('/app?new=1');
   await uploadFile(page, PHOTO);
-  await generateFromDialog(page);
+  await generateWith(page, { width: 100, removeBackground: false });
   await expect(beads(page, 6300)).toBeAttached();
   await expect(cropDialog(page)).toHaveCount(0);
 }

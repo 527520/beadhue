@@ -111,19 +111,25 @@ test('feedback: search has one focus boundary and sort uses the shared picker', 
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
     await waitHydrated(page);
-    const search = page.locator('.search input');
+    // 手机顶栏只有搜索图标，点开是整屏搜索页。
+    if (width < 768) await page.getByRole('banner').getByRole('button', { name: '搜索', exact: true }).click();
+    const field = page.locator('[data-slot="search-field"]').filter({ visible: true }).first();
+    const search = field.getByRole('searchbox');
     await search.focus();
+    // 焦点只画在外框上：输入框自己不再叠一层描边或阴影。
     await expect(search).toHaveCSS('outline-style', 'none');
     await expect(search).toHaveCSS('box-shadow', 'none');
-    await expect(page.locator('.search')).toHaveCSS('border-top-color', 'rgb(41, 91, 203)');
+    await expect(field).not.toHaveCSS('box-shadow', 'none');
     await page.screenshot({ animations: 'disabled', path: info.outputPath(`search-focus-${width}.png`) });
-    await page.locator('.discovery-sort button').click();
-    await expect(page.getByRole('listbox')).toBeVisible();
+    if (width < 768) await page.getByRole('button', { name: '返回', exact: true }).click();
+    await page.getByRole('button', { name: /^排序：/ }).click();
+    const sort = page.getByRole('navigation', { name: '排序' });
+    await expect(sort).toBeVisible();
     await page.screenshot({ animations: 'disabled', path: info.outputPath(`sort-open-${width}.png`) });
-    await page.getByRole('option', { name: '最近上新', exact: true }).click();
-    await expect(page).toHaveURL(/sort=latest/);
-    await page.getByRole('button', { name: '更多筛选', exact: true }).click();
-    await expect(page.locator('.discovery-filter-grid')).toBeVisible();
+    await sort.getByRole('link', { name: '最新发布', exact: true }).click();
+    await expect(page).toHaveURL(/sort=new/);
+    await page.getByRole('button', { name: '筛选', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: '筛选' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ animations: 'disabled', path: info.outputPath(`filters-${width}.png`), fullPage: true });
   }

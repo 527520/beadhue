@@ -8,6 +8,8 @@ import {
   waitForMailLink,
   waitHydrated,
   uploadAndGenerate,
+  uploadFile,
+  generateWith,
 } from './helpers';
 
 const widths = [350, 390, 768, 944, 1180, 1280, 1440] as const;
@@ -152,7 +154,8 @@ test('手机编辑器：底部工具栏、颜色 / 信息 / 导出底部面板',
   test.skip(testInfo.project.name !== 'chromium');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/app');
-  await uploadAndGenerate(page, PHOTO);
+  await uploadFile(page, PHOTO);
+  await generateWith(page, { width: 100, removeBackground: false });
   await expect(page.getByRole('status').filter({ hasText: '图纸已生成' })).toBeAttached({ timeout: 20_000 });
   const tools = page.getByRole('toolbar', { name: '工具' });
   for (const name of ['手形', '画笔', '橡皮', '油漆桶', '吸管']) await expect(tools.getByRole('button', { name, exact: true })).toBeVisible();

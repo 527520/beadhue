@@ -5,7 +5,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { resolve } from 'node:path';
-import { generateFromDialog, uploadFile, beadsText, chooseEditorMenu, openPanelTab, recropButton } from './helpers';
+import { generateFromDialog, generateWith, uploadFile, beadsText, chooseEditorMenu, openPanelTab, recropButton } from './helpers';
 
 const fixture = (name: string) => resolve(process.cwd(), 'tests/fixtures', name);
 
@@ -119,7 +119,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
     })
     : 0;
   await expect(page.getByRole('dialog', { name: '新建图纸' })).toBeVisible({ timeout: 30_000 });
-  await generateFromDialog(page);
+  await generateWith(page, { width: 100, removeBackground: false });
   await expect(page.getByText(beadsText(10000)).first()).toBeAttached({ timeout: 30_000 });
   await openPanelTab(page, '调整');
   await recropButton(page).click();
@@ -144,7 +144,7 @@ test('最大合法 8000×8000 与极端 100×8000 输入使用有界预览并可
   await chooseEditorMenu(page, '更多', '新建图纸');
   await mark('tall-upload-start');
   await uploadFile(page, fixture('max-100x8000.png'));
-  await generateFromDialog(page);
+  await generateWith(page, { width: 100, removeBackground: false });
   await expect(page.getByText(beadsText(20000)).first()).toBeAttached({ timeout: 30_000 });
   await openPanelTab(page, '调整');
   await recropButton(page).click();

@@ -29,8 +29,12 @@ async function smallDefault(page: Page) {
   await expect(params).toContainText('20 格宽');
 }
 const status = (page: Page, text: string | RegExp) => page.getByRole('status').filter({ hasText: text });
+/** 手机卡片只写「创建人 · 时间」不露编号：按编号前缀搜索，等列表只剩这一批再打开（三个浏览器项目的批次同名）。 */
 async function restore(page: Page, batchId: string) {
-  await page.locator('tbody tr, [data-row-card]').filter({ visible: true, hasText: batchId.slice(0, 8) }).first().click();
+  await page.getByRole('searchbox', { name: '搜索批次名称或编号' }).fill(batchId.slice(0, 8));
+  const rows = page.locator('tbody tr, [data-row-card]').filter({ visible: true });
+  await expect(rows).toHaveCount(1);
+  await rows.first().click();
   await page.getByRole('button', { name: '继续处理' }).click();
 }
 

@@ -286,7 +286,8 @@ test('照片 → 生成 → 编辑 → 导出三格式 → 本地保存与恢复
   await expect(page.getByLabel('设计名称').first()).toBeVisible();
   await expect(page.getByText(beadsText(400)).first()).toBeAttached({ timeout: 20_000 });
   await openPanelTab(page, '颜色');
-  await expect(page.getByRole('button', { name: /^色板：/ })).toHaveAccessibleName(/^色板：优肯 Artkal C · 197 色/);
+  // 选择框写可生成颜色数（Artkal C 收录 197 色，其中 188 色可生成）。
+  await expect(page.getByRole('button', { name: /^色板：/ })).toHaveAccessibleName('色板：优肯 Artkal C · 188 色');
   await openPanelTab(page, '调整');
   await expect(page.getByRole('button', { name: /^制作规格：/ })).toHaveAccessibleName('制作规格：2.6mm · 52×52');
   const restoredWidth = page.getByRole('spinbutton', { name: WIDTH });

@@ -112,6 +112,8 @@ function TopSearch() {
   return (
     <form
       ref={wrap}
+      role="search"
+      aria-label={t.search}
       className="relative max-md:hidden w-80 min-w-0 shrink"
       onSubmit={(event) => { event.preventDefault(); if (value) { setOpen(false); router.push(`/admin/works?q=${encodeURIComponent(value)}`); } }}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false); }}
@@ -149,7 +151,7 @@ function MobileSearch() {
         <DialogContent>
           <DialogHeader><DialogTitle>{t.searchTitle}</DialogTitle></DialogHeader>
           <DialogBody>
-            <form onSubmit={(event) => { event.preventDefault(); if (value) { setOpen(false); router.push(`/admin/works?q=${encodeURIComponent(value)}`); } }}>
+            <form role="search" aria-label={t.search} onSubmit={(event) => { event.preventDefault(); if (value) { setOpen(false); router.push(`/admin/works?q=${encodeURIComponent(value)}`); } }}>
               <SearchField value={q} onValueChange={setQ} placeholder={t.search} aria-label={t.search} autoComplete="off" autoFocus wrapperClassName="mb-2" />
             </form>
             {value ? <ScopeLinks q={value} onPick={() => setOpen(false)} /> : null}

@@ -28,7 +28,6 @@ export function SearchField({ value, defaultValue = '', onValueChange, onClear, 
   };
   return (
     <div
-      role="search"
       data-slot="search-field"
       className={cn(
         'relative flex items-center gap-2.5 rounded-full bg-bg-muted pr-2 pl-4.5 text-ink-3',

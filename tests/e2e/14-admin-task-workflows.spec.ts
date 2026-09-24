@@ -117,12 +117,14 @@ test('人员二次确认、暂停撤销会话、恢复与角色调整可完成',
     const entry = row(page, `E2E 治理目标 ${info.project.name}`);
     await entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}`, exact: true }).click();
     const drawer = page.getByRole('dialog', { name: '账号详情' });
-    const userId = await drawer.getByText(/^[0-9a-f]{8}-[0-9a-f-]{27}$/u).innerText();
     const act = async (button: string, dialogName: RegExp, reasonLabel: string, confirm: string) => {
       await drawer.getByRole('button', { name: button }).click();
       const dialog = page.getByRole('dialog', { name: dialogName });
       await dialog.getByLabel(reasonLabel).fill('本地验证账号治理流程');
       await expect(dialog.getByRole('button', { name: confirm, exact: true })).toBeDisabled();
+      // 抽屉里的编号只显示前 8 位；确认弹窗的提示给出完整编号。
+      const userId = (await dialog.getByText(/^账号编号：/u).innerText()).replace(/^账号编号：/u, '').trim();
+      expect(userId).toMatch(/^[0-9a-f]{8}-[0-9a-f-]{27}$/u);
       await dialog.getByLabel('再次输入该账号编号以确认').fill(userId);
       await dialog.getByRole('button', { name: confirm, exact: true }).click();
       await expect(dialog).toHaveCount(0);

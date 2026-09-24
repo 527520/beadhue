@@ -112,7 +112,7 @@ function MobileSearchTop({ onClose, onDone }: { onClose: () => void; onDone: () 
       <IconButton label={zhCN.shell.back} tooltip={false} onClick={onClose}>
         <ArrowLeft aria-hidden="true" strokeWidth={1.75} />
       </IconButton>
-      <form action="/" onSubmit={submit} className="mr-1 min-w-0 flex-1" onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }}>
+      <form action="/" role="search" aria-label={zhCN.shell.search.label} onSubmit={submit} className="mr-1 min-w-0 flex-1" onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }}>
         <SearchField
           autoFocus
           name="q"

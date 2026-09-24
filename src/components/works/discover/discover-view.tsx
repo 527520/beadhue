@@ -51,7 +51,7 @@ function SearchResultTop({ q }: { q: string }) {
   return (
     <>
       <MobileTopBack href="/" />
-      <form action="/" role="search" onSubmit={submit} className="mr-1 min-w-0 flex-1">
+      <form action="/" role="search" aria-label={zhCN.shell.search.label} onSubmit={submit} className="mr-1 min-w-0 flex-1">
         <SearchField name="q" value={value} onValueChange={setValue} placeholder={zhCN.shell.search.label} aria-label={zhCN.shell.search.label} autoComplete="off" enterKeyHint="search" wrapperClassName="h-10 pl-3.5" />
       </form>
     </>

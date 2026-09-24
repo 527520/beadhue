@@ -174,7 +174,10 @@ test('moderator 只能进入治理模块，管理员模块不出现在导航', a
     await expect(page.getByText('审核队列已清空')).toBeVisible();
   }
   await page.goto('/admin/users');
-  await expect(page.getByRole('heading', { name: '这里需要更高权限' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '这个模块只对管理员开放', level: 1 })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '后台导航' })).toBeVisible();
+  await page.getByRole('link', { name: '返回后台总览' }).click();
+  await expect(page).toHaveURL(/\/admin$/);
 });
 
 test('admin 可读取人员、审计和系统证据；规则页已退役', async ({ page }) => {

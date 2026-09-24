@@ -1879,6 +1879,7 @@ export const zhCN = {
       synced: '已同步到云端',
       deleteTitle: '删除这个设计？',
       deleteText: (name: string, note: string) => `「${name}」会被永久删除，无法恢复。${note}`,
+      deleteConflict: '这个设计刚在其他设备上改过，列表已刷新。确认是最新内容后再删除。',
       deleteNotePublished: '已公开的作品不受影响，可以在「公开作品」里单独撤回。',
       deleteNoteLocal: '它只保存在这台设备上，删除后无法找回。',
       deleteNoteCloud: '云端副本会一起删除，它的原图也会随之释放。',
