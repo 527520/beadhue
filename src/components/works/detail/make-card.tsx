@@ -44,7 +44,7 @@ function Bead({ hex }: { hex: string }) {
 
 const rowClass = 'grid min-h-9 grid-cols-[20px_36px_minmax(0,1fr)_auto] items-center gap-x-3 text-body-sm text-ink-2';
 
-function ColorList({ usage, band, paletteLabel, onLogin }: { usage: ColorUsageItem[] | null; band: string[]; paletteLabel: string; onLogin: () => void }) {
+export function ColorList({ usage, band, paletteLabel, onLogin }: { usage: ColorUsageItem[] | null; band: string[]; paletteLabel: string; onLogin: () => void }) {
   const [open, setOpen] = useState(false);
   const head = (
     <div className="mb-2 flex min-w-0 items-baseline gap-3">
@@ -107,7 +107,7 @@ function ColorList({ usage, band, paletteLabel, onLogin }: { usage: ColorUsageIt
   );
 }
 
-function Stat({ label, value, unit }: { label: string; value: ReactNode; unit: string }) {
+export function Stat({ label, value, unit }: { label: string; value: ReactNode; unit: string }) {
   return (
     <div className="grid min-w-0 justify-items-center px-2 text-center not-first:border-l not-first:border-line">
       <dt className="order-1 text-caption font-normal text-ink-3">{label}</dt>

@@ -2248,6 +2248,32 @@ export const zhCN = {
     removeChip: (label: string) => `移除：${label}`,
     toastRegion: '通知',
   },
+  /** R15 票 12：只读分享页、静态文章页（帮助 / 关于 / 隐私 / 社区规范 / 版权）、404 与错误页。 */
+  pages: {
+    toc: '本页目录',
+    help: {
+      stepsTitle: '三步上手',
+      stepsLead: '从一张照片到能照着拼的图纸，只需要三步。',
+      stepArt: ['上传的照片变成像素小图', '调色后的图纸与色板', '拼好熨平的成品'],
+      guidesTitle: '使用指南',
+      start: '开始制作',
+    },
+    share: {
+      badge: '只读分享',
+      sharedAt: (date: string) => `分享于 ${date}`,
+      card: '图纸信息',
+      meta: (width: number, height: number, colors: number, beads: number) => `${width}×${height} 格 · ${colors} 色 · ${beads} 颗`,
+      note: '链接里是分享那一刻的图纸快照，作者之后的修改不会出现在这里；只读分享不包含原图或作者的私人设计数据。',
+      makeOwn: '做我自己的图纸',
+      discover: '发现更多图纸',
+      goneTitle: '这个分享链接已失效',
+      goneBody: '链接可能已被作者停止分享或重新生成，也可能复制时不完整。可以请对方重新发送，或者先看看豆社里的图纸。',
+    },
+    errors: {
+      goCreate: '去创作',
+      digest: (digest: string) => `错误编号 ${digest}`,
+    },
+  },
 } as const;
 
 export type Messages = typeof zhCN;

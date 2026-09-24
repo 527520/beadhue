@@ -34,6 +34,15 @@
 @source "./page.tsx";
 @source "../lib/render/viewer.ts";
 @source "../lib/render/poster.ts";
+@source "../components/pages";
+@source "./s";
+@source "./help";
+@source "./about";
+@source "./privacy";
+@source "./community/rules";
+@source "./community/copyright";
+@source "./not-found.tsx";
+@source "./error.tsx";
 
 @theme {
   --color-*: initial;
@@ -140,6 +149,7 @@
   --container-measure: 360px;
   --container-prose: 640px;
   --container-rule: 760px;
+  --container-article: 720px;
   --container-card-sm: 200px;
   --container-card-md: 270px;
 

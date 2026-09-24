@@ -1,19 +1,18 @@
-import Link from 'next/link';
 import { zhCN } from '@/messages/zh-CN';
-import StateShell from '@/components/system/StateShell';
-import LegacyScope from '@/components/layout/LegacyScope';
+import { SiteShell } from '@/components/shell/site-shell';
+import { StateLink, StatePage } from '@/components/pages/state-page';
 
-/** 404 页面：未匹配路由时的友好提示。 */
+/** 404：未匹配的路由与各页 notFound() 的兜底（有专属 not-found 的段除外）。 */
 export default function NotFound() {
   const t = zhCN.errorPages;
   return (
-    <LegacyScope><StateShell mark="404" eyebrow={t.notFoundEyebrow} title={t.notFoundTitle} body={t.notFoundBody}>
-        <Link href="/" className="btn-primary">
-          {t.backHome}
-        </Link>
-        <Link href="/app" className="btn-outline">
-          {t.goWorkbench}
-        </Link>
-    </StateShell></LegacyScope>
+    <SiteShell topbarCta="secondary">
+      <StatePage
+        kind="lost"
+        title={t.notFoundTitle}
+        description={t.notFoundBody}
+        actions={<><StateLink href="/" primary>{t.backHome}</StateLink><StateLink href="/app">{zhCN.pages.errors.goCreate}</StateLink></>}
+      />
+    </SiteShell>
   );
 }
