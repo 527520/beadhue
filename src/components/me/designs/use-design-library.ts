@@ -145,6 +145,7 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
   const [me, setMe] = useState<MeInfo | 'loading'>('loading');
   const [designs, setDesigns] = useState<LibraryDesign[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [now, setNow] = useState(0);
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [cloudFailed, setCloudFailed] = useState(false);
@@ -205,6 +206,7 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
       if (cancelled.value) return;
       setConflicts(conflictIds);
       setDesigns(buildLibrary(refreshedLocal, projects, cloud, meInfo, conflictIds, progress, published));
+      setNow(Date.now());
       setLoaded(true);
     } catch {
       if (!cancelled.value) setError(t.loadFailed);
@@ -366,6 +368,7 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
     verified,
     designs,
     loaded,
+    now,
     conflicts,
     error,
     cloudFailed,
