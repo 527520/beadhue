@@ -33,6 +33,8 @@ const auditActions = zhCN.communityAdmin.audit.actions;
 const roles = zhCN.communityAdmin.states.role;
 const icon = (Icon: typeof Star) => <Icon aria-hidden="true" strokeWidth={1.75} />;
 const ENDPOINT = '/api/admin/community/works';
+const csv = zhCN.adminUi.csv;
+const x = csv.works;
 
 type Work = ManagedCommunityWork;
 type Action = 'takedown' | 'restore' | 'feature' | 'unfeature' | 'lock' | 'unlock';
@@ -253,8 +255,8 @@ export function WorksConsole({ initialQ, initialOpenId }: { initialQ?: string; i
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<Work>(ENDPOINT, table.query, [
-          ['编号', (w) => w.id], ['标题', titleOf], ['作者', (w) => w.displayName], ['状态', (w) => t.status[w.lifecycleStatus]], ['公开', (w) => (w.isPublic ? '是' : '否')],
-          ['精选', (w) => (w.featured ? '是' : '否')], ['标签', (w) => w.tags.join('、')], ['点赞', (w) => w.likeCount], ['更新时间', (w) => fmtDate(w.updatedAt)],
+          [x.id, (w) => w.id], [x.title, titleOf], [x.author, (w) => w.displayName], [x.status, (w) => t.status[w.lifecycleStatus]], [x.public, (w) => (w.isPublic ? csv.yes : csv.no)],
+          [x.featured, (w) => (w.featured ? csv.yes : csv.no)], [x.tags, (w) => w.tags.join('、')], [x.likes, (w) => w.likeCount], [x.updated, (w) => fmtDate(w.updatedAt)],
         ], t.exportFile)}
         selectable selected={selected} onSelectedChange={setSelected}
         batchActions={<>

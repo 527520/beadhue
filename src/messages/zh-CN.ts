@@ -1759,8 +1759,17 @@ export const zhCN = {
       reason: '理由', reasonMin: (min: number) => `请至少写 ${min} 个字，说明具体原因`, quick: '常用理由', cancel: '取消', confirm: '确认',
       uncertain: '上次请求的结果尚未确认。输入已保留，请重试同一请求，不要重复发起。', retry: '重试确认',
     },
+    /** 导出 CSV 的表头（与表格列同名；布尔值用「是 / 否」）。 */
+    csv: {
+      yes: '是', no: '否', reportsFile: '豆色绘-举报.csv',
+      works: { id: '编号', title: '标题', author: '作者', status: '状态', public: '公开', featured: '精选', tags: '标签', likes: '点赞', updated: '更新时间' },
+      reports: { id: '编号', target: '对象', targetId: '对象编号', reason: '原因', details: '说明', status: '状态', time: '时间' },
+      users: { id: '编号', name: '用户名', email: '邮箱（已脱敏）', role: '角色', status: '状态', joined: '注册时间' },
+      audit: { time: '时间', role: '操作人角色', actor: '操作人账号编号', action: '动作', target: '对象', reason: '说明', request: '请求编号' },
+      logs: { time: '时间', level: '级别', source: '来源', event: '事件', message: '消息', request: '请求编号' },
+    },
     common: {
-      close: '关闭', view: '查看详情', openPublic: '在豆社查看', copyId: '复制编号', copied: (value: string) => `已复制 ${value}`, none: '—', you: '（你）',
+      today: '今天', close: '关闭', view: '查看详情', openPublic: '在豆社查看', copyId: '复制编号', copied: (value: string) => `已复制 ${value}`, none: '—', you: '（你）',
       justNow: '刚刚', minutesAgo: (n: number) => `${n} 分钟前`, hoursAgo: (n: number) => `${n} 小时前`, yesterday: (time: string) => `昨天 ${time}`,
       readOnlyNote: '审计记录只读，任何人都不能修改或删除。',
     },

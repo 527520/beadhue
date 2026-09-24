@@ -22,6 +22,7 @@ const t = zhCN.adminUi.users;
 const states = zhCN.communityAdmin.states;
 const icon = (Icon: typeof Eye) => <Icon aria-hidden="true" strokeWidth={1.75} />;
 const ENDPOINT = '/api/admin/users';
+const x = zhCN.adminUi.csv.users;
 
 interface UserRow { userId: string; maskedEmail: string | null; username: string | null; role: UserRole; accountStatus: AccountStatus; governanceVersion: number; emailVerified: boolean; createdAt: string }
 type Change = { kind: 'role'; role: UserRole } | { kind: 'suspend' } | { kind: 'resume' };
@@ -89,7 +90,7 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<UserRow>(ENDPOINT, table.query, [
-          ['编号', (user) => user.userId], ['用户名', nameOf], ['邮箱（已脱敏）', (user) => user.maskedEmail ?? ''], ['角色', (user) => states.role[user.role]], ['状态', (user) => states.account[user.accountStatus]], ['注册时间', (user) => fmtDay(user.createdAt)],
+          [x.id, (user) => user.userId], [x.name, nameOf], [x.email, (user) => user.maskedEmail ?? ''], [x.role, (user) => states.role[user.role]], [x.status, (user) => states.account[user.accountStatus]], [x.joined, (user) => fmtDay(user.createdAt)],
         ], t.exportFile)}
         menu={menu} onOpen={view} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}

@@ -102,7 +102,7 @@ export function QuotaBar({ calls, budget }: { calls: number; budget: number }) {
 function trendDays(items: TrendDay[]) {
   return items.map((item, index) => {
     const [, month, day] = item.date.split('-').map(Number);
-    return { short: index === items.length - 1 ? '今天' : `${month}/${day}`, long: `${month}月${day}日` };
+    return { short: index === items.length - 1 ? zhCN.adminUi.common.today : `${month}/${day}`, long: `${month}月${day}日` };
   });
 }
 

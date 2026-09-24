@@ -19,6 +19,8 @@ import { exportCsv, useAdminTable, type FilterState } from './use-admin-table';
 
 const icon = (Icon: typeof Copy) => <Icon aria-hidden="true" strokeWidth={1.75} />;
 const roles = zhCN.communityAdmin.states.role;
+const ac = zhCN.adminUi.csv.audit;
+const lc = zhCN.adminUi.csv.logs;
 
 // ================= 审计记录 =================
 const a = zhCN.adminUi.audit;
@@ -78,8 +80,8 @@ export function AuditConsole() {
         filters={[{ key: 'range', label: a.filters.range, options: Object.entries(a.ranges).map(([value, label]) => ({ value, label })) }]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<AdminAuditEntry>('/api/admin/audit', table.query, [
-          ['时间', (item) => fmtDate(item.createdAt)], ['操作人角色', (item) => roles[item.actorRole]], ['操作人账号编号', (item) => item.actorUserId ?? ''], ['动作', (item) => actionLabel(item.action)],
-          ['对象', (item) => `${targetLabel(item.targetType)} ${item.targetId}`], ['说明', (item) => item.reason], ['请求编号', (item) => item.requestId],
+          [ac.time, (item) => fmtDate(item.createdAt)], [ac.role, (item) => roles[item.actorRole]], [ac.actor, (item) => item.actorUserId ?? ''], [ac.action, (item) => actionLabel(item.action)],
+          [ac.target, (item) => `${targetLabel(item.targetType)} ${item.targetId}`], [ac.reason, (item) => item.reason], [ac.request, (item) => item.requestId],
         ], a.exportFile)}
         onOpen={(item) => setOpenId(item.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
@@ -159,7 +161,7 @@ function EventsView() {
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<AdminSystemLogEntry>('/api/admin/logs', table.query, [
-          ['时间', (row) => fmtDate(row.createdAt)], ['级别', (row) => levelLabel(row.level)], ['来源', (row) => sourceLabel(row.source)], ['事件', (row) => row.event], ['消息', (row) => row.message ?? ''], ['请求编号', (row) => row.requestId ?? ''],
+          [lc.time, (row) => fmtDate(row.createdAt)], [lc.level, (row) => levelLabel(row.level)], [lc.source, (row) => sourceLabel(row.source)], [lc.event, (row) => row.event], [lc.message, (row) => row.message ?? ''], [lc.request, (row) => row.requestId ?? ''],
         ], l.exportFile)}
         onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}

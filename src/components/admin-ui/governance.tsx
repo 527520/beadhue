@@ -153,6 +153,7 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
 
 // ================= 举报案件 =================
 const r = zhCN.adminUi.reports;
+const x = zhCN.adminUi.csv.reports;
 interface ReportRow { id: string; targetType: 'work' | 'comment'; targetId: string; targetVersion: number; status: 'open' | 'accepted'; version: number; category: string; details: string | null; createdAt: string }
 type Decision = 'accepted' | 'resolved' | 'dismissed' | 'hide';
 
@@ -239,8 +240,8 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
         ]}
         filterValues={table.filters} onFilterChange={table.setFilter}
         onExport={() => exportCsv<ReportRow>('/api/admin/community/reports', table.query, [
-          ['编号', (row) => row.id], ['对象', reportTitle], ['对象编号', (row) => row.targetId], ['原因', (row) => riskLabel(row.category)], ['说明', (row) => row.details ?? ''], ['状态', (row) => states.report[row.status]], ['时间', (row) => fmtDate(row.createdAt)],
-        ], '豆色绘-举报.csv')}
+          [x.id, (row) => row.id], [x.target, reportTitle], [x.targetId, (row) => row.targetId], [x.reason, (row) => riskLabel(row.category)], [x.details, (row) => row.details ?? ''], [x.status, (row) => states.report[row.status]], [x.time, (row) => fmtDate(row.createdAt)],
+        ], zhCN.adminUi.csv.reportsFile)}
         menu={menu} onOpen={(row) => setOpenId(row.id)} openId={openId}
         page={table.page} pageCount={table.totalPages} total={table.total} size={table.size} onPage={table.setPage} onSize={table.setSize}
         filtered={table.filtered} onReset={table.reset} emptyTitle={r.emptyTitle} emptyText={r.emptyText}
