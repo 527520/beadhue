@@ -75,3 +75,14 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 ## 提交
 
 每张票完成后本地提交一次（可分几个提交），信息用中文，如 `feat(ui): R15-01 设计令牌与组件底座`。只 `git add` 与本票相关的文件；**不要**提交 `.scratch/site-ux/*.png`、`.scratch/ui-polish-2026/evidence/`（用户已有改动）和 `.scratch/ui-rebuild/evidence/` 下的截图（体积大）。不 push，不建 PR。
+
+## 后续票须知（票 07 完成后补充）
+
+- **/app 路由**：无 `id` 是创作入口，不恢复任何设计（`?new=1` 同义）；新设计（生成首版、空白画布、导入）进入编辑器时工作台用 `showDesignQuery(id)` 把地址换成 `/app?id=`，刷新回到同一份。编辑器里「重新上传 / 新建」回入口用 `clearDesignQuery()`。单测恢复设计要先 `history.replaceState(null, '', '/app?id=…')`。
+- **首版生成**在「新建图纸」弹窗里完成：`firstDrawingRef` 为真时 `applyImageCrop` 不切 `step`，`regenerate` 的 onSuccess 才进入 `workspace`；取消生成留在弹窗。票 08 重做编辑器时不要在首版提交前渲染编辑器。
+- **入口 / 编辑器分界**：`Workbench` 渲染在 `step === 'upload' || (step === 'crop' && !pattern)` 时早返回新入口（`CreateEntry` + 弹窗），其余仍是旧工作台（`LegacyScope`）。票 08 只需替换后半段；已有图纸时的重新裁剪仍是旧 `CropDialog`（`step === 'crop' && pattern`）。
+- **共用选择器**：`src/components/create/choice-pickers.tsx`（`PalettePicker` / `SpecPicker` / `PaletteBand`）与 `palette-choices.ts`（`buildPaletteChoices(cloud)`、`specChoices`、`fitSpec`、`paletteSizes`）按原型 catalog.js 做，编辑器的换色板、规格菜单直接复用；选项值约定 `builtin:<id>` / `custom:<id>`，工作台 `draftFromChoice()` 把它转成生成草稿。
+- **弹窗里的弹出层**用 `<PopoverContent raised>`（z-90，压在弹窗遮罩之上）；弹窗内需要拖动的区域加 `data-base-ui-swipe-ignore`，否则手机底部面板会把拖动当成下滑关闭。
+- **预览 Worker**：需要实时预览时用 `createGenerateWorkerClient()` 另起一个实例（见 `use-pattern-preview.ts`），不要复用工作台的 `runGenerate` 单例（latest-only，会取消正在进行的真实生成）。
+- **E2E**：上传后要在弹窗里生成，用 `uploadAndGenerate(page, file)` 或 `uploadFile` + `generateFromDialog(page)`；入口主按钮名是「选择图片」（exact），文件输入仍是「图片文件选择器」。首页已无落区，E2E 从顶栏「创作」进入 `/app`。
+- **开发服务**：同一工作目录里 `next dev` 只能起一个实例，跑 E2E（3100）前要先停掉手动起的 3101。

@@ -1,7 +1,7 @@
 # 07 创作入口与新建图纸
 
 Status: ready-for-agent
-Completion: not-started
+Completion: complete
 Blocked by: 01、03
 
 先读 [实施指南](../implementation-guide.md)。原型：`prototype/js/screens/create.js` + `styles/screens/create.css`（以及 `editor/source.js`、`catalog.js` 中与新建相关的逻辑）；截图 `prototype-final/07、08`、`evidence/prototype/ce-create*`。
@@ -16,3 +16,31 @@ Blocked by: 01、03
 ## 验收
 
 - 与原型截图在五个宽度下一致；E2E 02、03、05、07、10、13 中的上传 / 裁剪 / 生成流程更新并通过（Chromium）。门禁全绿。
+
+## Comments
+
+### 实施记录（2026-09-24，提交 599994f → 4c19ff8）
+
+**做了什么**
+- 新目录 `src/components/create/`（已登记 `tests/unit/uiScanned.ts` 与 `theme.css` 的 `@source`）：`create-entry`（880 单列：display 标题、钉板落区——整窗拖入态、非图片在落区内说明、四张示例、并列次入口、最近的设计、隐私一行）、`new-drawing-dialog`（左取景舞台：原图 / 1:1 / 按底板，拖动与四角等比缩放、方向键移动；右设置：宽度芯片 1/2/3 板 + 自定义、颜色数滑杆、色板与规格选择器、去背景、结果预览）、`blank-canvas-dialog`（D42：尺寸芯片 + 自定义宽高 20–200、色板、规格）、`choice-pickers` / `palette-choices`（色板带色带与「N 色 · 豆径」，不兼容规格保留禁用并写原因，换色板原子切到兼容规格并说明）、`create-model`（纯几何）、`use-pattern-preview`（结果预览在**独立**生成 Worker 里用解码预览缓冲跑同一引擎，工作台那一个 Worker 不受影响）、`create-recent`。
+- 工作台接入（业务管线不变）：选图仍走 `handleUpload`（解码 Worker、HEIC / EXIF / 像素上限、原图缓存与私人空间上传队列）；弹窗「生成图纸」把设置组成生成草稿交给原 `handleCropConfirm → applyImageCrop → regenerate`；首版在弹窗里生成（按钮 loading + 进度条），提交后才进入编辑器并把地址换成 `/app?id=`；弹窗里「取消」= 取消生成（D35）、留在弹窗、图片与取景保留。空白画布、导入项目文件同样写入 `/app?id=`。
+- **路由约定（D66）**：`/app` 无 id 一律是创作入口，不再「恢复最近设计」；`?new=1` 同义；`?id=` 不在本机时留在入口并在落区里说明 + 返回我的设计。
+- 恢复图纸「重新选择原图」时入口进入重选模式（只剩落区与「返回原图纸」）。
+- 新增示例 `public/examples/frog.png`（从原型插画导出）；`PopoverContent` 加 `raised`（弹窗里打开时 z-90）；theme.css 新增 `crop-hole`、`pegboard-dots*`、`drop-halo*`、`max-w-create`、`grid-cols-new-drawing`、`h-crop-stage`、`max-h-popover-list`。
+
+**验证**
+- `npm run typecheck` / `npm run lint` / `npm run brand:check` 全绿。
+- `npm test`：245 文件，1845 通过 / 13 跳过；全量并发下工作台 5 条因 5s 超时失败，单独重跑 `src/components/workbench` 87/87 通过（其中 3 条是我误插地址设置，已在 4c19ff8 修复）。新增 `create.test.tsx` 11 条。
+- E2E Chromium：03 全 8 条、04 全部、09 全部、10、11 桌面用例、05 的 6 条桌面用例、07 的弹窗取景段通过。
+- 视觉：`tools/shoot-create.mjs proto|impl` 在 1440 / 1024 / 768 / 390 / 350 截取入口、拖入态、新建图纸、空白画布四种状态（`evidence/impl/07/`，不入库），逐张对照一致，无横向溢出。
+
+**与原型的有意偏差**
+- 弹窗默认值沿用业务配置而不是原型示意：宽度取站点配置 `GEN_DEFAULT_WIDTH`（默认 100，不在 1/2/3 板芯片里时预选「自定义」并显示输入框），颜色数取 `GEN_DEFAULT_COLORS`（40），去背景默认关（`DEFAULT_GENERATION_PARAMS`）。改成 58 / 24 / 开只需改配置与默认参数，但会改变大量既有断言与首版结果，留给产品决定。
+- 颜色数滑杆范围 2–max(64, 默认值)（原型 8–48），保证配置默认值总在范围内。
+- 示例是仓库已有的三张透明底插画 + 新导出的青蛙（原型为四张带底色的程序插画）；名称沿用「橘子小猫 / 奶油小兔 / 一束郁金香」+「青蛙」。
+- 预览基于最长边 ≤400 的解码预览缩样，颗数与色数写「约」，与最终图纸可能差一两色。
+- 手机弹窗是 Dialog 自动变成的底部面板（单页滚动 + 按钮吸底），不是 design.md 早期写的「全屏两步」；与原型截图一致。
+
+**遗留（归票 08 / 09）**
+- 以下失败发生在旧工作台界面，不在上传 / 裁剪 / 生成流程里：02 在工作台里找「目标宽度（格）」（参数收在折叠组内）；05 的 350px 用例与 13、11 的手机用例找不到裁剪按钮或「共 N 粒」（手机工作台布局）；07 的「网格线」开关；13 第 1 条刷新后原图已由本机缓存自动绑回，不再出现「缺原图」；13 第 2 条重载后改宽度同上。这些要随编辑器重做一起改。
+- 顶栏 / 统计同意浮卡点「不同意」后出现一枚无文字的深墨提示（外壳，非本票）。
