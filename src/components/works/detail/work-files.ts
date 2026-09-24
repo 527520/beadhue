@@ -29,6 +29,6 @@ export async function savePatternPng(pattern: Pattern, name: string, options: { 
   const result = await exportPngBlob(pattern, name, options);
   if (!result.ok) return result.code === 'CANVAS_TOO_LARGE' ? 'too-large' : 'failed';
   if (result.kind === 'single') saveBlob(result.artifact.blob, result.artifact.fileName);
-  else saveBlob(await createPngArchiveBlob([result.pattern, result.legend]), result.archiveFileName);
+  else saveBlob(await createPngArchiveBlob(result.kind === 'split' ? [result.pattern, result.legend] : result.artifacts), result.archiveFileName);
   return 'ok';
 }

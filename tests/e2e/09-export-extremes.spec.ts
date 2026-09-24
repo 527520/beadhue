@@ -119,6 +119,7 @@ test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF pag
   await importProject(page, pngProject);
   const pngDialog = page.getByRole('dialog', { name: '下载 PNG' });
   await chooseEditorMenu(page, '导出', '下载 PNG…');
+  await pngDialog.getByRole('switch', { name: '包含图例' }).uncheck();
   const [pngDownload] = await Promise.all([
     page.waitForEvent('download'),
     pngDialog.getByRole('button', { name: '下载', exact: true }).click(),
@@ -142,14 +143,14 @@ test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF pag
     return { width: canvas.width, height: canvas.height, first, last };
   }, pngBytes.toString('base64'));
   expect(decoded).toEqual({
-    width: 4800,
-    height: 24,
+    width: 4000,
+    height: 20,
     first: [255, 0, 0, 255],
     last: [0, 0, 255, 255],
   });
 
   await chooseEditorMenu(page, '导出', '下载 PNG…');
-  await pngDialog.getByRole('button', { name: '8 px', exact: true }).click();
+  await pngDialog.getByRole('button', { name: '10 px', exact: true }).click();
   await pngDialog.getByRole('switch', { name: '包含图例' }).check();
   const [legendPngDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -172,7 +173,7 @@ test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF pag
     const footerCorner = [...context.getImageData(canvas.width - 1, canvas.height - 1, 1, 1).data];
     return { width: canvas.width, height: canvas.height, minAlpha, footerCorner };
   }, legendPngBytes.toString('base64'));
-  expect(opaqueLegend.width).toBe(1600);
+  expect(opaqueLegend.width).toBe(2000);
   expect(opaqueLegend.height).toBeGreaterThan(8);
   expect(opaqueLegend.minAlpha).toBe(255);
   expect(opaqueLegend.footerCorner).toEqual([255, 255, 255, 255]);
@@ -202,7 +203,7 @@ test('合并超限时 ZIP 恰好包含两张可解码且不透明的 PNG', async
     code: `C${String(index + 1).padStart(4, '0')}-LONG`,
     hex: `#${String(index + 1).padStart(6, '0')}`,
   }));
-  const value = project(170, 170, colors);
+  const value = project(200, 200, colors);
   value.name = 'ZIP极限';
   await importProject(page, value);
   await chooseEditorMenu(page, '导出', '下载 PNG…');
@@ -214,22 +215,22 @@ test('合并超限时 ZIP 恰好包含两张可解码且不透明的 PNG', async
     page.waitForEvent('download'),
     pngDialog.getByRole('button', { name: '下载', exact: true }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe('豆色绘-ZIP极限-170x170-PNG.zip');
+  expect(download.suggestedFilename()).toBe('豆色绘-ZIP极限-200x200-PNG.zip');
   const entries = extractZipEntries(readFileSync((await download.path())!));
   expect([...entries.keys()].sort()).toEqual([
-    '豆色绘-ZIP极限-170x170-图例.png',
-    '豆色绘-ZIP极限-170x170-图纸.png',
+    '豆色绘-ZIP极限-200x200-图例.png',
+    '豆色绘-ZIP极限-200x200-图纸.png',
   ]);
 
-  const patternPng = entries.get('豆色绘-ZIP极限-170x170-图纸.png')!;
-  const legendPng = entries.get('豆色绘-ZIP极限-170x170-图例.png')!;
+  const patternPng = entries.get('豆色绘-ZIP极限-200x200-图纸.png')!;
+  const legendPng = entries.get('豆色绘-ZIP极限-200x200-图例.png')!;
   expect(patternPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   expect(legendPng.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
   const [patternSummary, legendSummary] = await Promise.all([
     decodePngSummary(page, patternPng),
     decodePngSummary(page, legendPng),
   ]);
-  expect(patternSummary).toMatchObject({ width: 4080, height: 4080 });
+  expect(patternSummary).toMatchObject({ width: 4000, height: 4000 });
   expect(legendSummary.width).toBeGreaterThanOrEqual(960);
   expect(legendSummary.height).toBeGreaterThan(32);
   for (const sample of [...patternSummary.samples, ...legendSummary.samples]) {

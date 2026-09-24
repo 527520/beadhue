@@ -196,8 +196,9 @@ export interface SiteConfig extends PublicConfig {
 /** 默认值即历史行为：未配置任何环境变量时，站点行为与优化前一致；生成默认值例外，按新建图纸原型为 2 板 58 格、24 色。 */
 const DEFAULTS: SiteConfig = {
   generation: { defaultWidth: 58, defaultColorCount: 24 },
-  exportPng: { cellPx: 24, cropToContent: true, includeLegend: false },
-  exportPdf: { cellMm: 6, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
+  exportPng: { cellPx: 20, cropToContent: true, includeLegend: true },
+  // 5mm 底板按 5mm 一格 1:1 打印（可垫在透明底板下直接对照拼）；2.6mm 规格另按 2.6mm。
+  exportPdf: { cellMm: 5, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
   security: {
     originalUserMinute: 10,
     originalUserHour: 60,

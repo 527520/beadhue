@@ -1,9 +1,87 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { exportPngBlob } from './png';
+import { boardRegions, exportPngBlob } from './png';
 import type { Pattern } from '@/lib/types';
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('按底板分页', () => {
+  it('按板边长切块，行列从 1 起，最后一行 / 列不满一块', () => {
+    expect(boardRegions(60, 30, 29)).toEqual([
+      { row: 1, col: 1, sourceX: 0, sourceY: 0, widthCells: 29, heightCells: 29 },
+      { row: 1, col: 2, sourceX: 29, sourceY: 0, widthCells: 29, heightCells: 29 },
+      { row: 1, col: 3, sourceX: 58, sourceY: 0, widthCells: 2, heightCells: 29 },
+      { row: 2, col: 1, sourceX: 0, sourceY: 29, widthCells: 29, heightCells: 1 },
+      { row: 2, col: 2, sourceX: 29, sourceY: 29, widthCells: 29, heightCells: 1 },
+      { row: 2, col: 3, sourceX: 58, sourceY: 29, widthCells: 2, heightCells: 1 },
+    ]);
+  });
+
+  it('每块板一张 PNG（不裁边），需要图例时另附一张，统一打包命名', async () => {
+    const context = new Proxy({} as CanvasRenderingContext2D, {
+      get(target, prop) {
+        if (prop === 'measureText') return () => ({ width: 40 });
+        if (typeof prop === 'string' && ['fillRect', 'strokeRect', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'fillText'].includes(prop)) return vi.fn();
+        return Reflect.get(target, prop);
+      },
+      set() { return true; },
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
+    const sizes: string[] = [];
+    HTMLCanvasElement.prototype.toBlob = function toBlob(callback) {
+      sizes.push(`${this.width}x${this.height}`);
+      callback(new Blob(['png'], { type: 'image/png' }));
+    };
+    const pattern: Pattern = {
+      width: 31,
+      height: 29,
+      cells: Array.from({ length: 31 * 29 }, (_, index) => (index % 31 === 0
+        ? { hex: null, code: null, transparent: true }
+        : { hex: '#112233', code: 'A01', transparent: false })),
+    };
+
+    const result = await exportPngBlob(pattern, '分板', { cellPx: 10, byBoard: true, includeLegend: true, boardSize: 29 });
+
+    expect(result).toMatchObject({
+      ok: true,
+      kind: 'boards',
+      archiveFileName: '豆色绘-分板-31x29-按底板.zip',
+      artifacts: [
+        { fileName: '豆色绘-分板-31x29-第1行第1块.png' },
+        { fileName: '豆色绘-分板-31x29-第1行第2块.png' },
+        { fileName: '豆色绘-分板-31x29-图例.png' },
+      ],
+    });
+    expect(sizes.slice(0, 2)).toEqual(['290x290', '20x290']);
+  });
+
+  it('按底板分页也拒绝空图纸', async () => {
+    const pattern: Pattern = { width: 1, height: 1, cells: [{ hex: null, code: null, transparent: true }] };
+    await expect(exportPngBlob(pattern, '空', { byBoard: true })).resolves.toEqual({ ok: false, code: 'EMPTY_PATTERN' });
+  });
+
+  it('关掉「包含色号」时格内不写色号', async () => {
+    const fillText = vi.fn();
+    const context = new Proxy({} as CanvasRenderingContext2D, {
+      get(target, prop) {
+        if (prop === 'fillText') return fillText;
+        if (typeof prop === 'string' && ['fillRect', 'strokeRect', 'beginPath', 'moveTo', 'lineTo', 'stroke'].includes(prop)) return vi.fn();
+        return Reflect.get(target, prop);
+      },
+      set() { return true; },
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
+    HTMLCanvasElement.prototype.toBlob = function toBlob(callback) {
+      callback(new Blob(['png'], { type: 'image/png' }));
+    };
+    const pattern: Pattern = { width: 1, height: 1, cells: [{ hex: '#000000', code: 'A01', transparent: false }] };
+
+    await exportPngBlob(pattern, '无色号', { cellPx: 24, includeCodes: false });
+    expect(fillText).not.toHaveBeenCalled();
+    await exportPngBlob(pattern, '有色号', { cellPx: 24 });
+    expect(fillText).toHaveBeenCalledWith('A01', 12, 12, 22);
+  });
+});
 
 describe('exportPngBlob 真实布局路径', () => {
   it('先用纯白色铺满整个画布，透明格、外部格与图例间隙都保持不透明', async () => {

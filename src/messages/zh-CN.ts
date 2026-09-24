@@ -74,6 +74,8 @@ export const zhCN = {
     pngSplitPatternFile: (stem: string) => `${stem}-图纸.png`,
     pngSplitLegendFile: (stem: string) => `${stem}-图例.png`,
     pngSplitArchiveFile: (stem: string) => `${stem}-PNG.zip`,
+    pngBoardFile: (stem: string, row: number, col: number) => `${stem}-第${row}行第${col}块.png`,
+    pngBoardsArchiveFile: (stem: string) => `${stem}-按底板.zip`,
     countUnit: '颗',
   },
   share: {
@@ -379,7 +381,7 @@ export const zhCN = {
       '制作规格有 5mm · 29×29、2.6mm · 50×50、2.6mm · 52×52 三种，板缝线会按所选底板格数绘制。50 与 52 的 Mini 底板钉距不兼容，请按手里的实物底板选择。Artkal C/M 只支持两种 2.6mm，MARD 221 支持三种，其余内置色板只支持 5mm；自定义色板可使用任一规格。',
     exportTitle: '导出说明',
     exportBody:
-      'PNG 图纸：电子设备查看用，网格和板缝跟随当前制作规格。打印版 PDF：按规格一页一块板，5mm 保持现有 6mm 打印格版式，2.6mm 使用 2.6mm 单元格；图例与色号用量清单会自动分页。项目文件：JSON 格式，v3 会记录制作规格、色板与套装档位，可再次导入继续编辑。',
+      'PNG 图纸：电子设备查看用，网格和板缝跟随当前制作规格。打印版 PDF：按规格一页一块板，每格与豆径等大（5mm 一格 5mm、2.6mm 一格 2.6mm），按 100% 打印即与底板 1:1；图例与色号用量清单会自动分页。项目文件：JSON 格式，v3 会记录制作规格、色板与套装档位，可再次导入继续编辑。',
     faqTitle: '常见问题',
     faqs: [
       {
@@ -424,7 +426,7 @@ export const zhCN = {
       },
       {
         q: '打印版 PDF 怎么使用？',
-        a: 'A4 直接打印即可：每页按当前制作规格对应一块 29×29、50×50 或 52×52 底板并标注页码，后面是自动分页的图例与色号用量清单。2.6mm 图纸应按 100% 原始比例打印，避免缩放改变钉距。',
+        a: 'A4 直接打印即可：每页按当前制作规格对应一块 29×29、50×50 或 52×52 底板并标注页码，后面是自动分页的图例与色号用量清单。每格与豆径等大，请按 100% 原始比例打印，避免缩放改变钉距。',
       },
       {
         q: '项目文件会保存原图吗？',
@@ -1609,11 +1611,14 @@ export const zhCN = {
       cell: '每格像素',
       cellValue: (n: number) => `${n} px`,
       cellTooLarge: '这张图纸太大，这个格子大小超出浏览器上限',
-      crop: '裁掉边缘空白',
-      cropHint: '只导出画了豆子的范围',
+      codes: '包含色号',
+      codesSmall: '格子太小放不下色号，这一档导出不带色号',
       legend: '包含图例',
       legendHint: '在图纸下方列出每个色号和颗数',
+      byBoard: '按底板分页',
+      byBoardHint: (total: number, cols: number, rows: number) => `共 ${total} 块板（${cols} × ${rows}），每块一张图`,
       summary: (width: number, height: number) => `${width} × ${height} 像素`,
+      summaryBoards: (total: number) => `${total} 张（每块板一张，打包为 ZIP）`,
       summaryLegend: '附图例与色号清单',
       split: '图纸与图例合并后超过浏览器上限，将打包为两张 PNG 下载',
       download: '下载',

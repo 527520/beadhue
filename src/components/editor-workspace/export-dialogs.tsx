@@ -14,10 +14,11 @@ import { usePublicConfig } from '@/components/config/usePublicConfig';
 import { triggerDownload } from '@/lib/export/download';
 import { track } from '@/lib/analytics/client';
 import { DEFAULT_BOARD_SIZE } from '@/lib/boardProfiles';
-import { EXPORT_CELL_PX_CHOICES, patternHasPaintedCells } from '@/lib/export/layout';
+import { EXPORT_CELL_PX_CHOICES, nearestCellPxChoice, patternHasPaintedCells } from '@/lib/export/layout';
 import { exportPngBlob } from '@/lib/export/png';
 import { createPngArchiveBlob } from '@/lib/export/pngArchive';
 import { createPngExportPlan, largestFittingPngCellPx } from '@/lib/export/pngPlan';
+import { labelVisible } from '@/lib/render/layout';
 import { loadPdfCjkFont } from '@/lib/export/pdfFont';
 import { buildExportFilename, computePdfLayout, paginateLegendItems, resolveBoardPdfMetrics } from '@/lib/export/pdfLayout';
 import type { Pattern, PatternStatsItem } from '@/lib/types';
@@ -47,21 +48,28 @@ function PngDialogBody({ pattern, designName, boardSize, analyticsSource, onDone
   const t = zhCN.editorWorkspace.png;
   const toast = useToast();
   const config = usePublicConfig().exportPng;
-  const [cellPx, setCellPx] = useState<number>(config.cellPx);
-  const [crop, setCrop] = useState<boolean>(config.cropToContent);
+  // 裁边沿用站点配置（面板不再单独给开关，按底板分页时不裁）。
+  const crop = config.cropToContent;
+  const [cellPx, setCellPx] = useState<number>(() => nearestCellPxChoice(config.cellPx));
+  const [codes, setCodes] = useState(true);
   const [legend, setLegend] = useState<boolean>(config.includeLegend);
+  const [byBoard, setByBoard] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
   const empty = useMemo(() => !patternHasPaintedCells(pattern), [pattern]);
+  const boards = { cols: Math.ceil(pattern.width / boardSize), rows: Math.ceil(pattern.height / boardSize) };
+  const boardCount = boards.cols * boards.rows;
+  // 每块板一张图不会超出浏览器上限，只有整张导出才需要按格宽预检。
   const fits = useMemo(() => new Map(EXPORT_CELL_PX_CHOICES.map((size) => {
+    if (byBoard) return [size, true] as const;
     const plan = createPngExportPlan(pattern, { cellPx: size, cropToContent: crop, includeLegend: legend });
     return [size, plan.kind === 'single' || plan.kind === 'split'] as const;
-  })), [crop, legend, pattern]);
+  })), [byBoard, crop, legend, pattern]);
   const plan = useMemo(() => createPngExportPlan(pattern, { cellPx, cropToContent: crop, includeLegend: legend }), [cellPx, crop, legend, pattern]);
-  const planFits = plan.kind === 'single' || plan.kind === 'split';
+  const planFits = byBoard || plan.kind === 'single' || plan.kind === 'split';
   const suggested = useMemo(() => largestFittingPngCellPx(pattern, EXPORT_CELL_PX_CHOICES, { cropToContent: crop, includeLegend: legend }), [crop, legend, pattern]);
-  const planSize = plan.kind === 'single' ? plan.canvas : plan.kind === 'split' ? plan.pattern : null;
+  const planSize = byBoard ? { width: pattern.width * cellPx, height: pattern.height * cellPx } : plan.kind === 'single' || plan.kind === 'split' ? plan.pattern : null;
 
   const download = async () => {
     if (pending.current || empty || !planFits) return;
@@ -69,13 +77,13 @@ function PngDialogBody({ pattern, designName, boardSize, analyticsSource, onDone
     setBusy(true);
     setError(null);
     try {
-      const result = await exportPngBlob(pattern, designName, { cellPx, cropToContent: crop, includeLegend: legend, boardSize });
+      const result = await exportPngBlob(pattern, designName, { cellPx, cropToContent: crop, includeLegend: legend, includeCodes: codes, byBoard, boardSize });
       if (!result.ok) {
         track({ name: 'export_failed', properties: { format: 'png', errorCode: result.code } });
         setError(result.code === 'EMPTY_PATTERN' ? zhCN.export.pngEmptyError : result.code === 'CANVAS_TOO_LARGE' ? zhCN.export.pngTooLargeError(suggested ?? cellPx) : zhCN.export.pngFailed);
         return;
       }
-      const blob = result.kind === 'single' ? result.artifact.blob : await createPngArchiveBlob([result.pattern, result.legend]);
+      const blob = result.kind === 'single' ? result.artifact.blob : await createPngArchiveBlob(result.kind === 'split' ? [result.pattern, result.legend] : result.artifacts);
       const name = result.kind === 'single' ? result.artifact.fileName : result.archiveFileName;
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
@@ -127,8 +135,9 @@ function PngDialogBody({ pattern, designName, boardSize, analyticsSource, onDone
             ))}
           </div>
         </div>
-        <SwitchRow label={t.crop} hint={t.cropHint} checked={crop} onCheckedChange={setCrop} disabled={busy} />
+        <SwitchRow label={t.codes} hint={codes && !labelVisible(cellPx) ? t.codesSmall : undefined} checked={codes} onCheckedChange={setCodes} disabled={busy} />
         <SwitchRow label={t.legend} hint={t.legendHint} checked={legend} onCheckedChange={setLegend} disabled={busy} />
+        <SwitchRow label={t.byBoard} hint={t.byBoardHint(boardCount, boards.cols, boards.rows)} checked={byBoard} onCheckedChange={setByBoard} disabled={busy} />
         {empty ? (
           <FormAlert>{t.empty}</FormAlert>
         ) : !planFits ? (
@@ -137,8 +146,9 @@ function PngDialogBody({ pattern, designName, boardSize, analyticsSource, onDone
           <Note icon={<ImageIcon aria-hidden="true" strokeWidth={1.75} />}>
             <span role="status" className="tabular-nums">
               {planSize ? t.summary(planSize.width, planSize.height) : null}
+              {byBoard ? ` · ${t.summaryBoards(boardCount)}` : ''}
               {legend ? ` · ${t.summaryLegend}` : ''}
-              {plan.kind === 'split' ? ` · ${t.split}` : ''}
+              {!byBoard && plan.kind === 'split' ? ` · ${t.split}` : ''}
             </span>
           </Note>
         )}

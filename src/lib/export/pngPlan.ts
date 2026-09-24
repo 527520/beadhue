@@ -265,6 +265,20 @@ export function createPngExportPlan(
   };
 }
 
+/** 按底板分页导出时单独的一张图例：宽度只看图例本身（与图纸尺寸无关）；没有颜色或超限返回 null。 */
+export function createStandaloneLegendPlan(
+  stats: PatternStatsItem[],
+  cellPx: number,
+  measureText: PngTextMeasurer = defaultPngTextMeasurer,
+): PngLegendPlan | null {
+  if (stats.length === 0) return null;
+  const metrics = legendMetrics(clampCellPx(cellPx));
+  const naturalColumn = naturalLegendColumnWidth(stats, metrics, measureText);
+  const width = Math.max(PNG_LEGEND_MIN_WIDTH, PNG_FOOTER_PADDING * 2 + naturalColumn.width);
+  const plan = createLegendPlan(stats, width, metrics, naturalColumn);
+  return pngCanvasWithinLimits(plan) ? plan : null;
+}
+
 export function largestFittingPngCellPx(
   pattern: Pattern,
   choices: readonly number[],

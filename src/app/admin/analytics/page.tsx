@@ -37,7 +37,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const active = query.end === today && ['7', '30', '90'].includes(String(days)) ? String(days) : null;
   const points = trend.points.map((point) => ({ day: point.day, events: point.events, uniqueVisitors: point.uniqueVisitors ?? null }));
   const steps = funnelResult.steps ?? [];
-  const note = a.rangeNote(query.start, query.end);
+  const note = active ? a.ranges[active as keyof typeof a.ranges] : a.rangeNote(query.start, query.end);
   const requestedStrings = Object.fromEntries(Object.entries(requested).map(([key, value]) => [key, value === undefined ? undefined : String(value)]));
   return (
     <>

@@ -2,11 +2,16 @@
 import type { Pattern } from '@/lib/types';
 import { buildExportFilename } from './filename';
 
-/** PNG 导出面板可选的格子尺寸；UI 与导出规划共用这一份有序列表。 */
-export const EXPORT_CELL_PX_CHOICES = [8, 16, 24, 32, 48] as const;
-export const EXPORT_CELL_PX_MIN = EXPORT_CELL_PX_CHOICES[0];
-export const EXPORT_CELL_PX_MAX = EXPORT_CELL_PX_CHOICES[EXPORT_CELL_PX_CHOICES.length - 1];
-export const EXPORT_CELL_PX_DEFAULT = 24;
+/** PNG 导出面板可选的格子尺寸（原型 10 / 20 / 30 / 40）；导出接口本身接受 8–48。 */
+export const EXPORT_CELL_PX_CHOICES = [10, 20, 30, 40] as const;
+export const EXPORT_CELL_PX_MIN = 8;
+export const EXPORT_CELL_PX_MAX = 48;
+export const EXPORT_CELL_PX_DEFAULT = 20;
+
+/** 站点配置的格宽不一定在面板选项里：取最接近的一档。 */
+export function nearestCellPxChoice(value: number): number {
+  return EXPORT_CELL_PX_CHOICES.reduce((best, choice) => (Math.abs(choice - value) < Math.abs(best - value) ? choice : best), EXPORT_CELL_PX_CHOICES[0] as number);
+}
 /**
  * 这是现代 Chromium、Firefox 与 WebKit 可靠交集形成的领域安全不变量，不是部署调优项。
  * 提高它会直接放大浏览器瞬时内存与崩溃风险，因此不得通过环境变量绕过。
@@ -50,7 +55,7 @@ export function contentBounds(pattern: Pattern): ContentBounds | null {
   return { x0, y0, x1, y1 };
 }
 
-/** 格像素钳制到 [8, 48]；NaN/非数值回退默认 24。 */
+/** 格像素钳制到 [8, 48]；NaN/非数值回退默认 20。 */
 export function clampCellPx(value: number): number {
   if (!Number.isFinite(value)) return EXPORT_CELL_PX_DEFAULT;
   const rounded = Math.round(value);
