@@ -65,8 +65,9 @@ test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动�
   await expect(beads(page, 10000)).toBeAttached();
   await expectNeedsOriginal(page);
   await page.getByLabel('原图文件选择器').setInputFiles(PHOTO);
-  await expect(cropDialog(page)).toBeVisible();
-  await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
+  const replace = page.getByRole('dialog', { name: '替换当前图纸？' });
+  await replace.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(replace).toHaveCount(0);
   await expect(cropDialog(page)).toHaveCount(0);
   await expect(beads(page, 10000)).toBeAttached();
   await expectNeedsOriginal(page);
