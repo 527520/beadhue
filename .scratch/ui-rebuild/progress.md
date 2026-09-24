@@ -112,3 +112,7 @@
 2. **逐张审**：编排代理逐张看对照图，把差异记进 `.scratch/ui-rebuild/audit-r15.md`（级别：P0 布局错乱 / 功能不可用，P1 与原型明显不一致，P2 细节打磨；写明页面、宽度、组件文件、应改成什么）。同时检查交互状态（悬停、焦点、禁用、加载、空、错误）、文案（单位「颗」、动词一致）、键盘与读屏。
 3. **修正**：编排代理自己改；量大且机械的修正才交子代理，但给出逐条的精确修改说明，改完由编排代理复查截图。
 4. 修完再跑票 14 的全量门禁（三浏览器 E2E、生产构建、性能、axe），结果写 `verification.md`。
+
+进度：
+- 18:21 13b 因 NGHTTP2 中断（已提交 c12776d … 7f342fd：删旧组件与旧后台模块、后台裁剪 / 草稿编辑 / 投稿页 / 403 改新组件、删旧同意横幅与旧 PDF 按钮、删 `beadhue.css` 与旧组件类并合成单一 Tailwind 构建、移除 `react-aria-components` 与 `@internationalized/date`、README 截图），18:23 续跑并追加：D72 深链（`/community/submit` 跳 `/app?id=&publish=1`，含 `workId` 重投）、单位「颗」替换剩余「粒」，然后跑全量门禁与写记录。
+- 18:3x 派发对照工具代理 c8415b50（只写 `tools/audit-seed.mjs`、`audit-matrix.mjs`、`audit-compose.py` 与 `evidence/audit/`，不改应用代码、不提交；调试服务在票 05 的旧工作树起 3160）。
