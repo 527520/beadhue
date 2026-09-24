@@ -33,6 +33,8 @@
 @source "../lib/render/tagIconArt.ts";
 @source "./page.tsx";
 @source "../components/editor-workspace";
+@source "../lib/render/viewer.ts";
+@source "../lib/render/poster.ts";
 
 @theme {
   --color-*: initial;

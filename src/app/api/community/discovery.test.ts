@@ -107,6 +107,13 @@ describe('GET /api/community/works/:id/related', () => {
     expect((await (await call(w.cat, '?limit=1')).json()).items).toHaveLength(1);
   });
 
+  it('自定义色板的作品：不按色板排序也能查（此前 order by (false) 报错）', async () => {
+    const custom = (await seedWork(db, { author: bob, title: '自定义猫', tags: ['猫咪'], paletteKind: 'custom' })).workId;
+    const response = await call(custom);
+    expect(response.status).toBe(200);
+    expect((await response.json()).items.map((item: { title: string }) => item.title)).toEqual(expect.arrayContaining(['橘猫团子', '黑猫']));
+  });
+
   it('参数校验与不存在的作品', async () => {
     expect((await call(w.cat, '?limit=0')).status).toBe(400);
     expect((await call(w.cat, '?limit=99')).status).toBe(400);

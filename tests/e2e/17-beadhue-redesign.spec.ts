@@ -308,12 +308,13 @@ test("B: shared pattern uses the approved detail layout; admin buttons stay flat
   await page.goto("/");
   await waitHydrated(page);
   await page.getByRole("region", { name: "作品" }).getByRole("link", { name: /^查看「/ }).first().click();
-  await expect(page.locator(".detail-grid")).toBeVisible();
+  // R15 详情：查看器 + 吸顶制作卡；「用这张制作」先确认再建副本。开发服务首次编译详情路由较慢。
+  await page.waitForURL(/\/community\/[0-9a-f-]{36}/, { timeout: 60_000 });
+  await expect(page.getByRole("region", { name: "图纸查看器" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "制作信息" })).toBeVisible();
   await page.screenshot({ path: info.outputPath("detail-desktop.png") });
-  const reuse = page
-    .getByRole("button", { name: /引用.*设计|引用.*图纸|开始制作|用这张制作/ })
-    .first();
-  await reuse.click();
+  await page.getByRole("button", { name: "用这张制作" }).click();
+  await page.getByRole("dialog", { name: "用这张图纸制作" }).getByRole("button", { name: "开始制作" }).click();
   await page.waitForURL("**/app?id=*");
   await expect(page.getByLabel("图纸编辑画布")).toBeVisible();
   const id = new URL(page.url()).searchParams.get("id");

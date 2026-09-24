@@ -238,6 +238,14 @@ describe('community reuse, interaction and governance transactions', () => {
     expect(second.items.map((item) => item.body)).toEqual(['第 30 条讨论 ，，', '第 31 条讨论 ，，，', '第 32 条讨论']);
     expect(second.nextCursor).toBeNull();
     await expect(listCommunityComments(db, workId, undefined, { cursor: 'not-a-cursor' })).rejects.toMatchObject({ code: 'VALIDATION' });
+    // 最新在前（R15 详情页）：游标记下方向，与升序游标不能混用。
+    const newest = await listCommunityComments(db, workId, undefined, { order: 'desc' });
+    expect(newest.items[0].body).toBe('第 32 条讨论');
+    const older = await listCommunityComments(db, workId, undefined, { order: 'desc', cursor: newest.nextCursor });
+    expect(older.items.map((item) => item.body)).toEqual(['第 2 条讨论 ，，', '第 1 条讨论 ，', '第 0 条讨论']);
+    expect(older.nextCursor).toBeNull();
+    await expect(listCommunityComments(db, workId, undefined, { cursor: newest.nextCursor })).rejects.toMatchObject({ code: 'VALIDATION' });
+    await expect(listCommunityComments(db, workId, undefined, { order: 'desc', cursor: first.nextCursor })).rejects.toMatchObject({ code: 'VALIDATION' });
   });
 
   it('deduplicates reports by current target version and enforces the case state machine', async () => {

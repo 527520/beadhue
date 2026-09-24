@@ -10,6 +10,8 @@ import { enforceAccountReadQuota } from '@/lib/security/accountReadQuota';
 import { enforcePublicReadLimit } from '@/lib/security/publicRateLimit';
 
 const schema = z.object({ body: z.string() }).strict();
+/** asc（默认，兼容旧调用）/ desc（最新在前，R15 详情页）。 */
+const orderSchema = z.enum(['asc', 'desc']).default('asc');
 
 async function get(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const workId = z.string().uuid().parse((await params).id);
@@ -19,8 +21,9 @@ async function get(request: Request, { params }: { params: Promise<{ id: string 
   if (actor) {
     await enforceAccountReadQuota(getDb(), { userId: actor.userId, accountCreatedAt: actor.accountCreatedAt, workIds: [workId] });
   }
-  const cursor = new URL(request.url).searchParams.get('cursor');
-  return okJson(await listCommunityComments(getDb(), workId, actor?.userId, { cursor }));
+  const search = new URL(request.url).searchParams;
+  const order = orderSchema.parse(search.get('order') ?? undefined);
+  return okJson(await listCommunityComments(getDb(), workId, actor?.userId, { cursor: search.get('cursor'), order }));
 }
 
 async function post(request: Request, { params }: { params: Promise<{ id: string }> }) {

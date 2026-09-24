@@ -35,13 +35,16 @@ test('已验证用户引用独立副本并发布评论', async ({ page }, testIn
   await expect(page).toHaveURL(/\/community\/[0-9a-f-]{36}/);
   const originalWorkUrl = page.url();
   await page.getByRole('button', { name: '用这张制作' }).click();
+  // R15：先确认弹窗，再建私人副本进入编辑器。
+  await page.getByRole('dialog', { name: '用这张图纸制作' }).getByRole('button', { name: '开始制作' }).click();
   await expect(page).toHaveURL(/\/app\?id=.+&mode=edit/);
   await expect(page.getByRole('group', { name: '模式' }).getByRole('button', { name: '编辑', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('设计名称')).toHaveValue(/（引用）$/);
   await page.goto(originalWorkUrl);
   await fillField(page, '发表评论', `E2E ${testInfo.project.name} 普通评论`);
-  await page.getByRole('button', { name: '发布评论' }).click();
-  await expect(page.getByText(/评论已发布|审核通过后公开/)).toBeVisible();
+  await page.getByRole('button', { name: '发布', exact: true }).click();
+  await expect(page.getByText(/已发布评论|审核通过后公开/).first()).toBeVisible();
+  await expect(page.getByRole('list', { name: '评论' }).getByText(`E2E ${testInfo.project.name} 普通评论`).first()).toBeVisible();
 });
 
 test('投稿从可信云端预览确认，失败保留草稿并可撤回重提', async ({ page }, testInfo) => {
@@ -110,21 +113,29 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
   });
   await expect(seededWork).toHaveCount(1);
   await seededWork.getByRole('link', { name: /^查看「/ }).click();
-  const expired = page.locator('.community-comment-list li', { hasText: `E2E 可删除旧评论 ${testInfo.project.name}` });
+  const comments = page.getByRole('list', { name: '评论' });
+  const comment = (text: string) => comments.getByRole('listitem').filter({ hasText: text });
+  // 删除在评论的「更多」菜单里，需二次确认：弹窗里的实心危险按钮才真正发请求。
+  const remove = async (item: ReturnType<typeof comment>) => {
+    await item.getByRole('button', { name: /的评论：更多操作$/ }).click();
+    await page.getByRole('menuitem', { name: '删除评论' }).click();
+    await page.getByRole('dialog', { name: '删除这条评论？' }).getByRole('button', { name: '删除', exact: true }).click();
+  };
+  const expired = comment(`E2E 可删除旧评论 ${testInfo.project.name}`);
   await expect(expired).toBeVisible();
   await expect(expired.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0);
-  // 删除需二次确认：弹窗里的实心危险按钮才真正发请求。
-  await expired.getByRole('button', { name: '删除', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '删除', exact: true }).click();
+  await remove(expired);
   await expect(expired).toHaveCount(0);
-  const pending = page.locator('.community-comment-list li', { hasText: `E2E风险词 待审删除 ${testInfo.project.name}` });
+  const pending = comment(`E2E风险词 待审删除 ${testInfo.project.name}`);
   await expect(pending).toContainText('待审核');
-  await pending.getByRole('button', { name: '删除', exact: true }).click();
-  await page.getByRole('dialog').getByRole('button', { name: '删除', exact: true }).click();
+  await remove(pending);
   await expect(pending).toHaveCount(0);
-  const foreign = page.locator('.community-comment-list li', { hasText: 'E2E 被举报评论' });
+  const foreign = comment('E2E 被举报评论');
   await expect(foreign).toBeVisible();
-  await expect(foreign.getByRole('button', { name: '删除', exact: true })).toHaveCount(0);
+  await foreign.getByRole('button', { name: /的评论：更多操作$/ }).click();
+  await expect(page.getByRole('menuitem', { name: '举报…' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '删除评论' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 });
 
 test('无补充说明的举报仍显示图纸或评论内容和定位入口', async ({ page }) => {
@@ -271,6 +282,36 @@ test('豆社覆盖目标宽度且无严重可访问性问题', async ({ page }, 
   const communityAxe = await new AxeBuilder({ page }).include('main')
     .withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
   expect(communityAxe.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+});
+
+test('作品详情与作者主页覆盖目标宽度且无严重可访问性问题；未登录不下发色号', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium');
+  const list = await (await page.request.get('/api/community/works?sort=new')).json();
+  const work = list.items[0] as { id: string; title: string; author: { publicAuthorId: string } };
+  const scan = async () => {
+    const result = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag22aa']).analyze();
+    expect(result.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+  };
+  await page.goto(`/community/${work.id}`);
+  await expect(page.getByText('登录后查看完整色号与颗数')).toBeVisible();
+  await expect(page.getByRole('button', { name: '色号' })).toHaveAttribute('aria-disabled', 'true');
+  for (const width of [350, 390, 768, 1024, 1440] as const) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.getByRole('heading', { level: 1, name: work.title })).toBeVisible();
+    await expect(page.getByRole('region', { name: '图纸查看器' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `详情页在 ${width}px 下不得横向溢出`).toBeLessThanOrEqual(0);
+  }
+  await scan();
+  await page.goto(`/u/${work.author.publicAuthorId}`);
+  await expect(page.getByRole('heading', { level: 2, name: '作品' })).toBeVisible();
+  for (const width of [350, 1440] as const) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  }
+  await scan();
+  const missing = await page.goto('/u/00000000-0000-4000-8000-000000000000');
+  expect(missing?.status()).toBe(404);
+  await expect(page.getByRole('heading', { name: '找不到这位作者' })).toBeVisible();
 });
 
 test('审核后台覆盖目标宽度且无严重可访问性问题', async ({ page }, testInfo) => {

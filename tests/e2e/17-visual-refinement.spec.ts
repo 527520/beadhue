@@ -244,6 +244,7 @@ test('多色续作、长标题，以及加载失败后的重试状态',async({pa
   const flowers=samples.flat().filter(item=>/^E2E (已公开作品|待审修改版)$/.test(item.title));
   expect(flowers).toHaveLength(1);await page.goto(`/community/${flowers[0].id}`);
   await page.getByRole('button',{name:'用这张制作'}).click();
+  await page.getByRole('dialog',{name:'用这张图纸制作'}).getByRole('button',{name:'开始制作'}).click();
   await expect(page).toHaveURL(/\/app\?id=/);
   const designId=new URL(page.url()).searchParams.get('id');expect(designId).toBeTruthy();
   await page.getByRole('button',{name:'返回预览',exact:true}).click();

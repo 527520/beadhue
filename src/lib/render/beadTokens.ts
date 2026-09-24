@@ -33,6 +33,16 @@ export const EDITOR_CANVAS = {
   accent: '#3160e6',
 } as const;
 
+/** 作品详情查看器与分享图的画布颜色（原型 detail.js 读 --ink / --on-ink / --bg-subtle / --ink-3，数值同 theme.css）。 */
+export const VIEWER_TOKENS = {
+  ink: '#1c1c1e',
+  onInk: '#ffffff',
+  ink3: '#6e6e78',
+  subtle: '#f7f7f8',
+  /** 舞台上钉板的浮起投影（深墨 12%） */
+  boardShadow: 'rgba(28,28,30,0.12)',
+} as const;
+
 /** 标志的 2×2 四颗豆（原型 app.js brand()）：红、黄、蓝、绿。 */
 export const BRAND_BEAD_COLORS = ['#E0473F', '#FFD447', '#3F7FD9', '#47A35B'] as const;
 
