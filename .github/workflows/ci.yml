@@ -39,8 +39,10 @@ jobs:
     # 5× 全量（含 integration）约 17 分钟 + npm ci，20 分钟余量太小，慢 runner 会误超时。
     # 40 分钟同样不够：实测同一份代码 32m49s 通过，下一轮 runner 慢一点就撞上 40 分钟被
     # cancelled（run #74），而 e2e 依赖 coverage，一旦误超时 E2E 门禁会被静默跳过。
-    # 余量给足，宁可让慢 runner 跑完，也不要用超时把门禁关掉。
-    timeout-minutes: 70
+    # 社区轮后集成套件变大，70 分钟也不再稳：run #113/#115/#116 的 coverage 连续在
+    # 60~70 分钟处被 cancelled，E2E 随之被跳过。继续给足余量（预算不是门禁口径：
+    # 5 轮、阈值与全部断言一字未动）。
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
