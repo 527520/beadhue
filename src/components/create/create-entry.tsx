@@ -171,7 +171,7 @@ export function CreateEntry({ onImage, onBlank, onImport, existingNames, busy = 
   const altCard = 'flex min-w-0 items-center gap-4 rounded-lg bg-bg px-5 py-4 text-left text-ink-3 inset-ring-1 inset-ring-line transition-shadow duration-state hover:text-ink hover:inset-ring-ink-3 focus-visible:focus-ring';
 
   return (
-    <div data-ui="" className="mx-auto grid w-full max-w-create gap-4 px-gutter pt-6 pb-16 md:gap-6 md:pt-12">
+    <div data-ui="" className="mx-auto grid w-full max-w-create gap-4 px-gutter pt-6 pb-16 md:gap-6 md:pt-12 [&>*]:min-w-0">
       <header>
         <h1 className="text-display">{reselect ? t.reselectTitle : t.title}</h1>
         <p className="mt-2 text-body text-ink-3">{reselect ? t.reselectSubtitle : t.subtitle}</p>
@@ -183,7 +183,7 @@ export function CreateEntry({ onImage, onBlank, onImport, existingNames, busy = 
           if (!locked && !(event.target as HTMLElement).closest('button, [role=alert]')) fileRef.current?.click();
         }}
         className={cn(
-          'relative grid min-h-60 cursor-pointer place-items-center rounded-xl px-4 py-6 text-center transition-[box-shadow,background-color] duration-state md:min-h-80 md:px-6 md:py-10',
+          'relative grid min-h-60 cursor-pointer place-items-center overflow-hidden rounded-xl px-4 py-6 text-center transition-[box-shadow,background-color] duration-state md:min-h-80 md:px-6 md:py-10',
           isDragging ? 'bg-accent-soft pegboard-dots-active inset-ring-2 inset-ring-accent' : 'bg-bg pegboard-dots inset-ring-1 inset-ring-line hover:inset-ring-line-strong',
         )}
       >
