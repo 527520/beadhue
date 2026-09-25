@@ -18,7 +18,7 @@ import { fmtAgo, fmtDate } from './format';
 import { AdminDrawer, Spacer } from './overlays';
 import { AdminPageHead } from './page-head';
 import { CopyId, Dl, DrawerSection, IconTile, Mono, Note, Person, Thumb } from './parts';
-import { useAdminTable } from './use-admin-table';
+import { useAdminTable, useOpenRow } from './use-admin-table';
 
 const t = zhCN.adminUi.batches;
 const statusLabel = zhCN.communityAdmin.audit.batchStatuses;
@@ -93,7 +93,7 @@ export function BatchesConsole() {
   const [studio, setStudio] = useState<{ key: number; restore: StoredBatch | null; name?: string } | null>(null);
   const [naming, setNaming] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const open = table.items.find((batch) => batch.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (batch) => batch.id, table.loading);
   const { reload } = table;
   const changed = useCallback(() => { void reload(); }, [reload]);
   const columns: Column<StoredBatch>[] = [

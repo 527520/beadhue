@@ -19,7 +19,7 @@ import { BatchButton, DataTable, TitleCell, type Column, type RowMenuEntry } fro
 import { fmtAgo, fmtDate } from './format';
 import { AdminDrawer, CommandAlert, ReasonDialog, Spacer, type CommandState } from './overlays';
 import { CopyId, Dl, DrawerSection, IconTile, Note, Person, Thumb } from './parts';
-import { exportCsv, useAdminTable } from './use-admin-table';
+import { exportCsv, useAdminTable, useOpenRow } from './use-admin-table';
 
 const icon = (Icon: typeof Check) => <Icon aria-hidden="true" strokeWidth={1.75} />;
 const states = zhCN.communityAdmin.states;
@@ -67,7 +67,7 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
   const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
   const [dialog, setDialog] = useState<{ decision: 'published' | 'hidden'; rows: CommentRow[] } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const open = table.items.find((row) => row.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (row) => row.id, table.loading);
   const rows = table.items.filter((row) => selected.includes(row.id));
   const ask = (decision: 'published' | 'hidden', list: CommentRow[]) => { if (!list.length) return; command.resetNotice(); setDialog({ decision, rows: list }); };
   const decide = async (reason: string) => {
@@ -212,7 +212,7 @@ export function ReportsConsole({ initialOpenId }: { initialOpenId?: string }) {
   const command = useAdminCommand();
   const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
   const [dialog, setDialog] = useState<{ decision: Decision; row: ReportRow } | null>(null);
-  const open = table.items.find((row) => row.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (row) => row.id, table.loading);
   const inspection = useAdminInspection<ReportTargetInspection>(openId ? `/api/admin/community/reports/${openId}` : null);
   const target = inspection.data?.reportId === openId ? inspection.data : null;
   const canHide = target?.targetType === 'comment' && target.currentVersion !== null && ['pending_review', 'published'].includes(target.contentStatus ?? '');

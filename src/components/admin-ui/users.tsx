@@ -16,7 +16,7 @@ import { DataTable, TitleCell, type Column, type RowMenuEntry } from './data-tab
 import { fmtAgo, fmtDay, fmtNum } from './format';
 import { AdminDrawer, ReasonDialog, Spacer } from './overlays';
 import { CopyId, Dl, DrawerSection, Mono, Note } from './parts';
-import { exportCsv, useAdminTable } from './use-admin-table';
+import { exportCsv, useAdminTable, useOpenRow } from './use-admin-table';
 
 const t = zhCN.adminUi.users;
 const states = zhCN.communityAdmin.states;
@@ -47,7 +47,7 @@ export function UsersConsole({ currentUserId, initialQ }: { currentUserId: strin
   const [draftRole, setDraftRole] = useState<UserRole>('user');
   const [change, setChange] = useState<{ user: UserRow; change: Change } | null>(null);
   const [confirmation, setConfirmation] = useState('');
-  const open = table.items.find((user) => user.userId === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (user) => user.userId, table.loading);
   const locked = (user: UserRow) => user.userId === currentUserId || user.accountStatus === 'anonymized';
   const view = (user: UserRow) => { setDraftRole(user.role); setOpenId(user.userId); };
   const ask = (user: UserRow, next: Change) => { command.resetNotice(); setConfirmation(''); setChange({ user, change: next }); };

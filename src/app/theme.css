@@ -147,6 +147,8 @@
   --container-inset-bar: calc(100% - 24px);
   /* 编辑器画布区的容器查询档：窄于它时悬停坐标挪到左上角 */
   --container-canvas-compact: 720px;
+  /* 手机顶栏的容器查询档：窄于它（例如 390 宽放大到 200%）时只留标志图形 */
+  --container-topbar-tight: 216px;
 
   /* 阴影：只有浮起与弹窗两级，其余为控件自身的细节阴影 */
   --shadow-float: 0 1px 2px rgb(28 28 30 / 6%), 0 8px 24px rgb(28 28 30 / 10%);

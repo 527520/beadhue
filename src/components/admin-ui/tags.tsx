@@ -22,7 +22,7 @@ import { DataTable, TitleCell, type Column, type RowMenuEntry } from './data-tab
 import { AdminDrawer, CommandAlert, ReasonDialog, Spacer, type CommandState } from './overlays';
 import { Collapsible, NamedSwitch, Note, Thumb } from './parts';
 import { BUILTIN_ICONS, PixelEditorDialog, TagIcon } from './tag-icon';
-import { useAdminTable } from './use-admin-table';
+import { useAdminTable, useOpenRow } from './use-admin-table';
 import { AdminPageHead } from './page-head';
 
 const t = zhCN.adminUi.tags;
@@ -168,7 +168,7 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
   const [errors, setErrors] = useState<ReturnType<typeof validate>>({});
   const [toggle, setToggle] = useState<TagRow | null>(null);
   const sorted = [...table.items].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
-  const open = table.items.find((item) => item.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (item) => item.id, table.loading);
   const merged = open?.mergedIntoTagId ? table.items.find((item) => item.id === open.mergedIntoTagId)?.name ?? open.mergedIntoTagId : null;
 
   const startCreate = () => { command.resetNotice(); setErrors({}); setForm(formOf(null)); setCreating(true); };

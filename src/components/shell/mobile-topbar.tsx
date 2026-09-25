@@ -25,7 +25,7 @@ export function MobileTopbarFrame({ children, className }: { children: ReactNode
     <header
       data-ui=""
       data-scrolled={scrolled || undefined}
-      className={cn('sticky top-0 z-40 flex h-topbar items-center gap-1 border-b border-transparent bg-bg/96 pr-2 pl-4 backdrop-blur-md transition-colors duration-state ease-standard data-scrolled:border-line md:hidden', className)}
+      className={cn('@container sticky top-0 z-40 flex h-topbar items-center gap-1 border-b border-transparent bg-bg/96 pr-2 pl-4 backdrop-blur-md transition-colors duration-state ease-standard data-scrolled:border-line md:hidden', className)}
     >
       {children}
     </header>

@@ -43,6 +43,18 @@ export function useAdminTable<T>(endpoint: string, module: string, options: { in
   return { ...page, input, setInput, q, filters, setFilter, reset, filtered, query, sort, setSort };
 }
 
+/**
+ * 抽屉正在看的那一行：换查询或翻页后、新数据回来前当前页是空的，这段时间沿用上次看到的数据，
+ * 抽屉不跟着关了又开（焦点与未保存的输入都不丢）。读完仍不在当前页时照旧返回 null。
+ */
+export function useOpenRow<T>(items: T[], openId: string | null, idOf: (item: T) => string, loading: boolean): T | null {
+  const listed = openId === null ? null : items.find((item) => idOf(item) === openId) ?? null;
+  const [last, setLast] = useState<T | null>(null);
+  if (listed && listed !== last) setLast(listed);
+  if (openId === null) return null;
+  return listed ?? (loading && last && idOf(last) === openId ? last : null);
+}
+
 /** 导出 CSV：按当前条件逐页取（每页 100，最多 2000 条），加 BOM 以便表格软件识别 UTF-8。 */
 export async function exportCsv<T>(endpoint: string, query: string, columns: Array<[string, (row: T) => unknown]>, filename: string): Promise<number> {
   const rows: T[] = [];

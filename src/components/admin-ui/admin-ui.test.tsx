@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach } from 'vitest';
 import { parseTagIcon } from '@/lib/community/tagIcon';
@@ -8,7 +8,7 @@ import { DimensionTrend } from './analytics';
 import { LineChart, niceScale, type ChartDay } from './charts';
 import { fmtAgo } from './format';
 import { encodePixels, tagIconPattern } from './tag-icon';
-import { tableQuery } from './use-admin-table';
+import { tableQuery, useOpenRow } from './use-admin-table';
 import { ReasonDialog, type CommandState } from './overlays';
 
 afterEach(cleanup);
@@ -18,6 +18,26 @@ describe('后台表格查询串', () => {
   it('空条件不带，多选用逗号拼接，额外参数追加', () => {
     expect(tableQuery('  ', { status: '', tag: [] })).toBe('');
     expect(tableQuery(' 猫 ', { status: 'removed', tag: ['a', 'b'] }, { from: '2026-09-01', to: undefined })).toBe('q=%E7%8C%AB&status=removed&tag=a%2Cb&from=2026-09-01');
+  });
+});
+
+describe('抽屉当前行', () => {
+  it('换查询后新数据回来前沿用上次的行，读完仍不在当前页就返回 null', () => {
+    const a = { id: 'a', name: '旧' };
+    const { result, rerender } = renderHook(({ items, openId, loading }) => useOpenRow(items, openId, (row) => row.id, loading),
+      { initialProps: { items: [a, { id: 'b', name: 'b' }], openId: 'a' as string | null, loading: false } });
+    expect(result.current).toBe(a);
+    rerender({ items: [], openId: 'a', loading: true });
+    expect(result.current).toBe(a);
+    const fresh = { id: 'a', name: '新' };
+    rerender({ items: [fresh], openId: 'a', loading: false });
+    expect(result.current).toBe(fresh);
+    rerender({ items: [], openId: 'c', loading: true });
+    expect(result.current).toBeNull();
+    rerender({ items: [], openId: 'a', loading: false });
+    expect(result.current).toBeNull();
+    rerender({ items: [fresh], openId: null, loading: false });
+    expect(result.current).toBeNull();
   });
 });
 

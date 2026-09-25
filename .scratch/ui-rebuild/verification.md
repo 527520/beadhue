@@ -10,7 +10,7 @@ Status: in-progress
 | 静态 | `npm run typecheck` | 通过（无输出） |
 | 静态 | `npm run lint` | 通过（无输出） |
 | 品牌 | `npm run brand:check` | 通过（新增例外 `src/lib/admin/queries.ts`：系统信息读 `_doupu_migrations` 记账表） |
-| 单测 + 集成（门禁口径） | `npm run test`（串行，unit / serial / integration） | 通过：219 文件，1 619 通过、13 跳过，427 s |
+| 单测 + 集成（门禁口径） | `npm run test`（串行，unit / serial / integration） | 通过：221 文件，1 624 通过、13 跳过，425 s（最终代码 `1217f94`） |
 | 性能 | `npm run test:performance` | 通过：4 文件、7 项 |
 | 首屏 JS（门禁 6） | `node .scratch/ui-rebuild/tools/first-load-js.mjs`（R15 起点在临时工作树里 `npm ci && npm run build` 后同法测量） | 通过：首页 337.2 KB gzip（起点 426.0，−20.8%）、作品详情 355.3 KB（起点 385.1，−7.7%）；口径为公共入口 + 路由全部段的入口 chunk。修正前曾高于起点（454.1 / 472.1），处理见 audit-r15「交互走查与生产冒烟的发现」；`tests/unit/firstLoadImports.test.ts` 护栏 |
 | E2E | `npm run test:e2e`（Chromium / Firefox / WebKit） | 待填 |

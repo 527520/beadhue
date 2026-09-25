@@ -12,7 +12,7 @@ export function Brand({ compact = false, className }: { compact?: boolean; class
   return (
     <ShellLink href="/" aria-label={t.brandHome} className={cn('inline-flex flex-none items-center gap-2.5 rounded-sm text-ink focus-visible:focus-ring', className)}>
       <BrandMark />
-      <span className="grid leading-none">
+      <span className="grid leading-none @max-topbar-tight:hidden">
         <b className="font-brand text-title-2 leading-none font-normal tracking-brand text-ink">{t.brandName}</b>
         {compact ? null : <small className="mt-0.75 text-micro leading-none font-semibold tracking-brand-wide text-ink-3 uppercase max-lg:hidden">{t.brandEnglish}</small>}
       </span>

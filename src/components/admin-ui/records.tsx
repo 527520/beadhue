@@ -15,7 +15,7 @@ import { DataTable, TitleCell, type Column } from './data-table';
 import { fmtDate } from './format';
 import { AdminDrawer, Spacer } from './overlays';
 import { AdminCard, CardHead, CodeBlock, Collapsible, CopyId, Dl, DrawerSection, Mono, Note, Person } from './parts';
-import { exportCsv, useAdminTable, type FilterState } from './use-admin-table';
+import { exportCsv, useAdminTable, useOpenRow, type FilterState } from './use-admin-table';
 
 const icon = (Icon: typeof Copy) => <Icon aria-hidden="true" strokeWidth={1.75} />;
 const roles = zhCN.communityAdmin.states.role;
@@ -88,7 +88,7 @@ export function AuditConsole() {
   });
   const actors = useAuditActors();
   const [openId, setOpenId] = useState<string | null>(null);
-  const open = table.items.find((item) => item.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (item) => item.id, table.loading);
   const columns: Column<AdminAuditEntry>[] = [
     { key: 'time', label: a.columns.time, sort: (x, y) => x.createdAt.localeCompare(y.createdAt), cell: (item) => <span className="tabular-nums">{fmtDate(item.createdAt)}</span> },
     { key: 'actor', label: a.columns.actor, cell: (item) => <ActorCell item={item} /> },
@@ -250,7 +250,7 @@ function SlowView() {
   const s = logs.slow;
   const table = useAdminTable<AdminSlowQueryEntry>('/api/admin/logs/slow-queries', 'slow-queries', { mapFilters: (filters) => ({ minDurationMs: filters.duration ?? '' }) });
   const [openId, setOpenId] = useState<string | null>(null);
-  const open = table.items.find((row) => row.id === openId) ?? null;
+  const open = useOpenRow(table.items, openId, (row) => row.id, table.loading);
   const chain = open ? readChain(open.chain) : [];
   const columns: Column<AdminSlowQueryEntry>[] = [
     { key: 'duration', label: l.columns.duration, main: true, sort: (x, y) => x.durationMs - y.durationMs, cell: (row) => <TitleCell title={l.ms(row.durationMs)} onOpen={() => setOpenId(row.id)} /> },
