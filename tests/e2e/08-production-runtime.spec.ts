@@ -136,17 +136,15 @@ test('long-range production analytics includes live consented data and accessibl
     const page = await admin.newPage(); const now = new Date();
     const end = toShanghaiDay(now); const start = toShanghaiDay(new Date(now.getTime() - 180 * 86400000));
     await page.goto(`/admin/analytics?start=${start}&end=${end}&eventName=page_viewed&dimension=device`);
-    // 当前文案是「YYYY-MM-DD 这一天尚未结束（上海时间）」；旧断言写的是「为尚未结束的上海日期」，
-    // 后台重做换过文案后这条一直没跟着改（release-safety 第 12 步 exit 36 实证）。
     await expect(page.getByText(/这一天尚未结束（上海时间）/)).toBeVisible();
     const daily = page.getByRole('region', { name: '按分类查看每日趋势' });
-    // 选择器标签是「分类」，显示值是维度值（desktop）；此处断言过的「分类值」从未存在过
-    // （DailyDimensionTrend.test.tsx 用的是 /分类/），所以这步 click 一直超时（exit 36 实证）。
-    await daily.getByRole('button',{name:/分类/}).click();
-    await page.getByRole('option',{name:'desktop',exact:true}).click();
-    await expect(daily.getByRole('table')).toContainText(end);
-    await daily.locator('circle').first().focus(); await expect(daily.locator('circle').first()).toBeFocused();
-    await expect(page.locator('.admin-metrics article').nth(1)).toContainText('—');
+    await daily.getByRole('combobox', { name: '分类' }).click();
+    await page.getByRole('option', { name: '电脑', exact: true }).click();
+    const [, month, day] = end.split('-').map(Number);
+    const todayColumn = daily.getByRole('button', { name: new RegExp(`^(\\d{4}年)?${month}月${day}日：事件数 [1-9]`) });
+    await todayColumn.focus(); await expect(todayColumn).toBeFocused();
+    // 长期范围没有跨日去重访客数，指标卡显示「—」。
+    await expect(page.getByRole('main')).toContainText(/访客\s*—/);
     for (const width of [350, 390, 768, 1280, 1440]) {
       await page.setViewportSize({ width, height: 844 });
       // 上一轮的 axe 扫描会往文档里注入样式节点，setViewportSize 之后的回流不一定在同一帧完成：

@@ -7,7 +7,7 @@ import { resolveDashboardQuery, type DashboardSearchParams } from '@/lib/analyti
 import { zhCN } from '@/messages/zh-CN';
 import { AdminPageHead } from '@/components/admin-ui/page-head';
 import { AdminCard, CardHead } from '@/components/admin-ui/parts';
-import { AnalyticsFilters, BarList, Kpi, RangeChips, TrendChart } from '@/components/admin-ui/analytics';
+import { AnalyticsFilters, BarList, DimensionTrend, Kpi, RangeChips, TrendChart } from '@/components/admin-ui/analytics';
 
 type Dashboard = typeof zhCN.communityAdmin.analyticsDashboard;
 function dimensionValueLabel(t: Dashboard, dimension: string, value: string): string {
@@ -17,7 +17,7 @@ function dimensionValueLabel(t: Dashboard, dimension: string, value: string): st
 const shanghaiDay = (time: number) => new Date(time + 8 * 3600000).toISOString().slice(0, 10);
 const noteClass = 'rounded-md border border-line bg-bg px-3 py-2.5 text-body-sm text-ink-2';
 
-/** 匿名分析：范围芯片、四张指标卡、每日趋势、转化路径、分类统计；数据来自同意统计的访客。 */
+/** 匿名分析：范围芯片、四张指标卡、每日趋势、转化路径、分类统计（长期范围另有单一分类每日趋势）；数据来自同意统计的访客。 */
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<DashboardSearchParams> }) {
   const actor = await getSessionActor();
   if (!authorize(actor, 'analytics:read')) forbidden();
@@ -46,13 +46,16 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
     generated: generatedByDay.get(point.day) ?? 0, exported: exportedByDay.get(point.day) ?? 0,
   }));
   const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+  const breakdownTotal = sum(breakdown.values.map((row) => row.events));
   const note = active ? a.ranges[active as keyof typeof a.ranges] : a.rangeNote(query.start, query.end);
+  const partialDay = 'partialDay' in trend ? trend.partialDay : null;
+  const modeNote = summary.capability.mode === 'exact' ? t.exactMode : [t.aggregateMode, t.rollupFreshness, partialDay && t.partialDay(partialDay)].filter(Boolean).join(' ');
   const requestedStrings = Object.fromEntries(Object.entries(requested).map(([key, value]) => [key, value === undefined ? undefined : String(value)]));
   return (
     <>
       <AdminPageHead section="analytics" actions={<div className="flex min-w-0 items-center gap-2"><RangeChips ranges={ranges} active={active} /><AnalyticsFilters requested={requestedStrings} dimension={dimension} funnel={funnel} /></div>} />
       {invalid ? <p role="alert" className="rounded-md bg-warning-soft px-3 py-2.5 text-body-sm text-warning">{t.invalidQuery}</p> : null}
-      <p className={noteClass}>{summary.capability.mode === 'exact' ? t.exactMode : t.aggregateMode}{summary.capability.mode === 'aggregate' ? ` ${t.rollupFreshness}` : ''}</p>
+      <p className={noteClass}>{modeNote}</p>
       {filtersIgnored ? <p className={noteClass}>{t.ignoredFilters}</p> : null}
       <div className="grid grid-cols-12 gap-5 max-lg:gap-4 max-md:gap-3">
         <div className="col-span-full grid grid-cols-4 gap-5 max-lg:grid-cols-2 max-lg:gap-4 max-md:gap-3">
@@ -68,17 +71,21 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <AdminCard className="col-span-full flex flex-col xl:col-span-5">
           <CardHead title={a.funnel} aside={t.funnelNames[funnel]} />
           {funnelResult.steps
-            ? <BarList showRate rows={funnelResult.steps.map((step) => ({ label: t.steps[step.name as keyof typeof t.steps] ?? step.name, value: step.sessions, rate: step.conversionFromPrevious }))} />
+            ? <BarList showRate rows={funnelResult.steps.map((step, index) => ({ label: t.steps[step.name as keyof typeof t.steps] ?? step.name, value: step.sessions, rate: index === 0 ? null : step.conversionFromPrevious }))} />
             : <p className="px-5 py-4 text-body-sm text-ink-3">{funnelResult.unavailableReason}</p>}
           <p className="mt-auto border-t border-line px-5 py-3 text-caption font-normal text-ink-3">{t.funnelHelp}</p>
         </AdminCard>
         <AdminCard className="col-span-full flex flex-col">
           <CardHead title={a.dimension} aside={t.dimensions[dimension as keyof typeof t.dimensions]} />
           {breakdown.values.length
-            ? <BarList rows={breakdown.values.map((row) => ({ label: dimensionValueLabel(t, dimension, row.value), value: row.events }))} />
+            ? <BarList showRate rows={breakdown.values.map((row) => ({ label: dimensionValueLabel(t, dimension, row.value), value: row.events, rate: breakdownTotal ? row.events / breakdownTotal : null }))} />
             : <p className="px-5 py-4 text-body-sm text-ink-3">{t.noDimension}</p>}
           <p className="border-t border-line px-5 py-3 text-caption font-normal text-ink-3">{t.footnote}</p>
         </AdminCard>
+        {breakdown.points ? (
+          <DimensionTrend dimension={t.dimensions[dimension as keyof typeof t.dimensions]} points={breakdown.points}
+            options={breakdown.values.map((row) => ({ value: row.value, label: dimensionValueLabel(t, dimension, row.value) }))} />
+        ) : null}
       </div>
     </>
   );

@@ -3,7 +3,7 @@
 import { SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { zhCN } from '@/messages/zh-CN';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,23 @@ import { chipVariants } from '@/components/ui/chip';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Select } from '@/components/ui/select';
-import { ChartLegend, LineChart, Sparkline, type ChartSeries } from './charts';
+import { Select, type SelectOption } from '@/components/ui/select';
+import { ChartLegend, LineChart, Sparkline, type ChartDay, type ChartSeries } from './charts';
 import { fmtNum } from './format';
+import { AdminCard, CardHead } from './parts';
 
 const a = zhCN.adminUi.analytics;
 const d = zhCN.communityAdmin.analyticsDashboard;
+const c = zhCN.adminUi.common;
+
+/** 横轴日期；范围跨年时，读屏与浮层里的日期带上年份。 */
+function chartDays(dates: string[]): ChartDay[] {
+  const crossYear = new Set(dates.map((date) => date.slice(0, 4))).size > 1;
+  return dates.map((date) => {
+    const [year, month, day] = date.split('-').map(Number);
+    return { key: date, short: c.dayShort(month, day), long: crossYear ? c.dateLong(year, month, day) : c.dayLong(month, day) };
+  });
+}
 
 /** 时间范围芯片：链接到对应的 start/end，选中深墨。 */
 export function RangeChips({ ranges, active }: { ranges: Array<{ key: string; href: string }>; active: string | null }) {
@@ -92,12 +103,39 @@ export function TrendChart({ points }: { points: Array<{ day: string; uniqueVisi
     { label: a.series.generated, tone: 'chart-2', values: points.map((point) => point.generated) },
     { label: a.series.exported, tone: 'chart-3', values: points.map((point) => point.exported) },
   ];
-  const days = points.map((point) => { const [, month, day] = point.day.split('-').map(Number); return { short: zhCN.adminUi.common.dayShort(month, day), long: zhCN.adminUi.common.dayLong(month, day) }; });
   return (
     <>
-      <ChartLegend series={series} />
-      <div className="flex min-h-55 flex-1 px-5 py-4 max-md:px-4 max-md:py-3"><LineChart days={days} series={series} label={a.trendLabel} /></div>
+      {/* 不写合计：各日去重访客相加不是访客数（跨日去重只在指标卡里给）。 */}
+      <ChartLegend series={series} showTotal={false} />
+      <div className="flex min-h-55 flex-1 px-5 py-4 max-md:px-4 max-md:py-3"><LineChart days={chartDays(points.map((point) => point.day))} series={series} label={a.trendLabel} /></div>
     </>
+  );
+}
+
+/** 长期范围的单一分类每日趋势：选一个分类值，看它每天的事件数（每日汇总不保存跨日去重访客数）。 */
+export function DimensionTrend({ dimension, options, points }: { dimension: string; options: SelectOption[]; points: Array<{ day: string; value: string; events: number }> }) {
+  const headingId = useId();
+  const [value, setValue] = useState<string | null>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  const rows = selected ? points.filter((point) => point.value === selected.value) : [];
+  const series: ChartSeries[] = [{ label: d.events, tone: 'ink', values: rows.map((point) => point.events) }];
+  return (
+    <AdminCard aria-labelledby={headingId} className="col-span-full flex flex-col">
+      <CardHead id={headingId} title={a.dimensionTrend}>
+        {selected ? (
+          <span className="ml-auto flex min-w-0 items-center gap-2">
+            <span className="text-body-sm whitespace-nowrap text-ink-3 max-md:hidden">{dimension}</span>
+            <Select size="sm" label={d.value} value={selected.value} onValueChange={setValue} options={options} className="min-w-0" />
+          </span>
+        ) : null}
+      </CardHead>
+      {rows.length ? (
+        <>
+          <ChartLegend series={series} showTotal={false} />
+          <div className="flex min-h-55 flex-1 px-5 py-4 max-md:px-4 max-md:py-3"><LineChart days={chartDays(rows.map((point) => point.day))} series={series} label={a.dimensionTrendLabel(selected.label)} /></div>
+        </>
+      ) : <p className="px-5 py-4 text-body-sm text-ink-3">{d.noDimension}</p>}
+    </AdminCard>
   );
 }
 

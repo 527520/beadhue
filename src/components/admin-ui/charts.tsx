@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/cn';
 
 /** 固定像素尺寸的迷你折线：不拉伸，线宽与圆点不变形。 */
@@ -42,16 +42,32 @@ export type SeriesTone = 'ink' | 'chart-2' | 'chart-3';
 export interface ChartSeries { label: string; tone: SeriesTone; values: number[] }
 const STROKE: Record<SeriesTone, string> = { ink: 'stroke-ink', 'chart-2': 'stroke-chart-2', 'chart-3': 'stroke-chart-3' };
 export const DOT: Record<SeriesTone, string> = { ink: 'bg-ink', 'chart-2': 'bg-chart-2', 'chart-3': 'bg-chart-3' };
+/** 横轴最多标 7 个日期；超过一个月时圆点只画在当前列，否则会连成粗线。 */
+const AXIS_LABELS = 7;
+const DOTTED_DAYS = 31;
+
+export interface ChartDay { key: string; short: string; long: string }
 
 /**
  * 多日折线：SVG 只画网格与折线（拉伸 + 不缩放描边），
- * 圆点、坐标文字、悬停列用 HTML 按百分比定位，任何宽度下都清晰；每列可聚焦，读屏读出当日数值。
+ * 圆点、坐标文字、悬停列用 HTML 按百分比定位，任何宽度下都清晰。
+ * 每列是一个按钮，读屏读出当日数值；整张图只占一个 Tab 位，左右方向键 / Home / End 逐日移动。
  */
-export function LineChart({ days, series, label }: { days: Array<{ short: string; long: string }>; series: ChartSeries[]; label: string }) {
+export function LineChart({ days, series, label }: { days: ChartDay[]; series: ChartSeries[]; label: string }) {
   const [active, setActive] = useState<number | null>(null);
+  const [cursor, setCursor] = useState<number | null>(null);
   const scale = niceScale(Math.max(0, ...series.flatMap((item) => item.values)));
   const ticks = Array.from({ length: scale.count + 1 }, (_, index) => scale.step * index);
   const n = days.length;
+  const tabStop = Math.min(cursor ?? n - 1, n - 1);
+  const labelEvery = Math.ceil(n / AXIS_LABELS);
+  const dotted = (index: number) => n <= DOTTED_DAYS || active === index;
+  const move = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const next = ({ ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: n - 1 } as Record<string, number | undefined>)[event.key];
+    if (next === undefined || next < 0 || next >= n) return;
+    event.preventDefault();
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button[data-day]')[next]?.focus();
+  };
   const W = 600;
   const H = 240;
   const xp = (index: number) => (n <= 1 ? 50 : (index / (n - 1)) * 100);
@@ -70,19 +86,20 @@ export function LineChart({ days, series, label }: { days: Array<{ short: string
           ))}
         </svg>
         {active !== null ? <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 w-px bg-line-strong" style={{ left: `${xp(active)}%` }} /> : null}
-        {series.map((item) => item.values.map((value, index) => (
-          <i key={`${item.label}-${index}`} aria-hidden="true"
+        {series.map((item) => item.values.map((value, index) => dotted(index) ? (
+          <i key={`${item.label}-${days[index].key}`} aria-hidden="true"
             className={cn('pointer-events-none absolute -mt-1 -ml-1 size-2 rounded-full ring-2 ring-bg transition-transform duration-state', DOT[item.tone], active === index && 'scale-140')}
             style={{ left: `${xp(index)}%`, top: `${yp(value)}%` }} />
-        )))}
+        ) : null))}
         {days.map((day, index) => {
           const left = Math.max(0, xp(index - 0.5));
           const right = Math.min(100, xp(index + 0.5));
           return (
-            <button key={day.long} type="button" className="absolute inset-y-0 z-1 rounded-sm focus-visible:focus-ring"
+            <button key={day.key} type="button" data-day="" tabIndex={index === tabStop ? 0 : -1} className="absolute inset-y-0 z-1 rounded-sm focus-visible:focus-ring"
               style={{ left: `${left}%`, width: `${right - left}%` }}
               aria-label={`${day.long}：${series.map((item) => `${item.label} ${item.values[index]}`).join('，')}`}
-              onPointerOver={() => setActive(index)} onFocus={() => setActive(index)} onBlur={() => setActive(null)} />
+              onPointerOver={() => setActive(index)} onFocus={() => { setActive(index); setCursor(index); }} onBlur={() => setActive(null)}
+              onKeyDown={(event) => move(event, index)} />
           );
         })}
         {active !== null ? (
@@ -96,7 +113,9 @@ export function LineChart({ days, series, label }: { days: Array<{ short: string
         ) : null}
       </div>
       <div aria-hidden="true" className="relative col-start-2 mx-2.5 text-caption font-normal text-ink-3">
-        {days.map((day, index) => <span key={day.long} className="absolute top-2 -translate-x-1/2 whitespace-nowrap" style={{ left: `${xp(index)}%` }}>{day.short}</span>)}
+        {days.map((day, index) => (n - 1 - index) % labelEvery === 0
+          ? <span key={day.key} className="absolute top-2 -translate-x-1/2 whitespace-nowrap" style={{ left: `${xp(index)}%` }}>{day.short}</span>
+          : null)}
       </div>
     </div>
   );

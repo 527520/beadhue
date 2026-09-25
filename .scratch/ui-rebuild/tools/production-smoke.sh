@@ -88,5 +88,12 @@ for pair in "33|an aging administrator can render read-only pages" "34|standalon
   echo "smoke $code exit=$status ($title)"
   [ "$status" = 0 ] || smoke=$code
 done
+# 可选：冒烟之后在同一个服务与临时库上再跑一段检查（例如 AFTER_SMOKE="node .scratch/ui-rebuild/tools/analytics-dense.mjs"）。
+if [ -n "${AFTER_SMOKE:-}" ]; then
+  bash -c "$AFTER_SMOKE" > "$OUT/after-smoke.log" 2>&1
+  after=$?
+  echo "after-smoke exit=$after"
+  [ "$after" = 0 ] || smoke=37
+fi
 [ "$route" = 0 ] || exit 32
 exit "$smoke"

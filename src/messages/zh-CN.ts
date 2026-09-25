@@ -893,6 +893,7 @@ export const zhCN = {
       kpis: { visitors: '访客', sessions: '访问次数', generated: '生成图纸', exported: '导出文件' }, rangeNote: (start: string, end: string) => `${start} – ${end}`,
       trend: '每日趋势', trendLabel: '每日访客、生成图纸与导出文件', series: { visitors: '访客', generated: '生成图纸', exported: '导出文件' },
       funnel: '转化路径', dimension: '分类统计', filters: '筛选', apply: '查询', reset: '重置', noData: '所选时间范围内还没有数据。',
+      dimensionTrend: '按分类查看每日趋势', dimensionTrendLabel: (value: string) => `「${value}」每日事件数`,
     },
     system: {
       facts: { version: '应用版本', migration: '数据库迁移', errors: '24 小时 5xx', backup: '数据库备份' },
@@ -937,7 +938,7 @@ export const zhCN = {
     },
     common: {
       today: '今天', close: '关闭', view: '查看详情', copied: (value: string) => `已复制 ${value}`, copyId: (label: string) => `复制完整${label}`, none: '—', you: '（你）',
-      dayShort: (month: number, day: number) => `${month}/${day}`, dayLong: (month: number, day: number) => `${month}月${day}日`, commentBy: (name: string) => `${name}的评论`,
+      dayShort: (month: number, day: number) => `${month}/${day}`, dayLong: (month: number, day: number) => `${month}月${day}日`, dateLong: (year: number, month: number, day: number) => `${year}年${month}月${day}日`, commentBy: (name: string) => `${name}的评论`,
       justNow: '刚刚', minutesAgo: (n: number) => `${n} 分钟前`, hoursAgo: (n: number) => `${n} 小时前`, yesterday: (time: string) => `昨天 ${time}`,
     },
   },
