@@ -92,3 +92,6 @@ next-env.d.ts
 # R15 前端重构的截图证据（体积大，只留本地）
 .scratch/ui-rebuild/evidence/*
 !.scratch/ui-rebuild/evidence/prototype-final/
+
+# 本地 CI 轮询临时状态（不入库）
+.scratch/beadhue-ci-monitor.txt
