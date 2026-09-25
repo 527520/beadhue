@@ -698,7 +698,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     paintCenter(1);
@@ -723,7 +723,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     paintCenter(91);
@@ -749,7 +749,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);
@@ -768,7 +768,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);
@@ -796,7 +796,7 @@ describe('Workbench 全流程', () => {
     render(<Workbench storage={storage} imageDecoder={decoder} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
     const clears = vi.mocked(decoder.clear).mock.calls.length;
     saveNow();
@@ -866,7 +866,7 @@ describe('Workbench 全流程', () => {
       render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
       fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-      await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+      await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
       await screen.findByText(beads(10000));
       const share = () => screen.getByRole('button', { name: tw.share });
       await waitFor(() => expect(share()).not.toBeDisabled());
@@ -935,7 +935,7 @@ describe('Workbench 本地保存', () => {
     const first = render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
     saveNow();
 
@@ -971,7 +971,7 @@ describe('Workbench 本地保存', () => {
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
     storage.quotaExceeded = true;
     saveNow();
@@ -1139,7 +1139,7 @@ describe('Workbench 本地保存', () => {
     chooseSourceFile();
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
     fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.confirm}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
 
     await waitFor(() => expect(widthField()).toBeEnabled());
     expect(screen.getByDisplayValue('保留身份')).toBeTruthy();
@@ -1165,7 +1165,7 @@ describe('Workbench 本地保存', () => {
     chooseSourceFile();
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }));
     fireEvent.click(await screen.findByRole('button',{name:zhCN.crop.confirm}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.cancel }));
 
     expect(cancel).toHaveBeenCalledOnce();
@@ -1358,7 +1358,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     render(<Workbench storage={new FakeStorage()} decodeFn={fakeDecode} generateFn={generateFn} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     await choosePalette(paletteName(ARTKAL));
@@ -1450,7 +1450,7 @@ describe('Workbench 空白起稿与套装档位（H-2/H-3）', () => {
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
-    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 5000 });
     await screen.findByText(beads(SQUARE_BEADS));
 
     await chooseKit(24);

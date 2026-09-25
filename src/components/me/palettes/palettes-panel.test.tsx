@@ -8,6 +8,9 @@ import { PalettesPanel } from './palettes-panel';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => '/me/palettes' }));
 
+// CI 慢 runner 上「新建色板」全流程（多次 userEvent + 弹窗往返）曾超 5s 默认超时。
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
+
 afterEach(() => { vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
 
 describe('色板数据', () => {
