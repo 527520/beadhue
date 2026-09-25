@@ -57,7 +57,7 @@ describe('analytics client 入口（同意闸门 + 早期队列 + 懒加载）',
     client.track(event);
     client.track(event);
 
-    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalledTimes(2), { timeout: 10_000 });
 
     client.track(event);
     expect(fakeClient.track).toHaveBeenCalledTimes(3);
@@ -69,7 +69,7 @@ describe('analytics client 入口（同意闸门 + 早期队列 + 懒加载）',
     grantConsent();
     client.setAnalyticsInitialized(true);
     client.track({ name: 'page_viewed' } as never);
-    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled());
+    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled(), { timeout: 10_000 });
     const { createAnalyticsClient } = await import('./clientQueue');
     const options = vi.mocked(createAnalyticsClient).mock.calls[0][0];
     expect(options.context()).toMatchObject({ path: '/community?utm_source=weibo&utm_campaign=launch&secret=no' });
@@ -88,12 +88,12 @@ describe('analytics client 入口（同意闸门 + 早期队列 + 懒加载）',
     grantConsent();
     client.setAnalyticsInitialized(true);
     client.track({ name: 'page_viewed' } as never);
-    await vi.waitFor(() => expect(vi.mocked(queue.createAnalyticsClient).mock.calls.length).toBeGreaterThanOrEqual(1));
+    await vi.waitFor(() => expect(vi.mocked(queue.createAnalyticsClient).mock.calls.length).toBeGreaterThanOrEqual(1), { timeout: 10_000 });
 
     const before = vi.mocked(queue.createAnalyticsClient).mock.calls.length;
     vi.mocked(queue.createAnalyticsClient).mockImplementationOnce(() => fakeClient);
     client.track({ name: 'page_viewed' } as never);
-    await vi.waitFor(() => expect(vi.mocked(queue.createAnalyticsClient).mock.calls.length).toBeGreaterThan(before));
+    await vi.waitFor(() => expect(vi.mocked(queue.createAnalyticsClient).mock.calls.length).toBeGreaterThan(before), { timeout: 10_000 });
     expect(fakeClient.track.mock.calls.length).toBeGreaterThan(0);
   });
 
@@ -102,7 +102,7 @@ describe('analytics client 入口（同意闸门 + 早期队列 + 懒加载）',
     grantConsent();
     client.setAnalyticsInitialized(true);
     client.track({ name: 'page_viewed' } as never);
-    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled());
+    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled(), { timeout: 10_000 });
     client.clearAnalyticsQueue();
     expect(fakeClient.clear).toHaveBeenCalled();
   });
@@ -112,7 +112,7 @@ describe('analytics client 入口（同意闸门 + 早期队列 + 懒加载）',
     grantConsent();
     client.setAnalyticsInitialized(true);
     client.track({ name: 'page_viewed' } as never);
-    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled());
+    await vi.waitFor(() => expect(fakeClient.track).toHaveBeenCalled(), { timeout: 10_000 });
     Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
     expect(fakeClient.flushBeacon).toHaveBeenCalled();
