@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAnalyticsClient } from './client';
+import { createAnalyticsClient } from './clientQueue';
 
 describe('analytics client queue', () => {
   it('does not queue before consent and flushes consented events in batches of ten', async () => {

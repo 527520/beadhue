@@ -1,4 +1,4 @@
-import { config } from '@/lib/config';
+import { PUBLIC_CONFIG_DEFAULTS } from '@/lib/publicConfig';
 import type { BuiltinPaletteId, ProjectPalette } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 
@@ -25,7 +25,7 @@ const BOARD_PROFILES: Readonly<Record<BoardProfileId, BoardProfile>> = Object.fr
     beadDiameterMm: 5,
     boardRows: 29,
     boardCols: 29,
-    pdfCellMm: config.exportPdf.cellMm,
+    pdfCellMm: PUBLIC_CONFIG_DEFAULTS.exportPdf.cellMm,
   }),
   '2.6mm-50': Object.freeze({
     id: '2.6mm-50',

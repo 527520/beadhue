@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRef, useState, type FormEvent } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import { emailSchema } from '@/lib/schemas';
+import { isValidEmail } from '@/lib/emailFormat';
 import { track } from '@/lib/analytics/client';
 import { notifyAuthStatusChanged } from '@/components/account/useAuthStatus';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFoc
     event.preventDefault();
     if (inFlight.current) return;
     const next: Errors = {};
-    if (!emailSchema.safeParse(email).success) next.email = t.emailInvalid;
+    if (!isValidEmail(email)) next.email = t.emailInvalid;
     if (!password) next.password = t.passwordRequired;
     setErrors(next);
     setUnverified(false);

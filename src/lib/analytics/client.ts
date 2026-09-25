@@ -2,130 +2,8 @@
 
 import { randomId } from '@/lib/ids';
 import { ANALYTICS_CONSENT_COOKIE } from './cookies';
-import { normalizePath, normalizeReferrerDomain } from './normalize';
-import {
-  analyticsClientEventSchema,
-  type AnalyticsClientEvent,
-  type AnalyticsEnvelope,
-} from './events';
-
-interface ClientContext {
-  path?: string;
-  referrer?: string;
-  utm?: AnalyticsEnvelope['utm'];
-}
-
-export interface AnalyticsClientOptions {
-  isConsented: () => boolean;
-  context: () => ClientContext;
-  send: (events: AnalyticsEnvelope[]) => Promise<boolean>;
-  beacon?: (events: AnalyticsEnvelope[]) => boolean;
-  schedule: (callback: () => void, delayMs: number) => number;
-  cancelSchedule: (id: number) => void;
-  now: () => Date;
-  randomId: () => string;
-}
-
-interface QueuedEvent {
-  envelope: AnalyticsEnvelope;
-  attempts: number;
-}
-
-export interface AnalyticsClient {
-  track(event: AnalyticsClientEvent): void;
-  flush(): Promise<void>;
-  flushBeacon(): void;
-  clear(): void;
-}
-
-export function createAnalyticsClient(options: AnalyticsClientOptions): AnalyticsClient {
-  const queue: QueuedEvent[] = [];
-  let timer: number | null = null;
-  let sending: Promise<void> | null = null;
-  let generation = 0;
-
-  const cancelTimer = (): void => {
-    if (timer !== null) options.cancelSchedule(timer);
-    timer = null;
-  };
-  const scheduleFlush = (): void => {
-    if (timer !== null || queue.length === 0) return;
-    timer = options.schedule(() => {
-      timer = null;
-      void flush();
-    }, 10_000);
-  };
-  const flush = async (): Promise<void> => {
-    if (sending) return sending;
-    if (!options.isConsented()) {
-      queue.length = 0;
-      cancelTimer();
-      return;
-    }
-    const items = queue.splice(0, 10);
-    if (items.length === 0) return;
-    cancelTimer();
-    const sentGeneration = generation;
-    sending = (async () => {
-      let accepted = false;
-      try {
-        accepted = await options.send(items.map((item) => item.envelope));
-      } catch {
-        accepted = false;
-      }
-      if (!accepted && sentGeneration === generation && options.isConsented()) {
-        const retryable = items
-          .filter((item) => item.attempts < 2)
-          .map((item) => ({ ...item, attempts: item.attempts + 1 }));
-        queue.unshift(...retryable);
-      }
-      sending = null;
-      scheduleFlush();
-    })();
-    return sending;
-  };
-
-  return {
-    track(event) {
-      if (!options.isConsented()) return;
-      const parsed = analyticsClientEventSchema.safeParse(event);
-      if (!parsed.success) return;
-      const context = options.context();
-      const referrerDomain = normalizeReferrerDomain(context.referrer);
-      queue.push({
-        envelope: {
-          ...parsed.data,
-          eventId: options.randomId(),
-          occurredAt: options.now().toISOString(),
-          path: normalizePath(context.path),
-          ...(referrerDomain ? { referrer: `https://${referrerDomain}` } : {}),
-          ...(context.utm ? { utm: context.utm } : {}),
-        },
-        attempts: 0,
-      });
-      if (queue.length > 50) queue.splice(0, queue.length - 50);
-      if (queue.length >= 10) void flush();
-      else scheduleFlush();
-    },
-    flush,
-    flushBeacon() {
-      if (!options.isConsented() || !options.beacon) return;
-      const items = queue.splice(0, 20);
-      if (items.length === 0) return;
-      cancelTimer();
-      try {
-        options.beacon(items.map((item) => item.envelope));
-      } catch {
-        // Analytics is best effort and never blocks navigation.
-      }
-    },
-    clear() {
-      generation++;
-      queue.length = 0;
-      cancelTimer();
-    },
-  };
-}
+import type { AnalyticsClient, ClientContext } from './clientQueue';
+import type { AnalyticsClientEvent, AnalyticsEnvelope } from './events';
 
 let analyticsInitialized = false;
 
@@ -158,43 +36,75 @@ function browserContext(): ClientContext {
   };
 }
 
-const browserClient = createAnalyticsClient({
-  isConsented: hasBrowserConsent,
-  context: browserContext,
-  send: async (events) => {
-    const response = await fetch('/api/analytics/events', {
-      method: 'POST',
-      credentials: 'same-origin',
-      keepalive: true,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ events }),
-    });
-    return response.ok;
-  },
-  beacon: (events) => navigator.sendBeacon(
-    '/api/analytics/events',
-    new Blob([JSON.stringify({ events })], { type: 'application/json' }),
-  ),
-  schedule: (callback, delayMs) => window.setTimeout(callback, delayMs),
-  cancelSchedule: (id) => window.clearTimeout(id),
-  now: () => new Date(),
-  randomId,
-});
+/**
+ * 校验与发送队列（含 zod）在 clientQueue：同意统计后第一次记事件才加载，未同意的访客不会下载。
+ * 加载完成前的事件连同当时的页面与时间先存着，加载后按原顺序补记；页面在加载前就隐藏时这些事件放弃（统计尽力而为）。
+ */
+interface EarlyEvent { event: AnalyticsClientEvent; context: ClientContext; at: Date }
+const early: EarlyEvent[] = [];
+let replaying: EarlyEvent | null = null;
+let browserClient: AnalyticsClient | null = null;
+let loading: Promise<void> | null = null;
+
+async function loadBrowserClient(): Promise<void> {
+  const { createAnalyticsClient } = await import('./clientQueue');
+  const client = createAnalyticsClient({
+    isConsented: hasBrowserConsent,
+    context: () => replaying?.context ?? browserContext(),
+    send: async (events) => {
+      const response = await fetch('/api/analytics/events', {
+        method: 'POST',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ events }),
+      });
+      return response.ok;
+    },
+    beacon: (events) => navigator.sendBeacon(
+      '/api/analytics/events',
+      new Blob([JSON.stringify({ events })], { type: 'application/json' }),
+    ),
+    schedule: (callback, delayMs) => window.setTimeout(callback, delayMs),
+    cancelSchedule: (id) => window.clearTimeout(id),
+    now: () => replaying?.at ?? new Date(),
+    randomId,
+  });
+  browserClient = client;
+  for (const item of early.splice(0)) {
+    replaying = item;
+    try {
+      client.track(item.event);
+    } finally {
+      replaying = null;
+    }
+  }
+}
 
 export function track(event: AnalyticsClientEvent): void {
   try {
-    browserClient.track(event);
+    if (browserClient) {
+      browserClient.track(event);
+      return;
+    }
+    if (!hasBrowserConsent()) return;
+    early.push({ event, context: browserContext(), at: new Date() });
+    if (early.length > 50) early.splice(0, early.length - 50);
+    loading ??= loadBrowserClient().catch(() => {
+      loading = null;
+    });
   } catch {
     // Analytics failures must never affect the primary product flow.
   }
 }
 
 export function clearAnalyticsQueue(): void {
-  browserClient.clear();
+  early.length = 0;
+  browserClient?.clear();
 }
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') browserClient.flushBeacon();
+    if (document.visibilityState === 'hidden') browserClient?.flushBeacon();
   });
 }

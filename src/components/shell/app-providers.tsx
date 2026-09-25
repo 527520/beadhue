@@ -2,7 +2,6 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { migrateBrowserPreferences } from '@/lib/storage/brandMigration';
-import { resumeOriginalUploads } from '@/lib/originals/client';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
 import { AnalyticsConsentInitialization } from '@/components/analytics/AnalyticsConsent';
 import { ToastProvider } from '@/components/ui/toast';
@@ -17,9 +16,19 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const email = auth.kind === 'user' ? auth.email : null;
   useEffect(() => {
     migrateBrowserPreferences();
-    void resumeOriginalUploads();
-    window.addEventListener('online', resumeOriginalUploads);
-    return () => window.removeEventListener('online', resumeOriginalUploads);
+    // 续传模块连带本机存储、项目校验与整套色板数据，不能进每页的首屏 JS。
+    let resume: (() => void) | null = null;
+    let cancelled = false;
+    void import('@/lib/originals/client').then(({ resumeOriginalUploads }) => {
+      if (cancelled) return;
+      resume = () => void resumeOriginalUploads();
+      resume();
+      window.addEventListener('online', resume);
+    });
+    return () => {
+      cancelled = true;
+      if (resume) window.removeEventListener('online', resume);
+    };
   }, [email]);
   return (
     <ToastProvider>

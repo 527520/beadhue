@@ -7,7 +7,6 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import type { AdminOverview } from '@/lib/admin/overview';
 import type { UserRole } from '@/lib/auth/authorization';
 import { cn } from '@/lib/cn';
-import { createBeadhueApi } from '@/lib/sync/api';
 import { zhCN } from '@/messages/zh-CN';
 import { notifyAuthStatusChanged, useAuthStatus } from '@/components/account/useAuthStatus';
 import { BrandMark } from '@/components/shell/brand';
@@ -174,6 +173,7 @@ function AccountButton() {
   const icon = (Icon: typeof User) => <Icon aria-hidden="true" strokeWidth={1.75} />;
   const logout = async () => {
     try {
+      const { createBeadhueApi } = await import('@/lib/sync/api');
       await createBeadhueApi().logout();
       notifyAuthStatusChanged();
       toast(zhCN.shell.account.loggedOut);

@@ -8,6 +8,7 @@
  * - 敏感项（限流/会话/体积）绝不出现在 publicConfig() 中。
  */
 import { LIMITS } from '@/lib/appInfo';
+import { PUBLIC_CONFIG_DEFAULTS, publicConfigFallback, type PublicConfig } from './publicConfig';
 import { A4_HEIGHT_MM, A4_WIDTH_MM } from '@/lib/paper';
 
 const isServer = typeof process !== 'undefined' && process.versions?.node != null;
@@ -29,36 +30,6 @@ function readBool(name: string, fallback: boolean): boolean {
   const raw = process.env[name];
   if (raw == null || raw === '') return fallback;
   return raw === '1' || raw.toLowerCase() === 'true';
-}
-
-/** 客户端可见配置（经 /api/config 下发）。 */
-export interface PublicConfig {
-  generation: {
-    /** 生成默认目标宽度（格） */
-    defaultWidth: number;
-    /** 生成默认颜色数 */
-    defaultColorCount: number;
-  };
-  exportPng: {
-    /** PNG 每格像素 */
-    cellPx: number;
-    /** 是否裁剪至内容 */
-    cropToContent: boolean;
-    /** 是否包含图例 */
-    includeLegend: boolean;
-  };
-  exportPdf: {
-    /** 每格毫米 */
-    cellMm: number;
-    /** 页边距毫米 */
-    marginMm: number;
-    /** 页眉高度毫米 */
-    headerMm: number;
-    /** 每页列数 */
-    pageCols: number;
-    /** 每页行数 */
-    pageRows: number;
-  };
 }
 
 export interface SiteConfig extends PublicConfig {
@@ -197,10 +168,7 @@ export interface SiteConfig extends PublicConfig {
 
 /** 默认值即历史行为：未配置任何环境变量时，站点行为与优化前一致；生成默认值例外：2 板 58 格、24 色、去背景开。 */
 const DEFAULTS: SiteConfig = {
-  generation: { defaultWidth: 58, defaultColorCount: 24 },
-  exportPng: { cellPx: 20, cropToContent: true, includeLegend: true },
-  // 5mm 底板按 5mm 一格 1:1 打印（可垫在透明底板下直接对照拼）；2.6mm 规格另按 2.6mm。
-  exportPdf: { cellMm: 5, marginMm: 8, headerMm: 10, pageCols: 31, pageRows: 45 },
+  ...PUBLIC_CONFIG_DEFAULTS,
   security: {
     originalUserMinute: 10,
     originalUserHour: 60,
@@ -445,11 +413,7 @@ export function poolOptions(cfg: SiteConfig['database'] = config.database): {
 }
 
 /** 浏览器端初始回退（SSR/未加载 /api/config 前使用）。 */
-export const publicConfigFallback: PublicConfig = {
-  generation: { ...DEFAULTS.generation },
-  exportPng: { ...DEFAULTS.exportPng },
-  exportPdf: { ...DEFAULTS.exportPdf },
-};
+export { publicConfigFallback, type PublicConfig };
 
 /** /api/config 返回的公开子集（服务端运行时值）。 */
 export function publicConfig(): PublicConfig {

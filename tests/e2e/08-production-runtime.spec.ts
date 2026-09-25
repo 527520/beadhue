@@ -132,6 +132,11 @@ test('long-range production analytics includes live consented data and accessibl
       return (await response.json()).accepted;
     });
     expect(accepted).toBeGreaterThan(0);
+    // 浏览器端的发送队列在同意后按需加载：换页后 page_viewed 仍要由页面自己发出去（队列 10 秒一批）。
+    const sent = visitor.waitForRequest((request) => request.method() === 'POST' && new URL(request.url()).pathname === '/api/analytics/events', { timeout: 30_000 });
+    await visitor.goto('/');
+    const batch = (await sent).postDataJSON() as { events: Array<{ name: string; path: string }> };
+    expect(batch.events.map((event) => event.name)).toContain('page_viewed');
     await admin.addCookies([{ name: 'beadhue_session', value: token, url: proxy.origin, httpOnly: true, secure: true, sameSite: 'Lax' }, { name: 'beadhue_analytics_consent', value: 'denied', url: proxy.origin, secure: true, sameSite: 'Lax' }]);
     const page = await admin.newPage(); const now = new Date();
     const end = toShanghaiDay(now); const start = toShanghaiDay(new Date(now.getTime() - 180 * 86400000));

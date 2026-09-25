@@ -6,6 +6,7 @@
  */
 
 import { config } from '@/lib/config';
+import { parseCookieHeader } from '@/lib/cookieHeader';
 
 function secureFlag(): string {
   return process.env.NODE_ENV === 'production' ? '; Secure' : '';
@@ -36,19 +37,7 @@ export function clearSessionCookie(): string {
   return `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax${secureFlag()}; Max-Age=0`;
 }
 
-/** 解析请求 Cookie 头 → Map（重复同名取第一个；无头返回空 Map）。 */
-export function parseCookieHeader(header: string | null): Map<string, string> {
-  const map = new Map<string, string>();
-  if (!header) return map;
-  for (const part of header.split(';')) {
-    const eq = part.indexOf('=');
-    if (eq === -1) continue;
-    const name = part.slice(0, eq).trim();
-    const value = part.slice(eq + 1).trim();
-    if (name && !map.has(name)) map.set(name, value);
-  }
-  return map;
-}
+export { parseCookieHeader };
 
 /** 从请求 Cookie 头中提取会话令牌。 */
 export function readSessionToken(header: string | null): string | null {

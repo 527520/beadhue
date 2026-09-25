@@ -4,7 +4,6 @@ import { CircleHelp, Folder, Lock, LogOut, Menu as MenuIcon, Palette, Settings, 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { zhCN } from '@/messages/zh-CN';
-import { createBeadhueApi } from '@/lib/sync/api';
 import { track } from '@/lib/analytics/client';
 import { notifyAuthStatusChanged, type AuthStatus } from '@/components/account/useAuthStatus';
 import { Avatar } from '@/components/ui/avatar';
@@ -64,6 +63,7 @@ export function AccountMenu({ user }: { user: User }) {
   );
   const logout = async () => {
     try {
+      const { createBeadhueApi } = await import('@/lib/sync/api');
       await createBeadhueApi().logout();
       track({ name: 'logout_succeeded', properties: {} });
       notifyAuthStatusChanged();

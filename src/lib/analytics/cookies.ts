@@ -1,4 +1,4 @@
-import { parseCookieHeader } from '@/lib/auth/cookies';
+import { parseCookieHeader } from '@/lib/cookieHeader';
 
 export const ANALYTICS_CONSENT_COOKIE = 'beadhue_analytics_consent';
 export const ANALYTICS_VISITOR_COOKIE = 'beadhue_visitor';

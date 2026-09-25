@@ -6,7 +6,7 @@
  * 用途：改 .env + 重启即生效，无需改代码重新发版。
  */
 import { useEffect, useState } from 'react';
-import { publicConfigFallback, type PublicConfig } from '@/lib/config';
+import { publicConfigFallback, type PublicConfig } from '@/lib/publicConfig';
 
 export function usePublicConfig(): PublicConfig {
   const [cfg, setCfg] = useState<PublicConfig>(publicConfigFallback);

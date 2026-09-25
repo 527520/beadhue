@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { LIMITS } from './appInfo';
+import { emailSchema } from './emailSchema';
 import {
   BOARD_PROFILE_IDS,
   compatibleBoardProfilesForPalette,
@@ -36,11 +37,7 @@ export const designNameSchema = z
   .refine((s) => s.length >= 1, '名称不能为空白字符');
 
 /** 邮箱：合法格式、≤254 字符、统一小写。 */
-export const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .pipe(z.email('邮箱格式不正确').max(254, '邮箱过长'));
+export { emailSchema };
 
 /** 密码策略（ADR-0004）：8–72 字符，首尾不得为空白。 */
 export const passwordSchema = z
