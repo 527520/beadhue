@@ -116,8 +116,10 @@ test('作品卡直接点喜欢：未登录弹出登录弹窗，登录后继续�
   await dialog.getByRole('button', { name: '登录', exact: true }).click();
   const liked = page.getByRole('button', { name: `取消喜欢「${title}」` }).first();
   await expect(liked).toHaveAttribute('aria-pressed', 'true');
-  // 刷新后仍是服务端给出的已喜欢状态；再点一次取消。
-  await page.reload();
+  // 刷新后仍是服务端给出的已喜欢状态；再点一次取消。登录后的 router.refresh 与开发服务的按需编译可能还在进行，
+  // Firefox 会把与之重叠的 reload 判为 NS_BINDING_ABORTED：等网络静下来再刷新，被打断就重试。
+  await page.waitForLoadState('networkidle');
+  await expect(async () => { await page.reload(); }).toPass({ timeout: 20_000 });
   await waitHydrated(page);
   await expect(liked).toHaveAttribute('aria-pressed', 'true');
   await liked.click();

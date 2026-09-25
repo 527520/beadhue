@@ -272,7 +272,8 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   await page.goto('/?sort=new');
   await expect(page.getByRole('heading', { name: '官方作品 01' }).first()).toBeVisible();
   const detail = await page.evaluate(async () => {
-    const list = await (await fetch('/api/community/works?q=' + encodeURIComponent('官方作品 01'))).json();
+    // 三个浏览器项目与别的批次用例都会发布同名的「官方作品 01」，按最新取本用例刚发布的那件。
+    const list = await (await fetch('/api/community/works?sort=new&q=' + encodeURIComponent('官方作品 01'))).json();
     return (await fetch(`/api/community/works/${list.items[0].id}`)).json();
   });
   expect(detail.snapshot.params.targetWidth).toBe(24);

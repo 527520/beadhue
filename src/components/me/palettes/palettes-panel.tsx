@@ -296,8 +296,10 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
   const defaultPalette = useDefaultPalette();
   // 弹窗按需挂载、关闭即卸载，Base UI 来不及归还焦点：打开时记下入口，关闭后手动还回去。
   const opener = useRef<HTMLElement | null>(null);
-  const remember = () => {
-    if (document.activeElement instanceof HTMLElement && !document.activeElement.closest('[role=dialog]')) opener.current = document.activeElement;
+  // Safari 点按钮不会把焦点给它，所以优先记被点的那个元素，没有时才看当前焦点（菜单项打开的编辑器）。
+  const remember = (from?: HTMLElement) => {
+    const current = from ?? document.activeElement;
+    if (current instanceof HTMLElement && !current.closest('[role=dialog]')) opener.current = current;
   };
   const restore = () => window.setTimeout(() => { if (opener.current?.isConnected) opener.current.focus(); }, 0);
   const defaultName = cards.find((card) => card.id === defaultPalette.value)?.name ?? '';
@@ -365,7 +367,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
                   <span>{relativeTime(record.updatedAt, now)}</span>
                 </p>
               </div>
-              <button type="button" aria-label={s.openCustom(record.name)} onClick={() => { remember(); setViewing({ kind: 'custom', record }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
+              <button type="button" aria-label={s.openCustom(record.name)} onClick={(event) => { remember(event.currentTarget); setViewing({ kind: 'custom', record }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
               <div className="absolute right-2 bottom-3 z-1">
                 <ActionMenu label={zhCN.me.more(record.name)} title={record.name} variant="default" size="sm" entries={[
                   { key: 'edit', label: s.actions.edit, icon: icon(Pencil), onSelect: () => { remember(); setEditing(record); } },
@@ -382,7 +384,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
     mine = (
       <section aria-labelledby="h-my-palettes">
         <SectionHead id="h-my-palettes" title={s.mineTitle}>
-          {signedIn ? <Button size="sm" onClick={() => { remember(); setEditing('new'); }}>{icon(Plus)}{s.create}</Button> : null}
+          {signedIn ? <Button size="sm" onClick={(event) => { remember(event.currentTarget); setEditing('new'); }}>{icon(Plus)}{s.create}</Button> : null}
         </SectionHead>
         {body}
       </section>
@@ -415,7 +417,7 @@ export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {
                   {card.specs.map((spec) => <span key={spec} className="inline-flex h-5.5 items-center rounded-full px-2 text-caption text-ink-2 inset-ring-1 inset-ring-line-strong">{spec}</span>)}
                 </p>
               </div>
-              <button type="button" aria-label={s.openBuiltin(card.name, card.count)} onClick={() => { remember(); setViewing({ kind: 'builtin', id: card.id }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
+              <button type="button" aria-label={s.openBuiltin(card.name, card.count)} onClick={(event) => { remember(event.currentTarget); setViewing({ kind: 'builtin', id: card.id }); }} className="absolute inset-0 z-0 rounded-lg focus-visible:focus-ring" />
             </li>
           ))}
         </ul>
