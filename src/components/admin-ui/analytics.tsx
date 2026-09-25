@@ -65,12 +65,12 @@ export function AnalyticsFilters({ requested, dimension, funnel }: { requested: 
       </PopoverTrigger>
       <PopoverContent wide align="end" aria-label={a.filters}>
         <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); submit(); }}>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-2 gap-3 [&>*]:min-w-0">
             <Field label={d.start}><Input type="date" value={values.start ?? ''} onChange={(event) => set('start', event.target.value)} /></Field>
             <Field label={d.end}><Input type="date" value={values.end ?? ''} onChange={(event) => set('end', event.target.value)} /></Field>
             <Field label={d.eventName} className="col-span-2"><Input value={values.eventName ?? ''} maxLength={80} placeholder={d.eventExample} onChange={(event) => set('eventName', event.target.value)} /></Field>
             <div className="grid gap-1.5"><span className="text-footnote font-medium text-ink">{d.dimension}</span><Select label={d.dimension} value={values.dimension ?? dimension} onValueChange={(value) => set('dimension', value)} options={Object.entries(d.dimensions).map(([value, label]) => ({ value, label }))} /></div>
-            <div className="grid gap-1.5"><span className="text-footnote font-medium text-ink">{d.funnel}</span><Select label={d.funnel} value={values.funnel ?? funnel} onValueChange={(value) => set('funnel', value)} options={Object.entries(d.funnelNames).map(([value, label]) => ({ value, label }))} /></div>
+            <div className="grid gap-1.5"><span className="text-footnote font-medium text-ink">{d.funnel}</span><Select label={d.funnel} className="w-full min-w-0" value={values.funnel ?? funnel} onValueChange={(value) => set('funnel', value)} options={Object.entries(d.funnelNames).map(([value, label]) => ({ value, label }))} /></div>
             {([['device', d.device, d.devices], ['browser', d.browser, d.browsers], ['os', d.os, d.systems], ['actor', d.actor, d.actors]] as const).map(([key, label, map]) => (
               <div key={key} className="grid gap-1.5"><span className="text-footnote font-medium text-ink">{label}</span><Select label={label} value={values[key] ?? ''} onValueChange={(value) => set(key, value)} options={option(map)} /></div>
             ))}

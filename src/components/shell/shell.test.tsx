@@ -139,6 +139,17 @@ describe('站点外壳', () => {
     expect(within(consent).getByRole('button', { name: t.consent.reject, hidden: true })).toBeTruthy();
     expect(within(consent).getByRole('button', { name: t.consent.grant, hidden: true })).toBeTruthy();
   });
+
+  it('点「注册」关掉登录弹窗，链接仍去注册页', async () => {
+    stubFetch(guest);
+    renderShell();
+    fireEvent.click((await screen.findAllByRole('button', { name: t.login, hidden: true }))[0]);
+    const dialog = await screen.findByRole('dialog', { name: t.loginDialog.title });
+    const register = within(dialog).getByRole('link', { name: t.loginDialog.register });
+    expect(register).toHaveAttribute('href', expect.stringContaining('/register'));
+    fireEvent.click(register);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: t.loginDialog.title })).toBeNull());
+  });
 });
 
 describe('登录表单与需要登录的操作', () => {

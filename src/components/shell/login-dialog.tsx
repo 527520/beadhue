@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import { authPageHref } from '@/lib/auth/returnTo';
 import { ensureAuthStatus } from '@/components/account/useAuthStatus';
@@ -29,6 +29,7 @@ export function LoginDialogProvider({ children }: { children: ReactNode }) {
   const request = useRef<LoginRequest>({});
   const toast = useToast();
   const pathname = usePathname() ?? '/';
+  useEffect(() => { setOpen(false); }, [pathname]);
   const openDialog = useCallback((next: LoginRequest = {}) => {
     request.current = next;
     setOpen(true);
@@ -50,6 +51,7 @@ export function LoginDialogProvider({ children }: { children: ReactNode }) {
               blockUnverified
               registerHref={authPageHref('register', here)}
               forgotHref={authPageHref('forgot-password', here)}
+              onLeave={() => setOpen(false)}
               onSuccess={() => {
                 setOpen(false);
                 toast(t.success);

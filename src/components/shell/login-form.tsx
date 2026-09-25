@@ -23,12 +23,14 @@ export interface LoginFormProps {
   autoFocus?: boolean;
   /** 未验证邮箱时是否拦下（弹窗拦下并提示；登录页沿用原来的跳转逻辑）。 */
   blockUnverified?: boolean;
+  /** 点「注册」或「忘记密码？」离开时调用；不拦截跳转。 */
+  onLeave?: () => void;
 }
 
 type Errors = { email?: string; password?: string; form?: string };
 
 /** 登录表单：登录弹窗与 /login 页共用；错误挂在字段下。 */
-export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFocus, blockUnverified = false }: LoginFormProps) {
+export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFocus, blockUnverified = false, onLeave }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
@@ -78,7 +80,7 @@ export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFoc
       <Field label={t.email} error={errors.email}>
         <Input ref={emailRef} type="email" name="email" autoComplete="email" placeholder={t.emailPlaceholder} autoFocus={autoFocus} disabled={pending} value={email} onChange={(event) => setEmail(event.target.value)} />
       </Field>
-      <Field label={t.password} error={errors.password} labelAside={<Link href={forgotHref} className="text-body-sm font-medium text-accent hover:underline hover:underline-offset-3">{t.forgot}</Link>}>
+      <Field label={t.password} error={errors.password} labelAside={<Link href={forgotHref} onClick={onLeave} className="text-body-sm font-medium text-accent hover:underline hover:underline-offset-3">{t.forgot}</Link>}>
         <Input ref={passwordRef} type="password" name="password" autoComplete="current-password" disabled={pending} value={password} onChange={(event) => setPassword(event.target.value)} />
       </Field>
       <FormAlert>{errors.form}</FormAlert>
@@ -92,7 +94,7 @@ export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFoc
       {registerHref ? (
         <p className="text-center text-body-sm text-ink-3">
           {t.noAccount}
-          <Link href={registerHref} className="font-medium text-accent hover:underline hover:underline-offset-3">{t.register}</Link>
+          <Link href={registerHref} onClick={onLeave} className="font-medium text-accent hover:underline hover:underline-offset-3">{t.register}</Link>
         </p>
       ) : null}
     </form>

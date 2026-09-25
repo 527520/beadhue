@@ -146,7 +146,7 @@ function specSummary(spec: OfficialBatchSpec): string {
   return b.specSummary(getBoardProfile(spec.boardProfile).displayName, paletteLabel, kit);
 }
 
-function ParamsEditor({ value, inherited, onChange, disabled = false }: { value: Partial<GenerationParams>; inherited?: GenerationParams; onChange: (value: Partial<GenerationParams>) => void; disabled?: boolean }) {
+function ParamsEditor({ value, inherited, onChange, disabled = false, compact = false }: { value: Partial<GenerationParams>; inherited?: GenerationParams; onChange: (value: Partial<GenerationParams>) => void; disabled?: boolean; compact?: boolean }) {
   const labels = { targetWidth: b.width, targetColorCount: b.colors, brightness: b.brightness, contrast: b.contrast, bgTolerance: b.bgTolerance } as const;
   const number = (key: keyof typeof labels, min: number, max: number) => (
     <NumberInput key={key} label={labels[key]} value={value[key]} min={min} max={max} disabled={disabled} placeholder={inherited ? String(inherited[key]) : undefined}
@@ -161,7 +161,7 @@ function ParamsEditor({ value, inherited, onChange, disabled = false }: { value:
   const inherit = inherited ? [{ value: '', label: b.inherit }] : [];
   const onOff = [...inherit, { value: 'true', label: b.enabled }, { value: 'false', label: b.disabled }];
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+    <div className={compact ? 'grid grid-cols-2 gap-3 [&>*]:min-w-0' : 'grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5'}>
       {number('targetWidth', 20, 200)}{number('targetColorCount', 2, 128)}
       {choice('mode', b.mode, [...inherit, { value: 'dominant', label: b.dominant }, { value: 'average', label: b.average }])}
       {choice('dithering', b.dithering, onOff)}
@@ -340,7 +340,7 @@ const BatchCard = memo(function BatchCard({ item, index, session, editable, serv
         ) : null}
         {canEdit ? (
           <Disclosure summary={b.itemOverrides} meta={overrideCount ? String(overrideCount) : undefined} open={overridesOpen} onOpenChange={setOverridesOpen}>
-            <ParamsEditor value={item.paramsOverride} inherited={defaults} onChange={(paramsOverride) => session.updateItem(item.localId, { paramsOverride })} />
+            <ParamsEditor compact value={item.paramsOverride} inherited={defaults} onChange={(paramsOverride) => session.updateItem(item.localId, { paramsOverride })} />
             {overrideCount ? <Button size="sm" variant="ghost" className="justify-self-start" onClick={() => session.updateItem(item.localId, { paramsOverride: {} })}>{icon(X)}{b.resetOverrides}</Button> : null}
           </Disclosure>
         ) : null}
