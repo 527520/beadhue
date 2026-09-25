@@ -1,7 +1,7 @@
 # 14 全量验收与打磨
 
-Status: ready-for-agent
-Completion: not-started
+Status: done
+Completion: complete
 Blocked by: 13
 
 先读 [实施指南](../implementation-guide.md)。
@@ -19,3 +19,7 @@ Blocked by: 13
 ## 验收
 
 - 所有门禁通过且有记录；没有未关闭的视觉差异与复核发现。
+
+## Comments
+
+- 2026-09-25 完成。门禁结果、终审走查、交互走查与未验证项见 [verification.md](../verification.md)；走查与门禁中新发现的问题及处理见 [audit-r15.md](../audit-r15.md)「交互走查与生产冒烟的发现」。三浏览器 E2E 因本机内存限制用 `tools/e2e-batched.sh` 分批跑（每批新起开发服务），用例与配置不变。未发版、未部署。

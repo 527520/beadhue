@@ -1,7 +1,7 @@
 # 豆色绘前端全面重构（R15）
 
-Status: ready-for-agent
-Completion: in-progress（01–13 完成；14 全量验收与编排代理终审走查未开始）
+Status: done
+Completion: complete（01–14 全部完成，2026-09-25）
 Baseline: `feat/beadhue-ui-rebuild` @ 78317a9（BeadHue 分支 + R14 合并）
 依据：[audit.md](audit.md)（现状问题）· [design.md](design.md)（设计规格）· [prototype/](prototype/)（交互原型，**唯一视觉与交互验收基准**）· 验收截图 [evidence/prototype-final/](evidence/prototype-final/)
 
@@ -84,4 +84,5 @@ Baseline: `feat/beadhue-ui-rebuild` @ 78317a9（BeadHue 分支 + R14 合并）
 ## Comments
 
 - 2026-09-24 票 13b（清理）：旧样式 / 旧组件 / react-aria 依赖已删除，`globals.css` 44 行、单一 Tailwind 构建，护栏覆盖全部页面与组件并禁止旧类名；D72 投稿深链与 D71「颗」补齐。门禁：vitest 1547 通过、性能 7/7、构建成功且产物无旧 CSS、Chromium E2E 冒烟只剩已知的 17-visual-refinement 7 条。记录见 issues/13 Comments。
+- 2026-09-25 票 14（全量验收）：编排代理亲自完成终审走查（153 场景 × 5 宽度，发现全部关闭）、交互走查 109 步、两轴复核与功能对齐核查。全量门禁通过：typecheck / lint / brand:check、`npm run test`、性能 7/7、三浏览器 E2E 323 通过 / 28 跳过 / 0 失败、`npm run build`、生产运行时冒烟（路由合同 + 33–36，embedded PostgreSQL 16.14）、axe 0 条 serious / critical。首屏 JS 降到重构前以下（首页 −20.8%、详情 −7.7%）。记录见 [verification.md](verification.md) 与 [audit-r15.md](audit-r15.md)。未发版、未部署。
 

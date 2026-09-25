@@ -1,7 +1,7 @@
 # R15 验证记录（票 14 全量验收）
 
-Status: in-progress
-基线：`feat/beadhue-ui-rebuild`，R15 起点 `78317a9`，验证到 `518df01`。所有结论都是**本地**证据；**未发版、未部署、未访问生产**。
+Status: complete
+基线：`feat/beadhue-ui-rebuild`，R15 起点 `78317a9`，验证到 `7383a02`。所有结论都是**本地**证据；**未发版、未部署、未访问生产**。
 
 ## 门禁结果
 
@@ -10,14 +10,14 @@ Status: in-progress
 | 静态 | `npm run typecheck` | 通过（无输出） |
 | 静态 | `npm run lint` | 通过（无输出） |
 | 品牌 | `npm run brand:check` | 通过（新增例外 `src/lib/admin/queries.ts`：系统信息读 `_doupu_migrations` 记账表） |
-| 单测 + 集成（门禁口径） | `npm run test`（串行，unit / serial / integration） | 通过：221 文件，1 624 通过、13 跳过，425 s（最终代码 `1217f94`） |
+| 单测 + 集成（门禁口径） | `npm run test`（串行，unit / serial / integration） | 通过：221 文件，1 625 通过、13 跳过，423 s（最终代码 `7383a02`） |
 | 性能 | `npm run test:performance` | 通过：4 文件、7 项 |
 | 首屏 JS（门禁 6） | `node .scratch/ui-rebuild/tools/first-load-js.mjs`（R15 起点在临时工作树里 `npm ci && npm run build` 后同法测量） | 通过：首页 337.2 KB gzip（起点 426.0，−20.8%）、作品详情 355.3 KB（起点 385.1，−7.7%）；口径为公共入口 + 路由全部段的入口 chunk。修正前曾高于起点（454.1 / 472.1），处理见 audit-r15「交互走查与生产冒烟的发现」；`tests/unit/firstLoadImports.test.ts` 护栏 |
-| E2E | `npm run test:e2e`（Chromium / Firefox / WebKit） | 待填 |
+| E2E | `npm run test:e2e`（Chromium / Firefox / WebKit，117 条用例） | 通过：323 通过、28 跳过（按浏览器跳过的设备专属用例）、0 失败。本机 16 GB 内存下 Turbopack 开发服务连续跑会涨到 10 GB、交换区写满磁盘，故用 `tools/e2e-batched.sh` 按用例文件分四批、每批新起开发服务，用例与配置不变；日志在 `evidence/e2e/`（本地，不入库） |
 | 构建 | `npm run build` | 通过：Next.js 16.3.4（Turbopack），唯一提示是既有的协议预检包体积（1.1 MB） |
 | 生产运行时 | `PG_MODE=embedded bash .scratch/ui-rebuild/tools/production-smoke.sh` | 通过：路由合同 `tests/postgres/route-contract.cjs` 退出 0；`playwright.production.config.mts` 的 33（老化管理员会话续期）、34（standalone CSP 下 RSC 导航与生成 Worker）、35（PostgreSQL CAS 并发）、36（长期范围分析含当天已同意数据）全部退出 0 |
 | 生产运行时 · 密集数据 | 同上，`AFTER_SMOKE="node .scratch/ui-rebuild/tools/analytics-dense.mjs"` | 通过：89 天 4 791 条原始事件 + 180 天 1 260 行日汇总；近 30 / 90 天与 180 天长期范围在 1440 / 1024 / 768 / 390 / 350 下无横向溢出、axe 0 条 serious / critical、横轴 ≤ 7 个日期、整张折线图 1 个 Tab 位 |
-| 无障碍 | axe：走查脚本全路由 + 生产冒烟 36 与密集数据五宽度 + E2E 06 / 16 / 17 | 走查 72 个路由 × 身份 × 宽度组合 0 条 serious / critical；生产侧见上；E2E 待填 |
+| 无障碍 | axe：走查脚本全路由 + 生产冒烟 36 与密集数据五宽度 + E2E 06 / 16 / 17 | 走查 72 个路由 × 身份 × 宽度组合 0 条 serious / critical；生产侧五宽度 0 条；E2E 的 axe 用例随三浏览器全量通过 |
 
 生产冒烟与 CI 的差别：PostgreSQL 用 embedded-postgres 的官方 16.14 二进制（本机 Docker Desktop 起不来），应用直接跑 `npm run build` 的 standalone 产物而不是镜像；种子行、路由合同与四个冒烟用例与 `.github/workflows/ci.yml` 相同。
 
@@ -47,4 +47,6 @@ Status: in-progress
 
 ## 未验证与遗留
 
-待填。
+- **生产数据库不用 Docker**：本机 Docker Desktop 起不来（electron 启动失败），生产冒烟改用 embedded-postgres 的 PostgreSQL 16.14 官方二进制（装在 `/tmp/beadhue-pg`，不进仓库）。迁移 `0000`–`0021` 每次冒烟都在全新库上重放并通过，路由合同与四个冒烟用例与 CI 相同；应用跑的是 `npm run build` 的 standalone 产物而不是镜像。镜像构建与 `docker compose` 启动仍未在本机验证。
+- **开发态的 React「negative time stamp」报错**只在 dev 覆盖层出现，生产构建与生产冒烟没有这个报错。
+- 交互走查（109 步）跑在 `0051b5e`；之后的改动（匿名分析、首屏拆分、后台抽屉、创作页 200% 缩放）由单测、生产冒烟与三浏览器 E2E 覆盖，没有整套重跑走查脚本。

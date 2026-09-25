@@ -207,7 +207,7 @@
 
 ## 待定 Open
 
-- **R15 进行中**：`.scratch/ui-rebuild/`，票 01–13 已合入 `feat/beadhue-ui-rebuild`（13 删除了 `legacy-ui`、`beadhue.css`、旧组件类与 `react-aria-components`，护栏扩到全部页面；`/community/submit` 已接到编辑器公开弹窗（D72）；数量单位已统一为「颗」（D71））。14 全量验收与终审走查未做。已知待办：自定义色板的「导入」入口随旧色板编辑器删除，需按新界面补回；迁移 `0020` 只在 PGlite 验证，部署前需在 PostgreSQL 16 复核。**未发版、未部署**。
+- **R15 已完成，待发版**：`.scratch/ui-rebuild/`，票 01–14 全部完成并合入 `feat/beadhue-ui-rebuild`（验证到 `7383a02`）。14 的全量门禁、终审走查与交互走查记录在 `.scratch/ui-rebuild/verification.md`。已知待办：自定义色板「导入」已在终审中按新界面补回；迁移 `0000`–`0021` 已在 embedded-postgres 的 PostgreSQL 16.14 上全量重放通过，但 Docker 镜像与 `docker compose` 启动未在本机验证（Docker Desktop 起不来）。**未发版、未部署**。
 - **R14 已实现，待发版**：`.scratch/admin-round-3/`（15 项问题、15 张票全部完成）。本地门禁：lint / typecheck / `npm run test`（219 文件、1679 通过） / 覆盖率（90·75 门槛） / 性能 / build / E2E 三浏览器全绿；`docker compose config` 通过。**未发版、未部署**。部署前必做：服务器 `.env` 增加 `BACKUP_COS_SECRET_ID`/`BACKUP_COS_SECRET_KEY`（备份容器不再回退 app 的 `COS_*`），GitHub Secrets 同步同名两项；Caddyfile 与容器只读根只做过人工/`compose config` 核对，需在测试部署上冒烟一次；迁移 `0019` 未对真实 PostgreSQL 执行（PGlite 每次重放验证）。生产对比基线仍是 0.5.0。
 - 无产品决策待定。仓库加固计划见 `.scratch/repository-hardening-2026-08/`；完成本地门禁不等于已发布，仍须通过可用环境中的 PostgreSQL 16、Docker 及备份恢复发布门禁。
 - 优化计划（`.scratch/optimization/`）：票 01–12 全部完成并全量自测通过（单测 538、覆盖率 src/lib 行 92.9%、E2E 54×3 浏览器、typecheck/lint/build 全绿、350px 移动端走查），已推送 GitHub（6 个 commit，`497169b..43e5697`）。
