@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ComponentProps, type MouseEvent, type ReactNode } from 'react';
 import { zhCN } from '@/messages/zh-CN';
 import { authPageHref } from '@/lib/auth/returnTo';
 import { ensureAuthStatus } from '@/components/account/useAuthStatus';
@@ -29,7 +29,12 @@ export function LoginDialogProvider({ children }: { children: ReactNode }) {
   const request = useRef<LoginRequest>({});
   const toast = useToast();
   const pathname = usePathname() ?? '/';
-  useEffect(() => { setOpen(false); }, [pathname]);
+  // 路由变化时关闭弹窗：调整「上次路径」状态的同时复位 open（渲染期对比，避免 setState-in-effect）。
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
+    setOpen(false);
+  }
   const openDialog = useCallback((next: LoginRequest = {}) => {
     request.current = next;
     setOpen(true);

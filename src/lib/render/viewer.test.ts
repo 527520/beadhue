@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { boardCount, clampOffset, codeInkIsDark, cropPattern, gridVisible, nextZoomStop, visibleBox, zoomLimits } from './viewer';
+import { boardCount, clampOffset, codeInkIsDark, cropPattern, drawBoardSeams, drawCellCodes, drawGridLines, gridVisible, nextZoomStop, visibleBox, zoomLimits } from './viewer';
+
+/** 记录绘制调用的 2D 上下文桩（可选 roundRect 行为）。 */
+function recorder(options: { roundRect?: boolean } = {}) {
+  const calls: Array<[string, ...unknown[]]> = [];
+  const state: Record<string, unknown> = {};
+  const ctx = new Proxy(state, {
+    get(target, prop: string) {
+      if (prop === 'measureText') return (text: string) => ({ width: String(text).length * 6 });
+      if (prop === 'roundRect' && options.roundRect === false) return undefined;
+      if (prop in target) return target[prop];
+      return (...args: unknown[]) => {
+        calls.push([prop, ...args]);
+        return undefined;
+      };
+    },
+    set(target, prop: string, value) {
+      target[prop] = value;
+      return true;
+    },
+  });
+  return { ctx: ctx as unknown as CanvasRenderingContext2D, calls };
+}
 
 describe('详情查看器的计算', () => {
   it('底板数按行列向上取整', () => {
@@ -46,5 +68,45 @@ describe('详情查看器的计算', () => {
   it('色号文字取对比度更高的颜色', () => {
     expect(codeInkIsDark('#FFFFFF')).toBe(true);
     expect(codeInkIsDark('#1C1C1E')).toBe(false);
+  });
+});
+
+describe('查看器画布叠加层', () => {
+  it('drawGridLines 对齐设备像素并绘制网格（奇偶 dpr）', () => {
+    for (const dpr of [1, 2]) {
+      const { ctx, calls } = recorder();
+      drawGridLines(ctx, { x: 0, y: 0, cell: 10, box: { c0: 0, c1: 4, r0: 0, r1: 2 }, alpha: 0.4, dpr });
+      expect(calls.filter(([name]) => name === 'moveTo').length).toBeGreaterThan(0);
+      expect(calls.some(([name]) => name === 'stroke')).toBe(true);
+    }
+  });
+
+  it('drawBoardSeams 大格画编号（roundRect / rect 两个分支），小格跳过编号', () => {
+    const { ctx, calls } = recorder();
+    drawBoardSeams(ctx, { width: 60, height: 60, cols: 29, rows: 29, x: 0, y: 0, cell: 20, font: 'sans' });
+    expect(calls.some(([name]) => name === 'roundRect')).toBe(true);
+    expect(calls.some(([name]) => name === 'fillText')).toBe(true);
+
+    const small = recorder();
+    drawBoardSeams(small.ctx, { width: 60, height: 60, cols: 29, rows: 29, x: 0, y: 0, cell: 1, font: 'sans' });
+    expect(small.calls.some(([name]) => name === 'fillText')).toBe(false);
+
+    const legacy = recorder({ roundRect: false });
+    drawBoardSeams(legacy.ctx, { width: 60, height: 60, cols: 29, rows: 29, x: 0, y: 0, cell: 20, font: 'sans' });
+    expect(legacy.calls.some(([name]) => name === 'rect')).toBe(true);
+  });
+
+  it('drawCellCodes 只标注有颜色且有色号的格子（明暗两分支），透明与无色号跳过', () => {
+    const pattern = {
+      width: 2, height: 2,
+      cells: [
+        { hex: '#FFFFFF', code: 'A01', transparent: false }, { hex: '#000000', code: 'A02', transparent: false },
+        { hex: '#3160E6', code: null, transparent: false }, { hex: null, code: 'A04', transparent: true },
+      ],
+    };
+    const { ctx, calls } = recorder();
+    drawCellCodes(ctx, pattern, { x: 0, y: 0, cell: 40, box: { c0: 0, c1: 2, r0: 0, r1: 2 }, font: 'sans' });
+    const texts = calls.filter(([name]) => name === 'fillText').map(([, text]) => text);
+    expect(texts).toEqual(['A01', 'A02']);
   });
 });

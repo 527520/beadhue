@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 const sourceFiles: string[] = [];
 (function walk(dir: string): void {
@@ -50,7 +50,8 @@ describe('设计系统一致性', () => {
   it('文案不在组件里硬编码中文（统一从 zh-CN.ts 引用）', () => {
     const bad: string[] = [];
     // /dev/ui 组件总览的演示文案只在开发环境渲染；不进 zh-CN.ts，免得增大每个页面的首屏 JS。
-    for (const file of sourceFiles.filter((path) => !path.startsWith(join('src', 'app', 'dev') + '/'))) {
+    const devDir = join('src', 'app', 'dev');
+    for (const file of sourceFiles.filter((path) => !(path === devDir || path.startsWith(devDir + sep)))) {
       // 注释按约定是中文的，先剥掉再检查字符串字面量。
       const source = readFileSync(file, 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')

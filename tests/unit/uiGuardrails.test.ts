@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 
 const ROOT = process.cwd();
 
@@ -29,6 +29,9 @@ function collect(path: string, out: string[]): string[] {
 const files = SCANNED.flatMap((path) => collect(path, []))
   .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.(ts|tsx)$/.test(file))
   .map((file) => relative(ROOT, join(ROOT, file)))
+  // Windows 的路径分隔符统一成正斜杠：UNSCANNED 前缀与 TOKEN_FILES 白名单都按 / 书写，
+  // 反斜杠会导致排除失效、白名单失配（CI windows-unit 红灯的直接原因）。
+  .map((file) => file.split(sep).join('/'))
   .filter((file) => !UNSCANNED.some((path) => file.startsWith(path)));
 
 function stripComments(source: string): string {

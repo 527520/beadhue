@@ -215,6 +215,7 @@ jobs:
           BACKUP_ALERT_TOKEN: ci
           ADMIN_EMAIL: ops@example.test
           ANALYTICS_IP_HMAC_KEY: ci-analytics-ip-hmac-key-32-characters
+          CHI_SITE_DOMAIN: chi.example.test
       - name: Native Argon2 smoke
         run: docker run --rm beadhue-app:local node -e "require('argon2').hash('ci-password').then(()=>process.exit(0)).catch(()=>process.exit(1))"
       - name: Final-image strict-v3 preflight and PostgreSQL migration contract

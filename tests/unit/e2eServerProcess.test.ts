@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createConnection } from 'node:net';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_E2E_PORT,
@@ -24,7 +25,7 @@ describe('E2E 端口可配置（隔离工作树并行运行）', () => {
   });
 
   it('dev 服务日志按端口分文件，并行运行互不串读邮件链接', () => {
-    expect(e2eDevLogPath(3100, '/tmp')).toBe('/tmp/beadhue-e2e-dev-3100.log');
+    expect(e2eDevLogPath(3100, '/tmp')).toBe(join('/tmp', 'beadhue-e2e-dev-3100.log'));
     expect(e2eDevLogPath(3110, '/tmp')).not.toBe(e2eDevLogPath(3100, '/tmp'));
   });
 
