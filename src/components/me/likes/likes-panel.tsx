@@ -20,7 +20,7 @@ export interface LikedPage {
   nextCursor: string | null;
 }
 
-/** 我的 · 喜欢（原型 renderLikes）：与发现页同一张作品卡（可直接取消喜欢），按喜欢时间倒序，每页 24 张。 */
+/** 我的 · 喜欢：与发现页同一张作品卡（可直接取消喜欢），按喜欢时间倒序，每页 24 张。 */
 export function LikesPanel({ initial }: { initial: LikedPage | null }) {
   const login = useLoginDialog();
   const router = useRouter();

@@ -10,7 +10,8 @@ import { DialogBody, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
-import { knownNotifications, notificationCopy, notificationHref, notificationTone, relativeTime, type NotificationItem, type NotificationPage, type NotificationTone, type NotificationType } from './notification-model';
+import { relativeTime } from '@/lib/format';
+import { knownNotifications, notificationCopy, notificationHref, notificationTone, type NotificationItem, type NotificationPage, type NotificationTone, type NotificationType } from './notification-model';
 import { decrementUnreadCount, setUnreadCount } from './use-unread-count';
 
 const t = zhCN.notifications;

@@ -63,7 +63,7 @@ export function ShareView(props: ShareViewProps) {
         <div className="min-w-0 max-md:order-first max-md:-mx-gutter lg:col-start-1 lg:row-start-2">
           <PatternViewer {...viewer} onFull={() => setFull(true)} />
         </div>
-        <aside aria-label={t.card} className="grid min-w-0 content-start gap-5 rounded-xl border border-line bg-bg p-6 max-md:mt-5 max-md:rounded-none max-md:border-0 max-md:border-t max-md:px-0 max-md:pt-5 max-md:pb-0 lg:sticky lg:top-[calc(var(--spacing-topbar)+24px)] lg:col-start-2 lg:row-start-2 lg:max-h-[calc(100dvh-var(--spacing-topbar)-48px)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+        <aside aria-label={t.card} className="grid min-w-0 content-start gap-5 rounded-xl border border-line bg-bg p-6 max-md:mt-5 max-md:rounded-none max-md:border-0 max-md:border-t max-md:px-0 max-md:pt-5 max-md:pb-0 lg:sticky lg:top-below-topbar lg:col-start-2 lg:row-start-2 lg:max-h-sticky-panel lg:self-start lg:overflow-y-auto lg:overscroll-contain">
           <dl className="grid grid-cols-3 rounded-lg bg-bg-subtle py-3">
             <Stat label={d.size} value={`${pattern.width}×${pattern.height}`} unit={d.cellUnit} />
             <Stat label={d.colorsLabel} value={colorCount} unit={d.colorUnit} />

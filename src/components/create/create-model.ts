@@ -1,11 +1,10 @@
 /**
- * 创作入口与「新建图纸」弹窗的纯几何与尺寸计算（原型 create.js / editor/catalog.js）。
+ * 创作入口与「新建图纸」弹窗的纯几何与尺寸计算。
  * 取景框坐标一律是原图自然像素；宽高比由裁剪比例（原图 / 1:1 / 按底板）决定，拖角时保持不变。
  */
 import { LIMITS } from '@/lib/appInfo';
 import { patternRows } from '@/lib/engine/generate';
 import type { Rect } from '@/lib/crop/layout';
-import { zhCN } from '@/messages/zh-CN';
 
 export type CropRatio = 'original' | 'square' | 'board';
 export type CropHandle = 'nw' | 'ne' | 'sw' | 'se';
@@ -82,21 +81,6 @@ export function resizeCrop(start: Rect, handle: CropHandle, dx: number, dy: numb
   return { x: left ? ax - width : ax, y: top ? ay - height : ay, width, height };
 }
 
-/** 「最近的设计」里的相对时间：刚刚 / N 分钟前 / N 小时前 / N 天前，超过 30 天写日期。 */
-export function relativeTime(iso: string, now: number): string {
-  const t = zhCN.create;
-  const at = Date.parse(iso);
-  if (!Number.isFinite(at)) return '';
-  const minutes = Math.floor(Math.max(0, now - at) / 60_000);
-  if (minutes < 1) return t.justNow;
-  if (minutes < 60) return t.minutesAgo(minutes);
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t.hoursAgo(hours);
-  const days = Math.floor(hours / 24);
-  if (days <= 30) return t.daysAgo(days);
-  const date = new Date(at);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 /** 提交给解码器的整数选区（至少 1 像素）。 */
 export function roundCrop(rect: Rect, natW: number, natH: number): Rect {

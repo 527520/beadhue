@@ -399,7 +399,7 @@ export async function handleCommunityReport(db: AnyDatabase, input: {
 }
 
 /** 治理台队列的分页参数（admin-round-3 06）：评论与举报各自独立翻页。 */
-/** 后台表格筛选（R15-10）：评论按判定、举报按状态与对象类型；两者都可搜索。 */
+/** 后台表格筛选：评论按判定、举报按状态与对象类型；两者都可搜索。 */
 const queueSearch = z.string().trim().max(80).optional();
 const commentQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['pending_review', 'rejected']).optional(), ...sortQueryFields(['time']), ...pageQueryFields }).strict();
 const reportQueueQuerySchema = z.object({ q: queueSearch, status: z.enum(['open', 'accepted']).optional(), targetType: z.enum(['work', 'comment']).optional(), ...sortQueryFields(['time']), ...pageQueryFields }).strict();

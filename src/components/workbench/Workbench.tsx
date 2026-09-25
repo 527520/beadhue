@@ -214,7 +214,7 @@ function showDesignQuery(id: string): void {
   }
 }
 
-/** 原型 ?drag=1：创作入口强制显示拖入态（视觉对照用）。 */
+/** `?drag=1`：创作入口强制显示拖入态（视觉对照用）。 */
 const subscribeNothing = () => () => {};
 function useForcedDragging(): boolean {
   return useSyncExternalStore(
@@ -269,7 +269,7 @@ export default function Workbench({
     createImageDecoder(),
   );
   const activeImageDecoder = imageDecoder ?? ownedImageDecoder;
-  // 站点公开配置（票 02）：生成默认参数可被服务端环境变量覆盖，改配置即生效；新建图纸默认去背景（原型）
+  // 站点公开配置：生成默认参数可被服务端环境变量覆盖，改配置即生效；新建图纸默认去背景
   const pubCfg = usePublicConfig();
   const defaultParams = useMemo<GenerationParams>(
     () => ({
@@ -744,7 +744,7 @@ export default function Workbench({
         markDirty();
         if (firstDrawingRef.current) {
           firstDrawingRef.current = false;
-          // 新图纸默认以所选图片命名（原型：照片名 / 示例名），用户随时可在顶栏改名。
+          // 新图纸默认以所选图片命名，用户随时可在顶栏改名。
           const fileName = retainedOriginalRef.current?.name
             .replace(/\.[^.]+$/, "")
             .trim()
@@ -2674,7 +2674,7 @@ export default function Workbench({
     [router, saveBeforeLeave],
   );
 
-  // ---------- 编辑器（票 08 / 09）的界面接缝：业务仍是上面这些处理函数 ----------
+  // ---------- 编辑器的界面接缝：业务仍是上面这些处理函数 ----------
 
   const sourceInputRef = useRef<HTMLInputElement>(null);
   /** 编辑器里「选择原图」：为这张图纸重新选原图（保留设计身份），之后走同一条解码 → 裁剪 → 重新生成。 */
@@ -3055,6 +3055,7 @@ export default function Workbench({
     <>
       <EditorWorkspace
         designId={designId}
+        onNavigate={handleNavigationClick}
         name={name}
         onRename={(nextName) => {
           setName(nextName);

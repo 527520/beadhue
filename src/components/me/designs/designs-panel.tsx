@@ -103,7 +103,7 @@ function StorageBanner() {
 }
 
 /**
- * 我的 · 设计（原型 renderDesigns）：提示横幅、工具条（实时搜索、状态芯片带数量、排序、网格 / 列表、新建）、
+ * 我的 · 设计：提示横幅、工具条（实时搜索、状态芯片带数量、排序、网格 / 列表、新建）、
  * 卡片网格或表格、空状态与搜索无结果。筛选状态写进地址（replaceState），刷新后保持。
  */
 export function DesignsPanel({ initialQuery, storageOverride, apiOverride, loadPublishedIds }: DesignsPanelProps) {
@@ -144,7 +144,7 @@ export function DesignsPanel({ initialQuery, storageOverride, apiOverride, loadP
     { key: 'rename', label: t.actions.rename, icon: icon(Pencil), onSelect: () => setRenaming(design) },
     { key: 'duplicate', label: t.actions.duplicate, icon: icon(Copy), onSelect: () => void lib.duplicate(design).then((result) => report(result, (name) => t.duplicated(name ?? ''))) },
     { key: 'export', label: t.actions.export, icon: icon(FileDown), onSelect: () => void lib.exportFile(design).then((result) => report(result, () => t.exported)) },
-    ...(cloud && design.status === 'unsynced' ? [{ key: 'sync', label: t.actions.sync, icon: icon(Cloud), onSelect: () => void lib.retrySync().then(() => toast(t.synced)) }] : []),
+    ...(cloud && design.status === 'unsynced' ? [{ key: 'sync', label: t.actions.sync, icon: icon(Cloud), onSelect: () => void lib.retrySync().then((ok) => (ok ? toast(t.synced) : toast(t.syncFailed, { icon: icon(CircleAlert) }))) }] : []),
     'separator',
     { key: 'delete', label: t.actions.delete, icon: icon(Trash2), danger: true, onSelect: () => { setDeleteError(null); setDeleting(design); } },
   ];

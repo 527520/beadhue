@@ -10,7 +10,7 @@ export interface TooltipProps {
   /** 触发元素（必须能接收 ref 与事件，如 Button / IconButton / 原生元素）。 */
   children: ReactElement;
   side?: 'top' | 'bottom' | 'left' | 'right';
-  /** 悬停多久后出现（原型 300ms）。 */
+  /** 悬停多久后出现。 */
   delay?: number;
   disabled?: boolean;
 }

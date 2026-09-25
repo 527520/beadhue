@@ -2,7 +2,8 @@
  * 管理端原图上传（admin-round-3 10 / ADR-0025）在私人原图资产模型下的契约：
  * - 官方草稿走管理端路径：计管理端独立配额与全部二进制原图入口共用的上传计数，不消耗豆社公开写配额；
  * - 上传队列按 sha256 复用本人已上传的资产时用 POST 关联，不再传字节，也不计二进制上传；
- * - 只有具备 official:manage 的账号可以调用。
+ * - 只有具备 official:manage 的账号可以调用；
+ * - 审核台读原图按审核员单独计量 `admin:original:read`，不占豆社公开的原图读取额度。
  */
 import { beforeEach, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
@@ -16,7 +17,7 @@ import type { Actor } from '@/lib/auth/authorization';
 import { createMemoryOriginalStore, setOriginalStore } from '@/lib/community/originalStore';
 import { createOfficialBatch, saveOfficialDraft } from '@/lib/community/officialBatch';
 import { DEFAULT_GENERATION_PARAMS } from '@/lib/types';
-import { POST, PUT } from './route';
+import { GET, POST, PUT } from './route';
 
 let token: string | undefined;
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: (name: string) => name === SESSION_COOKIE_NAME && token ? { value: token } : undefined }) }));
@@ -98,4 +99,15 @@ it('复用本人已上传的资产时 POST 关联到另一份官方草稿，不�
   const rows = await db.select().from(communityOriginals);
   expect(rows.map((row) => row.revisionId).sort()).toEqual([firstRevisionId, secondRevisionId].sort());
   expect(new Set(rows.map((row) => row.cosKey)).size).toBe(1);
+});
+
+it('审核台读原图按审核员单独计量，不占豆社公开的原图读取额度', async () => {
+  token = (await createSession(db, adminId)).token;
+  expect((await upload(firstRevisionId)).status).toBe(201);
+  const read = await GET(new Request(url(firstRevisionId), { headers: { 'x-real-ip': '203.0.113.7' } }), params(firstRevisionId));
+  expect(read.status).toBe(200);
+  expect(new Uint8Array(await read.arrayBuffer())).toEqual(new Uint8Array(TEST_PNG));
+  expect(await counter(`admin:original:read:${adminId}`)).toBe(1);
+  expect(await counter(`original:read:${adminId}`)).toBe(0);
+  expect(await counter('original:read:ip:203.0.113.7')).toBe(0);
 });

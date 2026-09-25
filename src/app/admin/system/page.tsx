@@ -18,7 +18,7 @@ const RunBadge = ({ status, label }: { status: keyof typeof RUN_TONE; label: str
   <span className={cn('inline-flex h-5.5 items-center gap-1 rounded-full px-2 text-caption leading-none font-semibold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current', RUN_TONE[status])}>{label}</span>
 );
 
-/** 系统信息（原型 admin/ops.js systemSection）：版本与迁移事实、依赖服务、内容安全、定时任务与运行历史；没接入的写明「未接入」。 */
+/** 系统信息：版本与迁移事实、依赖服务、内容安全、定时任务与运行历史；没接入的写明「未接入」。 */
 export default async function AdminSystemPage() {
   const actor = await getSessionActor();
   if (!authorize(actor, 'system:read')) forbidden();

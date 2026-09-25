@@ -165,14 +165,17 @@
 - **管理后台**：浅色侧栏（工作台 / 内容 / 用户 / 系统分组与待办计数）、顶栏搜索；总览（指标卡、待办、7 日趋势、服务状态）与作品、审核、评论、举报、标签（像素图标、类目开关、排序）、批次、人员、分析、审计、日志、系统模块共用数据表格 + 右侧抽屉（手机底部面板）。
 - **其他**：只读分享页与详情同一两栏栅格（色号 / 方格对所有访客开放，D38 不属于 D53 内容分级）；帮助 / 关于 / 隐私 / 社区规范 / 版权为统一文章版式；404、错误页、失效分享为豆粒插画整页空状态。
 
-**新增接口与字段**（示例见 `.scratch/ui-rebuild/issues/02-backend-apis.md`、`06-me.md`、`10-admin.md`、`11-notifications.md` 的 Comments）：迁移 `0020_discovery_notifications`（`notifications` 表、`community_revisions.suggested_tags`、`community_tags.icon` / `featured`，`sort_order` 复用 0007 已有列）；我的设计缩略图 `GET /api/designs/:id/thumbnail`；发现列表新筛选参数与 `total`；详情 `beadCount` / `colorUsage`（未登录为 null）/ `largeImageUrl`；喜欢列表、相似作品、作者、搜索建议、我的统计、登录设备、后台趋势、采纳建议标签、通知三个接口；后台审核员读原图 `GET /api/admin/community/revisions/:id/original`。`colorUsage[].name` 是按 HEX 推导的描述性色系名（色板目录没有官方颜色名）。
+**新增接口与字段**（示例见 `.scratch/ui-rebuild/issues/02-backend-apis.md`、`06-me.md`、`10-admin.md`、`11-notifications.md` 的 Comments）：迁移 `0020_discovery_notifications`（`notifications` 表、`community_revisions.suggested_tags`、`community_tags.icon` / `featured`，`sort_order` 复用 0007 已有列）；我的设计缩略图 `GET /api/designs/:id/thumbnail`；发现列表新筛选参数与 `total`；详情 `beadCount` / `colorUsage`（未登录为 null）/ `largeImageUrl`；喜欢列表、相似作品、作者、搜索建议、我的统计、登录设备、后台趋势、采纳建议标签、通知三个接口；后台审核员读原图 `GET /api/admin/community/revisions/:id/original`（按审核员单独计量 `admin:original:read`，不占豆社公开的原图读取额度，ADR-0025）。终审补充迁移 `0021_account_profile_and_batch_names`：`users.avatar_color`（头像底色）/ `default_palette`（新建设计默认色板，游客存本机）/ `password_changed_at`、`sessions.device_label`（登录时由 User-Agent 归纳的「系统 · 浏览器」，不存完整 UA 与网络地址）、`official_batches.name`；后台各列表接口加 `q`（评论、举报、批次）与整表排序 `sort`，举报、审计、总览待办返回可读的对象名与人名。`colorUsage[].name` 是按 HEX 推导的描述性色系名（色板目录没有官方颜色名）。
 
 **实施中确认的事实**
-- 新旧两套 Tailwind 构建过渡期共存：新构建 `src/app/theme.css` 用最后一层 `ui`、不引入 preflight、与旧 `:root` 同名的令牌写在 `@theme inline`；新界面只在带 `data-ui` 的根内生效。旧组件已整体迁到 `src/components/legacy-ui/`（macOS 大小写不敏感，`Button.tsx` 与 shadcn 的 `button.tsx` 不能同目录），随票 13 删除。
+- `src/app/theme.css` 是唯一的 Tailwind 构建：过渡期的 `legacy-ui`、`beadhue.css`、旧组件类与 `react-aria-components` 已在票 13 删除，版式尺寸（顶栏下吸顶偏移、安全区、缩略图留白、豆孔几何等）也收进 `@theme` 令牌，组件不写任意值。
 - Base UI 只有 Select（`alignItemWithTrigger`）与 ScrollArea 隐藏滚动条会渲染 `<style>`，只有 Tabs.Indicator / Slider.Thumb 在 `renderBeforeHydration` 时渲染 `<script>`；根布局 `CSPProvider disableStyleElements` 关闭前者，后者不开启（ADR-0027）。
 - 弹出层层级：弹窗与抽屉遮罩 z-80，Popover / Menu / Select z-85，Tooltip z-88，提示条 z-90；弹窗内可拖动区域要加 `data-base-ui-swipe-ignore`。
 - `theme.css` 成功 / 警告软底色调浅（`#f0f9f4` / `#fffaf2`），使徽标文字对比度过 AA。
-- 后台作品排序只作用于当前页、筛选不显示分面计数、下架通知不带理由——均为接口事实所限的有意偏差。
+- 后台列表按接口 `sort` 整表排序；筛选不显示分面计数、下架通知不带理由——为接口事实所限的有意偏差。
+- 标签的改名、改标识、启停仍要手填理由（D59）；只调图标、排序、精选属于展示调整，不弹理由框，审计写固定理由「标签管理：调整展示」。
+- `SearchField` 不自带 `search` 地标：地标声明在真正的搜索表单上（顶栏、手机搜索页、后台顶栏），表格工具条里的过滤框不算地标。
+- Base UI 的焦点陷阱哨兵在 WebKit + VoiceOver 下带无名 `role="button"`（库的有意设计，让虚拟光标触发焦点回收），E2E 的 axe 检查排除 `[data-base-ui-focus-guard]`。
 
 ### R14：后台与豆社整改（2026-09）
 

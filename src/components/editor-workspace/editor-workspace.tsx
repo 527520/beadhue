@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 编辑器工作区（票 08 / 09，原型 editor.js）：100dvh 固定布局，无站点导航。
+ * 编辑器工作区：100dvh 固定布局，无站点导航。
  * 桌面：顶栏 ｜ 左工具栏 ｜ 居中画布（尺寸胶囊、原图参照、悬停提示、缩放胶囊）｜ 右面板（颜色 / 调整 / 信息；跟拼时为跟拼面板）。
  * 手机（< 768）：顶栏「返回 ｜ 编辑 / 跟拼 ｜ 撤销 重做 ｜ …」，画布全屏，底部工具栏与最近用色；各面板以底部面板打开，原图参照为上下分屏。
  *
@@ -9,7 +9,7 @@
  * 编辑事务在 useEditorDocument，跟拼会话在 useStitchSession，相机在 useEditorViewport。
  */
 import { Copy, Download, Ellipsis, FileDown, FileUp, FilePlus2, FlipHorizontal2, FlipVertical2, Image as ImageIcon, Keyboard, Link as LinkIcon, PanelRight, Pencil, Printer, Redo2, RefreshCw, RotateCw, Send, Share2, ShoppingCart, SlidersHorizontal, SquareDashed, Trash2, TriangleAlert, Undo2, BadgeCheck, ArrowUpRight, Hourglass, CircleAlert, Info, X, Palette, Check } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@/components/ui/button';
 import { Button } from '@/components/ui/button';
@@ -121,6 +121,8 @@ export interface EditorWorkspaceProps {
   prepareShare: () => Promise<boolean>;
   getOriginal: () => PublishOriginal | null;
   onBack: () => void;
+  /** 编辑器里的站内链接（如色板库）：离开前先保存。 */
+  onNavigate?: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
   onNewDesign: () => void;
   onDuplicate: () => void;
   onDelete: () => Promise<boolean>;
@@ -145,7 +147,7 @@ type DialogKind = 'png' | 'pdf' | 'share' | 'publish' | 'shortcuts' | null;
 type SheetKind = 'colors' | 'more' | 'adjust' | 'info' | 'export' | 'stitch' | 'missing' | null;
 type Cell = { row: number; col: number };
 
-/** 键盘快捷键说明（原型 shortcutsDialog）。 */
+/** 键盘快捷键说明。 */
 function ShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const s = t.shortcuts;
   const rows: Array<[string, string[]]> = [
@@ -187,7 +189,7 @@ function ShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: 
   );
 }
 
-/** 手机重命名（原型 rename 手机分支）：弹窗里改名，确认才生效。 */
+/** 手机重命名：弹窗里改名，确认才生效。 */
 function RenameDialog({ open, name, onOpenChange, onSave }: { open: boolean; name: string; onOpenChange: (open: boolean) => void; onSave: (name: string) => void }) {
   const [value, setValue] = useState(name);
   const [seen, setSeen] = useState(open);
@@ -284,7 +286,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
     params, onRegenerate, hasSource, source, generating, generationProgress, generationRound, onCancelGeneration,
     original, originalImage, referenceStatus, missingReason, onOriginalChange, onChooseSource, onFetchCommunity, canRecrop, onRecrop,
     regenerationUndo, onUndoRegeneration, communityOrigin, onExportProject, cellMm, prepareShare, getOriginal,
-    onBack, onNewDesign, onDuplicate, onDelete, onImportFile, notices, paletteIntent, onPaletteIntentApply, onPaletteIntentCancel,
+    onBack, onNavigate, onNewDesign, onDuplicate, onDelete, onImportFile, notices, paletteIntent, onPaletteIntentApply, onPaletteIntentCancel,
     busy, announcement, publishRequested, publishWorkId, onPublishRequestHandled,
   } = props;
   const toast = useToast();
@@ -681,6 +683,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
       onReplace={replaceWith}
       disabled={locked}
       touch={touch}
+      library={{ href: `/palettes?designId=${encodeURIComponent(designId)}`, onNavigate }}
     />
   );
   const adjustPanel = (sheetMode: boolean) => (
@@ -809,7 +812,7 @@ export function EditorWorkspace(props: EditorWorkspaceProps) {
         <span className={cn('pointer-events-none absolute text-caption text-ink-3 tabular-nums', mobile ? 'top-3 left-3' : 'top-4 left-4')}>{t.meta(doc.width, doc.height, liveStats.length)}</span>
       )}
       {hoverLabel ? (
-        <span className={cn('pointer-events-none absolute z-10 inline-flex h-8 items-center rounded-full bg-bg px-3 text-caption whitespace-nowrap text-ink-2 shadow-float tabular-nums', mobile ? 'top-2 left-2' : 'bottom-4 left-4 @max-[720px]:bottom-17')}>{hoverLabel}</span>
+        <span className={cn('pointer-events-none absolute z-10 inline-flex h-8 items-center rounded-full bg-bg px-3 text-caption whitespace-nowrap text-ink-2 shadow-float tabular-nums', mobile ? 'top-2 left-2' : 'bottom-4 left-4 @max-canvas-compact:bottom-17')}>{hoverLabel}</span>
       ) : null}
       {mobile && stitch ? null : (
         <div className={cn('absolute z-10', mobile ? 'top-2 right-3' : 'top-4 right-4')}>

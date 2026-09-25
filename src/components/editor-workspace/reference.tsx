@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 原图参照（原型 editor/reference.js + BeadHue 几何）：画布右上角的胶囊，点开是可拖动、可缩放、可折叠的浮窗，
+ * 原图参照：画布右上角的胶囊，点开是可拖动、可缩放、可折叠的浮窗，
  * 单向跟随画布显示同一范围（画布变 → 参照变；拖动参照窗不影响画布）；手机上点开为上下分屏。
  * 没有可靠的原图对应关系时胶囊变成黄色提示，点开说明原因并提供「选择原图」，不猜、不遮挡画布。
  */
@@ -76,7 +76,7 @@ export interface ReferencePillProps {
   onChooseSource: () => void;
   onFetchCommunity?: () => void;
   busy?: boolean;
-  /** 手机：36px 高、28px 缩略图（原型手机 .ed-ref-pill）。 */
+  /** 手机：36px 高、28px 缩略图。 */
   compact?: boolean;
 }
 
@@ -159,7 +159,7 @@ export interface ReferenceWindowProps {
 
 const clamp = (value: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, value));
 
-/** 把浮窗限制在画布区内（原型 bindReferenceWindow.place）。 */
+/** 把浮窗限制在画布区内。 */
 function placeBox(box: ReferenceBox, area: GridViewportSize): Required<{ [K in keyof ReferenceBox]: NonNullable<ReferenceBox[K]> }> {
   const w = clamp(box.w, 220, Math.max(220, Math.min(560, area.width - 24)));
   const h = clamp(box.h, 160, Math.max(160, Math.min(520, area.height - 24)));
@@ -223,7 +223,7 @@ export interface ReferenceSplitProps {
   onClose: () => void;
 }
 
-/** 手机原图参照：画布上方 40% 的分屏（原型 .ed-ref-split），同样单向跟随画布。 */
+/** 手机原图参照：画布上方 40% 的分屏，同样单向跟随画布。 */
 export function ReferenceSplit({ image, original, camera, viewport, patternWidth, patternHeight, onClose }: ReferenceSplitProps) {
   const t = zhCN.editorWorkspace.reference;
   const canvasRef = useRef<HTMLCanvasElement>(null);

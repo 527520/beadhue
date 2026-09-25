@@ -40,7 +40,7 @@ export function ArticlePage({ eyebrow, title, lead, toc, children }: ArticlePage
       <div className={cn('mx-auto grid max-w-article', items && 'xl:max-w-none xl:grid-cols-[minmax(0,1fr)_minmax(0,720px)_minmax(0,1fr)] xl:gap-x-12')}>
         {items ? (
           <nav aria-label={zhCN.pages.toc} className="max-xl:hidden xl:col-start-1 xl:justify-self-end">
-            <div className="sticky top-[calc(var(--spacing-topbar)+32px)] w-50">
+            <div className="sticky top-below-topbar-lg w-50">
               <p className="mb-2 text-caption text-ink-4">{zhCN.pages.toc}</p>
               <TocList items={items} />
             </div>
@@ -71,7 +71,7 @@ export function ArticlePage({ eyebrow, title, lead, toc, children }: ArticlePage
 /** 文章里的一节：锚点 id + title-2 标题；锚点跳转时让出吸顶顶栏。 */
 export function ArticleSection({ id, title, children, className }: { id?: string; title: string; children: ReactNode; className?: string }) {
   return (
-    <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className={cn('grid min-w-0 scroll-mt-[calc(var(--spacing-topbar)+24px)] gap-3', className)}>
+    <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className={cn('grid min-w-0 scroll-mt-below-topbar gap-3', className)}>
       <h2 id={id ? `${id}-title` : undefined} className="text-title-2 text-balance text-ink">{title}</h2>
       {children}
     </section>

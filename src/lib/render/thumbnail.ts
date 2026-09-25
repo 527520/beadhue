@@ -1,6 +1,6 @@
 /**
  * 服务端图纸缩略图（D67）：豆粒渲染——白色钉板底上画带孔的圆豆，空格只画淡钉点，
- * 不画格线与板缝，比例与原型 `prototype/js/beads.js` 的 bead 模式一致：
+ * 不画格线与板缝，比例与前端豆粒渲染（`lib/render/beads.ts`）一致：
  * 豆半径 0.47 格、孔半径 0.14 格、每格 ≥10px 时加一圈 10% 深色描边；
  * 每格不足 7px 时孔缩小且更淡，不足 4px 时不画孔也不画钉点。
  * 边缘按超采样覆盖率抗锯齿，光栅化为 RGB 后编码 PNG。
@@ -32,7 +32,7 @@ function parseHex(hex: string | null): Rgb | null {
   return match ? [parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16)] : null;
 }
 
-/** 与原型 `mix()` 相同：各通道向目标色线性插值后取整。 */
+/** 各通道向目标色线性插值后取整。 */
 function mix(color: Rgb, target: Rgb, amount: number): Rgb {
   return [
     Math.round(color[0] + (target[0] - color[0]) * amount),

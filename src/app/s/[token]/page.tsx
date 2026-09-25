@@ -1,5 +1,5 @@
 /**
- * 只读分享页 /s/[token]（批次 K，决策 D38；R15 票 12 换成详情页查看器与制作卡的只读版）。
+ * 只读分享页 /s/[token]（决策 D38）：详情页查看器与制作卡的只读版。
  *
  * 服务端渲染，不需要登录、不暴露作者信息、不可编辑。给的是「看图 + 照着拼」需要的东西：
  * 可缩放的图纸、尺寸与颗数、完整色号清单，以及做一张自己的图纸的入口。
@@ -18,7 +18,7 @@ import { summarizePatternColors } from '@/lib/community/queries';
 import { getBoardProfile } from '@/lib/boardProfiles';
 import { getBuiltinPalette } from '@/lib/palettes';
 import { boardCount } from '@/lib/render/viewer';
-import { longDate } from '@/components/works/detail/detail-format';
+import { longDate } from '@/lib/format';
 import { SiteShell } from '@/components/shell/site-shell';
 import { ShareView } from '@/components/pages/share-view';
 import { zhCN } from '@/messages/zh-CN';

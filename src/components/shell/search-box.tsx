@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { cn } from '@/lib/cn';
+import { LIMITS } from '@/lib/appInfo';
 import { zhCN } from '@/messages/zh-CN';
 import { Kbd } from '@/components/ui/kbd';
 import { SearchField } from '@/components/ui/search-field';
@@ -10,7 +11,7 @@ import { searchHref, SearchSuggestions } from './search-suggestions';
 import { useShellNavigation } from './shell-context';
 
 const t = zhCN.shell.search;
-/** 建议面板最小宽 440（原型 max(搜索框宽, 440)），离视口边缘至少 12。 */
+/** 建议面板宽度取 max(搜索框宽, 440)，离视口边缘至少 12。 */
 const PANEL_MIN_WIDTH = 440;
 const VIEWPORT_MARGIN = 12;
 
@@ -103,6 +104,7 @@ export function SearchBox({ query = '', className }: { query?: string; className
         ref={inputRef}
         compact
         name="q"
+        maxLength={LIMITS.searchQueryLength}
         value={value}
         onValueChange={(next) => {
           setValue(next);
@@ -128,7 +130,7 @@ export function SearchBox({ query = '', className }: { query?: string; className
           aria-label={t.panel}
           data-slot="search-panel"
           style={panelStyle}
-          className="absolute top-[calc(100%+8px)] z-60 max-h-[min(70dvh,560px)] origin-top-left animate-pop-in overflow-y-auto rounded-lg bg-bg p-3 text-ink shadow-float ring-1 ring-line"
+          className="absolute top-full mt-2 z-60 max-h-suggest origin-top-left animate-pop-in overflow-y-auto rounded-lg bg-bg p-3 text-ink shadow-float ring-1 ring-line"
         >
           <SearchSuggestions
             query={value}

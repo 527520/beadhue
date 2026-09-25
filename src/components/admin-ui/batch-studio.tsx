@@ -122,7 +122,7 @@ function SpecPicker({ spec, onChange, disabled }: { spec: OfficialBatchSpec; onC
   return (
     <div className="grid gap-3">
       <div className="grid gap-3 md:grid-cols-3">
-        {labeled(b.specPalette, <Select label={b.specPalette} value={brand ?? ''} disabled={disabled} options={listBuiltinPalettes().map((entry) => ({ value: entry.id, label: `${entry.label} · ${entry.engineColorCount} 色` }))}
+        {labeled(b.specPalette, <Select label={b.specPalette} value={brand ?? ''} disabled={disabled} options={listBuiltinPalettes().map((entry) => ({ value: entry.id, label: zhCN.create.paletteTrigger(entry.label, entry.engineColorCount) }))}
           onValueChange={(value) => {
             if (!isBuiltinPaletteId(value)) return;
             const projectPalette = { kind: 'builtin' as const, brand: value };
@@ -221,7 +221,7 @@ function DraftInspection({ item, onClose }: { item: BatchItem; onClose: () => vo
             <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
               <figure className="m-0 grid gap-2">
                 <figcaption className="text-caption font-normal text-ink-3 tabular-nums">{data.snapshot.pattern.width}×{data.snapshot.pattern.height} · {getBoardProfile(data.snapshot.boardProfile).displayName}</figcaption>
-                <div className="grid aspect-square place-items-center rounded-lg bg-bg-subtle"><BeadImage pattern={data.snapshot.pattern} alt={t.preview(item.title)} lazy={false} className="size-[88%]" /></div>
+                <div className="grid aspect-square place-items-center rounded-lg bg-bg-subtle"><BeadImage pattern={data.snapshot.pattern} alt={t.preview(item.title)} lazy={false} className="size-thumb-fill" /></div>
               </figure>
               <figure className="m-0 grid gap-2">
                 <figcaption className="text-caption font-normal text-ink-3">{zhCN.adminUi.reviews.original}</figcaption>
@@ -271,7 +271,7 @@ function DraftEditor({ item, session, onClose }: { item: BatchItem; session: Bat
   };
   return (
     <Dialog open onOpenChange={(next) => { if (!next) close(); }}>
-      <DialogContent size="full" aria-label={b.editDraft} className="md:max-w-[min(1200px,calc(100vw-48px))]">
+      <DialogContent size="full" aria-label={b.editDraft} className="md:max-w-studio">
         <DialogHeader><DialogTitle>{b.editDraft} · {item.title}</DialogTitle></DialogHeader>
         <DialogBody className="grid gap-3">
           {revision ? <p className="text-body-sm text-ink-3">{b.editHelp(getBoardProfile(revision.snapshot.boardProfile).displayName)}</p> : null}
@@ -315,7 +315,7 @@ const BatchCard = memo(function BatchCard({ item, index, session, editable, serv
       <div className="relative grid aspect-square place-items-center bg-bg-subtle">
         {item.revisionId && item.preview && serverThumbnails
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={adminThumbnailUrl(item.revisionId)} alt={b.previewLabel(item.title)} loading="lazy" className="size-full bg-bg object-contain p-[8%]" />
+          ? <img src={adminThumbnailUrl(item.revisionId)} alt={b.previewLabel(item.title)} loading="lazy" className="size-full bg-bg object-contain p-thumb-pad" />
           : pattern ? <BeadImage pattern={pattern} alt={b.previewLabel(item.title)} className="size-full" />
             : <span className="grid justify-items-center gap-1 text-body-sm text-ink-3 [&>svg]:size-6">{busy ? <b className="text-title-2 text-ink tabular-nums">{t.percent(item.progress)}</b> : <>{icon(ImageIcon)}{b.noPreview}</>}</span>}
         {busy ? <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={item.progress} className="absolute inset-x-0 bottom-0 h-1 bg-bg-muted"><i className="block h-full bg-ink transition-[width] duration-state" style={{ width: `${item.progress}%` }} /></div> : null}
@@ -503,7 +503,7 @@ export function BatchStudio({ restore, name, onBack, onChanged }: { restore: Sto
           {state.notice ? <FormNotice tone="info">{state.notice}</FormNotice> : null}
           {state.conflict ? <FormAlert>{b.conflictHelp}</FormAlert> : null}
           {refreshError ? <FormAlert>{refreshError}</FormAlert> : null}
-          <div className="sticky top-[calc(var(--spacing-topbar)+8px)] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-bg px-4 py-3 shadow-float max-md:static max-md:shadow-none">
+          <div className="sticky top-below-topbar-sm z-20 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-bg px-4 py-3 shadow-float max-md:static max-md:shadow-none">
             {!batch ? <Button variant="primary" loading={state.busy} disabled={session.locked || Boolean(cropItem) || !items.some((item) => item.status === 'pending')} onClick={() => void session.start()}>{icon(Play)}{state.busy ? b.working : b.start}</Button> : <>
               {step === 'generate' ? <span className="text-body-sm text-ink-2 tabular-nums">{b.progressTitle(processed, items.length)}</span> : null}
               {batch.status === 'running' && state.mode === 'running' ? <Button disabled={session.locked} onClick={() => void session.pause()}>{icon(Pause)}{b.pause}</Button> : null}

@@ -1,6 +1,6 @@
 /**
- * 站内通知（D70，票 11）的前端模型：接口数据形状、每类通知的一句话与跳转目标、相对时间、徽标数字。
- * 纯函数、不带 'use client'，服务端与单测都能直接调用。接口见票 02 Comments（/api/me/notifications）。
+ * 站内通知（D70）的前端模型：接口数据形状、每类通知的一句话与跳转目标、相对时间、徽标数字。
+ * 纯函数、不带 'use client'，服务端与单测都能直接调用。接口见 /api/me/notifications。
  */
 import type { NotificationPayload, NotificationType } from '@/lib/notifications/service';
 import { zhCN } from '@/messages/zh-CN';
@@ -75,21 +75,6 @@ export function notificationCopy(item: Pick<NotificationItem, 'type' | 'payload'
     case 'work_commented':
       return { text: t.commented(title), detail: null };
   }
-}
-
-/** 相对时间：刚刚 / N 分钟前 / N 小时前 / N 天前，超过 30 天写日期（与「最近的设计」同一口径）。 */
-export function relativeTime(iso: string, now: number): string {
-  const at = Date.parse(iso);
-  if (!Number.isFinite(at)) return '';
-  const minutes = Math.floor(Math.max(0, now - at) / 60_000);
-  if (minutes < 1) return t.justNow;
-  if (minutes < 60) return t.minutesAgo(minutes);
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t.hoursAgo(hours);
-  const days = Math.floor(hours / 24);
-  if (days <= 30) return t.daysAgo(days);
-  const date = new Date(at);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /** 铃铛徽标里的数字：超过 99 写 99+。 */

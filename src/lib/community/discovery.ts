@@ -1,5 +1,5 @@
 /**
- * 发现页的补充查询（R15-02）：我喜欢的、相似作品、作者主页、搜索建议。
+ * 发现页的补充查询：我喜欢的、相似作品、作者主页、搜索建议。
  * 公开可见性、作者展示名与列表 DTO 全部复用 queries.ts 的同一口径。
  */
 import { and, desc, eq, gt, ilike, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
@@ -23,6 +23,7 @@ import {
   type CommunityListItem,
 } from './queries';
 import { communityThumbnailUrl } from './thumbnailUrl';
+import { containsPattern } from '@/lib/db/like';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const heat = sql<number>`(${communityWorks.likeCount} + ${communityWorks.commentCount} + ${communityWorks.reuseCount})`;
@@ -174,7 +175,7 @@ export const suggestQuerySchema = z.string().trim().max(40);
 export async function suggestCommunitySearch(db: AnyDatabase, rawQuery: string) {
   pushSpan({ kind: 'service', name: 'community.suggest' });
   const q = suggestQuerySchema.parse(rawQuery);
-  const pattern = `%${q}%`;
+  const pattern = containsPattern(q);
   const tagCount = sql<number>`count(*)::int`;
   const tagRows = await db.select({ id: communityTags.id, name: communityTags.name, count: tagCount }).from(communityWorkTags)
     .innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
@@ -228,7 +229,7 @@ export async function suggestCommunitySearch(db: AnyDatabase, rawQuery: string) 
 
 export interface DiscoverCategoryDto { id: string; name: string; icon: string | null }
 
-/** 类目条（R15-04）：后台设为 featured 的启用标签（未被合并），按 sortOrder、名称排序。 */
+/** 类目条：后台设为 featured 的启用标签（未被合并），按 sortOrder、名称排序。 */
 export async function listDiscoverCategories(db: AnyDatabase): Promise<DiscoverCategoryDto[]> {
   return db.select({ id: communityTags.id, name: communityTags.name, icon: communityTags.icon }).from(communityTags)
     .where(and(eq(communityTags.active, true), eq(communityTags.featured, true), isNull(communityTags.mergedIntoTagId)))

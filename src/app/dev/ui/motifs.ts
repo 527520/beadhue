@@ -1,5 +1,5 @@
 /**
- * 组件总览页的示例图案（移植自原型 prototype/motifs.js，仅开发页使用）。
+ * 组件总览页的示例图案（仅开发页使用）。
  * 豆色数据：十六进制色值只出现在这里（护栏测试的豆色数据例外）。
  */
 import type { Pattern } from '@/lib/types';
@@ -269,7 +269,7 @@ export function beadName(code: string | null): string {
   return Object.values(BEADS).find((bead) => bead.code === code)?.name ?? '';
 }
 
-/** 原型 data.js 的示例作者（头像底色为豆色数据）。 */
+/** 示例作者（头像底色为豆色数据）。 */
 export const AUTHORS = {
   official: { id: 'official', name: '豆色绘官方', color: '#1c1c1e' },
   lu: { id: 'lu', name: '小鹿拼豆', color: '#e0473f' },

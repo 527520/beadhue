@@ -7,7 +7,7 @@ import { enforcePublicIpLimit } from '@/lib/security/publicRateLimit';
 
 /**
  * 标签列表是公开端点：响应带 s-maxage=300，但每次未命中仍要读库，故补每 IP 小时限流。
- * R15-02 起带类目条字段：icon（格式见 lib/community/tagIcon.ts）、sortOrder、featured。
+ * 带类目条字段：icon（格式见 lib/community/tagIcon.ts）、sortOrder、featured。
  */
 async function get(request: Request) {
   await enforcePublicIpLimit(getDb(), request, 'tags', config.security.tagsRateLimit);

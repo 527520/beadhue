@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 「最近的设计」（原型 .cr-recent）：本机设计库里最近编辑的三张；一张都没有时整段不显示。
+ * 「最近的设计」：本机设计库里最近编辑的三张；一张都没有时整段不显示。
  * 卡片是普通链接（整页进入 /app?id=）：同一路由的客户端跳转不会让工作台重新恢复设计。
  */
 import { useEffect, useState, type MouseEvent } from 'react';
@@ -11,7 +11,7 @@ import { openIndexedDb, parseStoredProject, type StorageAdapter } from '@/lib/st
 import { isProgressCompatible, summarizeProgress } from '@/lib/progress/stitchProgress';
 import type { Pattern } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
-import { relativeTime } from './create-model';
+import { relativeTime } from '@/lib/format';
 
 interface RecentItem {
   id: string;

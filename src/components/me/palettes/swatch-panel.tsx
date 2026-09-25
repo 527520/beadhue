@@ -12,15 +12,15 @@ import { FAMILY_KEYS, filterSwatches, isLight, type FamilyKey, type Swatch } fro
 
 const s = zhCN.me.palettes;
 
-/** 色带（原型 palette-strip）：12 列豆粒，不足 24 颗时补空钉。 */
+/** 色带：12 列豆粒，不足 24 颗时补空钉。 */
 export function PaletteStrip({ colors, slots = 24 }: { colors: readonly string[]; slots?: number }) {
   return (
     <div aria-hidden="true" className="grid grid-cols-12 gap-1 rounded-md bg-bg-subtle p-3">
       {colors.slice(0, slots).map((hex, index) => (
-        <i key={index} className="relative aspect-square rounded-full inset-ring-1 inset-ring-ink/10 after:absolute after:inset-[34%] after:rounded-full after:bg-bg/66 after:content-['']" style={{ backgroundColor: hex }} />
+        <i key={index} className="relative aspect-square rounded-full inset-ring-1 inset-ring-ink/10 after:absolute after:inset-bead-hole after:rounded-full after:bg-bg/66 after:content-['']" style={{ backgroundColor: hex }} />
       ))}
       {Array.from({ length: Math.max(0, slots - colors.length) }, (_, index) => (
-        <i key={`hole-${index}`} className="relative aspect-square after:absolute after:inset-[38%] after:rounded-full after:bg-line-strong after:content-['']" />
+        <i key={`hole-${index}`} className="relative aspect-square after:absolute after:inset-peg-hole after:rounded-full after:bg-line-strong after:content-['']" />
       ))}
     </div>
   );
@@ -52,7 +52,7 @@ export interface SwatchPanelProps {
   footer?: ReactNode;
 }
 
-/** 可搜索的色块面板（原型 swatchPanel）：搜色号 / 名称 / HEX，按色系筛选；工具行吸顶。 */
+/** 可搜索的色块面板：搜色号 / 名称 / HEX，按色系筛选；工具行吸顶。 */
 export function SwatchPanel({ swatches, label, selected, onToggle, keyOf = (swatch) => swatch.key, footer }: SwatchPanelProps) {
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState<FamilyKey | 'all'>('all');

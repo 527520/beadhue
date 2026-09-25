@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { resetAuthStatusCache } from '@/components/account/useAuthStatus';
 import { DetailView, type DetailWork } from './detail-view';
-import { relativeTime } from './detail-format';
+import { relativeTime } from '@/lib/format';
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router, usePathname: () => '/community/w1' }));
@@ -86,4 +86,28 @@ it('相对时间：分钟、小时、天，超过 30 天写日期', () => {
   expect(relativeTime('2026-09-24T09:00:00Z', now)).toBe('3 小时前');
   expect(relativeTime('2026-09-20T12:00:00Z', now)).toBe('4 天前');
   expect(relativeTime('2026-07-01T12:00:00Z', now)).toBe('2026年7月1日');
+});
+
+it('从通知进来（#comment-<id>）：锚点不在第一页就往下翻，找到后滚到那条评论并高亮', async () => {
+  const comment = (id: string) => ({ id, author: { publicAuthorId: `pa-${id}`, displayName: `作者${id}`, avatarColor: null }, body: `评论 ${id}`, version: 1, createdAt: '2026-09-24T00:00:00.000Z', deletable: false, status: 'published' });
+  fetchMock.mockImplementation(async (url: string) => {
+    if (String(url).startsWith('/api/auth/me')) return new Response('{}', { status: 401 });
+    if (String(url).includes('cursor=n1')) return new Response(JSON.stringify({ items: [comment('c3')], nextCursor: null }), { status: 200 });
+    if (String(url).includes('/comments')) return new Response(JSON.stringify({ items: [comment('c1'), comment('c2')], nextCursor: 'n1' }), { status: 200 });
+    return new Response('{}', { status: 404 });
+  });
+  const scrollIntoView = vi.fn();
+  Element.prototype.scrollIntoView = scrollIntoView;
+  window.history.replaceState(null, '', '/community/w1#comment-c3');
+  const { Discussion } = await import('./discussion');
+  render(<Discussion workId="w1" loggedIn={false} commentsLocked={false} initialCount={3} onLogin={() => {}} onReport={() => {}} />);
+  await waitFor(() => expect(document.getElementById('comment-c3')).toHaveAttribute('data-target', 'true'));
+  expect(scrollIntoView).toHaveBeenCalledTimes(1);
+  expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('comment-c3'));
+  expect(document.activeElement).toBe(document.getElementById('comment-c3'));
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/comments')).map(([url]) => String(url))).toEqual([
+    '/api/community/works/w1/comments?order=desc',
+    '/api/community/works/w1/comments?order=desc&cursor=n1',
+  ]);
+  window.history.replaceState(null, '', '/community/w1');
 });

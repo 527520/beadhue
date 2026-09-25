@@ -33,7 +33,7 @@ const c = zhCN.adminUi.comments;
 interface ModerationCheck { provider: string; suggestion: string | null; label: string | null; subLabel: string | null; score: number | null; keywords: string[]; reason: string; checkedAt: string }
 interface CommentRow { id: string; workId: string; status: string; version: number; body: string; riskCategories: string[]; createdAt: string; authorName: string; author: AdminPerson; workTitle: string | null; workRevisionId: string | null; moderation: ModerationCheck | null }
 
-/** 作品引用：缩略图 + 标题（原型 workRef）。 */
+/** 作品引用：缩略图 + 标题。 */
 const WorkRef = ({ revisionId, title }: { revisionId: string | null; title: string | null }) => (
   <span className="inline-flex max-w-50 min-w-0 items-center gap-2 text-ink-2"><Thumb revisionId={revisionId} size="sm" /><span className="truncate">{title ?? zhCN.adminUi.works.noTitle}</span></span>
 );
@@ -109,7 +109,7 @@ export function CommentsConsole({ initialOpenId }: { initialOpenId?: string }) {
   return (
     <>
       <DataTable<CommentRow>
-        label={c.label} rows={table.items} rowId={(row) => row.id} rowName={(row) => `${row.authorName}的评论`} columns={columns} minWidth={960}
+        label={c.label} rows={table.items} rowId={(row) => row.id} rowName={(row) => zhCN.adminUi.common.commentBy(row.authorName)} columns={columns} minWidth={960}
         card={(row) => ({ lead: <IconTile>{icon(MessageCircle)}</IconTile>, title: `“${row.body}”`, meta: `${row.authorName} · ${row.workTitle ?? zhCN.adminUi.works.noTitle} · ${fmtAgo(row.createdAt)}`,
           tail: <>{verdict(row)}{checkLabel(row.moderation) ? <span className="text-body-sm text-ink-3">{checkLabel(row.moderation)}</span> : null}</> })}
         loading={table.loading} error={table.error} onRetry={() => void table.reload()}
@@ -166,7 +166,7 @@ interface ReportRow { id: string; targetType: 'work' | 'comment'; targetId: stri
 type Decision = 'accepted' | 'resolved' | 'dismissed' | 'hide';
 
 const reportStatus = (row: ReportRow) => <Badge tone={row.status === 'open' ? 'warning' : 'info'} dot>{states.report[row.status]}</Badge>;
-/** 对象名：作品「标题」/ 评论“开头”（原型 targetTitle）；对象已不可读时退回类型 + 原因。 */
+/** 对象名：作品「标题」/ 评论“开头”；对象已不可读时退回类型 + 原因。 */
 const reportTitle = (row: ReportRow) => row.targetType === 'work'
   ? (row.target.title ? r.workTarget(row.target.title) : r.targetTitle(r.kinds.work, riskLabel(row.category)))
   : (row.target.excerpt ? r.commentTarget(row.target.excerpt) : r.targetTitle(r.kinds.comment, riskLabel(row.category)));

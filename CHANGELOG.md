@@ -30,6 +30,11 @@
 - 新接口：`GET /api/designs/:id/thumbnail`（本人设计缩略图）、`GET /api/community/works/liked`、`GET /api/community/works/:id/related`、`GET /api/community/authors/:publicAuthorId`、`GET /api/community/search/suggest`、`GET /api/me/stats`、`GET /api/me/sessions`、`POST /api/me/sessions/revoke-others`、`GET /api/originals/designs`、`GET /api/me/notifications`、`GET /api/me/notifications/unread-count`、`POST /api/me/notifications/read`、`GET /api/admin/overview/trends`、`POST /api/admin/community/revisions/:id/suggested-tags`、`GET /api/admin/community/revisions/:id/original`
 - 新字段与参数：作品列表 `size` / `colors` / `spec` / `palette` / `since` / `author` / `cat` 筛选、`rec` / `new` / `likes` / `reuses` 排序与 `total`，登录时每项带 `liked`；详情 `beadCount` / `colorUsage`（未登录为空）/ `largeImageUrl`；设计列表 `thumbnailUrl`；公开标签 `icon` / `sortOrder` / `featured`；投稿 `suggestedTags`；后台列表若干筛选参数与展示字段
 - 迁移 `0020_discovery_notifications`：`notifications` 表、`community_revisions.suggested_tags`、`community_tags.icon` / `featured`（带回滚）；新增配置 `RATE_DESIGN_THUMBNAIL_USER_HOUR`、`RATE_SEARCH_SUGGEST_IP_HOUR`、`RATE_ME_READ_USER_HOUR`、`RATE_ME_WRITE_USER_HOUR`、`COMMUNITY_COUNT_CACHE_SECONDS`、`NOTIFICATION_RETENTION_DAYS`
+- 账号设置：「更换颜色」选头像底色（全站头像一致）、「设为默认色板」（新建图纸与空白画布按它预选，游客存本机）、密码行显示上次修改时间、登录设备写「系统 · 浏览器」
+- 后台：评论 / 举报 / 批次可搜索，审计按动作与操作人筛选，各表整表排序；举报、审计、总览待办写对象名与人名；人员表带作品数、抽屉带最近活跃与获赞；新建官方批次先起名；审核台显示上一次驳回；新建标签可选是否启用；后台内的 403 与 404
+- 编辑器：PNG 导出按每格 10 / 20 / 30 / 40 像素，可选色号、图例与按底板分页（ZIP）；PDF 每格与豆径等大；颜色面板「查看完整色板库」可把色板用于当前图纸；自定义色板可粘贴或读文件导入颜色
+- 通知里的「评论位置」直达那条评论并短暂高亮；未通过且从未公开的投稿可「删除投稿记录」
+- 迁移 `0021_account_profile_and_batch_names`：`users.avatar_color` / `default_palette` / `password_changed_at`、`sessions.device_label`、`official_batches.name`（带回滚）；新增配置 `RATE_ADMIN_ORIGINAL_READ_USER_HOUR`（审核台读原图单独计量，不占豆社公开额度）
 
 ### 变更
 
@@ -43,6 +48,10 @@
 - 只读分享页、帮助 / 关于 / 隐私 / 社区规范 / 版权页、404 与错误页按新版式重做；分享页可切换豆粒 / 方格并查看完整色号清单
 - 管理后台重做为浅色侧栏（可折叠，手机为抽屉）+ 顶栏搜索；各模块统一数据表格 + 右侧抽屉，手机为卡片列表与底部面板
 - 豆社标签筛选改为发现页类目与搜索，旧 `?tag=` 链接并入类目
+- 新建图纸默认 2 板（58 格）、24 色并开启去背景；色板名称不再重复写色数，选择框写「名称 · N 色」，制作规格写「5mm · 29×29」
+- 旧豆社链接里的制作规格与起止日期尽量换成新筛选；过长的搜索词截断而不是报「筛选条件无效」
+- 搜索框里的 `%`、`_` 按字面匹配；「同步到云端」失败时如实提示
+- 刚改过名、自动保存还没刷新列表时删除已同步的设计不再报「操作失败」；云端确实被其他设备改过时说明原因并刷新列表
 
 后台与豆社整改（R14）：用户提出的 15 项问题一次性修复与增强。
 

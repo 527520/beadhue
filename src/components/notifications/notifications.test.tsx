@@ -7,7 +7,8 @@ import { resetAuthStatusCache } from '@/components/account/useAuthStatus';
 import { LoginDialogProvider } from '@/components/shell/login-dialog';
 import { SiteShell, type SiteShellProps } from '@/components/shell/site-shell';
 import { ToastProvider } from '@/components/ui/toast';
-import { badgeText, knownNotifications, notificationCopy, notificationHref, relativeTime, type NotificationItem } from './notification-model';
+import { relativeTime } from '@/lib/format';
+import { badgeText, knownNotifications, notificationCopy, notificationHref, type NotificationItem } from './notification-model';
 import { resetUnreadStore, UNREAD_FRESH_MS } from './use-unread-count';
 
 const nav = vi.hoisted(() => ({ pathname: '/', router: { push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn() } }));
@@ -100,11 +101,11 @@ describe('通知模型', () => {
 
   it('相对时间与徽标数字', () => {
     const now = Date.parse('2026-09-24T12:00:00Z');
-    expect(relativeTime('2026-09-24T11:59:40Z', now)).toBe(t.justNow);
-    expect(relativeTime('2026-09-24T11:45:00Z', now)).toBe(t.minutesAgo(15));
-    expect(relativeTime('2026-09-24T09:00:00Z', now)).toBe(t.hoursAgo(3));
-    expect(relativeTime('2026-09-21T12:00:00Z', now)).toBe(t.daysAgo(3));
-    expect(relativeTime('2026-07-01T12:00:00Z', now)).toBe('2026-07-01');
+    expect(relativeTime('2026-09-24T11:59:40Z', now)).toBe(zhCN.time.justNow);
+    expect(relativeTime('2026-09-24T11:45:00Z', now)).toBe(zhCN.time.minutesAgo(15));
+    expect(relativeTime('2026-09-24T09:00:00Z', now)).toBe(zhCN.time.hoursAgo(3));
+    expect(relativeTime('2026-09-21T12:00:00Z', now)).toBe(zhCN.time.daysAgo(3));
+    expect(relativeTime('2026-07-01T12:00:00Z', now)).toBe('2026年7月1日');
     expect(relativeTime('坏值', now)).toBe('');
     expect([badgeText(3), badgeText(99), badgeText(120)]).toEqual(['3', '99', '99+']);
     const art = emptyArtPattern('notifications');
@@ -169,7 +170,7 @@ describe('通知铃铛', () => {
     expect(links[0]).toHaveTextContent(t.approved('橘猫团子'));
     expect(links[1]).toHaveTextContent(t.rejectedReason('标题含联系方式'));
     expect(links[0]).toHaveTextContent(t.unreadMark);
-    expect(links[0].querySelector('time')).toHaveTextContent(t.hoursAgo(3));
+    expect(links[0].querySelector('time')).toHaveTextContent(zhCN.time.hoursAgo(3));
     await waitFor(() => expect(readCalls(server)).toHaveLength(1));
     expect(readCalls(server)[0].body).toEqual({ ids: ['1', '2'] });
     expect(await screen.findByRole('button', { name: bell.label, hidden: true })).toBeTruthy();

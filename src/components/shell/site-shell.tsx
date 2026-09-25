@@ -3,6 +3,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { LIMITS } from '@/lib/appInfo';
 import { zhCN } from '@/messages/zh-CN';
 import { IconButton } from '@/components/ui/icon-button';
 import { SearchField } from '@/components/ui/search-field';
@@ -35,7 +36,7 @@ export interface SiteShellProps {
   consent?: boolean;
   /** 顶栏搜索框的当前关键词（发现页结果视图回填）。 */
   query?: string;
-  /** 手机全屏搜索页的附加区块（票 04：按类目看看）。 */
+  /** 手机全屏搜索页的附加区块。 */
   searchExtras?: ReactNode;
   /** 离开拦截：外壳里的站内跳转都交给它（工作台先保存再走）。 */
   onNavigate?: (href: string) => void;
@@ -43,7 +44,7 @@ export interface SiteShellProps {
 }
 
 /**
- * 站点外壳（D66，原型 app.js）：桌面顶栏、手机顶栏、主区域、页脚、手机底栏、统计同意浮卡。
+ * 站点外壳（D66）：桌面顶栏、手机顶栏、主区域、页脚、手机底栏、统计同意浮卡。
  * 外壳各部分自带 data-ui；主区域不加，页面的新界面根自己加 data-ui。
  */
 export function SiteShell({ onNavigate, ...props }: SiteShellProps) {
@@ -95,7 +96,7 @@ function ShellFrame({ nav = null, topbarCta = 'primary', tabbar = true, footer =
   );
 }
 
-/** 手机全屏搜索页的顶栏：返回 + 搜索框（原型 #/search），提交后回到发现页结果。 */
+/** 手机全屏搜索页的顶栏：返回 + 搜索框，提交后回到发现页结果。 */
 function MobileSearchTop({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const { navigate } = useShellNavigation();
   const [value, setValue] = useState('');
@@ -116,6 +117,7 @@ function MobileSearchTop({ onClose, onDone }: { onClose: () => void; onDone: () 
         <SearchField
           autoFocus
           name="q"
+          maxLength={LIMITS.searchQueryLength}
           value={value}
           onValueChange={setValue}
           placeholder={zhCN.shell.search.label}

@@ -7,7 +7,6 @@ import { okJson, readJson, withApiErrors } from '@/lib/auth/http';
 import { assertRevisionOriginalUpload, readOriginalBody as readStoredOriginal, resolveOriginalAccess, storeRevisionOriginal } from '@/lib/community/originals';
 import { getOriginalByteCache } from '@/lib/community/originalCache';
 import { entityTag, matchesIfNoneMatch } from '@/lib/security/etag';
-import { enforceOriginalReadLimit } from '@/lib/security/publicRateLimit';
 import { getOriginalStore } from '@/lib/community/originalStore';
 import { config } from '@/lib/config';
 import { AppError } from '@/lib/errors';
@@ -52,14 +51,15 @@ async function post(request: Request, { params }: { params: Promise<{ id: string
 }
 
 /**
- * 审核台读取原图（R15-10）：后台页面不再请求豆社公开接口（admin-round-3 10），
- * 这里与公开路径同一套访问判定、ETag 与原图读取限流，只要求审核权限。
+ * 审核台读取原图：与公开路径同一套访问判定与 ETag，只要求审核权限；
+ * 限流按审核员单独计量（`admin:original:read`），逐张翻看队列不占豆社公开的原图读取额度（ADR-0025）。
  */
 async function get(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const actor = await requireApiActor('community:moderate');
   const revisionId = z.uuid().parse((await params).id);
   const db = getDb();
-  await enforceOriginalReadLimit(db, { userId: actor.userId, request });
+  const allowed = await checkRateLimit(db, `admin:original:read:${actor.userId}`, config.security.adminOriginalReadRateLimit);
+  if (!allowed) throw new AppError('RATE_LIMITED', '读取过于频繁，请稍后再试');
   const resolved = await resolveOriginalAccess(db, actor, revisionId);
   if (!resolved) throw new AppError('NOT_FOUND', '原图不存在或无权访问');
   const etag = entityTag(resolved.row.sha256);

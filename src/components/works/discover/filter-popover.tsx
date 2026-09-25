@@ -47,7 +47,7 @@ function useDraftCount(state: DiscoverState, draft: DiscoverFilters, open: boole
 }
 
 /**
- * 筛选（原型 discover.js filterPanel）：桌面为「筛选」按钮下的宽弹出层，手机为底部面板。
+ * 筛选：桌面为「筛选」按钮下的宽弹出层，手机为底部面板。
  * 选项是可再次点击取消的单选芯片；底部「清除全部」+「显示 N 张图纸」（实时数量），应用后写进地址。
  */
 export function FilterPopover({ state, total }: { state: DiscoverState; total: number }) {

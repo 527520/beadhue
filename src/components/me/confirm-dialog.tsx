@@ -24,7 +24,7 @@ export interface ConfirmDialogProps {
   children?: ReactNode;
 }
 
-/** 确认弹窗（原型 confirmDialog）：一句说明 + 「取消」「确认动作」；进行中或结果未确认时关不掉。 */
+/** 确认弹窗：一句说明 + 「取消」「确认动作」；进行中或结果未确认时关不掉。 */
 export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, onConfirm, danger = false, busy = false, locked = false, error, confirmDisabled, cancelLabel = zhCN.me.cancel, children }: ConfirmDialogProps) {
   const blocked = busy || locked;
   return (

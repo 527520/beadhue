@@ -20,7 +20,7 @@ export interface ChoiceMenuProps<T extends string> {
   icon: ReactNode;
 }
 
-/** 单选菜单（原型 sortMenu）：桌面描边小按钮 + 右对齐菜单、当前项打勾；手机图标按钮 + 底部面板。 */
+/** 单选菜单：桌面描边小按钮 + 右对齐菜单、当前项打勾；手机图标按钮 + 底部面板。 */
 export function ChoiceMenu<T extends string>({ title, label, value, options, onChange, icon }: ChoiceMenuProps<T>) {
   const mobile = useIsMobile();
   const [open, setOpen] = useState(false);

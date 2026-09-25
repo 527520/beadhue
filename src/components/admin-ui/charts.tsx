@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
 
-/** 固定像素尺寸的迷你折线（原型 charts.js sparkline）：不拉伸，线宽与圆点不变形。 */
+/** 固定像素尺寸的迷你折线：不拉伸，线宽与圆点不变形。 */
 export function Sparkline({ values, width = 88, height = 32, className }: { values: number[]; width?: number; height?: number; className?: string }) {
   if (values.length < 2) return null;
   const max = Math.max(...values);
@@ -43,7 +43,7 @@ const STROKE: Record<SeriesTone, string> = { ink: 'stroke-ink', 'chart-2': 'stro
 export const DOT: Record<SeriesTone, string> = { ink: 'bg-ink', 'chart-2': 'bg-chart-2', 'chart-3': 'bg-chart-3' };
 
 /**
- * 多日折线（原型 charts.js lineChart）：SVG 只画网格与折线（拉伸 + 不缩放描边），
+ * 多日折线：SVG 只画网格与折线（拉伸 + 不缩放描边），
  * 圆点、坐标文字、悬停列用 HTML 按百分比定位，任何宽度下都清晰；每列可聚焦，读屏读出当日数值。
  */
 export function LineChart({ days, series, label }: { days: Array<{ short: string; long: string }>; series: ChartSeries[]; label: string }) {
@@ -101,7 +101,7 @@ export function LineChart({ days, series, label }: { days: Array<{ short: string
   );
 }
 
-/** 图例：色点 + 名称 + 合计（原型 .adm-legend）。 */
+/** 图例：色点 + 名称 + 合计。 */
 export function ChartLegend({ series, showTotal = true }: { series: ChartSeries[]; showTotal?: boolean }) {
   return (
     <div className="flex flex-wrap gap-x-5 gap-y-2 px-5 pt-3.5 text-body-sm text-ink-2 max-md:px-4 max-md:pt-3">

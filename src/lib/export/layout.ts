@@ -2,7 +2,7 @@
 import type { Pattern } from '@/lib/types';
 import { buildExportFilename } from './filename';
 
-/** PNG 导出面板可选的格子尺寸（原型 10 / 20 / 30 / 40）；导出接口本身接受 8–48。 */
+/** PNG 导出面板可选的格子尺寸；导出接口本身接受 8–48。 */
 export const EXPORT_CELL_PX_CHOICES = [10, 20, 30, 40] as const;
 export const EXPORT_CELL_PX_MIN = 8;
 export const EXPORT_CELL_PX_MAX = 48;

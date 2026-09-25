@@ -1,12 +1,12 @@
 /**
  * 类目条的像素小图标（豆色数据文件：十六进制色值只允许出现在这里与 beadTokens.ts）。
- * 内置图标键的图案由原型 prototype/motifs.js 按 13 格栅格化后固化，客户端不必带程序化栅格器。
+ * 内置图标键的图案按 13 格栅格化后固化，客户端不必带程序化栅格器。
  */
 import type { TagIcon, TagIconKey } from '@/lib/community/tagIcon';
 import type { Pattern } from '@/lib/types';
 import { keysPattern } from './beads';
 
-/** 原型 motifs.js 的豆色（只收录图标用到的键）。 */
+/** 图标用到的豆色。 */
 const ICON_BEADS: Readonly<Record<string, string>> = {
   B: '#3F7FD9', C: '#8FDCC8', D: '#A92C35', E: '#1F6B45', G: '#47A35B', K: '#3A2A30', M: '#7C4F36',
   O: '#F28B2C', P: '#F59CB0', R: '#E0473F', S: '#8E929C', T: '#D49A5E', W: '#FBF8F1', Y: '#FFD447',
@@ -28,7 +28,7 @@ const BUILTIN_ROWS: Readonly<Record<TagIconKey, readonly string[]>> = {
   panda: ['.............', '..K.......K..', '.KKK.KKK.KKK.', '.KKKKWWWKKKK.', '..KWWWWWWWK..', '.KWWWWWWWWWK.', '.KWKWWWWWKWK.', '.KWWKWWWKWWK.', '.KWpWWKWWpWK.', '..KWWWWWWWK..', '...KWWWWWK...', '....KKKKK....', '.............'],
 };
 
-/** 「全部」：红黄蓝绿四块（原型 data.js allIcon）。 */
+/** 「全部」：红黄蓝绿四块。 */
 export const ALL_CATEGORY_ICON: Pattern = keysPattern(['RR.YY', 'RR.YY', '.....', 'BB.GG', 'BB.GG'], ICON_BEADS);
 /** 「精选」：星星。 */
 export const FEATURED_CATEGORY_ICON: Pattern = keysPattern(BUILTIN_ROWS.star, ICON_BEADS);

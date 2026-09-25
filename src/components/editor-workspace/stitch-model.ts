@@ -1,5 +1,5 @@
 /**
- * 跟拼的纯数据（原型 editor/model.js 的板块 / 板内行 / 进度部分）。
+ * 跟拼的纯数据。
  * 进度的写入规则沿用 lib/progress/stitchProgress（可拼格判定、整行标记、清空），这里只做界面需要的派生：
  * 板块顺序的行列表、整图 / 每块板 / 每行的完成度、行内颜色序列、下一处未完成。
  */
@@ -70,12 +70,6 @@ export function stitchRows(pattern: Pattern, boardSize: number): StitchRow[] {
 
 const percentOf = (done: number, total: number) => (total > 0 ? Math.floor((done / total) * 100) : 0);
 
-export function cellsStats(progress: StitchProgress, cells: readonly number[]): StitchStats {
-  let done = 0;
-  for (const index of cells) if (progress.done[index] === 1) done += 1;
-  return { total: cells.length, done, percent: percentOf(done, cells.length) };
-}
-
 /** 整图进度：只数可拼格（透明格、背景外格不计入分母）。 */
 export function patternStats(pattern: Pattern, progress: StitchProgress): StitchStats {
   let total = 0;
@@ -117,7 +111,7 @@ export function firstPendingRow(rows: readonly StitchRow[], progress: StitchProg
   return -1;
 }
 
-/** 行内颜色序列：板宽范围内相邻同色合并，末尾的留空去掉（原型 rowRuns）。 */
+/** 行内颜色序列：板宽范围内相邻同色合并，末尾的留空去掉。 */
 export function rowRuns(pattern: Pattern, row: StitchRow): RowRun[] {
   const runs: RowRun[] = [];
   for (let col = row.colStart; col < row.colEnd; col += 1) {

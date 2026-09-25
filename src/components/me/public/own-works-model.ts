@@ -1,11 +1,11 @@
 /**
- * 「我的 · 公开作品」的归类规则（原型 publicItems / ownCard）：把本人的豆社作品与修订历史
+ * 「我的 · 公开作品」的归类规则：把本人的豆社作品与修订历史
  * 归成一张卡——审核中 / 已公开 / 未通过（附原因）/ 已下架，以及投稿失败留下的草稿、撤回后的待重投。
- * 整件已撤回的作品不再出现在这里（原型「撤回公开」后卡片消失）。纯函数，服务端页面直接调用。
+ * 整件已撤回的作品不再出现在这里。纯函数，服务端页面直接调用。
  */
 import type { listOwnCommunityWorks } from '@/lib/community/queries';
 import { communityThumbnailUrl } from '@/lib/community/thumbnailUrl';
-import { relativeTime } from '@/components/create/create-model';
+import { relativeTime } from '@/lib/format';
 import { zhCN } from '@/messages/zh-CN';
 
 export type OwnWork = Awaited<ReturnType<typeof listOwnCommunityWorks>>[number];

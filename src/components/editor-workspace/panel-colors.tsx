@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * 右面板「颜色」（原型 editor/panels.js colorsPanel）：当前色、色板选择、图纸用色（颗数、点选即用、替换、高亮）、全部颜色搜索。
+ * 右面板「颜色」：当前色、色板选择、图纸用色（颗数、点选即用、替换、高亮）、全部颜色搜索。
  */
 import { Eye, Replace, Search } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type MouseEvent } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/cn';
 import { PalettePicker } from '@/components/create/choice-pickers';
 import type { PaletteChoice } from '@/components/create/palette-choices';
@@ -30,8 +31,10 @@ export interface ColorsPanelProps {
   onHighlight: (color: PaletteColor | null) => void;
   onReplace: (fromCode: string, target: PaletteColor | null) => void;
   disabled?: boolean;
-  /** 手机底部面板：替换 / 高亮常驻在行尾，颗数一直可见（原型 .ed-used.is-touch）。 */
+  /** 手机底部面板：替换 / 高亮常驻在行尾，颗数一直可见。 */
   touch?: boolean;
+  /** 色板库「用于当前图纸」入口（`/palettes?designId=`）；点击时先保存再离开。 */
+  library?: { href: string; onNavigate?: (event: MouseEvent<HTMLAnchorElement>, href: string) => void };
 }
 
 function CurrentColor({ color }: { color: PaletteColor | null }) {
@@ -119,7 +122,7 @@ const PaletteGrid = memo(function PaletteGrid({ colors, color, onColor }: { colo
   );
 });
 
-export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteValue, onPalette, paletteDisabled, paletteNotice, stats, highlight, onHighlight, onReplace, disabled, touch = false }: ColorsPanelProps) {
+export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteValue, onPalette, paletteDisabled, paletteNotice, stats, highlight, onHighlight, onReplace, disabled, touch = false, library }: ColorsPanelProps) {
   const t = zhCN.editorWorkspace.colors;
   const [query, setQuery] = useState('');
   const matches = useMemo(() => palette.filter((entry) => matchesColorQuery(entry, query)), [palette, query]);
@@ -129,6 +132,11 @@ export function ColorsPanel({ color, onColor, palette, paletteChoices, paletteVa
         <CurrentColor color={color} />
         {paletteChoices.length ? <PalettePicker choices={paletteChoices} value={paletteValue} onChange={onPalette} disabled={paletteDisabled || disabled} label={t.palette} /> : null}
         {paletteNotice ? <p className="text-caption font-normal text-ink-3">{paletteNotice}</p> : null}
+        {library ? (
+          <Link href={library.href} onClick={(event) => library.onNavigate?.(event, library.href)} className="justify-self-start rounded-sm text-body-sm text-accent hover:underline hover:underline-offset-3 focus-visible:focus-ring">
+            {t.library}
+          </Link>
+        ) : null}
       </PanelSection>
       <PanelSection>
         <SectionTitle count={stats.length}>{t.used}</SectionTitle>

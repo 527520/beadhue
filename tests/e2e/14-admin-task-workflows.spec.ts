@@ -155,7 +155,8 @@ test('被内容安全拦截的评论不公开但进入治理队列，可复核�
     }, { workId, body });
     expect(response.status).toBe(422); expect(response.body.error.code).toBe('COMMENT_BLOCKED');
     const listed = await author.evaluate(async (workId) => (await (await fetch(`/api/community/works/${workId}/comments`)).json()).items, workId);
-    expect(JSON.stringify(listed)).not.toContain('E2E拦截词');
+    // 前一个浏览器项目复核公开的同类评论会留在列表里，只认本项目这一条。
+    expect(JSON.stringify(listed)).not.toContain(body);
   } finally { await authorContext.close(); }
   await login(page, '/admin/comments');
   const entry = row(page, 'E2E拦截词').filter({ hasText: info.project.name });

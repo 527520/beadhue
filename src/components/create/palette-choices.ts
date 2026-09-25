@@ -1,5 +1,5 @@
 /**
- * 色板与制作规格的选项数据：创作弹窗与编辑器（票 08）共用。
+ * 色板与制作规格的选项数据：创作弹窗与编辑器共用。
  * 选项值沿用工作台的约定：内置 `builtin:<id>`，云端自定义 `custom:<id>`。
  */
 import {
@@ -9,7 +9,7 @@ import {
   getBoardProfile,
   type BoardProfileId,
 } from '@/lib/boardProfiles';
-import { getBuiltinPalette, isBuiltinPaletteId, listBuiltinPalettes } from '@/lib/palettes';
+import { getBuiltinPalette, listBuiltinPalettes } from '@/lib/palettes';
 import type { PaletteColor, ProjectPalette } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 
@@ -84,10 +84,6 @@ export function buildPaletteChoices(cloud: readonly CloudPalette[] = []): Palett
 
 export function findPaletteChoice(choices: readonly PaletteChoice[], value: string): PaletteChoice | undefined {
   return choices.find((choice) => choice.value === value);
-}
-
-export function builtinPaletteValue(id: string): string | null {
-  return isBuiltinPaletteId(id) ? `builtin:${id}` : null;
 }
 
 export function specChoices(palette: ProjectPalette, paletteName: string): SpecChoice[] {

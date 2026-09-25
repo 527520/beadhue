@@ -17,7 +17,7 @@ export interface AdminSection {
   count?: Exclude<keyof AdminOverview, 'moderationDegraded'>;
 }
 
-/** 侧栏分组与顺序同原型 admin.js NAV：工作台 → 内容 → 用户 → 系统。 */
+/** 侧栏分组与顺序：工作台 → 内容 → 用户 → 系统。 */
 export const ADMIN_SECTIONS: readonly AdminSection[] = [
   { id: 'overview', href: '/admin', icon: LayoutDashboard, group: 'workbench', moderator: true },
   { id: 'reviews', href: '/admin/reviews', icon: Inbox, group: 'content', moderator: true, count: 'pendingRevisions' },

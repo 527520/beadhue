@@ -1,5 +1,5 @@
 /**
- * 色板页的数据（原型 me.js 色板部分）：内置色板卡片、色带取样、按色系分组与色块搜索。
+ * 色板页的数据：内置色板卡片、色带取样、按色系分组与色块搜索。
  * 各品牌的色号分组口径不一，色系一律按 HEX 推导（与色号清单的颜色名同一套规则）。
  */
 import { getBuiltinPalette, listBuiltinPalettes, type BuiltinPaletteId } from '@/lib/palettes';
@@ -100,7 +100,7 @@ export function filterSwatches(list: readonly Swatch[], query: string, family: F
     && (!q || (swatch.code ?? '').toLowerCase().includes(q) || swatch.name.includes(raw) || (hex.length > 0 && swatch.hex.toLowerCase().includes(hex))));
 }
 
-/** 亮色块上的对勾用深墨，暗色块用白（原型 isLight）。 */
+/** 亮色块上的对勾用深墨，暗色块用白。 */
 export function isLight(hex: string): boolean {
   const n = Number.parseInt(hex.slice(1, 7), 16);
   return (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 168;

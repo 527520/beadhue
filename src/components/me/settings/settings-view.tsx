@@ -26,7 +26,7 @@ import { useToast } from '@/components/ui/toast';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AVATAR_PICKER_COLORS } from '@/lib/render/beadTokens';
 import { useLoginDialog } from '@/components/shell/login-dialog';
-import { relativeTime } from '@/components/create/create-model';
+import { relativeTime } from '@/lib/format';
 import { ConfirmDialog } from '../confirm-dialog';
 import { formatBytes, formatGb, usagePercent } from '../format';
 import { useMe, type MeViewer } from '../me-context';
@@ -59,14 +59,14 @@ function Row({ title, description, children, extra, htmlFor }: { title: string; 
   );
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line py-4 first-of-type:border-t-0 first-of-type:pt-0 last:pb-0">
-      {htmlFor ? <label htmlFor={htmlFor} className="grid min-w-0 flex-[1_1_160px] cursor-pointer gap-1">{text}</label> : <div className="grid min-w-0 flex-[1_1_160px] gap-1">{text}</div>}
+      {htmlFor ? <label htmlFor={htmlFor} className="grid min-w-0 grow basis-40 cursor-pointer gap-1">{text}</label> : <div className="grid min-w-0 grow basis-40 gap-1">{text}</div>}
       {children}
       {extra}
     </div>
   );
 }
 
-/** 头像颜色（原型 openAvatarColors）：八颗豆色，桌面浮层、手机底部面板；选完回到表单，与用户名一起保存。 */
+/** 头像颜色：八颗豆色，桌面浮层、手机底部面板；选完回到表单，与用户名一起保存。 */
 function AvatarColorPicker({ value, onChange }: { value: string | null; onChange: (color: string) => void }) {
   const [open, setOpen] = useState(false);
   return (
@@ -544,7 +544,7 @@ function UnverifiedCard() {
 }
 
 /**
- * 账号设置（原型 renderSettings）：桌面左侧分区导航（滚动高亮），右侧卡片——个人资料、登录与安全、原图空间、隐私、危险区域。
+ * 账号设置：桌面左侧分区导航（滚动高亮），右侧卡片——个人资料、登录与安全、原图空间、隐私、危险区域。
  * 现有账号接口与业务不变：注销仍要当前密码，另加输入用户名确认；公开作品按既有规则保留并匿名署名。
  */
 export function SettingsView() {

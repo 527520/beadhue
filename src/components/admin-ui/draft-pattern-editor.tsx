@@ -49,7 +49,7 @@ export function DraftPatternEditor({ pattern, palette, boardSize, onPatternChang
   }, [doc, onTap]);
 
   return (
-    <div className="grid gap-3 lg:h-140 lg:max-h-[62dvh] lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="grid gap-3 lg:h-140 lg:max-h-draft-stage lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="flex min-h-0 overflow-hidden rounded-lg border border-line max-lg:h-96">
         <ToolRail tool={doc.tool} onTool={doc.setTool} brushSize={doc.brushSize} onBrushSize={doc.setBrushSize} color={doc.color} showColor={false} onShowColors={() => undefined} />
         <div className="editor-stage-dots @container relative min-h-0 min-w-0 flex-1 overflow-hidden bg-bg-subtle">

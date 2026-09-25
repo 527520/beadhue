@@ -12,7 +12,7 @@ import { TabLink, TabLinks } from '@/components/ui/tabs';
 import { MobileTopBack, MobileTopSpacer, MobileTopTitle } from '@/components/shell/mobile-topbar';
 import { ShellLink } from '@/components/shell/shell-context';
 import { SiteShell } from '@/components/shell/site-shell';
-import { formatCount } from '@/components/me/format';
+import { formatCount } from '@/lib/format';
 import { MeProvider, type MeStats, type MeViewer } from '@/components/me/me-context';
 
 const t = zhCN.shell.mePages;
@@ -105,7 +105,7 @@ function ProfileHead({ viewer, stats, designCount }: { viewer: MeViewer | null; 
 }
 
 /**
- * 「我的」布局（D66，原型 me.js）：站点外壳 + 头部（头像、名字、统计、公开主页 / 账号设置）+ 链接式页签；
+ * 「我的」布局（D66）：站点外壳 + 头部（头像、名字、统计、公开主页 / 账号设置）+ 链接式页签；
  * 账号设置页自带版式，不显示头部与页签。页头统计由服务端布局给出初值，增删设计、撤回公开后重新读取。
  */
 export function MeShell({ viewer, stats: initialStats, children }: { viewer: MeViewer | null; stats: MeStats | null; children: ReactNode }) {

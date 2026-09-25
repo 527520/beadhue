@@ -101,14 +101,4 @@ export function excerpt(text: string, length = 40): string {
   return chars.length > length ? `${chars.slice(0, length).join('')}…` : chars.join('');
 }
 
-const escapeLike = (q: string) => q.replace(/[\\%_]/gu, (char) => `\\${char}`);
-
-/** ILIKE 模式：转义通配符，搜「100%」不会变成匹配一切。 */
-export function containsPattern(q: string): string {
-  return `%${escapeLike(q)}%`;
-}
-
-/** 编号开头匹配（列表只显示编号前 8 位，管理员照着搜）。 */
-export function startsWithPattern(q: string): string {
-  return `${escapeLike(q)}%`;
-}
+export { containsPattern, startsWithPattern } from '@/lib/db/like';

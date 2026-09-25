@@ -1,5 +1,5 @@
 /**
- * 「我的 · 设计」的纯数据规则（原型 me.js filterDesigns / statusText / syncUrl）：
+ * 「我的 · 设计」的纯数据规则：
  * 地址参数、状态归类、实时搜索、排序与计数。无 DOM 依赖，服务端页面也读地址参数。
  */
 import { beadHex } from '@/lib/render/beads';

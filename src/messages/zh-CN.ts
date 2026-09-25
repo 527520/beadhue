@@ -358,6 +358,14 @@ export const zhCN = {
       },
     },
   },
+  time: {
+    justNow: '刚刚',
+    minutesAgo: (n: number) => `${n} 分钟前`,
+    hoursAgo: (n: number) => `${n} 小时前`,
+    daysAgo: (n: number) => `${n} 天前`,
+    tenThousand: (n: string) => `${n}万`,
+    thousand: (n: string) => `${n}k`,
+  },
   onboarding: {
     step1Title: '上传照片或像素画',
     step1Body: '选择图片后自动生成整图预览；需要调整取景时，在预览旁点击「裁剪图片」。支持 JPEG / PNG / WebP / HEIC，最大 20 MB。',
@@ -448,6 +456,7 @@ export const zhCN = {
     ],
   },
   errorPages: {
+    reportFallback: '页面渲染失败（浏览器没有提供错误信息）',
     notFoundTitle: '页面不存在',
     notFoundBody: '你访问的页面不存在或已被移动。可以去首页继续制作拼豆图纸。',
     workMissingTitle: '这张图纸不存在或已下架',
@@ -478,6 +487,7 @@ export const zhCN = {
       body: '你的账号已登录，但无权查看或处理这个管理资源。', backHome: '返回首页',
       adminTitle: '这个模块只对管理员开放', adminBody: '你可以继续处理作品审核、评论和举报；人员、分析、审计与系统模块需要管理员权限。', backOverview: '返回后台总览',
     },
+    adminNotFound: { title: '这个后台页面不存在', body: '地址可能输错了，或者这个模块已经调整过位置。可以从侧栏重新进入。', back: '返回后台总览' },
     privacy: { eyebrow: '隐私政策',
       heroTitle: '豆色绘隐私政策',
       heroBody: '豆色绘（以下称“本平台”）尊重并保护用户的个人信息。本政策适用于本平台提供的全部服务。使用本平台即表示您已阅读并理解本政策；如您不同意本政策的任何内容，请停止使用相关功能。本政策更新时，本平台将在本页面公布更新后的版本及生效日期。',
@@ -698,7 +708,7 @@ export const zhCN = {
       initializationFailed: '已记录你的选择，但匿名分析初始化未确认，当前页面不会采集。可重试同意或撤回。',
     },
   },
-  /** R15 管理后台（票 10）：外壳、总览、通用数据表格与各模块。原型 prototype/js/screens/admin*.js。 */
+  /** 管理后台：外壳、总览、通用数据表格与各模块。 */
   adminUi: {
     shell: {
       tag: '管理后台', home: '豆色绘管理后台首页', brandHome: '管理后台首页', nav: '后台导航', crumbRoot: '后台', crumbs: '当前位置',
@@ -927,6 +937,7 @@ export const zhCN = {
     },
     common: {
       today: '今天', close: '关闭', view: '查看详情', copied: (value: string) => `已复制 ${value}`, copyId: (label: string) => `复制完整${label}`, none: '—', you: '（你）',
+      dayShort: (month: number, day: number) => `${month}/${day}`, dayLong: (month: number, day: number) => `${month}月${day}日`, commentBy: (name: string) => `${name}的评论`,
       justNow: '刚刚', minutesAgo: (n: number) => `${n} 分钟前`, hoursAgo: (n: number) => `${n} 小时前`, yesterday: (time: string) => `昨天 ${time}`,
     },
   },
@@ -958,7 +969,7 @@ export const zhCN = {
       '图片在浏览器内生成；登录并满足同步资格后，完整原图随设计自动存入私人对象存储。账号信息、图纸与色板、投稿及互动记录按对应功能保存。公开时冻结原图版本，撤回公开不删除私人原图，已成功引用者的副本独立保留；评论文本经腾讯云文本内容安全服务判定并保留判定记录；匿名使用统计须经明确同意且可随时撤回。注销账号将删除登录凭证与私人数据，公开作品、引用事实及必要治理记录以去除身份信息的形式保留；注销不会删除您设备上的本地文件。完整内容请参阅隐私政策页面。',
     // 备案（D31）：海外服务器无需 ICP；迁回国内时在此加回 icp 字段并在页脚渲染
   },
-  /** R15 发现页（/）：类目条、筛选、排序、搜索结果、作品卡、新手条、空结果（原型 discover.js）。 */
+  /** R15 发现页（/）：类目条、筛选、排序、搜索结果、作品卡、新手条、空结果。 */
   discover: {
     title: '发现',
     searchTitle: (q: string) => `“${q}”的搜索结果`,
@@ -1023,17 +1034,13 @@ export const zhCN = {
     viewWork: (title: string) => `查看「${title}」`,
     likeFailed: '没有保存成功，请稍后重试',
   },
-  /** R15 作品详情（/community/[id]）与作者主页（/u/[id]）（票 05，原型 detail.js、me.js 作者部分）。 */
+  /** R15 作品详情（/community/[id]）与作者主页（/u/[id]）。 */
   detail: {
     crumbs: '位置',
     discover: '发现',
     backToDiscover: '返回发现',
     officialAccount: '官方账号',
     published: (when: string) => `${when}发布`,
-    justNow: '刚刚',
-    minutesAgo: (n: number) => `${n} 分钟前`,
-    hoursAgo: (n: number) => `${n} 小时前`,
-    daysAgo: (n: number) => `${n} 天前`,
     likeLabel: '喜欢',
     share: '分享',
     more: '更多操作',
@@ -1269,7 +1276,7 @@ export const zhCN = {
       publicTitle: '我的公开作品',
     },
   },
-  /** R15 通知中心（票 11，D70）：顶栏铃铛的弹出层 / 手机底部面板；铃铛的名称沿用 shell.notifications。 */
+  /** R15 通知中心：顶栏铃铛的弹出层 / 手机底部面板；铃铛的名称沿用 shell.notifications。 */
   notifications: {
     title: '通知',
     markAll: '全部已读',
@@ -1288,12 +1295,8 @@ export const zhCN = {
     removed: (title: string) => `「${title}」已被下架`,
     restored: (title: string) => `「${title}」已恢复公开`,
     commented: (title: string) => `「${title}」收到一条新评论`,
-    justNow: '刚刚',
-    minutesAgo: (n: number) => `${n} 分钟前`,
-    hoursAgo: (n: number) => `${n} 小时前`,
-    daysAgo: (n: number) => `${n} 天前`,
   },
-  /** R15 创作入口与新建图纸 / 空白画布弹窗（票 07，原型 create.js）。 */
+  /** R15 创作入口与新建图纸 / 空白画布弹窗。 */
   create: {
     title: '创作一张拼豆图纸',
     subtitle: '上传一张图片，按底板数和颜色数生成可以照着拼的图纸，之后还能逐格修改。',
@@ -1321,10 +1324,6 @@ export const zhCN = {
     allDesigns: '全部设计',
     recentStitching: (percent: number) => `跟拼中 ${percent}%`,
     recentOpen: (name: string) => `打开「${name}」`,
-    justNow: '刚刚',
-    minutesAgo: (n: number) => `${n} 分钟前`,
-    hoursAgo: (n: number) => `${n} 小时前`,
-    daysAgo: (n: number) => `${n} 天前`,
     privacy: '图片只在你的浏览器里处理；登录后原图会自动保存到私人空间',
     newTitle: '新建图纸',
     cropImageAlt: '所选图片',
@@ -1404,7 +1403,7 @@ export const zhCN = {
     removeChip: (label: string) => `移除：${label}`,
     toastRegion: '通知',
   },
-  /** R15 编辑器工作区（票 08，原型 editor.js / editor/*.js）：顶栏、工具栏、画布、原图参照、右面板与各弹窗。 */
+  /** R15 编辑器工作区：顶栏、工具栏、画布、原图参照、右面板与各弹窗。 */
   editorWorkspace: {
     back: '返回我的设计',
     rename: '重命名',
@@ -1501,6 +1500,7 @@ export const zhCN = {
     colors: {
       current: '当前色',
       palette: '色板',
+      library: '查看完整色板库',
       used: '图纸用色',
       useAria: (label: string, count: number) => `设为当前色：${label}，${count} 颗`,
       replace: '替换',
@@ -1729,7 +1729,7 @@ export const zhCN = {
       arrows: '方向键',
       enter: '回车',
     },
-    /** 票 09：跟拼模式（D39，原型 stitchPanel / STITCH_TOOLS / .ed-mprog）。 */
+    /** 跟拼模式（D39）。 */
     stitch: {
       title: '跟拼',
       tools: '跟拼工具',
@@ -1772,7 +1772,7 @@ export const zhCN = {
       doneMark: ' · 已拼',
       toggled: (row: number, col: number, done: boolean) => `第 ${row} 行 第 ${col} 列${done ? '已标记为已拼' : '已取消已拼'}`,
     },
-    /** 票 09：手机编辑器（原型 editor.js 手机分支、moreSheet）。 */
+    /** 手机编辑器。 */
     mobile: {
       recent: '最近',
       all: '全部',
@@ -1797,7 +1797,7 @@ export const zhCN = {
       continuousOn: '拖动时连续上色，双指仍只缩放和平移',
     },
   },
-  /** R15 我的（票 06，原型 me.js）：头部、设计、公开作品、喜欢、色板、账号设置。 */
+  /** R15 我的：头部、设计、公开作品、喜欢、色板、账号设置。 */
   me: {
     cancel: '取消',
     save: '保存',
@@ -1915,11 +1915,14 @@ export const zhCN = {
         withdrawReview: '撤回审核',
         withdrawDraft: '撤回草稿',
         withdrawWork: '撤回公开',
+        removeRecord: '删除投稿记录',
         appeal: '版权与申诉说明',
       },
       linkCopied: '已复制链接',
       confirm: {
         withdrawWorkTitle: '撤回公开？',
+        removeRecordTitle: '删除这条投稿记录？',
+        removeRecordText: (title: string) => `「${title}」没有公开过，删除后不再出现在「公开作品」里；设计本身不受影响，之后仍可重新投稿。`,
         withdrawWorkText: (title: string, likes: string, comments: string) => `「${title}」会从豆社下架，别人将不能查看或引用。已有的 ${likes} 个喜欢和 ${comments} 条评论会保留；已被引用的私人副本不受影响，重新公开需要管理员复核。`,
         withdrawReviewTitle: '撤回审核？',
         withdrawReviewText: (title: string) => `「${title}」这次投稿不会出现在豆社。你可以继续修改设计，之后重新提交；原来已公开的版本保持不变。`,
@@ -1928,6 +1931,7 @@ export const zhCN = {
       },
       done: {
         withdrawWork: '已撤回公开',
+        removeRecord: '已删除投稿记录',
         withdrawReview: '已撤回审核',
         withdrawDraft: '已撤回草稿',
         submit: '已提交审核',
@@ -2102,7 +2106,7 @@ export const zhCN = {
       accountDeleted: '账号已注销',
     },
   },
-  /** R15 票 12：只读分享页、静态文章页（帮助 / 关于 / 隐私 / 社区规范 / 版权）、404 与错误页。 */
+  /** 只读分享页、静态文章页（帮助 / 关于 / 隐私 / 社区规范 / 版权）、404 与错误页。 */
   pages: {
     toc: '本页目录',
     help: {

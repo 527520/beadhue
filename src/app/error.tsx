@@ -15,7 +15,7 @@ export default function PageError({ error, retry }: { error: Error & { digest?: 
   const t = zhCN.errorPages;
   useEffect(() => {
     console.error('[page-error]', error);
-    reportClientError(error, zhCN.communityAdmin.readError.reportFallback);
+    reportClientError(error, zhCN.errorPages.reportFallback);
   }, [error]);
   return (
     <SiteShell topbarCta="secondary" tabbar={false}>

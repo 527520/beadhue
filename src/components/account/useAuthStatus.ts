@@ -12,7 +12,7 @@
  * - 网络失败 → unknown（区别于 guest：新手引导在网络异常时不打扰用户，
  *   而导航把 unknown 当作未登录处理即可）。
  *
- * R15-03：结果另存一份页面级快照（useSyncExternalStore）。站点外壳随页面重新挂载时先用上一次的结果
+ * 结果另存一份页面级快照（useSyncExternalStore）。站点外壳随页面重新挂载时先用上一次的结果
  * 渲染头像，再在后台重新探测，切换页面不再闪一下「登录」按钮；服务端与水合首帧仍是 loading。
  */
 import { useEffect, useSyncExternalStore } from 'react';

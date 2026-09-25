@@ -9,19 +9,19 @@ import { zhCN } from '@/messages/zh-CN';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormAlert } from '@/components/ui/field';
-import { fieldControlClass } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 
 const t = zhCN.detail;
 const REASONS = ['copyright', 'inappropriate', 'spam', 'other'] as const;
 type Reason = (typeof REASONS)[number];
-/** 原型的四类原因映射到举报接口的分类；「不适宜内容」（色情、暴力、令人不适）归入明确伤害。 */
+/** 四类原因映射到举报接口的分类；「不适宜内容」（色情、暴力、令人不适）归入明确伤害。 */
 const CATEGORY: Record<Reason, 'copyright' | 'harm' | 'spam' | 'other'> = { copyright: 'copyright', inappropriate: 'harm', spam: 'spam', other: 'other' };
 const NOTE_MAX = 300;
 
 export interface ReportTarget { targetType: 'work' | 'comment'; targetId: string }
 
-/** 举报弹窗（原型 reportDialog）：四选一原因卡片 + 选填说明（选「其他」时必填）；手机为底部面板。 */
+/** 举报弹窗：四选一原因卡片 + 选填说明（选「其他」时必填）；手机为底部面板。 */
 export function ReportDialog({ target, onClose }: { target: ReportTarget | null; onClose: () => void }) {
   return (
     <Dialog open={target !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -93,7 +93,7 @@ function ReportForm({ target, onDone }: { target: ReportTarget; onDone: () => vo
           <label htmlFor={noteId} className="text-footnote font-medium text-ink">
             {t.reportNote}<span className="ml-2 font-normal text-ink-3">{t.optional}</span>
           </label>
-          <textarea
+          <Textarea
             id={noteId}
             rows={3}
             maxLength={NOTE_MAX}
@@ -101,7 +101,6 @@ function ReportForm({ target, onDone }: { target: ReportTarget; onDone: () => vo
             onChange={(event) => setNote(event.target.value)}
             placeholder={t.reportNotePlaceholder}
             aria-describedby={needsNote ? `${noteId}-hint` : undefined}
-            className={cn(fieldControlClass, 'min-h-24 resize-y py-3 leading-relaxed')}
           />
           {needsNote ? <span id={`${noteId}-hint`} className="text-caption font-normal text-ink-3">{t.reportNoteRequired}</span> : null}
         </div>

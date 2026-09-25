@@ -7,6 +7,7 @@ import { ANONYMIZED_DISPLAY_NAME } from '@/lib/identity/publicAuthor';
 import { OFFICIAL_PERSON, type AdminPerson } from '@/lib/admin/lookups';
 import { AppError } from '@/lib/errors';
 import { communityPreviewSchema, parseCommunitySnapshot } from './snapshot';
+import { containsPattern } from '@/lib/db/like';
 
 const querySchema = z.object({
   q: z.string().trim().max(80).default(''),
@@ -44,10 +45,10 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     query.status === 'all' ? undefined : eq(communityWorks.lifecycleStatus, query.status),
     query.public === 'all' ? undefined : publicConditions(query.public),
     query.tagId && query.tagState !== 'all' ? tagStateCondition(query.tagId, query.tagState) : undefined,
-    query.q ? or(ilike(communityRevisions.title, `%${query.q}%`), ilike(sql`case
+    query.q ? or(ilike(communityRevisions.title, containsPattern(query.q)), ilike(sql`case
       when ${communityRevisions.authorType} = 'official' then '豆色绘官方'
       when ${users.accountStatus} = 'anonymized' then ${ANONYMIZED_DISPLAY_NAME}
-      else ${communityRevisions.frozenDisplayName} end`, `%${query.q}%`), sql`${communityWorks.id}::text = ${query.q}`) : undefined,
+      else ${communityRevisions.frozenDisplayName} end`, containsPattern(query.q)), sql`${communityWorks.id}::text = ${query.q}`) : undefined,
   ];
   const where = and(...conditions);
   const size = query.size;
@@ -70,7 +71,7 @@ export async function listManagedCommunityWorks(db: AnyDatabase, input: unknown)
     .where(where).orderBy(...(query.sort === 'likes' ? [ordered(communityWorks.likeCount, query.order ?? 'desc')]
       : query.sort === 'updated' ? [ordered(communityWorks.updatedAt, query.order ?? 'desc')] : []), desc(communityWorks.createdAt), desc(communityWorks.id))
     .limit(size).offset(pageOffset(meta.page, size));
-  // 后台表格的「标签」列（R15-10）：一页一次查询，按标签排序。
+  // 后台表格的「标签」列：一页一次查询，按标签排序。
   const tagRows = rows.length === 0 ? [] : await db.select({ workId: communityWorkTags.workId, name: communityTags.name })
     .from(communityWorkTags).innerJoin(communityTags, eq(communityTags.id, communityWorkTags.tagId))
     .where(inArray(communityWorkTags.workId, rows.map((row) => row.id))).orderBy(communityTags.sortOrder, communityTags.name);

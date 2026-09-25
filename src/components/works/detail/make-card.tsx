@@ -58,7 +58,7 @@ export function ColorList({ usage, band, paletteLabel, onLogin }: { usage: Color
       <section aria-labelledby="detail-colors-title" className="grid min-w-0">
         {head}
         <div className="relative">
-          <ul aria-hidden="true" className="grid blur-[3px] select-none">
+          <ul aria-hidden="true" className="grid blur-lock select-none">
             {band.slice(0, 6).map((hex, index) => (
               <li key={`${hex}-${index}`} className={rowClass}>
                 <Bead hex={hex} />
@@ -143,13 +143,13 @@ function LicensePopover() {
 }
 
 /**
- * 吸顶制作卡（原型 makeCard）：三格统计、规格与底板数、色号清单、主按钮「用这张制作」（< 1024 由吸底栏承担）、
+ * 吸顶制作卡：三格统计、规格与底板数、色号清单、主按钮「用这张制作」（< 1024 由吸底栏承担）、
  * 下载图纸 PNG、一行许可 + 全文弹出层。
  */
 export function MakeCard(props: MakeCardProps) {
   const { width, height, colorCount, beadCount, beadSize, boards, boardCols, boardRows, paletteLabel, colorUsage, colorBand, loggedIn, downloading, onMake, onDownload, onLogin } = props;
   return (
-    <aside aria-label={t.card} className="grid min-w-0 content-start gap-5 rounded-xl border border-line bg-bg p-6 max-md:mt-5 max-md:rounded-none max-md:border-0 max-md:border-t max-md:px-0 max-md:pt-5 max-md:pb-0 lg:sticky lg:top-[calc(var(--spacing-topbar)+24px)] lg:max-h-[calc(100dvh-var(--spacing-topbar)-48px)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+    <aside aria-label={t.card} className="grid min-w-0 content-start gap-5 rounded-xl border border-line bg-bg p-6 max-md:mt-5 max-md:rounded-none max-md:border-0 max-md:border-t max-md:px-0 max-md:pt-5 max-md:pb-0 lg:sticky lg:top-below-topbar lg:max-h-sticky-panel lg:self-start lg:overflow-y-auto lg:overscroll-contain">
       <dl className="grid grid-cols-3 rounded-lg bg-bg-subtle py-3">
         <Stat label={t.size} value={`${width}×${height}`} unit={t.cellUnit} />
         <Stat label={t.colorsLabel} value={colorCount} unit={t.colorUnit} />

@@ -25,7 +25,7 @@ export async function listGovernedUsers(db: AnyDatabase, input: unknown = {}) {
   const query = usersQuerySchema.parse(input);
   const q = query.q?.trim().slice(0, 80);
   const where = and(
-    q ? or(ilike(users.email, `%${q}%`), ilike(users.username, `%${q}%`), sql`${users.id}::text = ${q}`) : undefined,
+    q ? or(ilike(users.email, containsPattern(q)), ilike(users.username, containsPattern(q)), sql`${users.id}::text = ${q}`) : undefined,
     query.role ? eq(users.role, query.role) : undefined,
     query.accountStatus ? eq(users.accountStatus, query.accountStatus) : undefined,
   );
@@ -254,16 +254,16 @@ export async function listSystemLogs(db: AnyDatabase, input: unknown = {}) {
   const where = and(
     query.level ? eq(systemLogs.level, query.level) : undefined,
     query.source ? eq(systemLogs.source, query.source) : undefined,
-    query.event ? ilike(systemLogs.event, `%${query.event}%`) : undefined,
+    query.event ? ilike(systemLogs.event, containsPattern(query.event)) : undefined,
     query.actorUserId ? eq(systemLogs.actorUserId, query.actorUserId) : undefined,
     query.requestId ? eq(systemLogs.requestId, query.requestId) : undefined,
     query.q ? or(
-      ilike(systemLogs.message, `%${query.q}%`),
-      ilike(systemLogs.event, `%${query.q}%`),
-      ilike(systemLogs.path, `%${query.q}%`),
-      ilike(systemLogs.errorCode, `%${query.q}%`),
+      ilike(systemLogs.message, containsPattern(query.q)),
+      ilike(systemLogs.event, containsPattern(query.q)),
+      ilike(systemLogs.path, containsPattern(query.q)),
+      ilike(systemLogs.errorCode, containsPattern(query.q)),
       // 排障时最常被粘贴的就是请求编号：关键词也必须能命中它（admin-round-3 13）。
-      ilike(systemLogs.requestId, `%${query.q}%`),
+      ilike(systemLogs.requestId, containsPattern(query.q)),
     ) : undefined,
     range.start ? gte(systemLogs.createdAt, range.start) : undefined,
     range.end ? lt(systemLogs.createdAt, range.end) : undefined,
@@ -306,8 +306,8 @@ export async function listSlowQueries(db: AnyDatabase, input: unknown = {}) {
   const query = slowQueriesQuerySchema.parse(input);
   const range = createdRange(query.from, query.to);
   const where = and(
-    query.q ? or(ilike(slowQueries.statement, `%${query.q}%`), ilike(slowQueries.route, `%${query.q}%`)) : undefined,
-    query.route ? ilike(slowQueries.route, `%${query.route}%`) : undefined,
+    query.q ? or(ilike(slowQueries.statement, containsPattern(query.q)), ilike(slowQueries.route, containsPattern(query.q))) : undefined,
+    query.route ? ilike(slowQueries.route, containsPattern(query.route)) : undefined,
     query.minDurationMs !== undefined ? gte(slowQueries.durationMs, query.minDurationMs) : undefined,
     range.start ? gte(slowQueries.createdAt, range.start) : undefined,
     range.end ? lt(slowQueries.createdAt, range.end) : undefined,

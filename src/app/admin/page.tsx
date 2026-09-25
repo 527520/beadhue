@@ -11,7 +11,7 @@ import { summarizeModerationToday } from '@/lib/moderation/commentModeration';
 import { AdminPageHead } from '@/components/admin-ui/page-head';
 import { OverviewView, type TodoItem } from '@/components/admin-ui/overview';
 
-/** 后台总览（原型 admin/overview.js）：四张指标卡、跨队列待办前 5、近 7 天趋势、服务状态。 */
+/** 后台总览：四张指标卡、跨队列待办前 5、近 7 天趋势、服务状态。 */
 export default async function AdminOverviewPage() {
   const actor = await getSessionActor();
   if (!authorize(actor, 'community:moderate')) forbidden();

@@ -13,8 +13,8 @@ export function Brand({ compact = false, className }: { compact?: boolean; class
     <ShellLink href="/" aria-label={t.brandHome} className={cn('inline-flex flex-none items-center gap-2.5 rounded-sm text-ink focus-visible:focus-ring', className)}>
       <BrandMark />
       <span className="grid leading-none">
-        <b className="font-brand text-title-2 leading-none font-normal tracking-[0.04em] text-ink">{t.brandName}</b>
-        {compact ? null : <small className="mt-0.75 text-micro leading-none font-semibold tracking-[0.12em] text-ink-3 uppercase max-lg:hidden">{t.brandEnglish}</small>}
+        <b className="font-brand text-title-2 leading-none font-normal tracking-brand text-ink">{t.brandName}</b>
+        {compact ? null : <small className="mt-0.75 text-micro leading-none font-semibold tracking-brand-wide text-ink-3 uppercase max-lg:hidden">{t.brandEnglish}</small>}
       </span>
     </ShellLink>
   );
@@ -26,7 +26,7 @@ export function BrandMark({ className }: { className?: string }) {
       {BRAND_BEAD_COLORS.map((color) => (
         <i
           key={color}
-          className="relative size-2.75 rounded-full inset-ring-1 inset-ring-ink/6 after:absolute after:inset-[3.5px] after:rounded-full after:bg-bg/72 after:content-['']"
+          className="relative size-2.75 rounded-full inset-ring-1 inset-ring-ink/6 after:absolute after:inset-brand-hole after:rounded-full after:bg-bg/72 after:content-['']"
           style={{ backgroundColor: color }}
         />
       ))}

@@ -7,7 +7,7 @@ import { currentSessionTokenHash } from '@/lib/me/sessions';
 import { enforceMeRateLimit } from '@/lib/security/meRateLimit';
 
 /**
- * 登录设备（R15-06 账号设置）：本人未过期的会话——登录时间、是否当前设备，以及登录时归纳的「系统 · 浏览器」。
+ * 登录设备：本人未过期的会话——登录时间、是否当前设备，以及登录时归纳的「系统 · 浏览器」。
  * 会话表不存完整浏览器标识、网络地址与位置；迁移前创建的会话没有设备名，界面写「这台设备 / 其他设备」。
  */
 async function get() {

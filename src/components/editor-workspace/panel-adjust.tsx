@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 右面板「调整」（原型 editor/panels.js adjustPanel）：有原图时的生成参数与「重新生成」，制作规格、套装档位，旋转 / 镜像；
+ * 右面板「调整」：有原图时的生成参数与「重新生成」，制作规格、套装档位，旋转 / 镜像；
  * 没有原图时只显示一张说明卡和「选择原图」，不再整列灰掉。参数先在面板里改，点「重新生成」才按原图重算。
  */
 import { ChevronDown, ChevronUp, Crop, FlipHorizontal2, FlipVertical2, Image as ImageIcon, ImagePlus, Info, RefreshCw, RotateCw } from 'lucide-react';

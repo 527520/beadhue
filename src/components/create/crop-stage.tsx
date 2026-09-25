@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 取景舞台（原型 .cr-stage）：原图等比居中，框外压暗，取景框可拖动、四角等比缩放、方向键移动。
+ * 取景舞台：原图等比居中，框外压暗，取景框可拖动、四角等比缩放、方向键移动。
  * 图像来自解码器的有界预览缓冲（最长边 512），坐标一律换算回原图自然像素。
  */
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';

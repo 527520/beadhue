@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 导出弹窗（原型 editor.js pngDialog / pdfDialog）：界面换新，导出逻辑沿用 lib/export（PNG 规划、超限拆包、PDF 分页与字体子集）。
+ * 导出弹窗：界面换新，导出逻辑沿用 lib/export（PNG 规划、超限拆包、PDF 分页与字体子集）。
  */
 import { Image as ImageIcon, Printer } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';

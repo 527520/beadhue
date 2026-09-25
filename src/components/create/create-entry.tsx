@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 创作入口（原型 create.js，/app 无 id）：居中 880 单列——display 标题与说明、大落区、
+ * 创作入口：居中 880 单列——display 标题与说明、大落区、
  * 并列次入口「从空白画布开始」「导入项目文件」、「用示例试试」、「最近的设计」、隐私说明。
  * 只做文件级校验（大小 / 类型 / 动图）；解码、原图缓存与生成交给工作台。
  */
@@ -43,7 +43,7 @@ export interface CreateEntryProps {
   error?: ReactNode;
   /** 已恢复的图纸重新选择原图：只保留落区与「返回原图纸」。 */
   reselect?: { backLabel: string; onBack: () => void };
-  /** 原型 ?drag=1：强制显示拖入态（视觉对照用）。 */
+  /** `?drag=1`：强制显示拖入态（视觉对照用）。 */
   forceDragging?: boolean;
   storage?: Pick<StorageAdapter, 'getAll' | 'getStitchProgress'> | null;
   onNavigate?: (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
@@ -103,7 +103,7 @@ export function CreateEntry({ onImage, onBlank, onImport, existingNames, busy = 
     takeFileRef.current = takeFile;
   });
 
-  // 整个窗口都是落区：拖进页面任意位置即进入拖入态（原型 mount 里的 window 监听）。
+  // 整个窗口都是落区：拖进页面任意位置即进入拖入态。
   useEffect(() => {
     let depth = 0;
     const hasFiles = (event: DragEvent) => [...(event.dataTransfer?.types ?? [])].includes('Files');

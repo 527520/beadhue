@@ -1,5 +1,5 @@
 /**
- * 豆粒渲染（D65 签名元素，移植自原型 prototype/js/beads.js）。
+ * 豆粒渲染（D65 签名元素）。
  * bead = 白色钉板上带孔的圆豆（缩略图与详情默认）；flat = 方格（编辑用，可叠网格、板缝、色号）。
  * 只依赖 2D 上下文，不读 DOM；patternCanvas 需要浏览器 document（或注入的画布工厂）。
  */
@@ -254,7 +254,7 @@ export function keysPattern(rows: readonly string[], palette: Readonly<Record<st
   return { width, height: rows.length, cells };
 }
 
-/** 空状态插画：空钉板上散落几颗豆（原型 ui.js ART）。 */
+/** 空状态插画：空钉板上散落几颗豆。 */
 export type EmptyArtKind = 'empty' | 'search' | 'designs' | 'comments' | 'likes' | 'notifications' | 'lost' | 'broken';
 
 const ART: Record<EmptyArtKind, string> = {
@@ -264,7 +264,7 @@ const ART: Record<EmptyArtKind, string> = {
   likes: '.........|..RR.RR..|.RRRRRRR.|.RRRRRRR.|..RRRRR..|...RRR...|....R....|.........|.........',
   empty: '.........|.........|.........|...Y.....|.........|.....R...|..B......|.........|.........',
   notifications: '.........|....O....|...YYY...|..YYYYY..|..YYYYY..|..YYYYY..|.OOOOOOO.|....K....|.........',
-  // 票 12：404 是一个问号，错误页是一个叹号，旁边散落几颗豆。
+  // 404 是一个问号，错误页是一个叹号，旁边散落几颗豆。
   lost: '.........|...BBB...|..B...B..|......B..|.....B...|....B....|....B....|.Y.......|....B..R.',
   broken: '.........|....O....|....O....|....O..Y.|....O....|.........|....O....|.B.......|......G..',
 };

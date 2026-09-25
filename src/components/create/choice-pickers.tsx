@@ -2,7 +2,7 @@
 
 /**
  * 选择按钮 + 弹出列表：色板（色带 + 名称 + 颜色数 · 豆径）与制作规格（不兼容的保留但禁用并写明原因）。
- * 原型 editor/catalog.js 的 pickerButton / paletteMenu / specMenu；桌面锚定弹出，手机底部面板。
+ * 桌面锚定弹出，手机底部面板。
  */
 import { Check, ChevronDown } from 'lucide-react';
 import { useState, type ReactNode } from 'react';

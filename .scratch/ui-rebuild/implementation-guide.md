@@ -89,7 +89,7 @@ node node_modules/next/dist/bin/next dev -p 3100 -H 127.0.0.1
 
 ## 后续票须知（票 04 完成后补充）
 
-- **作品卡**：公开作品一律用 `CommunityWorkCard`（`src/components/works/community-work-card.tsx`，带可直接点的喜欢、徽标、容器查询元信息）和 `WorkGrid` / `WorkCardSkeleton`（2/3/4/5/6 列）；一页作品的简单网格用 `SimpleWorkGrid`。喜欢逻辑在 `useWorkLike`（未登录弹登录，成功后继续并刷新页面）。
+- **作品卡**：公开作品一律用 `CommunityWorkCard`（`src/components/works/community-work-card.tsx`，带可直接点的喜欢、徽标、容器查询元信息）和 `WorkGrid` / `WorkCardSkeleton`（2/3/4/5/6 列）。喜欢逻辑在 `useWorkLike`（未登录弹登录，成功后继续并刷新页面）。
 - **发现页地址**：拼 `/` 的链接用 `discoverHref(state, patch)`（`works/discover/discover-state.ts`，服务端也可用）；详情页面包屑「发现 / 动物」链到 `discoverHref(readDiscoverState({}), { cat: '动物' })` 即 `/?cat=动物`。
 - **类目图标**：`tagIconPattern(parseTagIcon(tag.icon))` → `<PixelIcon>`（`src/lib/render/tagIconArt.ts`，豆色数据文件，已加入护栏 TOKEN_FILES）；后台标签管理的图标预览可直接复用。
 - **客户端文件里的普通函数服务端不能调用**（不止 cva）：给服务端页面用的常量 / 纯函数放在不带 `'use client'` 的模块。

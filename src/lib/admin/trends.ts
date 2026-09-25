@@ -16,12 +16,12 @@ function shanghaiDate(time: number): string {
 
 export interface TrendDay {
   date: string; submissions: number; likes: number; newUsers: number;
-  /** 当日新增评论、新增举报与内容安全服务实际调用次数（总览指标卡的 7 日迷你趋势，R15-10）。 */
+  /** 当日新增评论、新增举报与内容安全服务实际调用次数（总览指标卡的 7 日迷你趋势）。 */
   comments: number; reports: number; moderationCalls: number;
 }
 
 /**
- * 后台总览趋势（R15-02）：最近 N 天（含今天，按上海时区切日）每日投稿、点赞与新用户。
+ * 后台总览趋势：最近 N 天（含今天，按上海时区切日）每日投稿、点赞与新用户。
  * 全部来自业务事实表：投稿 = 修订的 submitted_at，点赞 = community_likes，新用户 = users.created_at；
  * 取消的点赞已从事实表删除，因此不计入。评论 / 举报按创建时间，内容安全只计实际调用（tencent-tms）。
  */

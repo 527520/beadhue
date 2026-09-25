@@ -3,10 +3,11 @@ import { z } from 'zod';
 import type { AnyDatabase } from '@/../db/client';
 import { communityTags, communityWorks, communityWorkTags } from '@/../db/schema';
 import { countExpression, ordered, pageMeta, pageOffset, pageQueryFields, readCount, sortQueryFields } from '@/lib/admin/pagination';
+import { containsPattern } from '@/lib/db/like';
 
 const querySchema = z.object({
   q: z.string().trim().max(60).default(''),
-  /** 后台表格「状态」筛选（R15-10）：on = 启用且未合并，off = 停用或已合并。 */
+  /** 后台表格「状态」筛选：on = 启用且未合并，off = 停用或已合并。 */
   state: z.enum(['on', 'off']).optional(),
   ...sortQueryFields(['works']),
   ...pageQueryFields,
@@ -22,7 +23,7 @@ const querySchema = z.object({
  */
 export async function listCommunityTagsAdmin(db: AnyDatabase, input: unknown = {}) {
   const query = querySchema.parse(input);
-  const where = and(query.q ? ilike(communityTags.name, `%${query.q}%`) : undefined,
+  const where = and(query.q ? ilike(communityTags.name, containsPattern(query.q)) : undefined,
     query.state === 'on' ? and(eq(communityTags.active, true), isNull(communityTags.mergedIntoTagId)) : query.state === 'off' ? or(eq(communityTags.active, false), isNotNull(communityTags.mergedIntoTagId)) : undefined);
   const workCount = sql<number>`count(${communityWorkTags.workId})::int`;
   const publicWorkCount = sql<number>`count(${communityWorkTags.workId}) filter (where ${communityWorks.lifecycleStatus} = 'active' and ${communityWorks.currentPublishedRevisionId} is not null)::int`;

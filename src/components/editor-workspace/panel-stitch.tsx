@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 跟拼面板（原型 editor/panels.js stitchPanel）：整图进度、板块总览（完成度、点击跳转）、当前行卡（颜色序列）、
+ * 跟拼面板：整图进度、板块总览（完成度、点击跳转）、当前行卡（颜色序列）、
  * 「完成本行」主按钮、上一行 / 下一行、回到下一处未完成。手机底部面板只保留进度、板块总览与「回到下一处未完成」。
  */
 import { Check, ChevronDown, ChevronUp, MapPin, Undo2 } from 'lucide-react';
@@ -17,7 +17,7 @@ import type { StitchSession } from './use-stitch-session';
 
 const t = zhCN.editorWorkspace.stitch;
 
-/** 行内颜色序列（原型 .ed-run）：色块 + 色号 + ×颗数；留空是描边胶囊。 */
+/** 行内颜色序列：色块 + 色号 + ×颗数；留空是描边胶囊。 */
 export function RowRuns({ pattern, row, strip = false }: { pattern: Pattern; row: StitchRow; strip?: boolean }) {
   return (
     <ul aria-label={t.runs} className={cn('flex gap-1.5', strip ? 'flex-nowrap' : 'flex-wrap')}>

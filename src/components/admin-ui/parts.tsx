@@ -9,12 +9,12 @@ import { Avatar } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/checkbox';
 import { useToast } from '@/components/ui/toast';
 
-/** 后台卡片：白底 + 发丝边 + 圆角 16（原型 .adm-card）。 */
+/** 后台卡片：白底 + 发丝边 + 圆角 16。 */
 export function AdminCard({ className, ...props }: ComponentProps<'section'>) {
   return <section className={cn('min-w-0 rounded-lg border border-line bg-bg', className)} {...props} />;
 }
 
-/** 卡片标题行：title-3 标题 + 右侧淡色说明（原型 .adm-card-head）。 */
+/** 卡片标题行：title-3 标题 + 右侧淡色说明。 */
 export function CardHead({ title, id, aside, children, className }: { title: ReactNode; id?: string; aside?: ReactNode; children?: ReactNode; className?: string }) {
   return (
     <header className={cn('flex min-h-14 items-center gap-3 border-b border-line px-5 py-3 max-md:px-4', className)}>
@@ -26,8 +26,8 @@ export function CardHead({ title, id, aside, children, className }: { title: Rea
 }
 
 const thumbSize = { sm: 'size-6 rounded-sm', md: 'size-10 rounded-sm', lg: 'size-12 rounded-md' } as const;
-/** 服务端缩略图不带边距，按边长补约 8% 白边（与原型 patternImage 的 pad 一致）。 */
-const thumbPad = { sm: 'p-0.5', md: 'p-[3px]', lg: 'p-1' } as const;
+/** 服务端缩略图不带边距，按边长补约 8% 白边（与前台作品卡同一留白）。 */
+const thumbPad = { sm: 'p-0.5', md: 'p-0.75', lg: 'p-1' } as const;
 
 /** 作品缩略图：后台专用缩略图地址（按管理员会话计量，不吃豆社公开配额）。 */
 export function Thumb({ revisionId, alt = '', size = 'md', className }: { revisionId: string | null | undefined; alt?: string; size?: keyof typeof thumbSize; className?: string }) {
@@ -79,7 +79,7 @@ export function CopyId({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** 抽屉里的键值网格（原型 .adm-dl）：两列，wide 占整行。 */
+/** 抽屉里的键值网格：两列，wide 占整行。 */
 export function Dl({ items }: { items: Array<[ReactNode, ReactNode, boolean?] | null | false> }) {
   return (
     <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-3">
@@ -106,7 +106,7 @@ export function DrawerSection({ title, aside, children }: { title: ReactNode; as
   );
 }
 
-/** 浅底提示条（原型 .adm-note）；danger 为红色软底。 */
+/** 浅底提示条；danger 为红色软底。 */
 export function Note({ icon, children, tone = 'neutral', className }: { icon: ReactNode; children: ReactNode; tone?: 'neutral' | 'danger' | 'warning'; className?: string }) {
   return (
     <p className={cn('flex items-start gap-2 rounded-md px-3 py-2.5 text-body-sm [&>svg]:mt-0.75 [&>svg]:size-4 [&>svg]:shrink-0',

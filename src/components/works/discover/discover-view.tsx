@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent, type MouseEvent } from 'react';
 import type { CommunityListItem, CommunitySort } from '@/lib/community/queries';
+import { LIMITS } from '@/lib/appInfo';
 import { zhCN } from '@/messages/zh-CN';
 import { CommunityListImpression } from '@/components/community/CommunityImpression';
 import { MobileTopBack } from '@/components/shell/mobile-topbar';
@@ -37,7 +38,7 @@ export interface DiscoverViewProps {
   invalid?: boolean;
 }
 
-/** 手机搜索结果页的顶栏（原型 #/search）：返回 + 回填关键词的搜索框。 */
+/** 手机搜索结果页的顶栏：返回 + 回填关键词的搜索框。 */
 function SearchResultTop({ q }: { q: string }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
@@ -52,7 +53,7 @@ function SearchResultTop({ q }: { q: string }) {
     <>
       <MobileTopBack href="/" />
       <form action="/" role="search" aria-label={zhCN.shell.search.label} onSubmit={submit} className="mr-1 min-w-0 flex-1">
-        <SearchField name="q" value={value} onValueChange={setValue} placeholder={zhCN.shell.search.label} aria-label={zhCN.shell.search.label} autoComplete="off" enterKeyHint="search" wrapperClassName="h-10 pl-3.5" />
+        <SearchField name="q" maxLength={LIMITS.searchQueryLength} value={value} onValueChange={setValue} placeholder={zhCN.shell.search.label} aria-label={zhCN.shell.search.label} autoComplete="off" enterKeyHint="search" wrapperClassName="h-10 pl-3.5" />
       </form>
     </>
   );
@@ -94,7 +95,7 @@ function useMoreWorks(state: DiscoverState, initialCursor: string | null) {
 }
 
 /**
- * 发现页（原型 discover.js，design.md §5.1）：吸顶类目条 + 筛选 / 排序 → 新手条 → 结果标题 → 已选芯片 → 作品网格 → 加载更多。
+ * 发现页：吸顶类目条 + 筛选 / 排序 → 新手条 → 结果标题 → 已选芯片 → 作品网格 → 加载更多。
  * 首屏作品与类目由服务端渲染（ADR-0021 / D53 可爬）；筛选、排序、类目都写进地址。
  */
 export function DiscoverView({ state, categories, items, nextCursor, total, hot, invalid = false }: DiscoverViewProps) {

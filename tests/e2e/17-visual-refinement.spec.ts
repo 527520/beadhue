@@ -26,7 +26,8 @@ async function settleMotion(page:Page){
 /** 先等动效落定再跑 axe，全文件统一走这里。 */
 async function axe(page:Page,include?:string){
   await settleMotion(page);
-  const builder=new AxeBuilder({page});
+  // Base UI 的焦点陷阱哨兵在 WebKit + VoiceOver 下带无名 role=button（让虚拟光标触发 onFocus，随即把焦点送回弹窗），不是可操作控件。
+  const builder=new AxeBuilder({page}).exclude('[data-base-ui-focus-guard]');
   return (await (include?builder.include(include):builder).analyze()).violations;
 }
 async function expectNoMotionTransform(element:Locator){

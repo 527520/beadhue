@@ -7,7 +7,7 @@ import { AppError } from '@/lib/errors';
 import { enforceAccountRequestQuota } from '@/lib/security/accountReadQuota';
 import { enforcePublicReadLimit } from '@/lib/security/publicRateLimit';
 
-/** 作者主页（R15-02）：展示名、作者类型与公开作品统计；作品列表用 /api/community/works?author=。 */
+/** 作者主页：展示名、作者类型与公开作品统计；作品列表用 /api/community/works?author=。 */
 async function get(request: Request, { params }: { params: Promise<{ publicAuthorId: string }> }) {
   const publicAuthorId = z.string().trim().max(80).parse((await params).publicAuthorId);
   await enforcePublicReadLimit(getDb(), request, 'author');

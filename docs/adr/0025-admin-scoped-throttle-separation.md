@@ -23,13 +23,16 @@ Refines: ADR-0021（豆社公开节流与内容分级）
 3. 豆社公开接口的路径、键与阈值**完全不变**：匿名访客与普通账号的防护不受影响。
 4. 公开路由与管理端路由共用 globalThis 注册的缩略图缓存（`src/lib/render/thumbnailCache.ts`），
    同一修订不会被光栅化两次。
+5. （2026-09 补充）审核台读原图 `GET /api/admin/community/revisions/:id/original`（`community:moderate`）同样按审核员单独计量
+   `admin:original:read:<userId>`（默认 1 200/h，`RATE_ADMIN_ORIGINAL_READ_USER_HOUR`），逐张翻看队列不消耗豆社公开的原图读取额度；
+   访问判定与 ETag 与公开路径相同。
 
 ## Consequences
 
 - 后台批量工作不再消耗豆社公开配额，收紧公开阈值也不会误伤后台（本轮已把 `RATE_PUBLIC_READ_IP_HOUR` 调到 5 做 E2E 验证）。
 - 多了一条需要维护的路径与两类配额；两者都必须保留 `requireApiActor` 能力校验，避免「管理员路径」变成绕过授权的后门。
 - 管理端缩略图仍是私有缓存（`private, max-age=31536000, immutable`），不进入共享 CDN。
-- 后台组件被一条单测护栏约束：`src/components/admin/**` 不得再出现 `/api/community/` 字面量。
+- 后台组件被一条单测护栏约束：`src/components/admin/**`、`src/components/admin-ui/**` 与 `src/app/admin/**` 不得再出现 `/api/community/` 字面量。
 
 ## Rejected alternatives
 

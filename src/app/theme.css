@@ -49,7 +49,7 @@
   --color-featured: #ffc53d;
   --color-info-soft: #eef3ff;
   --color-danger-hover: #b3262a;
-  /* 后台折线图第二、三条线（原型 admin/data.js：豆色 O 橘橙、B 晴空蓝；第一条用 ink） */
+  /* 后台折线图第二、三条线 */
   --color-chart-2: #f28b2c;
   --color-chart-3: #3f7fd9;
   --color-scrim: rgb(18 18 20 / 42%);
@@ -81,7 +81,7 @@
   --text-caption: 12px;
   --text-caption--line-height: 18px;
   --text-caption--font-weight: 500;
-  /* 控件内字号（原型 components.css：小按钮、芯片、字段标签、分段、页码用 13px；导航底栏 11px） */
+  /* 控件内字号 */
   --text-footnote: 13px;
   --text-footnote--line-height: 18px;
   --text-footnote--font-weight: 400;
@@ -104,6 +104,24 @@
   --spacing-topbar: 64px;
   --spacing-tabbar: 64px;
   --spacing-gutter: 16px;
+  /* 顶栏下方的吸顶偏移、吸顶面板与查看器舞台的最大高度 */
+  --spacing-below-topbar-sm: calc(var(--spacing-topbar) + 8px);
+  --spacing-below-topbar: calc(var(--spacing-topbar) + 24px);
+  --spacing-below-topbar-lg: calc(var(--spacing-topbar) + 32px);
+  --spacing-sticky-panel: calc(100dvh - var(--spacing-topbar) - 48px);
+  --spacing-viewer-stage: calc(100dvh - var(--spacing-topbar) - 170px);
+  --spacing-draft-stage: 62dvh;
+  --spacing-suggest: min(70dvh, 560px);
+  /* 底部安全区：固定底栏与操作条下留出的高度 */
+  --spacing-safe-2: calc(8px + env(safe-area-inset-bottom, 0px));
+  --spacing-safe-3: calc(12px + env(safe-area-inset-bottom, 0px));
+  --spacing-sticky-bar: calc(var(--spacing-control-lg) + 56px + env(safe-area-inset-bottom, 0px));
+  /* 豆粒与缩略图的几何：服务端缩略图补 8% 白边，豆粒中间的孔 */
+  --spacing-thumb-pad: 8%;
+  --spacing-thumb-fill: 86%;
+  --spacing-bead-hole: 34%;
+  --spacing-peg-hole: 38%;
+  --spacing-brand-hole: 3.5px;
 
   /* 宽度 */
   --container-page: 1280px;
@@ -122,6 +140,13 @@
   --container-article: 720px;
   --container-card-sm: 200px;
   --container-card-md: 270px;
+  --container-search: 440px;
+  --container-admin: 1680px;
+  --container-admin-drawer: min(300px, 86vw);
+  --container-studio: min(1200px, calc(100vw - 48px));
+  --container-inset-bar: calc(100% - 24px);
+  /* 编辑器画布区的容器查询档：窄于它时悬停坐标挪到左上角 */
+  --container-canvas-compact: 720px;
 
   /* 阴影：只有浮起与弹窗两级，其余为控件自身的细节阴影 */
   --shadow-float: 0 1px 2px rgb(28 28 30 / 6%), 0 8px 24px rgb(28 28 30 / 10%);
@@ -130,12 +155,18 @@
   --shadow-badge: 0 1px 2px rgb(0 0 0 / 12%);
   --shadow-thumb: 0 1px 2px rgb(0 0 0 / 20%);
   --shadow-seg: 0 1px 3px rgb(28 28 30 / 12%);
-  /* 吸顶类目条滚动后的底部投影（原型 layout.css .cats-bar.is-stuck） */
+  /* 吸顶类目条滚动后的底部投影 */
   --shadow-stuck: 0 6px 12px -12px rgb(0 0 0 / 30%);
 
-  /* 顶栏 / 底栏的毛玻璃（原型 blur(12px)） */
+  /* 顶栏 / 底栏的毛玻璃 */
   --blur-md: 12px;
-  /* 手机底栏中间的「＋」主色圆钮（原型 layout.css .tabbar .create） */
+  /* 未登录时色号清单的遮挡模糊 */
+  --blur-lock: 3px;
+
+  /* 标志字「豆色绘」与「BeadHue」的字距 */
+  --tracking-brand: 0.04em;
+  --tracking-brand-wide: 0.12em;
+  /* 手机底栏中间的「＋」主色圆钮 */
   --shadow-fab: 0 6px 16px rgb(49 96 230 / 35%);
   --shadow-field-focus: 0 0 0 3px rgb(49 96 230 / 18%);
   --shadow-field-invalid: 0 0 0 3px rgb(206 44 49 / 16%);
@@ -173,7 +204,7 @@
   --spacing: 0.25rem;
   --color-ink: #1c1c1e;
   --color-success: #17804a;
-  /* 软底按徽标文字的 AA 对比度取值（成功 4.63:1、警告 4.55:1；原型的 #e8f5ee / #fff4e5 只有 4.43 / 4.35）。 */
+  /* 软底按徽标文字的 AA 对比度取值（成功 4.63:1、警告 4.55:1，都不低于 4.5:1）。 */
   --color-success-soft: #f0f9f4;
   --color-warning: #b35c00;
   --color-warning-soft: #fffaf2;
@@ -235,7 +266,7 @@
 @utility h-sheet { height: 92dvh; }
 @utility pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 @utility bottom-safe-toast { bottom: calc(var(--spacing-tabbar) + 16px + env(safe-area-inset-bottom, 0px)); }
-/* 站点外壳（票 03）：页面容器（原型 .container / .container.wide）、手机底栏高度与让位。 */
+/* 站点外壳：页面容器、手机底栏高度与让位。 */
 @utility page-container { width: 100%; max-width: calc(var(--container-page) + var(--spacing-gutter) * 2); margin-inline: auto; padding-inline: var(--spacing-gutter); }
 @utility page-container-wide { width: 100%; max-width: calc(var(--container-wide) + var(--spacing-gutter) * 2); margin-inline: auto; padding-inline: var(--spacing-gutter); }
 @utility h-tabbar-safe { height: calc(var(--spacing-tabbar) + env(safe-area-inset-bottom, 0px)); }
@@ -247,15 +278,15 @@
 @utility popover-width { min-width: var(--container-popover-min); max-width: min(var(--container-popover), calc(100vw - 24px)); }
 @utility popover-width-wide { width: min(var(--container-popover-wide), calc(100vw - 24px)); }
 @utility border-control { border-width: 1.5px; }
-/* 创作（票 07）：取景框外的压暗、落区钉板纹理、长列表弹出层高度、裁剪舞台高度。 */
-@utility crop-hole { box-shadow: 0 0 0 9999px rgb(28 28 30 / 48%); }
+/* 创作：取景框外的压暗、落区钉板纹理、长列表弹出层高度、裁剪舞台高度。 */
+@utility crop-hole { box-shadow: 0 0 0 9999px color-mix(in srgb, var(--color-ink) 48%, transparent); }
 @utility pegboard-dots {
   background-image: radial-gradient(circle, var(--color-line-strong) 1.6px, transparent 2.2px);
   background-size: 20px 20px;
   background-position: 10px 10px;
 }
 @utility pegboard-dots-active {
-  background-image: radial-gradient(circle, rgb(49 96 230 / 55%) 1.8px, transparent 2.4px);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--color-accent) 55%, transparent) 1.8px, transparent 2.4px);
   background-size: 20px 20px;
   background-position: 10px 10px;
 }
@@ -268,7 +299,7 @@
 }
 @utility max-h-popover-list { max-height: min(60dvh, 440px); }
 @utility h-crop-stage { height: min(300px, 40dvh); @media (min-width: 768px) { height: 360px; } @media (min-width: 1024px) { height: 400px; } }
-/* 编辑器（票 08）：画布区的淡钉点底纹、原图参照窗右下角的缩放手柄。 */
+/* 编辑器：画布区的淡钉点底纹、原图参照窗右下角的缩放手柄。 */
 @utility editor-stage-dots {
   background-image: radial-gradient(circle, var(--color-line) 1px, transparent 1.5px);
   background-size: 16px 16px;
@@ -276,7 +307,7 @@
 @utility reference-resize {
   background: linear-gradient(135deg, transparent 52%, var(--color-ink-4) 52% 58%, transparent 58% 70%, var(--color-ink-4) 70% 76%, transparent 76%);
 }
-/* 手机编辑器（票 09）：横向滑动的最近用色条 / 当前行颜色序列不显示滚动条；提示条浮在底部工具栏上方（原型 180px + 安全区）。 */
+/* 手机编辑器：横向滑动的最近用色条 / 当前行颜色序列不显示滚动条；提示条浮在底部工具栏上方。 */
 @utility scrollbar-none {
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
@@ -300,6 +331,6 @@
   }
   [data-ui] :is(h1, h2, h3, h4) { color: --theme(--color-ink); text-wrap: balance; }
   [data-ui] p { text-wrap: pretty; }
-  [data-ui] ::selection { background: rgb(49 96 230 / 22%); color: inherit; }
+  [data-ui] ::selection { background: color-mix(in srgb, var(--color-accent) 22%, transparent); color: inherit; }
   [data-ui] :focus-visible { outline: none; }
 }

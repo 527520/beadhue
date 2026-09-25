@@ -82,7 +82,7 @@ function SuggestedTags({ item, detail, onAdopted }: { item: ReviewItem; detail: 
 }
 
 /**
- * 作品审核台（原型 admin/reviews.js）：左侧队列（进入时自动选中第一项）、右侧图纸与作者原图等高并排、
+ * 作品审核台：左侧队列（进入时自动选中第一项）、右侧图纸与作者原图等高并排、
  * 建议标签一键采纳（D68）、原创与许可核对清单、决定栏；J / K 切换、A 通过、R 驳回。
  */
 export function ReviewConsole({ initialId }: { initialId?: string }) {
@@ -165,7 +165,7 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
   const suggested = item.suggestedTags;
   return (
     <div className="grid flex-1 items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)] max-lg:gap-4">
-      <AdminCard aria-label={t.queue} className="overflow-hidden lg:sticky lg:top-[calc(var(--spacing-topbar)+24px)]">
+      <AdminCard aria-label={t.queue} className="overflow-hidden lg:sticky lg:top-below-topbar">
         <CardHead title={t.pending}>
           <span className="text-body-sm text-ink-3 tabular-nums">{t.count(queue.total)}</span>
           <span className="ml-auto text-body-sm text-ink-3 max-md:hidden">{t.order}</span>
@@ -217,7 +217,7 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
           <figure className="m-0 grid min-w-0 gap-2">
             <figcaption className="flex items-baseline justify-between gap-2 text-caption font-normal whitespace-nowrap text-ink-3"><b className="text-body-sm font-semibold text-ink">{t.pattern}</b><span className="max-xl:hidden tabular-nums">{t.patternMeta(item.width, item.height)}</span></figcaption>
             <div className="grid aspect-square max-h-80 w-full place-items-center overflow-hidden rounded-lg bg-bg-subtle">
-              {detail ? <BeadImage pattern={detail.snapshot.pattern} alt={t.patternAlt(item.title)} lazy={false} className="size-[86%] rounded-md ring-1 ring-line" /> : <Skeleton className="size-full rounded-none" />}
+              {detail ? <BeadImage pattern={detail.snapshot.pattern} alt={t.patternAlt(item.title)} lazy={false} className="size-thumb-fill rounded-md ring-1 ring-line" /> : <Skeleton className="size-full rounded-none" />}
             </div>
           </figure>
           <figure className="m-0 grid min-w-0 gap-2">
@@ -246,7 +246,7 @@ export function ReviewConsole({ initialId }: { initialId?: string }) {
           {checkError && missing ? <p role="alert" className="mt-3 flex items-center gap-1.5 text-footnote text-danger [&>svg]:size-4">{icon(CircleAlert)}{t.checkMissing(missing)}</p> : null}
         </fieldset>
         {!ready && detail ? <p className="mx-6 mt-3 text-body-sm text-warning max-md:mx-4">{t.stale}</p> : null}
-        <footer className="sticky bottom-0 mt-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-bg py-3.5 pr-5 pl-6 max-xl:flex-wrap max-md:mt-4 max-md:px-4 max-md:pb-[calc(12px+env(safe-area-inset-bottom))]">
+        <footer className="sticky bottom-0 mt-5 flex items-center gap-3 rounded-b-lg border-t border-line bg-bg py-3.5 pr-5 pl-6 max-xl:flex-wrap max-md:mt-4 max-md:px-4 max-md:pb-safe-3">
           <Button variant="danger-outline" disabled={!ready} onClick={reject} className="max-md:h-control-lg max-md:flex-1">{icon(X)}{t.reject}</Button>
           <span aria-hidden="true" className="inline-flex min-w-0 flex-1 items-center justify-end gap-1 overflow-hidden text-caption font-normal whitespace-nowrap text-ink-3 max-xl:order-3 max-xl:basis-full max-xl:justify-start max-md:hidden [@media(hover:none)]:invisible">
             <Kbd>J</Kbd> / <Kbd>K</Kbd> {t.hint.switch} · <Kbd>A</Kbd> {t.hint.approve} · <Kbd>R</Kbd> {t.hint.reject}

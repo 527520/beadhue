@@ -114,7 +114,7 @@ function Rail({ id, title, link, items }: { id: string; title: string; link: Rea
 }
 
 /**
- * 作品详情（原型 detail.js，design.md §5.2）：面包屑与标题行 → 左查看器 / 右吸顶制作卡 → 讨论 → 相似作品、作者的更多作品；
+ * 作品详情：面包屑与标题行 → 左查看器 / 右吸顶制作卡 → 讨论 → 相似作品、作者的更多作品；
  * < 1024 单栏，主操作放进吸底栏。未登录（D53 / D67）只有服务端豆粒大图，色号清单模糊，操作先登录。
  */
 export function DetailView({ work, loggedIn, related, byAuthor }: DetailViewProps) {
@@ -183,7 +183,7 @@ export function DetailView({ work, loggedIn, related, byAuthor }: DetailViewProp
   const others = byAuthor.filter((item) => item.id !== work.id && !related.some((entry) => entry.id === item.id));
 
   return (
-    <div data-ui="" className="page-container pt-6 max-md:pt-0 max-lg:pb-[calc(var(--spacing-control-lg)+56px+env(safe-area-inset-bottom,0px))]">
+    <div data-ui="" className="page-container pt-6 max-md:pt-0 max-lg:pb-sticky-bar">
       <div className="mx-auto grid max-w-prose grid-cols-1 gap-y-6 max-md:max-w-none max-md:gap-y-0 lg:max-w-none lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-x-8 xl:gap-x-12">
         <header className="min-w-0 max-md:pt-4 lg:col-span-2">
           <nav aria-label={t.crumbs} className="mb-2 flex items-center gap-2 text-body-sm text-ink-3 max-md:hidden">
@@ -282,7 +282,7 @@ export function DetailView({ work, loggedIn, related, byAuthor }: DetailViewProp
         </div>
       ) : null}
 
-      <div className="fixed inset-x-0 bottom-0 z-45 flex items-center gap-3 border-t border-line bg-bg/96 px-4 pt-2 pb-[calc(8px+env(safe-area-inset-bottom,0px))] backdrop-blur-md md:justify-end md:px-gutter md:pt-3 md:pb-[calc(12px+env(safe-area-inset-bottom,0px))] lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-45 flex items-center gap-3 border-t border-line bg-bg/96 px-4 pt-2 pb-safe-2 backdrop-blur-md md:justify-end md:px-gutter md:pt-3 md:pb-safe-3 lg:hidden">
         <LikePill liked={like.liked} count={like.count} onToggle={like.toggle} size="lg" />
         <Button variant="primary" size="lg" onClick={onMake} className="min-w-0 flex-1 md:max-w-90">{makeLabel}</Button>
       </div>

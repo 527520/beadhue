@@ -23,7 +23,7 @@ function CategoryIcon({ category, className }: { category: DiscoverCategory; cla
 }
 
 /**
- * 吸顶像素类目条（原型 layout.css .cats-bar）：横向滚动的类目 + 右端工具（筛选、排序）。
+ * 吸顶像素类目条：横向滚动的类目 + 右端工具（筛选、排序）。
  * 类目是普通链接（服务端渲染、可爬），切换类目时保留搜索词、筛选与排序。
  */
 export function CategoryBar({ categories, state, tools }: { categories: DiscoverCategory[]; state: DiscoverState; tools: ReactNode }) {

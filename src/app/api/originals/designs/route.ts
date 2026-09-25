@@ -7,7 +7,7 @@ import { AppError } from '@/lib/errors';
 import { enforceMeRateLimit } from '@/lib/security/meRateLimit';
 
 /**
- * 管理原图（R15-06 账号设置）：本人每份仍绑定云端原图的设计与原图大小，按大小降序。
+ * 管理原图：本人每份仍绑定云端原图的设计与原图大小，按大小降序。
  * 删除沿用 DELETE /api/designs/:id/original（带 baseRevision，只解绑原图，不动图纸）。
  */
 export const GET = withApiErrors(async () => {

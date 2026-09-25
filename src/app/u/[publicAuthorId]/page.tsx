@@ -14,12 +14,12 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MobileTopBack, MobileTopTitle } from '@/components/shell/mobile-topbar';
 import { SiteShell } from '@/components/shell/site-shell';
-import { formatCount } from '@/components/works/detail/detail-format';
+import { formatCount } from '@/lib/format';
 import { AuthorWorks, ManageLink } from './author-view';
 import { ShareProfileButton } from './share-button';
 
 const t = zhCN.detail.author;
-/** 官方账号的头像底色固定为深墨（原型 data.js）。 */
+/** 官方账号的头像底色固定为深墨。 */
 const OFFICIAL_AVATAR = AVATAR_BEAD_COLORS[0];
 const loadAuthor = cache(async (id: string) => (id.length <= 80 ? getCommunityAuthor(getDb(), id) : null));
 
@@ -42,7 +42,7 @@ async function loadWorks(id: string, cursor: string | undefined, viewerUserId?: 
   }
 }
 
-/** 作者主页（D66 `/u/[publicAuthorId]`，原型 me.js renderAuthor）：头像、名字、官方徽标、简介、统计、作品网格（游标分页）。 */
+/** 作者主页（D66 `/u/[publicAuthorId]`）：头像、名字、官方徽标、简介、统计、作品网格（游标分页）。 */
 export default async function AuthorPage({ params, searchParams }: { params: Params; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const id = decodeURIComponent((await params).publicAuthorId);
   const author = await loadAuthor(id);

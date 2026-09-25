@@ -24,7 +24,7 @@ const tagOrderSchema = z.number().int().min(-2147483648).max(2147483647);
 export const DEFAULT_TAGGING_REASON = '标签调整';
 /** 新建标签同样不强制手填理由（admin-round-3 08）；审计仍留痕，使用这条默认理由。 */
 export const DEFAULT_TAG_CREATE_REASON = '标签管理：新建标签';
-/** 只调图标 / 排序 / 精选时的审计理由（R15-02）。 */
+/** 只调图标 / 排序 / 精选时的审计理由。 */
 export const DEFAULT_TAG_PRESENTATION_REASON = '标签管理：调整展示';
 /** 采纳作者建议标签同 D51 免理由，审计写这条固定理由（D68）。 */
 export const DEFAULT_SUGGESTION_ADOPT_REASON = '采纳建议标签';

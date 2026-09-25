@@ -9,7 +9,7 @@ import { zhCN } from '@/messages/zh-CN';
 import { Badge } from '@/components/ui/badge';
 import { BeadImage } from '@/components/ui/bead-image';
 import { MetaItem, MetaSep, cardMediaClass, cardMediaInnerClass } from '@/components/ui/work-card';
-import { relativeTime } from '@/components/create/create-model';
+import { relativeTime } from '@/lib/format';
 import { ActionMenu, type ActionEntry } from '../action-menu';
 import { ProgressRing } from '../progress-ring';
 import { designStateText, isStitching, type LibraryDesign } from './design-model';
@@ -83,7 +83,7 @@ export interface DesignCardProps {
   onOpen: () => void;
 }
 
-/** 设计卡（原型 designCard）：整卡打开设计；「…」桌面悬停出现，触屏常驻。 */
+/** 设计卡：整卡打开设计；「…」桌面悬停出现，触屏常驻。 */
 export function DesignCard({ design, cloud, now, opening, entries, onOpen }: DesignCardProps) {
   const badges = <DesignBadges design={design} cloud={cloud} />;
   return (

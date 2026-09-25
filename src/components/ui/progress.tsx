@@ -7,7 +7,7 @@ export interface ProgressProps {
   /** 0–100 */
   value: number;
   label: string;
-  /** 显示标签与百分比（原型样式）；false 时只给可访问名称。 */
+  /** 显示标签与百分比；false 时只给可访问名称。 */
   showLabel?: boolean;
   className?: string;
 }

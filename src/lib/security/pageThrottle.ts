@@ -35,7 +35,7 @@ export function createPageThrottle(options: { limitPerMinute: number; maxKeys?: 
 }
 
 /**
- * 需要页面级节流的公开路径：发现页（/，R15 起即豆社列表）、作品详情、作者主页、sitemap 分页、robots.txt。
+ * 需要页面级节流的公开路径：发现页（/，即豆社列表）、作品详情、作者主页、sitemap 分页、robots.txt。
  * 旧的 /community 由 next.config 的重定向在 proxy 之前处理，不再需要节流。
  *
  * 修正（admin-round-3 12）：`generateSitemaps` 只注册 `/sitemap/<n>.xml`

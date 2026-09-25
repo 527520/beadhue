@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SiteShell } from '@/components/shell/site-shell';
 import { DetailMobileTop } from '@/components/works/detail/detail-mobile-top';
 import { DetailView, type DetailWork } from '@/components/works/detail/detail-view';
-import { longDate, relativeTime } from '@/components/works/detail/detail-format';
+import { longDate, relativeTime } from '@/lib/format';
 import { getDb } from '@/lib/auth/db';
 import { getSessionActor } from '@/lib/auth/session';
 import { listRelatedCommunityWorks } from '@/lib/community/discovery';
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 /**
- * 作品详情（D66 `/community/[id]`，票 05）：匿名访客只拿服务端豆粒大图与统计，不下发完整图纸网格、
+ * 作品详情（D66 `/community/[id]`）：匿名访客只拿服务端豆粒大图与统计，不下发完整图纸网格、
  * 色板 JSON 与色号清单（ADR-0021 / D53）；相似作品与作者的更多作品随首屏服务端渲染。
  */
 export default async function CommunityDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> }) {

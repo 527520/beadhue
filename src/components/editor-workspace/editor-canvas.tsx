@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/refs -- 指针手势与相机必须在高频事件之间同步读写。 */
 
 /**
- * 编辑画布（原型 editor/viewport.js）：方格渲染 + 网格 / 板缝 / 色号、悬停落点预览、颜色高亮，
+ * 编辑画布：方格渲染 + 网格 / 板缝 / 色号、悬停落点预览、颜色高亮，
  * 以及手势分层——平移、滚轮与双指缩放只改视图；画笔 / 橡皮一次按下到抬起是一条笔迹；
  * 油漆桶、吸管、替换是轻点，拖动超过阈值即转为平移，绝不写图（D5 / D8）。
  * 跟拼模式（D39）叠加已拼淡化与勾、当前板与当前行高亮；浏览只平移，标记是轻点，未形成导航手势的短点才提交。
@@ -222,7 +222,7 @@ export function EditorCanvas({
       }
     }
     if (stitch) {
-      // 已拼：压淡 + 勾（原型 drawStitch）。
+      // 已拼：压淡 + 勾。
       const stitched = (row: number, col: number) => {
         const item = at(row, col);
         return stitch.done[row * state.width + col] === 1 && Boolean(item && !item.transparent && item.hex && item.external !== true);

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-/** 组件总览页自身的排版（目录、区块、样张框），对应原型 styles/screens/components.css。 */
+/** 组件总览页自身的排版（目录、区块、样张框）。 */
 export function KitSection({ id, title, rule, children }: { id: string; title: string; rule: ReactNode; children: ReactNode }) {
   return (
     <section id={`kit-${id}`} data-kit-sec={id} aria-labelledby={`kit-${id}-h`} className="grid min-w-0 scroll-mt-6 gap-4 max-md:scroll-mt-32">

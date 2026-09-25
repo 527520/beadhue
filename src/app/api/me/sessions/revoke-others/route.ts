@@ -8,7 +8,7 @@ import { AppError } from '@/lib/errors';
 import { currentSessionTokenHash } from '@/lib/me/sessions';
 import { enforceMeRateLimit } from '@/lib/security/meRateLimit';
 
-/** 退出其他设备（R15-06）：删除本人除当前会话外的全部会话；天然幂等，返回删掉的数量。 */
+/** 退出其他设备：删除本人除当前会话外的全部会话；天然幂等，返回删掉的数量。 */
 async function post(request: Request) {
   const guard = enforceMutatingGuard(request);
   if (guard) return guard;

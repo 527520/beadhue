@@ -366,15 +366,19 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
     return { ok: true, name: design.name };
   }), [api, load, mutate, storage, syncClient]);
 
-  const retrySync = useCallback(async (): Promise<void> => {
+  /** 返回这一轮同步是否全部成功（卡片菜单据此提示成功或失败）。 */
+  const retrySync = useCallback(async (): Promise<boolean> => {
     setSyncing(true);
+    let ok = Boolean(storage);
     try {
       if (storage) await enqueueDesignSync(storage, api);
     } catch {
+      ok = false;
       setCloudFailed(true);
     }
     setSyncing(false);
     await load();
+    return ok;
   }, [api, load, storage]);
 
   return {

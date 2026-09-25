@@ -1,5 +1,5 @@
 /**
- * 作品详情查看器（原型 detail.js）的纯计算与画布叠加层：缩放档位、可见格范围、网格、板块编号、色号。
+ * 作品详情查看器的纯计算与画布叠加层：缩放档位、可见格范围、网格、板块编号、色号。
  * 豆粒 / 方格本身由 beads.ts 的 drawPattern 画；这里只画叠加层，颜色取 beadTokens。
  */
 import type { Pattern } from '@/lib/types';

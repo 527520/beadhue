@@ -150,7 +150,7 @@ function RowMenu({ name, entries }: { name: string; entries: RowMenuEntry[] }) {
   );
 }
 
-/** 主列单元格：缩略图 / 头像 + 可聚焦的标题按钮 + 小号副信息（原型 cells.js titleCell）。 */
+/** 主列单元格：缩略图 / 头像 + 可聚焦的标题按钮 + 小号副信息。 */
 export function TitleCell({ lead, title, sub, extra, onOpen, quote }: { lead?: ReactNode; title: string; sub?: ReactNode; extra?: ReactNode; onOpen?: () => void; quote?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -172,7 +172,7 @@ export function TitleCell({ lead, title, sub, extra, onOpen, quote }: { lead?: R
 }
 
 /**
- * 后台通用数据表格（原型 admin/table.js）：工具条（搜索 / 筛选 / 导出）⇄ 批量操作条、表格（手机为卡片列表）、
+ * 后台通用数据表格：工具条（搜索 / 筛选 / 导出）⇄ 批量操作条、表格（手机为卡片列表）、
  * 行点击打开右侧抽屉、底部通栏单行分页（总数 · 每页 · 页码 · 跳页；窄屏简化）。
  */
 export function DataTable<T>(props: DataTableProps<T>) {

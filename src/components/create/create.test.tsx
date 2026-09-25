@@ -4,7 +4,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { zhCN } from '@/messages/zh-CN';
 import { DEFAULT_GENERATION_PARAMS } from '@/lib/types';
 import type { DecodedImage } from '@/lib/image/decode';
-import { boardsOf, centeredCrop, moveCrop, patternHeight, ratioAspect, relativeTime, resizeCrop, roundCrop } from './create-model';
+import { relativeTime } from '@/lib/format';
+import { boardsOf, centeredCrop, moveCrop, patternHeight, ratioAspect, resizeCrop, roundCrop } from './create-model';
 import { buildPaletteChoices, fitSpec, specChoices } from './palette-choices';
 import { CreateEntry } from './create-entry';
 import { NewDrawingDialog } from './new-drawing-dialog';

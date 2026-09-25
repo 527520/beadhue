@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 /** 卡片图区（作品卡与设计卡共用）：白底方形；服务端缩略图不带边距，四周补 8% 白边，与 <BeadImage> 的 pad 一致。 */
 export const cardMediaClass =
   "pointer-events-none relative z-1 isolate aspect-square overflow-hidden rounded-lg bg-bg after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:inset-ring-1 after:inset-ring-ink/5 after:content-['']";
-export const cardMediaInnerClass = 'size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain [&>img]:p-[8%]';
+export const cardMediaInnerClass = 'size-full transition-transform duration-400 ease-standard motion-safe:group-hover/card:scale-103 [&>*]:size-full [&>img]:object-contain [&>img]:p-thumb-pad';
 
 /**
  * 作品卡 / 设计卡外框：图纸即卡片——正方形图区、圆角 16、静置无阴影；整卡是一个链接，

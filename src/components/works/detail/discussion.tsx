@@ -2,9 +2,8 @@
 
 import { Ellipsis, Flag, Lock, Trash2, User } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
 import { track } from '@/lib/analytics/client';
-import { cn } from '@/lib/cn';
 import { zhCN } from '@/messages/zh-CN';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
 import { avatarIdOf, displayNameOf } from '@/components/shell/account-menu';
@@ -14,14 +13,26 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogBody, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FormAlert } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
-import { fieldControlClass } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { ActionMenu } from './action-menu';
-import { relativeTime } from './detail-format';
+import { relativeTime } from '@/lib/format';
 
 const t = zhCN.detail;
 const BODY_MAX = 500;
+/** 通知里「评论位置」的锚点不在第一页时，最多再往下翻几页去找。 */
+const ANCHOR_PAGES = 5;
+
+const subscribeHash = (notify: () => void) => {
+  window.addEventListener('hashchange', notify);
+  return () => window.removeEventListener('hashchange', notify);
+};
+/** 地址里的 `#comment-<id>`（通知跳转到评论位置）。 */
+function useCommentAnchor(): string | null {
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => '');
+  return /^#comment-([\w-]+)$/u.exec(hash)?.[1] ?? null;
+}
 const COUNTER_FROM = 400;
 const iconProps = { 'aria-hidden': true, strokeWidth: 1.75 } as const;
 
@@ -50,7 +61,7 @@ export interface DiscussionProps {
 }
 
 /**
- * 讨论（原型 talk）：输入框在上，评论最新在前、游标分页；自己的评论可删除（二次确认），他人评论可举报；
+ * 讨论：输入框在上，评论最新在前、游标分页；自己的评论可删除（二次确认），他人评论可举报；
  * 自己待审核 / 已隐藏的评论带状态徽标；没有评论时只一句邀请。
  */
 export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onLogin, onReport }: DiscussionProps) {
@@ -70,6 +81,9 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const request = useRef(0);
+  const anchor = useCommentAnchor();
+  const [reached, setReached] = useState<string | null>(null);
+  const anchorPages = useRef(0);
 
   const load = useCallback(async (from: string | null = null) => {
     const id = ++request.current;
@@ -95,6 +109,23 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 只发起读取，状态在响应返回后更新。
     void load();
   }, [load]);
+
+  // 从通知进来时滚到那条评论并短暂高亮；不在已加载的页里就继续往下翻，找不到就停在列表。
+  useEffect(() => {
+    if (!anchor || reached === anchor || state !== 'ready') return;
+    const node = document.getElementById(`comment-${anchor}`);
+    if (node) {
+      node.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      node.focus({ preventScroll: true });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 记下已到达的锚点，避免每次重渲染都滚动。
+      setReached(anchor);
+      return;
+    }
+    if (cursor && anchorPages.current < ANCHOR_PAGES) {
+      anchorPages.current += 1;
+      void load(cursor);
+    }
+  }, [anchor, reached, state, items, cursor, load]);
 
   const resize = (node: HTMLTextAreaElement) => {
     node.style.height = 'auto';
@@ -174,7 +205,7 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
         <Avatar id={me ? avatarIdOf(me) : 'me'} name={me ? displayNameOf(me) : ''} color={me?.avatarColor ?? undefined} className="mt-2" />
         <div className="min-w-0">
           <label htmlFor={inputId} className="sr-only">{t.commentLabel}</label>
-          <textarea
+          <Textarea
             ref={inputRef}
             id={inputId}
             rows={1}
@@ -185,7 +216,7 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
             aria-describedby={error ? `${inputId}-error` : undefined}
             onChange={(event) => { setBody(event.target.value); resize(event.target); if (error) setError(null); }}
             onKeyDown={(event) => { if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submit(); } }}
-            className={cn(fieldControlClass, 'block max-h-60 min-h-control-lg resize-none overflow-y-hidden py-3 leading-normal')}
+            className="block max-h-60 min-h-control-lg resize-none overflow-y-hidden leading-normal"
           />
           {error ? <FormAlert className="mt-2"><span id={`${inputId}-error`}>{error}</span></FormAlert> : null}
           <div className="mt-2 flex items-center justify-end gap-3">
@@ -223,7 +254,8 @@ export function Discussion({ workId, loggedIn, commentsLocked, initialCount, onL
       ) : (
         <ol aria-label={t.commentList} className="grid">
           {items.map((item) => (
-            <li key={item.id} id={`comment-${item.id}`} data-status={item.status} className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 border-t border-line py-4 last:pb-0">
+            <li key={item.id} id={`comment-${item.id}`} data-status={item.status} data-target={reached === item.id || undefined} tabIndex={anchor === item.id ? -1 : undefined}
+              className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 border-t border-line py-4 outline-none transition-colors duration-state last:pb-0 data-target:-mx-3 data-target:rounded-md data-target:bg-accent-soft data-target:px-3">
               <Link href={`/u/${encodeURIComponent(item.author.publicAuthorId)}`} tabIndex={-1} aria-hidden="true" className="self-start rounded-full">
                 <Avatar id={item.author.publicAuthorId} name={item.author.displayName} color={item.author.avatarColor ?? undefined} />
               </Link>

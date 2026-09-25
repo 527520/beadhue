@@ -11,7 +11,7 @@ import { join } from 'node:path';
 
 function adminSources(): string[] {
   const files: string[] = [];
-  for (const dir of ['src/components/admin', 'src/app/admin']) {
+  for (const dir of ['src/components/admin', 'src/components/admin-ui', 'src/app/admin']) {
     const walk = (current: string): void => {
       for (const entry of readdirSync(current, { withFileTypes: true })) {
         const full = join(current, entry.name);

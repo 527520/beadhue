@@ -27,7 +27,7 @@ export interface SearchSuggestionsProps {
   layout: 'panel' | 'page';
   /** 点了任一建议（会跳转）；remember 为要记入最近搜索的关键词。 */
   onPick: (remember?: string) => void;
-  /** 手机搜索页的附加区块（票 04：按类目看看）。 */
+  /** 手机搜索页的附加区块。 */
   extras?: ReactNode;
 }
 

@@ -144,13 +144,15 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
 
 test('无补充说明的举报仍显示图纸或评论内容和定位入口', async ({ page }) => {
   await login(page, 'e2e-moderator@example.com', '/admin/reports');
-  const open = async (text: string) => {
+  const open = async (text: string | RegExp) => {
     await page.locator('tbody tr').filter({ hasText: text }).first().locator('[data-open]').click();
     return page.getByRole('dialog', { name: '举报 · 其他' });
   };
-  let drawer = await open('作品「E2E 已公开作品」');
+  // 三个浏览器项目共用一个库：前一个项目的审核用例通过修改版后，种子作品的公开标题会变成「E2E 待审修改版」。
+  const seedTitle = /E2E (已公开作品|待审修改版)/;
+  let drawer = await open(new RegExp(`作品「${seedTitle.source}」`));
   await expect(drawer.getByText('被举报对象编号')).toBeVisible();
-  await expect(drawer.getByText('E2E 已公开作品', { exact: true })).toBeVisible();
+  await expect(drawer.getByText(new RegExp(`^${seedTitle.source}$`))).toBeVisible();
   await expect(drawer.locator('canvas').first()).toBeVisible();
   await expect(drawer.getByRole('link', { name: '公开页' })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(drawer).toHaveCount(0);

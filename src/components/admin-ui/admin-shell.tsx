@@ -69,7 +69,7 @@ function BrandLink({ compact }: { compact: boolean }) {
     <Link href="/admin" aria-label={t.home} className="inline-flex min-w-0 items-center gap-2.5 rounded-sm text-ink focus-visible:focus-ring">
       <BrandMark />
       {compact ? null : <>
-        <b className="font-brand text-title-3 leading-none font-normal tracking-[0.04em] text-ink">{zhCN.shell.brandName}</b>
+        <b className="font-brand text-title-3 leading-none font-normal tracking-brand text-ink">{zhCN.shell.brandName}</b>
         <span className="text-caption whitespace-nowrap text-ink-3">{t.tag}</span>
       </>}
     </Link>
@@ -78,10 +78,12 @@ function BrandLink({ compact }: { compact: boolean }) {
 
 const SCOPES = ['works', 'users', 'comments', 'logs'] as const;
 
-function ScopeLinks({ q, onPick }: { q: string; onPick: () => void }) {
+/** 搜索范围与侧栏同一口径：审核员看不到人员、日志，也就不给这两个入口。 */
+function ScopeLinks({ q, role, onPick }: { q: string; role: UserRole; onPick: () => void }) {
+  const visible = new Set(visibleSections(role).map((section) => section.id));
   return (
     <div role="menu" aria-label={t.searchScopes} className="grid">
-      {SCOPES.map((scope, index) => (
+      {SCOPES.filter((scope) => visible.has(scope)).map((scope, index) => (
         <Link key={scope} role="menuitem" href={`/admin/${scope}?q=${encodeURIComponent(q)}`} onClick={onPick} className={cn(menuItemClass, 'hover:bg-bg-muted focus-visible:bg-bg-muted')}>
           <Search aria-hidden="true" strokeWidth={1.75} />
           <span className="min-w-0 flex-1 truncate">{t.scopes[scope]}「<b className="font-semibold text-ink">{q}</b>」</span>
@@ -93,7 +95,7 @@ function ScopeLinks({ q, onPick }: { q: string; onPick: () => void }) {
 }
 
 /** 顶栏搜索：输入后在下方列出搜索范围，回车默认搜作品；按 / 聚焦。 */
-function TopSearch() {
+function TopSearch({ role }: { role: UserRole }) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
@@ -132,14 +134,14 @@ function TopSearch() {
       />
       {open && value ? (
         <div data-ui="" className={cn(menuPopupClass, 'absolute top-full left-0 z-60 mt-2 w-full max-w-none')}>
-          <ScopeLinks q={value} onPick={() => setOpen(false)} />
+          <ScopeLinks q={value} role={role} onPick={() => setOpen(false)} />
         </div>
       ) : null}
     </form>
   );
 }
 
-function MobileSearch() {
+function MobileSearch({ role }: { role: UserRole }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -154,7 +156,7 @@ function MobileSearch() {
             <form role="search" aria-label={t.search} onSubmit={(event) => { event.preventDefault(); if (value) { setOpen(false); router.push(`/admin/works?q=${encodeURIComponent(value)}`); } }}>
               <SearchField value={q} onValueChange={setQ} placeholder={t.search} aria-label={t.search} autoComplete="off" autoFocus wrapperClassName="mb-2" />
             </form>
-            {value ? <ScopeLinks q={value} onPick={() => setOpen(false)} /> : null}
+            {value ? <ScopeLinks q={value} role={role} onPick={() => setOpen(false)} /> : null}
           </DialogBody>
         </DialogContent>
       </Dialog>
@@ -207,7 +209,7 @@ function AccountButton() {
 }
 
 /**
- * 后台外壳（原型 admin.js）：浅色侧栏（分组导航、待办计数、可折叠为图标栏；768–1023 默认图标栏、
+ * 后台外壳：浅色侧栏（分组导航、待办计数、可折叠为图标栏；768–1023 默认图标栏、
  * 展开时浮在内容上；手机为抽屉）+ 顶栏（面包屑、搜索、头像菜单）。后台不显示统计同意浮卡。
  */
 export function AdminShell({ role, children }: { role: UserRole; children: ReactNode }) {
@@ -265,7 +267,7 @@ export function AdminShell({ role, children }: { role: UserRole; children: React
           aria-label={t.nav}
           className={cn(
             'z-70 flex h-dvh flex-col border-r border-line bg-bg',
-            'max-md:invisible max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:w-[min(300px,86vw)] max-md:-translate-x-full max-md:shadow-dialog max-md:transition-[translate,visibility] max-md:duration-enter max-md:ease-standard',
+            'max-md:invisible max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:w-admin-drawer max-md:-translate-x-full max-md:shadow-dialog max-md:transition-[translate,visibility] max-md:duration-enter max-md:ease-standard',
             drawer && 'max-md:visible max-md:translate-x-0',
             'md:sticky md:top-0 md:z-40',
             compact ? 'md:w-16' : 'md:w-60',
@@ -329,11 +331,11 @@ export function AdminShell({ role, children }: { role: UserRole; children: React
               <span aria-current="page" className="font-semibold text-ink">{zhCN.adminUi.sections[current.id].label}</span>
             </nav>
             <span className="min-w-0 flex-1" />
-            <TopSearch />
-            <MobileSearch />
+            <TopSearch role={role} />
+            <MobileSearch role={role} />
             <AccountButton />
           </header>
-          <main id="main" tabIndex={-1} className="flex w-full max-w-[1680px] flex-1 flex-col gap-5 px-gutter pt-6 pb-10 outline-none max-md:gap-4 max-md:px-4 max-md:pt-4 max-md:pb-8">
+          <main id="main" tabIndex={-1} className="flex w-full max-w-admin flex-1 flex-col gap-5 px-gutter pt-6 pb-10 outline-none max-md:gap-4 max-md:px-4 max-md:pt-4 max-md:pb-8">
             {children}
           </main>
         </div>

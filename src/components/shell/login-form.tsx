@@ -27,7 +27,7 @@ export interface LoginFormProps {
 
 type Errors = { email?: string; password?: string; form?: string };
 
-/** 登录表单：登录弹窗与 /login 页共用；错误挂在字段下（原型 18-login）。 */
+/** 登录表单：登录弹窗与 /login 页共用；错误挂在字段下。 */
 export function LoginForm({ onSuccess, registerHref, forgotHref, notice, autoFocus, blockUnverified = false }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

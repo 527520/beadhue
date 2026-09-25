@@ -40,7 +40,7 @@ export interface ActionMenuProps {
 const sheetItemClass = cn(menuItemClass, 'min-h-12 text-body hover:bg-bg-muted focus-visible:bg-bg-muted');
 
 /**
- * 「…」更多操作（原型 openPopover + menuHtml）：桌面锚定菜单（项高 36、危险项置底分隔），
+ * 「…」更多操作：桌面锚定菜单（项高 36、危险项置底分隔），
  * 手机为底部面板（标题是对象名称）。菜单项的动作延后一拍执行，保证弹窗接管焦点前菜单已经收起。
  */
 export function ActionMenu({ label, title, entries, variant = 'on-image', size = 'md', className }: ActionMenuProps) {

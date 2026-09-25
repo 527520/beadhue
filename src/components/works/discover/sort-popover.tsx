@@ -12,7 +12,7 @@ import { DISCOVER_SORTS, discoverHref, sortLabel, type DiscoverState } from './d
 
 const t = zhCN.discover;
 
-/** 排序（原型 sortMenu）：推荐 / 最新发布 / 最多喜欢 / 最多引用，对勾表示当前项；手机为底部面板。 */
+/** 排序：推荐 / 最新发布 / 最多喜欢 / 最多引用，对勾表示当前项；手机为底部面板。 */
 export function SortPopover({ state }: { state: DiscoverState }) {
   const [open, setOpen] = useState(false);
   const current = sortLabel(state.sort);

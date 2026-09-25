@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 手机编辑器的外框件（原型 editor.js 手机分支：.ed-top 手机样式、.ed-mbottom / .ed-mstrip / .ed-mbar、.ed-mprog、.ed-mseg）：
+ * 手机编辑器的外框件：
  * 顶栏「返回 ｜ 编辑 / 跟拼 ｜ 撤销 重做 ｜ …」，底部工具栏（5 个工具 + 当前色）与最近用色条，
  * 跟拼的进度胶囊、浏览 / 标记切换与「上一行 ｜ 完成本行 ｜ 下一行」，以及底部面板的外壳。
  */
@@ -26,7 +26,7 @@ import { BackButton, BrushMenu } from './workspace-chrome';
 
 const t = zhCN.editorWorkspace;
 
-/** 底部面板里的菜单项（原型 .dialog .menu-item）：触屏 44px 高。 */
+/** 底部面板里的菜单项：触屏 44px 高。 */
 export const sheetItemClass = cn(menuItemClass, 'min-h-11 text-body hover:bg-bg-muted focus-visible:bg-bg-muted disabled:cursor-not-allowed disabled:text-ink-4 [&:disabled>svg]:text-ink-4');
 
 export interface MobileTopBarProps {
@@ -89,7 +89,7 @@ export interface MobileEditBarProps {
   onOpenColors: () => void;
 }
 
-/** 编辑模式的底部：最近用色条 + 5 个工具与当前色块（原型 mobileHTML 编辑分支）。 */
+/** 编辑模式的底部：最近用色条 + 5 个工具与当前色块。 */
 export function MobileEditBar({ tool, onTool, brushSize, onBrushSize, continuous, onContinuous, color, recent, onPickRecent, onOpenColors }: MobileEditBarProps) {
   const brushRef = useRef<HTMLButtonElement>(null);
   const [brushOpen, setBrushOpen] = useState(false);
@@ -162,7 +162,7 @@ export interface MobileStitchBarProps {
   onComplete: () => void;
 }
 
-/** 跟拼模式的底部：当前行颜色序列 + 「上一行 ｜ 完成本行 ｜ 下一行」（原型 mobileHTML 跟拼分支）。 */
+/** 跟拼模式的底部：当前行颜色序列 + 「上一行 ｜ 完成本行 ｜ 下一行」。 */
 export function MobileStitchBar({ pattern, session, onComplete }: MobileStitchBarProps) {
   const s = t.stitch;
   const { row } = session;
@@ -196,7 +196,7 @@ export function MobileStitchBar({ pattern, session, onComplete }: MobileStitchBa
   );
 }
 
-/** 跟拼顶部的进度胶囊（原型 .ed-mprog）：点开「跟拼进度」底部面板。 */
+/** 跟拼顶部的进度胶囊：点开「跟拼进度」底部面板。 */
 export function ProgressCapsule({ session, onOpen }: { session: StitchSession; onOpen: () => void }) {
   const s = t.stitch;
   const { row } = session;
@@ -216,7 +216,7 @@ export function ProgressCapsule({ session, onOpen }: { session: StitchSession; o
   );
 }
 
-/** 跟拼手势（浏览 / 标记）：手机浮在画布左下（原型 .ed-mseg）。 */
+/** 跟拼手势（浏览 / 标记）：手机浮在画布左下。 */
 export function StitchToolSwitch({ tool, onTool, className }: { tool: StitchTool; onTool: (tool: StitchTool) => void; className?: string }) {
   return (
     <SegmentedControl<StitchTool>

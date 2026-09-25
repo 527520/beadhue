@@ -21,6 +21,8 @@ export const LIMITS = {
   targetColorCount: { min: 2, max: 128 },
   gridCells: 200 * 200,
   designNameLength: 100,
+  /** 搜索词最长字符数（发现页、顶栏搜索与列表接口同一上限）。 */
+  searchQueryLength: 80,
   projectFileBytes: 5 * 1024 * 1024,
   designsPerUser: 100,
   /** Includes active rows and compact tombstones retained for sync. */

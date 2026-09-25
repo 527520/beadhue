@@ -17,7 +17,7 @@ function dimensionValueLabel(t: Dashboard, dimension: string, value: string): st
 const shanghaiDay = (time: number) => new Date(time + 8 * 3600000).toISOString().slice(0, 10);
 const noteClass = 'rounded-md border border-line bg-bg px-3 py-2.5 text-body-sm text-ink-2';
 
-/** 匿名分析（原型 admin/ops.js analyticsSection）：范围芯片、四张指标卡、每日趋势、转化路径、分类统计；数据来自同意统计的访客。 */
+/** 匿名分析：范围芯片、四张指标卡、每日趋势、转化路径、分类统计；数据来自同意统计的访客。 */
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<DashboardSearchParams> }) {
   const actor = await getSessionActor();
   if (!authorize(actor, 'analytics:read')) forbidden();
@@ -25,7 +25,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const params = await searchParams;
   const { requested, query, dimension, funnel, invalid, filtersIgnored } = resolveDashboardQuery(params, now);
   const db = getDb();
-  // 指标卡与趋势按原型看「生成图纸」「导出文件」：各按事件名单独取每日数（不受筛选里的事件名影响）。
+  // 指标卡与趋势看「生成图纸」「导出文件」：各按事件名单独取每日数（不受筛选里的事件名影响）。
   const byEvent = (eventName: string) => queryAnalyticsTrend(db, { ...query, eventName }, now);
   const [summary, trend, breakdown, funnelResult, generatedTrend, exportedTrend] = await Promise.all([
     queryAnalyticsSummary(db, query, now), queryAnalyticsTrend(db, query, now),

@@ -15,7 +15,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/components/ui/use-media-query';
 
 const t = zhCN.detail.viewer;
-/** 舞台宽度 ≥600 时工具显示文字，更窄只留图标（原型 @container wd-stage）。 */
+/** 舞台宽度 ≥600 时工具显示文字，更窄只留图标。 */
 const WIDE_STAGE = 600;
 
 export interface ViewSettings {
@@ -105,7 +105,7 @@ function IconTool({ label, icon, onClick, disabled, desk }: { label: string; ico
 }
 
 /**
- * 图纸查看器（原型 detail.js createViewer）：中性舞台、豆粒 / 方格、按钮 / 滚轮 / 双指 / 双击 / 键盘缩放平移，
+ * 图纸查看器：中性舞台、豆粒 / 方格、按钮 / 滚轮 / 双指 / 双击 / 键盘缩放平移，
  * 放大到每格 ≥14px 自动出现网格，方格且每格 ≥18px 才画色号；工具条浮在舞台内。页面与全屏共用显示偏好。
  */
 export function PatternViewer(props: PatternViewerProps) {
@@ -418,14 +418,14 @@ export function PatternViewer(props: PatternViewerProps) {
       data-slot="pattern-viewer"
       className={cn(
         'relative w-full touch-pan-y overflow-hidden bg-bg-subtle outline-none select-none focus-visible:focus-ring data-[pannable=true]:cursor-grab data-[panning=true]:cursor-grabbing',
-        full ? 'min-h-0 flex-1 rounded-lg' : 'aspect-square rounded-xl md:max-h-[calc(100dvh-var(--spacing-topbar)-170px)] md:min-h-100 max-md:rounded-none',
+        full ? 'min-h-0 flex-1 rounded-lg' : 'aspect-square rounded-xl md:max-h-viewer-stage md:min-h-100 max-md:rounded-none',
         className,
       )}
     >
       <canvas ref={canvasRef} role="img" aria-label={t.canvas(title, width, height, colorCount)} className="absolute inset-0 size-full" />
       <p className="sr-only" id={keysId}>{t.keys}</p>
       {bar.hint ? (
-        <p role="status" className="pointer-events-none absolute top-3 left-1/2 z-2 max-w-[calc(100%-24px)] -translate-x-1/2 truncate rounded-full bg-bg px-3 py-1 text-caption text-ink-2 shadow-float ring-1 ring-line animate-fade-in">
+        <p role="status" className="pointer-events-none absolute top-3 left-1/2 z-2 max-w-inset-bar -translate-x-1/2 truncate rounded-full bg-bg px-3 py-1 text-caption text-ink-2 shadow-float ring-1 ring-line animate-fade-in">
           {bar.hint}
         </p>
       ) : null}

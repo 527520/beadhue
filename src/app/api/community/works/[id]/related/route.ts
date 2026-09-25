@@ -10,7 +10,7 @@ import { enforcePublicReadLimit } from '@/lib/security/publicRateLimit';
 const limitSchema = z.coerce.number().int().min(1).max(RELATED_MAX_LIMIT).default(RELATED_DEFAULT_LIMIT);
 
 /**
- * 相似作品（R15-02）：公开读，按 IP 计小时窗口；登录后另计账号总量（不计「不同作品数」，
+ * 相似作品：公开读，按 IP 计小时窗口；登录后另计账号总量（不计「不同作品数」，
  * 否则每看一张详情就吃掉 8 件额度）。登录响应带喜欢标记，不进共享缓存。
  */
 async function get(request: Request, { params }: { params: Promise<{ id: string }> }) {

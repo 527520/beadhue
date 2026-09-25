@@ -65,7 +65,7 @@ export function LoginDialogProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** 没有 Provider（单元测试里单独渲染的旧组件）时返回 null，调用方退回普通登录链接。 */
+/** 没有 Provider（单元测试里单独渲染组件）时返回 null，调用方退回普通登录链接。 */
 export function useLoginDialog(): LoginDialogApi | null {
   return useContext(LoginDialogContext);
 }
@@ -83,7 +83,7 @@ export function useRequireLogin(): (action: () => void) => void {
 }
 
 /**
- * 登录链接（旧页面的「登录后继续」入口）：普通点击改为弹出登录弹窗，登录后刷新当前页（服务端按新登录态重渲染）；
+ * 登录链接（「登录后继续」入口）：普通点击改为弹出登录弹窗，登录后刷新当前页（服务端按新登录态重渲染）；
  * 中键 / 新标签与没有 Provider 时仍走 /login?next=。
  */
 export function useLoginLinkClick(): (event: MouseEvent<HTMLAnchorElement>) => void {

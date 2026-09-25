@@ -17,6 +17,21 @@ describe('发现页地址状态', () => {
     expect(readDiscoverState({ cat: '猫咪', tag: '花朵' }).cat).toBe('猫咪');
   });
 
+  it('旧豆社链接的制作规格与起止日期尽量换成新筛选，表达不了的按不限处理', () => {
+    const now = Date.parse('2026-09-25T12:00:00+08:00');
+    expect(readDiscoverState({ boardProfile: '2.6mm-52' }, now).spec).toBe('2.6mm');
+    expect(readDiscoverState({ boardProfile: '5mm-29', spec: '2.6mm' }, now).spec).toBe('2.6mm');
+    expect(readDiscoverState({ from: '2026-09-20' }, now).since).toBe('7');
+    expect(readDiscoverState({ from: '2026-09-01', to: '2026-09-25' }, now).since).toBe('30');
+    expect(readDiscoverState({ from: '2026-06-01' }, now).since).toBe('');
+    expect(readDiscoverState({ from: '2026-09-20', to: '2026-09-21' }, now).since).toBe('');
+    expect(discoverHref(readDiscoverState({ boardProfile: '5mm-29', from: '2026-09-20' }, now))).toBe('/?spec=5mm&since=7');
+  });
+
+  it('搜索词超过接口上限时截断，不把整页判成筛选无效', () => {
+    expect(readDiscoverState({ q: '猫'.repeat(120) }).q).toBe('猫'.repeat(80));
+  });
+
   it('已选芯片：四组筛选 + 旧链接带来的作者与色板；全部清除只去掉筛选', () => {
     const state = readDiscoverState({ size: 's', since: '90', spec: '5mm', author: '小鹿', palette: 'MARD', cat: '猫咪' });
     expect(activeFilterCount(state)).toBe(3);

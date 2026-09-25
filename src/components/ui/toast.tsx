@@ -39,7 +39,7 @@ function ToastBridge({ children }: { children: ReactNode }) {
   return <ShowToastContext value={show}>{children}</ShowToastContext>;
 }
 
-/** 根布局挂一次（票 03），全站可用。 */
+/** 根布局挂一次，全站可用。 */
 export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <BaseToast.Provider timeout={4000} limit={3}>

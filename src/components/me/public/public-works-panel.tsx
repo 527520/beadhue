@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, CircleAlert, Clock, Eye, FolderOpen, Link2, Pencil, Scale, Send, Undo2 } from 'lucide-react';
+import { ArrowRight, CircleAlert, Clock, Eye, FolderOpen, Link2, Pencil, Scale, Send, Trash2, Undo2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Fragment, useRef, useState } from 'react';
@@ -17,7 +17,7 @@ import { useLoginDialog } from '@/components/shell/login-dialog';
 import { isDefiniteCommunityRejection, postCommunityCommand } from '@/components/community/communityCommand';
 import { ActionMenu, type ActionEntry } from '../action-menu';
 import { ConfirmDialog } from '../confirm-dialog';
-import { formatCount } from '../format';
+import { formatCount } from '@/lib/format';
 import { useMe } from '../me-context';
 import { ownSummary, type OwnItem } from './own-works-model';
 
@@ -121,7 +121,7 @@ function OwnCard({ item, entries }: { item: OwnItem; entries: readonly ActionEnt
 
 type Confirming = { item: OwnItem; action: Exclude<Action, 'submit'> };
 
-/** 我的 · 公开作品（原型 renderPublic）：摘要行 + 查看公开主页，作品卡带状态徽标与「…」菜单。 */
+/** 我的 · 公开作品：摘要行 + 查看公开主页，作品卡带状态徽标与「…」菜单。 */
 export function PublicWorksPanel({ items, guest }: { items: OwnItem[] | null; guest: boolean }) {
   const toast = useToast();
   const login = useLoginDialog();
@@ -130,7 +130,8 @@ export function PublicWorksPanel({ items, guest }: { items: OwnItem[] | null; gu
   const [confirming, setConfirming] = useState<Confirming | null>(null);
   const command = useCommunityCommand((action) => {
     setConfirming(null);
-    toast(action === 'submit' ? p.done.submit : action === 'withdraw_work' ? p.done.withdrawWork : confirming?.item.latest?.status === 'draft' ? p.done.withdrawDraft : p.done.withdrawReview, { icon: icon(action === 'submit' ? Send : Undo2) });
+    const removedRecord = action === 'withdraw_work' && !confirming?.item.publicHref;
+    toast(action === 'submit' ? p.done.submit : removedRecord ? p.done.removeRecord : action === 'withdraw_work' ? p.done.withdrawWork : confirming?.item.latest?.status === 'draft' ? p.done.withdrawDraft : p.done.withdrawReview, { icon: icon(action === 'submit' ? Send : removedRecord ? Trash2 : Undo2) });
     refreshStats();
   });
 
@@ -165,6 +166,8 @@ export function PublicWorksPanel({ items, guest }: { items: OwnItem[] | null; gu
     if (item.kind === 'review') danger.push({ key: 'withdraw-review', label: p.actions.withdrawReview, icon: icon(Undo2), danger: true, onSelect: () => startWithdraw(item, 'withdraw_revision') });
     if (item.kind === 'draft') danger.push({ key: 'withdraw-draft', label: p.actions.withdrawDraft, icon: icon(Undo2), danger: true, onSelect: () => startWithdraw(item, 'withdraw_revision') });
     if (item.publicHref && item.kind !== 'removed') danger.push({ key: 'withdraw-work', label: p.actions.withdrawWork, icon: icon(Undo2), danger: true, onSelect: () => startWithdraw(item, 'withdraw_work') });
+    // 从没公开过的未通过投稿：整件撤回后不再出现在列表里，对作者来说就是删掉这条记录。
+    if (item.kind === 'rejected' && !item.publicHref) danger.push({ key: 'remove-record', label: p.actions.removeRecord, icon: icon(Trash2), danger: true, onSelect: () => startWithdraw(item, 'withdraw_work') });
     return danger.length ? [...list, 'separator', ...danger] : list;
   };
 
@@ -172,11 +175,13 @@ export function PublicWorksPanel({ items, guest }: { items: OwnItem[] | null; gu
   const target = confirming;
   const c = p.confirm;
   const copy = target
-    ? target.action === 'withdraw_work'
-      ? { title: c.withdrawWorkTitle, text: c.withdrawWorkText(target.item.title, formatCount(target.item.likes), formatCount(target.item.comments)), label: p.actions.withdrawWork }
-      : target.item.kind === 'draft'
-        ? { title: c.withdrawDraftTitle, text: c.withdrawDraftText(target.item.title), label: p.actions.withdrawDraft }
-        : { title: c.withdrawReviewTitle, text: c.withdrawReviewText(target.item.title), label: p.actions.withdrawReview }
+    ? target.action === 'withdraw_work' && !target.item.publicHref
+      ? { title: c.removeRecordTitle, text: c.removeRecordText(target.item.title), label: p.actions.removeRecord }
+      : target.action === 'withdraw_work'
+        ? { title: c.withdrawWorkTitle, text: c.withdrawWorkText(target.item.title, formatCount(target.item.likes), formatCount(target.item.comments)), label: p.actions.withdrawWork }
+        : target.item.kind === 'draft'
+          ? { title: c.withdrawDraftTitle, text: c.withdrawDraftText(target.item.title), label: p.actions.withdrawDraft }
+          : { title: c.withdrawReviewTitle, text: c.withdrawReviewText(target.item.title), label: p.actions.withdrawReview }
     : null;
 
   return (

@@ -20,7 +20,7 @@ import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/toast';
 import { useLoginDialog } from '@/components/shell/login-dialog';
-import { relativeTime } from '@/components/create/create-model';
+import { relativeTime } from '@/lib/format';
 import { paletteSizes } from '@/components/create/palette-choices';
 import { deletePalette, listPalettes, newPaletteId, savePalette, type PaletteRecord } from '@/components/palettes/api';
 import { ActionMenu } from '../action-menu';
@@ -273,7 +273,7 @@ function PaletteViewer({ viewing, targetDesignId, defaultId, onSetDefault, onClo
 }
 
 /**
- * 色板（原型 renderPalettes）：「我的色板」（卡片、色带、编辑 / 复制 / 删除、新建）+「内置色板」（卡片 → 可搜索色块弹窗）。
+ * 色板：「我的色板」（卡片、色带、编辑 / 复制 / 删除、新建）+「内置色板」（卡片 → 可搜索色块弹窗）。
  * mode="public" 是 /palettes 公开页：只有内置部分，未登录可看。带 ?designId= 从工作台进来时，弹窗里可「用于当前图纸」。
  */
 export function PalettesPanel({ mode = 'me' }: { mode?: 'me' | 'public' }) {

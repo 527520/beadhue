@@ -2,7 +2,7 @@ import { cn } from '@/lib/cn';
 
 const CIRCUMFERENCE = 2 * Math.PI * 6;
 
-/** 跟拼进度环（原型 ring）：14px，浅灰轨道 + 深墨进度，从 12 点方向顺时针走。装饰性，百分比写在旁边。 */
+/** 跟拼进度环：14px，浅灰轨道 + 深墨进度，从 12 点方向顺时针走。装饰性，百分比写在旁边。 */
 export function ProgressRing({ percent, className }: { percent: number; className?: string }) {
   const clamped = Math.max(0, Math.min(100, percent));
   return (

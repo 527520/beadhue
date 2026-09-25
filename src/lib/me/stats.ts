@@ -12,7 +12,7 @@ export interface MyStats {
   likes: number;
 }
 
-/** 「我的」页头统计（R15-02）：设计数、公开作品数、获赞总数。 */
+/** 「我的」页头统计：设计数、公开作品数、获赞总数。 */
 export async function getMyStats(db: AnyDatabase, userId: string): Promise<MyStats> {
   const [[design], [works]] = await Promise.all([
     db.select({ count: countExpression }).from(designs).where(and(eq(designs.userId, userId), isNull(designs.deletedAt))),

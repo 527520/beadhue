@@ -1,10 +1,10 @@
 /**
- * 编辑器工作区的纯数据与相机数学（原型 editor/viewport.js、catalog.js、panels.js）。
+ * 编辑器工作区的纯数据与相机数学。
  * 不依赖 DOM，服务端也能调用；绘制与手势在 editor-canvas / use-editor-document。
  */
 import { describeColorName } from '@/lib/palettes/colorNames';
 import type { GridCamera, GridViewportSize } from '@/lib/render/gridViewport';
-import type { PaletteColor, PatternStatsItem } from '@/lib/types';
+import type { PaletteColor } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 
 export type EditorTool = 'hand' | 'brush' | 'eraser' | 'fill' | 'pick' | 'replace';
@@ -14,7 +14,7 @@ export type PanelTab = 'colors' | 'adjust' | 'info';
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'quota' | 'error' | 'unavailable';
 export type CloudSaveState = 'pending' | 'syncing' | 'synced';
 
-/** 工具与快捷键（原型 TOOLS）。 */
+/** 工具与快捷键。 */
 export const TOOL_KEYS: ReadonlyArray<[EditorTool, string]> = [
   ['hand', 'H'],
   ['brush', 'B'],
@@ -29,7 +29,7 @@ export const toolForKey = (key: string): EditorTool | null =>
 
 // ---------- 相机 ----------
 
-/** 100% 缩放对应的格宽（原型 BASE_CELL）。 */
+/** 100% 缩放对应的格宽。 */
 export const BASE_CELL = 20;
 export const MAX_CELL = 80;
 const MIN_CELL = 1;
@@ -40,7 +40,7 @@ export const ZOOM_PRESETS = [50, 100, 200, 400] as const;
 export const CODES_MIN_CELL = 18;
 /** 适配时四周留给浮层（尺寸胶囊、原图胶囊、缩放胶囊）的边距。 */
 export const FIT_MARGINS = { top: 60, right: 40, bottom: 76, left: 40 } as const;
-/** 手机画布全屏：浮层更小，边距也更窄（原型 margins 的手机分支）。 */
+/** 手机画布全屏：浮层更小，边距也更窄。 */
 export const MOBILE_FIT_MARGINS = { top: 52, right: 16, bottom: 64, left: 16 } as const;
 export type FitMargins = { top: number; right: number; bottom: number; left: number };
 /** 平移时至少留在视野里的图纸像素。 */
@@ -98,7 +98,7 @@ export function revealCell(camera: GridCamera, row: number, col: number, size: G
 }
 
 /**
- * 让图纸上的一块区域（格）进入视野（原型 viewport.reveal）：放不下就缩小到正好放下并居中；
+ * 让图纸上的一块区域（格）进入视野：放不下就缩小到正好放下并居中；
  * 放得下但在边距外就居中；已经在视野里则不动。
  */
 export function revealRectCamera(camera: GridCamera, rect: { x: number; y: number; w: number; h: number }, size: GridViewportSize, m: FitMargins = FIT_MARGINS): GridCamera {
@@ -145,11 +145,6 @@ export function colorLabel(color: Pick<PaletteColor, 'code' | 'hex'> | null | un
 
 export const sameColor = (a: PaletteColor | null | undefined, b: PaletteColor | null | undefined) =>
   Boolean(a && b && a.hex.toUpperCase() === b.hex.toUpperCase() && (a.code ?? '') === (b.code ?? ''));
-
-/** 图纸用色：统计已按颗数降序（引擎 computeStats）。 */
-export function usedColors(stats: readonly PatternStatsItem[]): PatternStatsItem[] {
-  return [...stats].sort((a, b) => b.count - a.count || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
-}
 
 export function matchesColorQuery(color: PaletteColor, query: string): boolean {
   const q = query.trim().toLowerCase();

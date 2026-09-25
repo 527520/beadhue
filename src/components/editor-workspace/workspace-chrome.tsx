@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * 编辑器的外框件（原型 editor.js topHTML / toolsHTML / zoomHTML）：顶栏的设计名与保存状态、左工具栏（编辑 / 跟拼）、
+ * 编辑器的外框件：顶栏的设计名与保存状态、左工具栏（编辑 / 跟拼）、
  * 笔刷大小浮层、底部缩放胶囊（手机为右下角的精简版）。
  */
 import { ArrowLeft, Check, CircleAlert, CircleCheck, CloudCheck, CloudOff, CloudUpload, Eraser, Grid2x2, Grid3x3, Hand, Hash, LoaderCircle, PaintBucket, Paintbrush, Pencil, Pipette, Replace, Scan, ZoomIn, ZoomOut } from 'lucide-react';
-import { useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { cn } from '@/lib/cn';
 import { IconButton } from '@/components/ui/icon-button';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
@@ -172,8 +172,18 @@ export function ToolRail({ tool, onTool, brushSize, onBrushSize, color, showColo
 
 const menuRowClass = 'flex min-h-9 w-full items-center gap-2.5 rounded-menu-item px-2.5 text-left text-body-sm text-ink hover:bg-bg-muted focus-visible:bg-bg-muted focus-visible:outline-none';
 
+/** role=menu 的方向键约定：上下移动、Home / End 到两端，首尾循环。 */
+function moveMenuFocus(event: KeyboardEvent<HTMLDivElement>) {
+  const items = [...event.currentTarget.querySelectorAll<HTMLElement>('[role^="menuitem"]')];
+  const index = items.indexOf(document.activeElement as HTMLElement);
+  const next = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: items.length - 1 }[event.key];
+  if (next === undefined || !items.length) return;
+  event.preventDefault();
+  items[(next + items.length) % items.length].focus();
+}
+
 /**
- * 笔刷大小浮层（原型 brushMenu）：桌面在画笔右侧，手机在底部工具栏上方。
+ * 笔刷大小浮层：桌面在画笔右侧，手机在底部工具栏上方。
  * 手机多一项「连续绘制」：触屏默认精准模式（拖动对准、松手只改最终格），连续插值要在会话内显式开启（D5）。
  */
 export function BrushMenu({ anchor, open, onOpenChange, side, size, onSize, continuous }: {
@@ -188,7 +198,7 @@ export function BrushMenu({ anchor, open, onOpenChange, side, size, onSize, cont
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverContent anchor={anchor} side={side} align={side === 'top' ? 'end' : 'start'} className={cn('grid', continuous ? 'w-60' : 'w-50')}>
-        <div role="menu" aria-label={t.brushSize} className="grid">
+        <div role="menu" aria-label={t.brushSize} className="grid" onKeyDown={moveMenuFocus}>
           <span className="px-2.5 pt-2 pb-1 text-caption text-ink-3">{t.brushSize}</span>
           {([1, 2, 3] as const).map((option) => (
             <button
@@ -231,7 +241,7 @@ export function BrushMenu({ anchor, open, onOpenChange, side, size, onSize, cont
 
 const STITCH_TOOL_ICONS: Record<StitchTool, typeof Hand> = { browse: Hand, mark: CircleCheck };
 
-/** 跟拼的左工具栏：浏览（H）/ 标记（M）（原型 STITCH_TOOLS）。 */
+/** 跟拼的左工具栏：浏览（H）/ 标记（M）。 */
 export function StitchToolRail({ tool, onTool }: { tool: StitchTool; onTool: (tool: StitchTool) => void }) {
   return (
     <nav aria-label={t.stitch.tools} className="relative z-15 flex flex-col items-center gap-1 border-r border-line bg-bg py-3">

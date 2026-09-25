@@ -4,7 +4,7 @@ import { Check, CloudOff, TriangleAlert } from 'lucide-react';
 import { zhCN } from '@/messages/zh-CN';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableCell, TableHead, TableRow } from '@/components/ui/table';
-import { relativeTime } from '@/components/create/create-model';
+import { relativeTime } from '@/lib/format';
 import { ActionMenu, type ActionEntry } from '../action-menu';
 import { ProgressRing } from '../progress-ring';
 import { DesignMedia, openClick, openHref } from './design-card';
@@ -30,7 +30,7 @@ function StatusCell({ design, cloud }: { design: LibraryDesign; cloud: boolean }
   );
 }
 
-/** 列表视图（原型 designTable，仅桌面）：点行任意处打开，名称是链接，「…」在行尾。 */
+/** 列表视图：点行任意处打开，名称是链接，「…」在行尾。 */
 export function DesignTable({ designs, cloud, now, entries, onOpen }: { designs: LibraryDesign[]; cloud: boolean; now: number; entries: (design: LibraryDesign) => readonly ActionEntry[]; onOpen: (design: LibraryDesign) => void }) {
   const c = t.columns;
   return (

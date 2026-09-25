@@ -15,7 +15,7 @@ const d = zhCN.adminUi.dialog;
 export interface CommandState { busy: boolean; uncertain: boolean; error: string | null; locked: boolean; retry: () => Promise<void> }
 
 /**
- * 详情抽屉（原型 overlay.js openDrawer）：桌面右侧 480px，手机底部面板；标题后可跟状态徽标。
+ * 详情抽屉：桌面右侧 480px，手机底部面板；标题后可跟状态徽标。
  * 底部：危险描边按钮在左、次按钮与主按钮在右；手机上危险按钮单独占一行放最后。
  */
 export function AdminDrawer({ open, onOpenChange, title, badges, children, footer, label }: {
@@ -69,7 +69,7 @@ export interface ReasonDialogProps {
 }
 
 /**
- * 填写理由的确认弹窗（原型 overlay.js reasonDialog）：理由至少 3 个字（写入审计），错误挂在字段下方；
+ * 填写理由的确认弹窗：理由至少 3 个字（写入审计），错误挂在字段下方；
  * 常用理由芯片一键填入；最终动作按钮危险操作用 danger。提交后由调用方在成功回调里关闭。
  */
 export function ReasonDialog(props: ReasonDialogProps) {

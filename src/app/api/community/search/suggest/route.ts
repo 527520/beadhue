@@ -5,7 +5,7 @@ import { config } from '@/lib/config';
 import { AppError } from '@/lib/errors';
 import { enforcePublicIpLimit } from '@/lib/security/publicRateLimit';
 
-/** 搜索建议（R15-02）：标签、作品、作者各 ≤5；空关键词给「大家在搜」。按 IP 独立节流。 */
+/** 搜索建议：标签、作品、作者各 ≤5；空关键词给「大家在搜」。按 IP 独立节流。 */
 async function get(request: Request) {
   const q = new URL(request.url).searchParams.get('q') ?? '';
   if (q.trim().length > 40) throw new AppError('VALIDATION', '搜索词最多 40 个字符', 'q');

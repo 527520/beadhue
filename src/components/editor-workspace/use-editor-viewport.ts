@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 编辑器画布的相机（原型 editor/viewport.js）：居中适配、按档位缩放、以指针为中心的滚轮缩放、平移。
+ * 编辑器画布的相机：居中适配、按档位缩放、以指针为中心的滚轮缩放、平移。
  * 只改视图，永不写图纸；事件处理里要读同一拍的写入时用 readCamera()。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';

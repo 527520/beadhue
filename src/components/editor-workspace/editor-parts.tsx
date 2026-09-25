@@ -1,6 +1,6 @@
 'use client';
 
-/** 编辑器里反复出现的小件：豆粒色块、面板分节、带说明的开关行（原型 editor.css .bead-sw / .ed-sec / .ed-switch）。 */
+/** 编辑器里反复出现的小件：豆粒色块、面板分节、带说明的开关行。 */
 import { useId, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Switch } from '@/components/ui/checkbox';
@@ -64,7 +64,7 @@ export function SwitchRow({ label, hint, checked, onCheckedChange, disabled }: {
   );
 }
 
-/** 说明条：浅底 + 图标 + 文字（原型 .ed-dialog-note / .ed-callout）。 */
+/** 说明条：浅底 + 图标 + 文字。 */
 export function Note({ icon, children, tone = 'neutral', className }: { icon?: ReactNode; children: ReactNode; tone?: 'neutral' | 'warning'; className?: string }) {
   return (
     <div className={cn('flex items-start gap-2 rounded-md p-3 text-body-sm text-ink-2 [&>svg]:mt-0.75 [&>svg]:size-4 [&>svg]:shrink-0', tone === 'warning' ? 'bg-warning-soft [&>svg]:text-warning' : 'bg-bg-subtle [&>svg]:text-ink-3', className)}>

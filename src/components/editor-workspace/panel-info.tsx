@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 右面板「信息」（原型 editor/panels.js infoPanel）：尺寸、颗数、颜色、底板示意、规格、色板、原图同步状态，
+ * 右面板「信息」：尺寸、颗数、颜色、底板示意、规格、色板、原图同步状态，
  * 以及采购清单（每包颗数、按色取整的包数、复制清单）。
  */
 import { ChevronDown, Copy } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/button';
 import { menuItemClass } from '@/components/ui/menu';
+import { Textarea } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/toast';
 import { useAuthStatus } from '@/components/account/useAuthStatus';
@@ -195,7 +196,7 @@ export function InfoPanel({ designId, designName, width, height, stats, total, b
             {manualText !== null ? (
               <label className="grid gap-1.5 text-caption text-ink-3">
                 {t.copyFailed}
-                <textarea readOnly rows={6} value={manualText} onFocus={(event) => event.currentTarget.select()} className="rounded-md border border-line-strong p-2 font-mono text-caption text-ink" />
+                <Textarea readOnly rows={6} value={manualText} onFocus={(event) => event.currentTarget.select()} className="min-h-0 px-2 py-2 font-mono text-caption" />
               </label>
             ) : null}
           </>

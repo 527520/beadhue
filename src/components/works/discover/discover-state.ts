@@ -2,6 +2,7 @@
  * 发现页的地址状态（D66：`/?q=&cat=&sort=&size=&colors=&spec=&since=`），服务端页面与客户端组件共用。
  * 缺省值（cat=all、sort=rec）不写进地址；游标不属于状态，只在「加载更多」时临时拼上。
  */
+import { LIMITS } from '@/lib/appInfo';
 import type { TagIcon } from '@/lib/community/tagIcon';
 import { zhCN } from '@/messages/zh-CN';
 
@@ -44,17 +45,36 @@ function pick(params: RawParams, key: string): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/** 地址参数 → 状态。r14 的 `tag` 并入类目（`cat`）；旧排序值换成新值。 */
-export function readDiscoverState(params: RawParams): DiscoverState {
+/** 旧豆社的制作规格（boardProfile，如 2.6mm-52）按豆径并入 spec。 */
+function legacySpec(boardProfile: string): string {
+  if (boardProfile.startsWith('5mm')) return '5mm';
+  if (boardProfile.startsWith('2.6mm')) return '2.6mm';
+  return '';
+}
+
+/** 旧豆社的起止日期：只有开到今天为止的区间能换成「一周内 / 一个月内」，更早或有截止日的区间表达不了，按不限处理。 */
+function legacySince(from: string, to: string, now: number): string {
+  const start = Date.parse(`${from}T00:00:00+08:00`);
+  if (!from || !Number.isFinite(start)) return '';
+  if (to && Date.parse(`${to}T23:59:59+08:00`) < now) return '';
+  const days = (now - start) / 86_400_000;
+  return days < 0 ? '' : days <= 7 ? '7' : days <= 30 ? '30' : '';
+}
+
+/**
+ * 地址参数 → 状态。r14 的 `tag` 并入类目（`cat`）；旧排序值换成新值；旧的 boardProfile / from / to 尽量换成新筛选（D66）。
+ * 搜索词超过接口上限时截断，而不是整页判成「筛选条件无效」。
+ */
+export function readDiscoverState(params: RawParams, now: number = Date.now()): DiscoverState {
   const sort = pick(params, 'sort');
   return {
-    q: pick(params, 'q'),
+    q: Array.from(pick(params, 'q')).slice(0, LIMITS.searchQueryLength).join(''),
     cat: pick(params, 'cat') || pick(params, 'tag') || 'all',
     sort: LEGACY_SORTS[sort] ?? (sort || 'rec'),
     size: pick(params, 'size'),
     colors: pick(params, 'colors'),
-    spec: pick(params, 'spec'),
-    since: pick(params, 'since'),
+    spec: pick(params, 'spec') || legacySpec(pick(params, 'boardProfile')),
+    since: pick(params, 'since') || legacySince(pick(params, 'from'), pick(params, 'to'), now),
     author: pick(params, 'author'),
     palette: pick(params, 'palette'),
   };

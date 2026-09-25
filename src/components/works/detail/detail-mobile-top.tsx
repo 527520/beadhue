@@ -6,7 +6,7 @@ import { zhCN } from '@/messages/zh-CN';
 import { MobileTopBack } from '@/components/shell/mobile-topbar';
 import { MoreMenu, ShareMenu, type ShareWork } from './work-actions';
 
-/** 手机顶栏（原型 detail mobileTop）：返回、作品名（标题滚出视野后淡入）、分享、更多。 */
+/** 手机顶栏：返回、作品名（标题滚出视野后淡入）、分享、更多。 */
 export function DetailMobileTop({ work, backHref }: { work: ShareWork; backHref: string }) {
   const [titleShown, setTitleShown] = useState(false);
   useEffect(() => {

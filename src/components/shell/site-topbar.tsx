@@ -70,7 +70,7 @@ export function SiteTopbar({ nav, cta, account, query }: { nav: SiteNav; cta: To
             </ShellLink>
           ))}
         </nav>
-        <SearchBox key={query} query={query} className="ml-2 min-w-0 flex-[0_1_440px] max-lg:ml-0 max-lg:flex-auto" />
+        <SearchBox key={query} query={query} className="ml-2 min-w-0 grow-0 shrink basis-search max-lg:ml-0 max-lg:flex-auto" />
         <div className="ml-auto flex items-center gap-2">
           {account ? <NotificationBell /> : null}
           {cta ? <UploadButton variant={cta} /> : null}

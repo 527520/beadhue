@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 /**
- * 页内提示横幅（原型 .me-banner）：浅灰底（提示）/ 暖黄底（警告）、图标 + 一句话 + 右侧一个动作。
+ * 页内提示横幅：浅灰底（提示）/ 暖黄底（警告）、图标 + 一句话 + 右侧一个动作。
  * 手机上折行；wideAction 时动作独占一行并与正文对齐。
  */
 export function Banner({ tone = 'neutral', icon, action, wideAction, role, children }: { tone?: 'neutral' | 'warning'; icon: ReactNode; action?: ReactNode; wideAction?: boolean; role?: 'status' | 'alert'; children: ReactNode }) {

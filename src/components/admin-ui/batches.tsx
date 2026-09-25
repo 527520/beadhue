@@ -39,7 +39,7 @@ function DraftThumb({ draft }: { draft: StoredBatch['drafts'][number] }) {
   const pattern = useMemo(() => previewPattern(draft.preview), [draft.preview]);
   return (
     <li className="grid min-w-0 justify-items-start gap-1.5 text-caption text-ink-2">
-      <span className="grid aspect-square w-full place-items-center rounded-md bg-bg-subtle inset-ring-1 inset-ring-line"><BeadImage pattern={pattern} alt={t.preview(draft.title)} className="size-[86%]" /></span>
+      <span className="grid aspect-square w-full place-items-center rounded-md bg-bg-subtle inset-ring-1 inset-ring-line"><BeadImage pattern={pattern} alt={t.preview(draft.title)} className="size-thumb-fill" /></span>
       <span className="max-w-full truncate">{draft.title}</span>
       <Badge tone={draft.status === 'published' ? 'success' : 'neutral'}>{t.drawer.draftStatus[draft.status] ?? draft.status}</Badge>
     </li>
@@ -56,7 +56,7 @@ function Progress({ batch }: { batch: StoredBatch }) {
   );
 }
 
-/** 新建批次（原型 newBatchDialog）：先起名，再进工作室选图；色板与制作规格在工作室第一步设置。 */
+/** 新建批次：先起名，再进工作室选图；色板与制作规格在工作室第一步设置。 */
 function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => void }) {
   const d = t.newDialog;
   const [name, setName] = useState('');
@@ -87,7 +87,7 @@ function NewBatchDialog({ onClose, onCreate }: { onClose: () => void; onCreate: 
   );
 }
 
-/** 官方批次（原型 content.js batchesSection）：批次历史表格 + 详情抽屉；「新建批次 / 继续处理」进入四步工作室。 */
+/** 官方批次：批次历史表格 + 详情抽屉；「新建批次 / 继续处理」进入四步工作室。 */
 export function BatchesConsole() {
   const table = useAdminTable<StoredBatch>('/api/admin/batches', 'batches', { isItem: isStoredBatch });
   const [studio, setStudio] = useState<{ key: number; restore: StoredBatch | null; name?: string } | null>(null);

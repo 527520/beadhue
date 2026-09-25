@@ -18,7 +18,7 @@ import { fmtNum } from './format';
 const a = zhCN.adminUi.analytics;
 const d = zhCN.communityAdmin.analyticsDashboard;
 
-/** 时间范围芯片（原型 .adm-range）：链接到对应的 start/end，选中深墨。 */
+/** 时间范围芯片：链接到对应的 start/end，选中深墨。 */
 export function RangeChips({ ranges, active }: { ranges: Array<{ key: string; href: string }>; active: string | null }) {
   return (
     <nav aria-label={a.rangeLabel} className="flex min-w-0 gap-2 max-md:flex-1 max-md:overflow-x-auto max-md:[scrollbar-width:none]">
@@ -92,7 +92,7 @@ export function TrendChart({ points }: { points: Array<{ day: string; uniqueVisi
     { label: a.series.generated, tone: 'chart-2', values: points.map((point) => point.generated) },
     { label: a.series.exported, tone: 'chart-3', values: points.map((point) => point.exported) },
   ];
-  const days = points.map((point) => { const [, month, day] = point.day.split('-').map(Number); return { short: `${month}/${day}`, long: `${month}月${day}日` }; });
+  const days = points.map((point) => { const [, month, day] = point.day.split('-').map(Number); return { short: zhCN.adminUi.common.dayShort(month, day), long: zhCN.adminUi.common.dayLong(month, day) }; });
   return (
     <>
       <ChartLegend series={series} />

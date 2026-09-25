@@ -7,6 +7,7 @@ import { createStitchProgress, type StitchProgress } from '@/lib/progress/stitch
 import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 import type { DesignRecord, StorageAdapter } from '@/lib/storage';
 import type { ProjectFile } from '@/lib/types';
+import { ToastProvider } from '@/components/ui/toast';
 import { DesignsPanel } from './designs-panel';
 import { DEFAULT_DESIGNS_QUERY, designsQueryString, filterDesigns, readDesignsQuery, statusCounts, type LibraryDesign } from './design-model';
 
@@ -332,6 +333,20 @@ describe('我的 · 设计', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('这个设计刚在其他设备上改过');
     expect(api.deleted).toEqual([]);
     expect(storage.records.has('elsewhere')).toBe(true);
+  });
+
+  it('卡片「同步到云端」失败时如实提示，不报成功', async () => {
+    const user = userEvent.setup();
+    const project = makeProject('待同步', iso(-1000));
+    const api = new FakeApi();
+    api.meState = verified;
+    api.putDesign = async () => { throw new ApiError(500, 'INTERNAL', '网络错误'); };
+    render(<ToastProvider><DesignsPanel initialQuery={DEFAULT_DESIGNS_QUERY} storageOverride={new FakeStorage([localRecord('sync-fail', project)])} apiOverride={api} loadPublishedIds={noPublished} /></ToastProvider>);
+    await user.click(await more('待同步'));
+    const before = screen.queryAllByText('同步失败，这台设备上的设计都还在。').length;
+    await user.click(await screen.findByRole('menuitem', { name: '同步到云端' }));
+    await waitFor(() => expect(screen.queryAllByText('同步失败，这台设备上的设计都还在。').length).toBeGreaterThan(before));
+    expect(screen.queryByText('已同步到云端')).toBeNull();
   });
 
   it('列表视图：表格列与点行打开', async () => {

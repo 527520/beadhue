@@ -6,7 +6,7 @@ import { DiscoverLink } from './author-view';
 
 const t = zhCN.detail.author;
 
-/** 不存在的作者（原型 renderAuthor 的空状态）。 */
+/** 不存在的作者。 */
 export default function AuthorNotFound() {
   return (
     <SiteShell nav={null} topbarCta="secondary" mobileTop={<><MobileTopBack /><MobileTopTitle>{t.fallbackTitle}</MobileTopTitle><MobileTopSpacer /></>}>

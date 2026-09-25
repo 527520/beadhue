@@ -36,6 +36,8 @@ import type { Pattern } from '@/lib/types';
 import { communityPreviewSchema, parseCommunitySnapshot, type CommunityPreviewV1 } from './snapshot';
 import { normalizeTagName } from './tagNames';
 import { communityThumbnailUrl } from './thumbnailUrl';
+import { containsPattern } from '@/lib/db/like';
+import { LIMITS } from '@/lib/appInfo';
 
 export const COMMUNITY_PAGE_SIZE = 24;
 /** 官方作者的公开 ID（官方修订冻结的 public_author_id 也是它）。 */
@@ -49,7 +51,7 @@ export const COMMUNITY_SORTS = ['rec', 'new', 'likes', 'reuses', 'latest', 'feat
 export type CommunitySort = (typeof COMMUNITY_SORTS)[number];
 
 const querySchema = z.object({
-  q: z.string().trim().max(80).optional(),
+  q: z.string().trim().max(LIMITS.searchQueryLength).optional(),
   /** 公开作者 ID 精确匹配；其他文本按展示名模糊匹配（旧豆社页的作者输入框）。 */
   author: z.string().trim().max(80).optional(),
   tag: z.string().trim().max(80).optional(),
@@ -281,16 +283,16 @@ function listFilterConditions(query: CommunityListQuery, now: Date): SQL[] {
   if (query.q) {
     // 搜索同时命中标题、已打标签名与作者展示名。
     conditions.push(or(
-      ilike(communityRevisions.title, `%${query.q}%`),
+      ilike(communityRevisions.title, containsPattern(query.q)),
       sql`exists (select 1 from ${communityWorkTags} cwt join ${communityTags} ct on ct.id = cwt.tag_id
-        where cwt.work_id = ${communityWorks.id} and ct.active = true and ct.name ilike ${`%${query.q}%`})`,
-      ilike(publicDisplayNameExpression, `%${query.q}%`),
+        where cwt.work_id = ${communityWorks.id} and ct.active = true and ct.name ilike ${containsPattern(query.q)})`,
+      ilike(publicDisplayNameExpression, containsPattern(query.q)),
     )!);
   }
   if (query.author) {
     conditions.push(query.author === OFFICIAL_PUBLIC_AUTHOR_ID || UUID_PATTERN.test(query.author)
       ? eq(communityRevisions.publicAuthorId, query.author)
-      : ilike(publicDisplayNameExpression, `%${query.author}%`));
+      : ilike(publicDisplayNameExpression, containsPattern(query.author)));
   }
   // UNION 去重也使损坏的环路有限终止；历史入口沿任意长度的合并链抵达终点。
   if (query.tag) conditions.push(tagFilterCondition(query.tag));
@@ -661,7 +663,7 @@ export async function inspectCommunityRevision(db: AnyDatabase, revisionId: stri
     ? await db.select({ title: communityRevisions.title, revisionNumber: communityRevisions.revisionNumber, snapshot: communityRevisions.snapshot })
       .from(communityRevisions).where(eq(communityRevisions.id, row.currentPublishedRevisionId)) : [];
   const previousSnapshot = parseCommunitySnapshot(old?.snapshot);
-  // 上一次被驳回的理由（原型「上次驳回」）：作者改完重投时，审核员对照着看改没改到。
+  // 上一次被驳回的理由：作者改完重投时，审核员对照着看改没改到。
   const [rejected] = await db.select({ revisionNumber: communityRevisions.revisionNumber, reason: communityRevisions.reviewReason })
     .from(communityRevisions)
     .where(and(eq(communityRevisions.workId, row.workId), eq(communityRevisions.status, 'rejected'), lt(communityRevisions.revisionNumber, row.revisionNumber)))

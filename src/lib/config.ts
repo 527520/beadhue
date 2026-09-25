@@ -89,6 +89,8 @@ export interface SiteConfig extends PublicConfig {
     adminThumbnailRateLimit: number;
     /** 管理端官方原图上传每个管理员每小时上限（50 张批次 + 重试留足额度） */
     adminOriginalRateLimit: number;
+    /** 审核台读原图每个审核员每小时上限（逐张翻看队列用，不占豆社公开的原图读取额度） */
+    adminOriginalReadRateLimit: number;
     /** sitemap 只列最近 N 天更新的作品 */
     sitemapRecentDays: number;
     /** sitemap 每页作品数 */
@@ -193,7 +195,7 @@ export interface SiteConfig extends PublicConfig {
   };
 }
 
-/** 默认值即历史行为：未配置任何环境变量时，站点行为与优化前一致；生成默认值例外，按新建图纸原型为 2 板 58 格、24 色。 */
+/** 默认值即历史行为：未配置任何环境变量时，站点行为与优化前一致；生成默认值例外：2 板 58 格、24 色、去背景开。 */
 const DEFAULTS: SiteConfig = {
   generation: { defaultWidth: 58, defaultColorCount: 24 },
   exportPng: { cellPx: 20, cropToContent: true, includeLegend: true },
@@ -217,6 +219,7 @@ const DEFAULTS: SiteConfig = {
     communityWriteIpRateLimit: 300,
     adminThumbnailRateLimit: 20_000,
     adminOriginalRateLimit: 300,
+    adminOriginalReadRateLimit: 1_200,
     sitemapRecentDays: 180,
     sitemapPageSize: 500,
     // robots/sitemap 是爬虫最爱反复抓的入口：抓到的输出在进程内缓存 5 分钟，
@@ -354,6 +357,7 @@ function compute(): SiteConfig {
       communityWriteIpRateLimit: readInt('RATE_COMMUNITY_WRITE_IP_HOUR', DEFAULTS.security.communityWriteIpRateLimit, 1),
       adminThumbnailRateLimit: readInt('RATE_ADMIN_THUMBNAIL_USER_HOUR', DEFAULTS.security.adminThumbnailRateLimit, 1),
       adminOriginalRateLimit: readInt('RATE_ADMIN_ORIGINAL_USER_HOUR', DEFAULTS.security.adminOriginalRateLimit, 1),
+      adminOriginalReadRateLimit: readInt('RATE_ADMIN_ORIGINAL_READ_USER_HOUR', DEFAULTS.security.adminOriginalReadRateLimit, 1),
       sitemapRecentDays: readInt('SITEMAP_RECENT_DAYS', DEFAULTS.security.sitemapRecentDays, 1, 3650),
       sitemapPageSize: readInt('SITEMAP_PAGE_SIZE', DEFAULTS.security.sitemapPageSize, 10, 5000),
       sitemapCacheSeconds: readInt('SITEMAP_CACHE_SECONDS', DEFAULTS.security.sitemapCacheSeconds, 0, 86_400),

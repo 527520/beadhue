@@ -10,6 +10,7 @@ import PageError from './error';
 import AdminError from './admin/error';
 import ShareGone from './s/[token]/not-found';
 import WorkMissing from './community/[id]/not-found';
+import AdminNotFound from './admin/not-found';
 
 const fetchMock = vi.fn();
 beforeEach(() => {
@@ -31,6 +32,14 @@ describe('404 页', () => {
     expect(home.className).toContain('bg-accent');
     expect(screen.getByRole('link', { name: '去创作' }).getAttribute('href')).toBe('/app');
     expect(document.querySelector('[data-slot="empty-state"] canvas')).toBeTruthy();
+  });
+});
+
+describe('后台 404', () => {
+  it('留在后台外壳里，主按钮回后台总览', () => {
+    render(<AdminNotFound />);
+    expect(screen.getByRole('heading', { level: 1, name: '这个后台页面不存在' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '返回后台总览' }).getAttribute('href')).toBe('/admin');
   });
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-/** 「从空白画布开始」弹窗（原型 create.js openBlank，D42）：尺寸芯片 + 自定义宽高、色板、制作规格。 */
+/** 「从空白画布开始」弹窗：尺寸芯片 + 自定义宽高、色板、制作规格。 */
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';

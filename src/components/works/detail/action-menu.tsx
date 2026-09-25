@@ -15,7 +15,7 @@ export interface ActionItem {
 }
 
 /**
- * 操作菜单（原型 detail.js openMenu）：桌面为锚定菜单（方向键可选），手机为同标题的底部面板。
+ * 操作菜单：桌面为锚定菜单（方向键可选），手机为同标题的底部面板。
  * trigger 是一个可接收 ref 的按钮元素（IconButton 等）。
  */
 export function ActionMenu({ title, trigger, items }: { title: string; trigger: ReactElement; items: ActionItem[] }) {
