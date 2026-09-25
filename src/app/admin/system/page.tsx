@@ -74,7 +74,8 @@ export default async function AdminSystemPage() {
           <CardHead title={s.jobs} aside={t.timezone} />
           <div className="grid gap-3 p-5 max-md:p-4">
             <p className="text-body-sm text-ink-3">{t.maintenanceHelp}</p>
-            <div className="relative overflow-x-auto">
+            {/* 窄屏横向滚动时，滚动区要能用键盘聚焦。 */}
+            <div role="region" aria-label={s.jobs} tabIndex={0} className="relative overflow-x-auto rounded-sm focus-visible:focus-ring">
               <table className="w-full min-w-140 border-collapse text-body-sm">
                 <caption className="sr-only">{s.jobs}</caption>
                 <thead><tr>{[s.columns.task, s.columns.latest, s.columns.success, s.columns.failure].map((label) => <th key={label} scope="col" className="h-10 border-b border-line px-3 text-left font-medium whitespace-nowrap text-ink-3 first:pl-0">{label}</th>)}</tr></thead>
@@ -94,7 +95,7 @@ export default async function AdminSystemPage() {
             <p className="text-caption font-normal text-ink-3">{t.migrationTimeHelp}</p>
             <Collapsible summary={`${s.history} · ${t.historyLimit}`}>
               {info.maintenance.length === 0 ? <p className="text-body-sm text-ink-3">{t.notRun}</p> : (
-                <div className="relative overflow-x-auto">
+                <div role="region" aria-label={s.history} tabIndex={0} className="relative overflow-x-auto rounded-sm focus-visible:focus-ring">
                   <table className="w-full min-w-140 border-collapse text-body-sm">
                     <caption className="sr-only">{s.history}</caption>
                     <thead><tr>{[s.columns.task, s.columns.status, s.columns.started, s.columns.completed, s.columns.error].map((label) => <th key={label} scope="col" className="h-10 border-b border-line px-3 text-left font-medium text-ink-3 first:pl-0">{label}</th>)}</tr></thead>

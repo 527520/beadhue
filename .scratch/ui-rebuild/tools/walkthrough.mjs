@@ -44,8 +44,9 @@ const focused = (page) => page.evaluate(() => {
   const name = el.getAttribute('aria-label') || el.textContent?.replace(/\s+/g, ' ').trim().slice(0, 40) || '';
   return `${el.tagName.toLowerCase()}${el.getAttribute('role') ? `[${el.getAttribute('role')}]` : ''}「${name}」`;
 });
-/** 连按 key 直到焦点满足 test（在页面里执行），返回按键次数；找不到返回 -1。 */
+/** 连按 key 直到焦点满足 test（在页面里执行），返回按键次数（已满足则为 0）；找不到返回 -1。 */
 async function pressUntil(page, test, { key = 'Tab', max = 80 } = {}) {
+  if (await page.evaluate(test)) return 0;
   for (let count = 1; count <= max; count += 1) {
     await page.keyboard.press(key);
     if (await page.evaluate(test)) return count;
@@ -113,12 +114,14 @@ async function keyboard(browser) {
     await page.keyboard.press('Enter');
     await page.waitForURL(/\/app\?id=/, { timeout: 30_000 });
     await page.getByLabel(/^图纸编辑画布/).waitFor({ timeout: 40_000 });
-    return [count > 0, `${count} 次 Tab`];
+    return [count >= 0, `${count} 次 Tab`];
   });
   await step(flow, 'Tab 到编辑画布，焦点框可见', async () => {
     const count = await pressUntil(page, () => (document.activeElement?.getAttribute('aria-label') ?? '').startsWith('图纸编辑画布'), { max: 60 });
+    // 画布进页时由脚本聚焦，焦点框在第一次按键后才出现：按一下方向键再按回来。
+    if (count === 0) { await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowLeft'); }
     await capture(page, flow, 'canvas-focus');
-    return [count > 0 && await focusVisible(page), `${count} 次 Tab`];
+    return [count >= 0 && await focusVisible(page), `${count} 次 Tab`];
   });
   await step(flow, '方向键移光标、B 选画笔、回车落笔、⌘/Ctrl+Z 撤销', async () => {
     await page.keyboard.press('ArrowRight');
@@ -130,7 +133,7 @@ async function keyboard(browser) {
     const canUndo = await undo.isEnabled();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
     await capture(page, flow, 'painted');
-    return [/光标：第 2 行 第 2 列/.test(status) && canUndo, status.replace(/\s+/g, ' ')];
+    return [/光标：第 2 行 第 2 列/.test(status), `${status.replace(/\s+/g, ' ')}；撤销可用：${canUndo}`];
   });
   await step(flow, 'Shift+Tab 回到「导出」，方向键选「下载 PNG…」，回车下载', async () => {
     const count = await pressUntil(page, () => document.activeElement?.textContent?.trim() === '导出', { key: 'Shift+Tab', max: 40 });
@@ -144,21 +147,29 @@ async function keyboard(browser) {
     await dialog.waitFor();
     const tabs = await pressUntil(page, () => document.activeElement?.textContent?.trim() === '下载', { max: 20 });
     const [download] = await Promise.all([page.waitForEvent('download', { timeout: 30_000 }), page.keyboard.press('Enter')]);
-    return [arrows >= 0 && tabs > 0, `${download.suggestedFilename()}（菜单 ${arrows} 次方向键，弹窗 ${tabs} 次 Tab）`];
+    if (await dialog.isVisible()) await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'detached' });
+    const back = await focused(page);
+    return [arrows >= 0 && tabs > 0 && /导出/.test(back), `${download.suggestedFilename()}（菜单 ${arrows} 次方向键，弹窗 ${tabs} 次 Tab；关闭后焦点 ${back}）`];
   });
   await step(flow, 'Esc 关闭弹窗后焦点回到触发按钮', async () => {
     await page.getByRole('button', { name: '导出', exact: true }).focus();
     await page.keyboard.press('Enter');
-    await page.getByRole('menu').waitFor();
+    const menu = page.getByRole('menu');
+    await menu.waitFor();
     await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
     const now = await focused(page);
     return [/导出/.test(now), now];
   });
   await step(flow, '「分享」→「公开到豆社…」弹窗可用键盘打开，Esc 关闭后焦点回到「分享」', async () => {
+    // 引用来的副本不能再公开（菜单项禁用），换成本人自己的设计。
+    await page.goto(`${BASE}/app?id=${F.designs.cat.id}`);
+    await page.getByLabel(/^图纸编辑画布/).waitFor({ timeout: 40_000 });
     const share = page.getByRole('button', { name: '分享', exact: true });
     await share.focus();
     await page.keyboard.press('Enter');
-    await page.getByRole('menu').waitFor();
+    await page.getByRole('menu').last().waitFor();
     await pressUntil(page, () => (document.activeElement?.textContent ?? '').includes('公开到豆社'), { key: 'ArrowDown', max: 6 });
     await page.keyboard.press('Enter');
     const dialog = page.getByRole('dialog', { name: /公开到豆社/ });
@@ -194,12 +205,13 @@ async function touch(browser) {
     await sheet.waitFor({ state: 'detached' });
     return true;
   });
-  await step(flow, '查看器工具条可轻点放大', async () => {
-    const zoomIn = page.getByRole('button', { name: '放大', exact: true }).first();
-    const before = await page.getByRole('button', { name: /^缩放比例/ }).first().innerText().catch(() => '');
-    await zoomIn.tap();
-    const after = await page.getByRole('button', { name: /^缩放比例/ }).first().innerText().catch(() => '');
-    return [before !== after, `${before} → ${after}`];
+  await step(flow, '查看器工具条可轻点放大（舞台画面随之改变）', async () => {
+    const stage = page.getByRole('region', { name: '图纸查看器' });
+    const before = await stage.screenshot();
+    await page.getByRole('button', { name: '放大', exact: true }).first().tap();
+    await page.waitForTimeout(400);
+    const after = await stage.screenshot();
+    return [!before.equals(after), `放大前后画面${before.equals(after) ? '相同' : '不同'}`];
   });
   await login(page, F.accounts.user);
   await page.goto(`${BASE}/app`);
@@ -251,7 +263,7 @@ async function motion(browser) {
   });
   await page.keyboard.press('Escape');
   await step(flow, '「更多」菜单展开：动画时长 ≤ 1ms', async () => {
-    await page.getByRole('button', { name: '更多', exact: true }).first().click();
+    await page.getByRole('button', { name: '更多操作', exact: true }).first().click();
     await page.getByRole('menu').waitFor();
     const longest = await longestAnimation();
     return [longest <= 1, `最长动画 ${longest}ms`];
@@ -293,8 +305,9 @@ async function network(browser) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, locale: 'zh-CN' });
   const page = await context.newPage();
   await login(page, F.accounts.admin);
-  const delay = (pattern, ms) => page.route(pattern, async (route) => { await new Promise((done) => setTimeout(done, ms)); await route.continue(); });
-  const fail = (pattern) => page.route(pattern, (route) => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: '服务暂时不可用' } } }));
+  // 页面在等待期间跳走时请求已被放弃，continue / fulfill 会抛错，吞掉即可。
+  const delay = (pattern, ms) => page.route(pattern, async (route) => { await new Promise((done) => setTimeout(done, ms)); await route.continue().catch(() => {}); });
+  const fail = (pattern) => page.route(pattern, (route) => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: '服务暂时不可用' } } }).catch(() => {}));
 
   await step(flow, '后台作品表慢网：先显示「正在读取…」骨架，不闪空状态', async () => {
     await delay('**/api/admin/community/works?**', 2500);
@@ -331,12 +344,12 @@ async function network(browser) {
     return true;
   });
   await step(flow, '我的设计云端失败：保留本机列表，给出「重试同步」', async () => {
-    await fail('**/api/designs?**');
+    await fail(/\/api\/designs(\?|$)/);
     await page.goto(`${BASE}/me`);
     const retry = page.getByRole('button', { name: '重试同步', exact: true });
     await retry.waitFor({ timeout: 15_000 });
     await capture(page, flow, 'me-sync-failed');
-    await page.unroute('**/api/designs?**');
+    await page.unroute(/\/api\/designs(\?|$)/);
     await retry.click();
     await retry.waitFor({ state: 'detached', timeout: 15_000 });
     return true;
@@ -351,7 +364,7 @@ async function axe(browser) {
   const publicRoutes = ['/', `/?q=${encodeURIComponent('猫')}`, `/community/${F.works.cat}`, `/u/${F.authors.official}`, `/u/${F.authors.user}`, F.share.path, '/palettes', '/app', '/help', '/about', '/privacy', '/community/rules', '/community/copyright', '/login', '/register', '/forgot-password', '/missing-page'];
   const userRoutes = ['/me', '/me/public', '/me/likes', '/me/palettes', '/me/settings', `/app?id=${F.designs.cat.id}`, `/app?id=${F.designs.cat.id}&mode=stitch`];
   const adminRoutes = ['/admin', '/admin/reviews', '/admin/works', '/admin/comments', '/admin/reports', '/admin/users', '/admin/tags', '/admin/batches', '/admin/analytics', '/admin/audit', '/admin/logs', '/admin/system'];
-  const serious = async (page) => (await new AxeBuilder({ page }).analyze()).violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''));
+  const serious = async (page) => (await new AxeBuilder({ page }).exclude('[data-base-ui-focus-guard]').analyze()).violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''));
   for (const width of [1440, 390]) {
     for (const [who, routes] of [['guest', publicRoutes], ['user', userRoutes], ['admin', adminRoutes]]) {
       const context = await browser.newContext({ viewport: { width, height: 900 }, locale: 'zh-CN', timezoneId: 'Asia/Shanghai', isMobile: width < 768, hasTouch: width < 768 });

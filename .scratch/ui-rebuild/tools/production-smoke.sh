@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # R15 票 14：本机复现 CI 的「standalone 生产启动 + PostgreSQL 路由合同 + 浏览器冒烟」。
 # 与 CI 的差别只在于应用不打镜像：用本机 `npm run build` 的 standalone 产物直接起 `node server.js`；
-# PostgreSQL 16 用 Docker（与 CI service 同一镜像），种子行、路由合同与四个冒烟用例同 .github/workflows/ci.yml。
-# 用法（仓库根目录，先 `npm run build`）：bash .scratch/ui-rebuild/tools/production-smoke.sh
+# PostgreSQL 16 默认用 Docker（与 CI service 同一镜像）；Docker 起不来时 `PG_MODE=embedded` 改用 embedded-postgres 的官方二进制
+# （装在 EMBEDDED_PG_DIR，默认 /tmp/beadhue-pg，内含 start.mjs）。种子行、路由合同与四个冒烟用例同 .github/workflows/ci.yml。
+# 用法（仓库根目录，先 `npm run build`）：[PG_MODE=embedded] bash .scratch/ui-rebuild/tools/production-smoke.sh
 set -uo pipefail
 
 PG_NAME=beadhue-pg-smoke
 PG_PORT=55432
+PG_MODE=${PG_MODE:-docker}
+EMBEDDED_PG_DIR=${EMBEDDED_PG_DIR:-/tmp/beadhue-pg}
 APP_PORT=3000
 export DATABASE_URL="postgresql://beadhue:beadhue-ci-password@127.0.0.1:${PG_PORT}/beadhue"
 OUT=.scratch/ui-rebuild/evidence/production-smoke
@@ -14,15 +17,24 @@ mkdir -p "$OUT"
 
 cleanup() {
   [ -n "${APP_PID:-}" ] && kill "$APP_PID" 2>/dev/null
-  docker rm -f "$PG_NAME" >/dev/null 2>&1
+  if [ "$PG_MODE" = embedded ]; then [ -n "${PG_PID:-}" ] && kill "$PG_PID" 2>/dev/null; wait "${PG_PID:-}" 2>/dev/null
+  else docker rm -f "$PG_NAME" >/dev/null 2>&1; fi
 }
 trap cleanup EXIT
 
-docker rm -f "$PG_NAME" >/dev/null 2>&1
-docker run -d --name "$PG_NAME" -e POSTGRES_DB=beadhue -e POSTGRES_USER=beadhue -e POSTGRES_PASSWORD=beadhue-ci-password \
-  -p "${PG_PORT}:5432" postgres:16-alpine >/dev/null || { echo "stage=postgres-start"; exit 30; }
-for _ in $(seq 1 60); do docker exec "$PG_NAME" pg_isready -U beadhue -d beadhue >/dev/null 2>&1 && break; sleep 1; done
-sleep 2
+if [ "$PG_MODE" = embedded ]; then
+  PG_PORT="$PG_PORT" node "$EMBEDDED_PG_DIR/start.mjs" > "$OUT/postgres.log" 2>&1 &
+  PG_PID=$!
+  for _ in $(seq 1 60); do grep -q '^ready' "$OUT/postgres.log" 2>/dev/null && break; kill -0 "$PG_PID" 2>/dev/null || break; sleep 1; done
+  grep -q '^ready' "$OUT/postgres.log" || { echo "stage=postgres-start"; cat "$OUT/postgres.log"; exit 30; }
+else
+  docker rm -f "$PG_NAME" >/dev/null 2>&1
+  docker run -d --name "$PG_NAME" -e POSTGRES_DB=beadhue -e POSTGRES_USER=beadhue -e POSTGRES_PASSWORD=beadhue-ci-password \
+    -p "${PG_PORT}:5432" postgres:16-alpine >/dev/null || { echo "stage=postgres-start"; exit 30; }
+  for _ in $(seq 1 60); do docker exec "$PG_NAME" pg_isready -U beadhue -d beadhue >/dev/null 2>&1 && break; sleep 1; done
+  sleep 2
+fi
+psql_exec() { node -e "const { Client } = require('pg'); (async () => { const c = new Client({ connectionString: process.env.DATABASE_URL }); await c.connect(); try { await c.query(process.argv[1]); } finally { await c.end(); } })().catch((e) => { console.error(e.message); process.exit(1); })" -- "$1"; }
 
 node db/migrate.cjs > "$OUT/migrate.log" 2>&1 || { echo "stage=migrate"; tail -20 "$OUT/migrate.log"; exit 30; }
 
@@ -50,7 +62,7 @@ done
 token() { node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))"; }
 hash() { node -e "process.stdout.write(require('node:crypto').createHash('sha256').update(process.argv[1]).digest('hex'))" -- "$1"; }
 SESSION_TOKEN=$(token); VERIFY_TOKEN=$(token); ADMIN_TOKEN=$(token)
-docker exec "$PG_NAME" psql -U beadhue -d beadhue -v ON_ERROR_STOP=1 -c "
+psql_exec "
   INSERT INTO users(id,email,password_hash,email_verified_at) VALUES
     ('00000000-0000-4000-8000-000000000101','production-contract@example.test','not-used',now()),
     ('00000000-0000-4000-8000-000000000102','production-token@example.test','not-used',NULL);

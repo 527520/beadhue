@@ -34,13 +34,13 @@ describe('全站样式入口', () => {
 });
 
 describe('颜色令牌对比度（WCAG AA）', () => {
-  it('正文在各级底色上、次要文字（ink-3）在白底与浅底上 ≥ 4.5:1', () => {
+  it('正文在各级底色上、次要文字（ink-3）在所有静置底色上 ≥ 4.5:1', () => {
     for (const ink of ['ink', 'ink-2'] as const) {
       for (const bg of ['bg', 'bg-subtle', 'bg-muted', 'bg-emphasis'] as const) expect(contrast(token(ink), token(bg)), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
     }
-    for (const bg of ['bg', 'bg-subtle'] as const) expect(contrast(token('ink-3'), token(bg)), `ink-3 on ${bg}`).toBeGreaterThanOrEqual(4.5);
-    // 选中底（bg-muted）上的次要文字要用 ink-2：ink-3 只有 4.43:1（票 05 后台审核队列 axe serious）。
-    expect(contrast(token('ink-3'), token('bg-muted'))).toBeLessThan(4.5);
+    for (const bg of ['bg', 'bg-subtle', 'bg-muted', 'accent-soft'] as const) expect(contrast(token('ink-3'), token(bg)), `ink-3 on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    // bg-emphasis 只用于悬停、按下这类瞬时底，ink-3 在上面不到 4.5:1，不能拿它当次要文字的静置底。
+    expect(contrast(token('ink-3'), token('bg-emphasis'))).toBeLessThan(4.5);
   });
 
   it('主色按钮白字、主色文字在白底与软底上 ≥ 4.5:1', () => {

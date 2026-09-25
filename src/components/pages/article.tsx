@@ -41,7 +41,7 @@ export function ArticlePage({ eyebrow, title, lead, toc, children }: ArticlePage
         {items ? (
           <nav aria-label={zhCN.pages.toc} className="max-xl:hidden xl:col-start-1 xl:justify-self-end">
             <div className="sticky top-below-topbar-lg w-50">
-              <p className="mb-2 text-caption text-ink-4">{zhCN.pages.toc}</p>
+              <p className="mb-2 text-caption text-ink-3">{zhCN.pages.toc}</p>
               <TocList items={items} />
             </div>
           </nav>

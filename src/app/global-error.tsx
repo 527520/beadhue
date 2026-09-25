@@ -25,7 +25,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
               ))}
             </div>
             <h1 style={{ margin: 0, fontSize: 20, lineHeight: '28px', fontWeight: 600 }}>{t.errorTitle}</h1>
-            <p style={{ margin: '8px 0 24px', color: '#6E6E78', fontSize: 14, lineHeight: '22px' }}>{t.errorBody}</p>
+            <p style={{ margin: '8px 0 24px', color: '#6B6B75', fontSize: 14, lineHeight: '22px' }}>{t.errorBody}</p>
             <button
               type="button"
               onClick={() => retry()}

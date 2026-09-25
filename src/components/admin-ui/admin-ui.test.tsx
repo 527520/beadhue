@@ -23,8 +23,11 @@ describe('后台表格查询串', () => {
 describe('折线图坐标轴', () => {
   it('取 3 或 4 段、顶端最贴近数据的刻度', () => {
     expect(niceScale(52)).toEqual({ count: 3, step: 20, max: 60 });
-    expect(niceScale(9)).toEqual({ count: 4, step: 2.5, max: 10 });
-    expect(niceScale(0).max).toBeGreaterThan(0);
+    expect(niceScale(9)).toEqual({ count: 3, step: 4, max: 12 });
+    expect(niceScale(230)).toEqual({ count: 3, step: 100, max: 300 });
+    // 计数图：没有数据或个位数时也只出现整数刻度。
+    expect(niceScale(0)).toEqual({ count: 3, step: 1, max: 3 });
+    expect(niceScale(3)).toEqual({ count: 3, step: 1, max: 3 });
   });
 });
 

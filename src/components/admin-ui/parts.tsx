@@ -116,9 +116,9 @@ export function Note({ icon, children, tone = 'neutral', className }: { icon: Re
   );
 }
 
-/** 等宽只读代码块（堆栈、上下文、语句）。 */
+/** 等宽只读代码块（堆栈、上下文、语句）；内容超高时在块内滚动，所以要能用键盘聚焦。 */
 export function CodeBlock({ children }: { children: ReactNode }) {
-  return <pre className="max-h-80 overflow-auto rounded-md bg-bg-subtle p-3 font-mono text-caption leading-relaxed font-normal whitespace-pre-wrap text-ink-2">{children}</pre>;
+  return <pre tabIndex={0} className="max-h-80 overflow-auto rounded-md bg-bg-subtle p-3 font-mono text-caption leading-relaxed font-normal whitespace-pre-wrap text-ink-2 focus-visible:focus-ring">{children}</pre>;
 }
 
 /** 可折叠区块（原生 details，焦点与键盘由浏览器提供）。 */

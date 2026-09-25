@@ -29,8 +29,9 @@ export function Sparkline({ values, width = 88, height = 32, className }: { valu
 /** 坐标轴：3 或 4 段，每段 1 / 2 / 2.5 / 5 × 10ⁿ，取顶端最贴近数据的一种。 */
 export function niceScale(value: number): { count: number; step: number; max: number } {
   const niceStep = (raw: number) => {
-    const base = 10 ** Math.floor(Math.log10(raw));
-    return [1, 2, 2.5, 5, 10].map((m) => m * base).find((step) => step >= raw)!;
+    const base = 10 ** Math.max(0, Math.floor(Math.log10(raw)));
+    // 图表都是计数：个位数的刻度只用整数步长（以 4 代替 2.5）。
+    return (base >= 10 ? [1, 2, 2.5, 5, 10] : [1, 2, 4, 5, 10]).map((m) => m * base).find((step) => step >= raw)!;
   };
   return [3, 4].map((count) => ({ count, step: niceStep(Math.max(value, 1) / count) }))
     .map((scale) => ({ ...scale, max: scale.step * scale.count }))
@@ -57,7 +58,7 @@ export function LineChart({ days, series, label }: { days: Array<{ short: string
   const yp = (value: number) => (1 - value / scale.max) * 100;
   return (
     <div role="group" aria-label={label} className="grid min-w-0 flex-1 grid-cols-[36px_minmax(0,1fr)] grid-rows-[minmax(160px,1fr)_28px] gap-x-2" onPointerLeave={() => setActive(null)}>
-      <div aria-hidden="true" className="relative text-caption font-normal text-ink-4 tabular-nums">
+      <div aria-hidden="true" className="relative text-caption font-normal text-ink-3 tabular-nums">
         {ticks.map((tick) => <span key={tick} className="absolute right-0 -translate-y-1/2" style={{ top: `${yp(tick)}%` }}>{tick}</span>)}
       </div>
       <div className="relative mx-2.5">

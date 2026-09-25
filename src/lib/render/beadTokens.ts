@@ -37,7 +37,7 @@ export const EDITOR_CANVAS = {
 export const VIEWER_TOKENS = {
   ink: '#1c1c1e',
   onInk: '#ffffff',
-  ink3: '#6e6e78',
+  ink3: '#6b6b75',
   subtle: '#f7f7f8',
   /** 舞台上钉板的浮起投影（深墨 12%） */
   boardShadow: 'rgba(28,28,30,0.12)',
