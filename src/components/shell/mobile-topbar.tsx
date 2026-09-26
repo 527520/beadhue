@@ -51,7 +51,7 @@ export function DefaultMobileTop({ variant, account, onSearch }: { variant: 'def
   const signedIn = useAuthStatus().kind === 'user';
   return (
     <>
-      <Brand compact />
+      <Brand compact className="gap-1.5" />
       <span className="flex-1" />
       <IconButton label={t.search.open} tooltip={false} data-mobile-search="" onClick={onSearch}>
         <Search aria-hidden="true" strokeWidth={1.75} />
