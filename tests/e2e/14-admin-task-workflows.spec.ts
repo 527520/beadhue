@@ -7,7 +7,8 @@ async function login(page: Page, next: string, email = 'e2e-admin@example.com') 
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await fillField(page, '邮箱', email); await fillField(page, '密码', 'E2e-pass-123!');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${next.replaceAll('/', '\\/')}$`));
+  // The first protected admin route can need a cold Turbopack compile in E2E.
+  await expect(page).toHaveURL(new RegExp(`${next.replaceAll('/', '\\/')}$`), { timeout: 60_000 });
   await expect(page.locator('h1')).toBeVisible();
 }
 async function post(page: Page, url: string, body: unknown) {

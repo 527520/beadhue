@@ -970,10 +970,12 @@ describe('Workbench 本地保存', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    // Arm the quota before generation: on slower runners autosave can finish
+    // while we wait for the generated preview below.
+    storage.quotaExceeded = true;
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 20_000 });
     await screen.findByText(beads(SQUARE_BEADS), undefined, { timeout: 20_000 });
-    storage.quotaExceeded = true;
     saveNow();
 
     await screen.findByText(zhCN.workbench.quotaError);
