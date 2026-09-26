@@ -701,7 +701,7 @@ exit 0
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
     expect(pkg.scripts['test:coverage:stable']).toBe('node tests/ci/repeat.cjs 5 npm run test:coverage');
     expect(pkg.scripts['test:performance:stable']).toBe('node tests/ci/repeat.cjs 5 npm run test:performance');
-    expect(pkg.scripts['test:e2e:stable']).toBe('node tests/ci/repeat.cjs 3 npm run test:e2e');
+    expect(pkg.scripts['test:e2e:stable']).toBe('node tests/e2e/stable.cjs 3');
     expect(read('playwright.config.mts')).toMatch(/retries:\s*0/);
   });
 
