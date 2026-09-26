@@ -64,6 +64,15 @@ export interface PublishDialogProps {
   onSubmitted: () => void;
 }
 
+interface CreateDraftRequest {
+  designId: string;
+  expectedDesignRevision: number;
+  title: string;
+  licenseVersion: string;
+  suggestedTags: string[];
+  inheritOriginal?: boolean;
+}
+
 export function PublishDialog({ open, onOpenChange, ...rest }: PublishDialogProps) {
   const [busy, setBusy] = useState(false);
   return (
@@ -103,9 +112,10 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
   const [consentOriginal, setConsentOriginal] = useState(false);
   const [consentRights, setConsentRights] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payloadFrozen, setPayloadFrozen] = useState(false);
   /** 修改后重投：服务端说上一版原图沿用不了，要先重新选择原图。 */
   const [needOriginal, setNeedOriginal] = useState(false);
-  const attemptRef = useRef<{ key: string; submitKey: string; draft?: { revisionId: string; version: number }; uploaded?: boolean } | null>(null);
+  const attemptRef = useRef<{ key: string; submitKey: string; createRequest?: CreateDraftRequest; draft?: { revisionId: string; version: number }; uploaded?: boolean } | null>(null);
 
   const addTag = (raw: string) => {
     const name = normalizeTag(raw);
@@ -138,25 +148,31 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
     attemptRef.current = attempt;
     try {
       if (!attempt.draft) {
-        if (!(await prepare())) {
-          setError(t.notSynced);
-          attemptRef.current = null;
-          return;
+        if (!attempt.createRequest) {
+          if (!(await prepare())) {
+            setError(t.notSynced);
+            attemptRef.current = null;
+            return;
+          }
+          const cloud = await createBeadhueApi().getDesign(designId);
+          if (!cloud || cloud.deleted) {
+            setError(t.notSynced);
+            attemptRef.current = null;
+            return;
+          }
+          // A lost response may arrive after autosave advances the design revision.
+          // The retry must replay the exact body that owns this idempotency key.
+          attempt.createRequest = {
+            designId,
+            expectedDesignRevision: cloud.revision,
+            title: trimmed,
+            licenseVersion: COMMUNITY_LICENSE_VERSION,
+            suggestedTags: tags,
+            ...(workId ? { inheritOriginal: !original } : {}),
+          };
+          setPayloadFrozen(true);
         }
-        const cloud = await createBeadhueApi().getDesign(designId);
-        if (!cloud || cloud.deleted) {
-          setError(t.notSynced);
-          attemptRef.current = null;
-          return;
-        }
-        const created = await postCommunityCommand(workId ? `/api/community/works/${workId}/revisions` : '/api/community/works', attempt.key, {
-          designId,
-          expectedDesignRevision: cloud.revision,
-          title: trimmed,
-          licenseVersion: COMMUNITY_LICENSE_VERSION,
-          suggestedTags: tags,
-          ...(workId ? { inheritOriginal: !original } : {}),
-        });
+        const created = await postCommunityCommand(workId ? `/api/community/works/${workId}/revisions` : '/api/community/works', attempt.key, attempt.createRequest);
         attempt.draft = { revisionId: String(created.revisionId), version: Number(created.version) };
         track({ name: 'community_submission_created', properties: {} });
       }
@@ -170,6 +186,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
       await discardPendingOriginal(designId).catch(() => undefined);
       track({ name: 'community_submission_submitted', properties: {} });
       attemptRef.current = null;
+      setPayloadFrozen(false);
       toast(t.submitted);
       onSubmitted();
       onClose();
@@ -178,11 +195,15 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
         // 草稿已建好才在提交时被拒：撤回它，否则换好原图回来重投会被「已有草稿」挡住。
         const draft = attempt.draft;
         attemptRef.current = null;
+        setPayloadFrozen(false);
         if (draft) await postCommunityCommand(`/api/community/revisions/${draft.revisionId}/withdraw`, randomId(), { expectedVersion: draft.version }).catch(() => undefined);
         setNeedOriginal(true);
         return;
       }
-      if (!attempt.draft && isDefiniteCommunityRejection(caught)) attemptRef.current = null;
+      if (!attempt.draft && isDefiniteCommunityRejection(caught)) {
+        attemptRef.current = null;
+        setPayloadFrozen(false);
+      }
       const message = caught instanceof OriginalUploadError || caught instanceof ApiError ? caught.message : t.failed;
       setError(message || t.failed);
     } finally {
@@ -190,6 +211,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
     }
   };
 
+  const fieldsLocked = busy || payloadFrozen;
   const canSubmit = (hasOriginal ? consentOriginal : Boolean(workId) && !needOriginal) && consentRights && !busy;
   return (
     <DialogContent size="md">
@@ -207,7 +229,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
               value={title}
               maxLength={TITLE_MAX}
               aria-invalid={titleInvalid || undefined}
-              disabled={busy}
+              disabled={fieldsLocked}
               onChange={(event) => { setTitle(event.target.value); if (titleInvalid && event.target.value.trim()) setTitleInvalid(false); }}
             />
             {titleInvalid ? <FormAlert>{t.titleError}</FormAlert> : null}
@@ -217,13 +239,13 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
           <label htmlFor={tagId} className="text-footnote font-semibold text-ink">{t.tags}</label>
           <div className="flex min-h-control-md flex-wrap items-center gap-1.5 rounded-md border border-line-strong px-2 py-1 transition-[border-color,box-shadow] duration-state focus-within:border-accent focus-within:shadow-field-focus">
             {tags.map((tag) => (
-              <RemovableChip key={tag} selected removeLabel={t.tagRemove(tag)} onRemove={() => setTags((current) => current.filter((entry) => entry !== tag))}>{tag}</RemovableChip>
+              <RemovableChip key={tag} selected disabled={fieldsLocked} removeLabel={t.tagRemove(tag)} onRemove={() => setTags((current) => current.filter((entry) => entry !== tag))}>{tag}</RemovableChip>
             ))}
             <input
               id={tagId}
               value={draft}
               maxLength={TAG_MAX}
-              disabled={busy || tags.length >= TAG_LIMIT}
+              disabled={fieldsLocked || tags.length >= TAG_LIMIT}
               placeholder={t.tagPlaceholder}
               autoComplete="off"
               onChange={(event) => setDraft(event.target.value)}
@@ -235,7 +257,7 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
           {suggestions.some((name) => !tags.includes(name)) ? (
             <div className="flex flex-wrap gap-1.5">
               {suggestions.filter((name) => !tags.includes(name)).map((name) => (
-                <Chip key={name} variant="outline" aria-label={t.tagAdd(name)} disabled={busy || tags.length >= TAG_LIMIT} icon={<Plus aria-hidden="true" strokeWidth={1.75} />} onClick={() => addTag(name)}>
+                <Chip key={name} variant="outline" aria-label={t.tagAdd(name)} disabled={fieldsLocked || tags.length >= TAG_LIMIT} icon={<Plus aria-hidden="true" strokeWidth={1.75} />} onClick={() => addTag(name)}>
                   {name}
                 </Chip>
               ))}
@@ -246,15 +268,15 @@ function PublishBody({ designId, workId, designName, pattern, getOriginal, hasOr
           <>
             <Note icon={<Lock aria-hidden="true" strokeWidth={1.75} />}>{t.originalNote}</Note>
             <div className="grid gap-3">
-              <Checkbox checked={consentOriginal} disabled={busy} onCheckedChange={(checked) => setConsentOriginal(checked === true)}>{t.consentOriginal}</Checkbox>
-              <Checkbox checked={consentRights} disabled={busy} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
+              <Checkbox checked={consentOriginal} disabled={fieldsLocked} onCheckedChange={(checked) => setConsentOriginal(checked === true)}>{t.consentOriginal}</Checkbox>
+              <Checkbox checked={consentRights} disabled={fieldsLocked} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
               <Link href="/community/copyright" target="_blank" className="justify-self-start text-caption text-accent underline-offset-2 hover:underline">{t.rules}</Link>
             </div>
           </>
         ) : workId && !needOriginal ? (
           <div className="grid gap-3">
             <Note icon={<Lock aria-hidden="true" strokeWidth={1.75} />}>{t.reviseOriginal}</Note>
-            <Checkbox checked={consentRights} disabled={busy} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
+            <Checkbox checked={consentRights} disabled={fieldsLocked} onCheckedChange={(checked) => setConsentRights(checked === true)}>{t.consentRights}</Checkbox>
             <Link href="/community/copyright" target="_blank" className="justify-self-start text-caption text-accent underline-offset-2 hover:underline">{t.rules}</Link>
           </div>
         ) : (

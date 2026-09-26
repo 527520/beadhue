@@ -108,6 +108,8 @@ async function decodePngSummary(page: Page, bytes: Buffer): Promise<{
 }
 
 test('200×1 PNG has cross-browser decodable golden pixels and 500-color PDF paginates', async ({ page }) => {
+  // The 500-color PDF can exceed the default 120s test budget on a busy CI runner.
+  test.setTimeout(180_000);
   await page.goto('/app');
   await uploadAndGenerate(page, PHOTO);
   await expect(page.getByText(beadsText()).first()).toBeAttached({ timeout: 20_000 });

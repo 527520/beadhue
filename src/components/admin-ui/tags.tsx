@@ -132,7 +132,7 @@ function WorkPicker({ tag, onTagged }: { tag: TagRow; onTagged: () => void }) {
   );
 }
 
-function MergePanel({ tag, onMerged }: { tag: TagRow; onMerged: (target: string) => void }) {
+function MergePanel({ tag, onMerged }: { tag: TagRow; onMerged: (target: string, updated: Pick<TagRow, 'id' | 'active' | 'mergedIntoTagId' | 'version'>) => void }) {
   const m = t.merge;
   const command = useAdminCommand();
   const [candidates, setCandidates] = useState<TagRow[]>([]);
@@ -152,7 +152,10 @@ function MergePanel({ tag, onMerged }: { tag: TagRow; onMerged: (target: string)
       <Button variant="danger-outline" className="justify-self-start" disabled={!picked || !confirmed} onClick={() => { command.resetNotice(); setDialog(true); }}>{m.submit}</Button>
       {dialog && picked ? (
         <ReasonDialog open onOpenChange={setDialog} title={m.title} subject={m.check(tag.name, picked.name)} label={m.label} quick={[...m.quick]} confirmLabel={m.submit} command={command}
-          onConfirm={(reason) => command.run({ url: `${ENDPOINT}/${tag.id}/merge`, method: 'POST', body: { targetTagId: picked.id, expectedVersion: tag.version, reason } }, () => { setDialog(false); onMerged(picked.name); })} />
+          onConfirm={(reason) => command.run<Pick<TagRow, 'id' | 'active' | 'mergedIntoTagId' | 'version'>>(
+            { url: `${ENDPOINT}/${tag.id}/merge`, method: 'POST', body: { targetTagId: picked.id, expectedVersion: tag.version, reason } },
+            (updated) => { setDialog(false); onMerged(picked.name, updated); },
+          )} />
       ) : null}
     </div>
   );
@@ -253,7 +256,10 @@ export function TagsConsole({ initialQ }: { initialQ?: string }) {
             <TagForm value={form} onChange={setForm} tag={open} errors={errors} disabled={command.locked} />
             <CommandAlert command={idle} />
             <Collapsible summary={t.picker.title}><WorkPicker tag={open} onTagged={() => void table.reload()} /></Collapsible>
-            <Collapsible summary={t.merge.title}><MergePanel tag={open} onMerged={(target) => { toast(t.merge.done(open.name, target)); setOpenId(null); void table.reload(); }} /></Collapsible>
+            <Collapsible summary={t.merge.title}><MergePanel tag={open} onMerged={(target, updated) => {
+              table.patchItem(updated.id, updated);
+              toast(t.merge.done(open.name, target)); setOpenId(null); void table.reload();
+            }} /></Collapsible>
           </>}
         </> : null}
       </AdminDrawer>

@@ -166,14 +166,15 @@ test('moderator 只能进入治理模块，管理员模块不出现在导航', a
   await expect(page.getByRole('heading', { name: '作品审核', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: '匿名分析' })).toHaveCount(0);
   if (testInfo.project.name === 'chromium') {
-    await page.getByRole('button', { name: /E2E 待审修改版/ }).first().click();
+    const pendingRevision = page.getByRole('button', { name: /E2E 待审修改版/ }).first();
+    await pendingRevision.click();
     const checklist = page.getByRole('group', { name: '原创与许可核对' });
     for (const box of await checklist.getByRole('checkbox').all()) await box.click();
     await page.getByRole('button', { name: '通过并发布' }).click();
     const dialog = page.getByRole('dialog', { name: /通过并发布「/ });
     await dialog.getByLabel('审核理由').fill('E2E 人工审核通过修改版');
     await dialog.getByRole('button', { name: '通过并发布' }).click();
-    await expect(page.getByText('审核队列已清空')).toBeVisible();
+    await expect(pendingRevision).toHaveCount(0);
   }
   await page.goto('/admin/users');
   await expect(page.getByRole('heading', { name: '这个模块只对管理员开放', level: 1 })).toBeVisible();

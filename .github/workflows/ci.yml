@@ -209,7 +209,6 @@ jobs:
         with:
           pattern: e2e-marker-*
           merge-multiple: true
-          if-no-artifact-found: ignore
           path: e2e-markers
       - name: 判定
         run: |
