@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   distDir: process.env.BEADHUE_E2E_BUILD === '1' ? '.next-e2e' : '.next',
   experimental: {
     authInterrupts: true,
+    // E2E runners discard this build after each job. Avoid Turbopack's
+    // filesystem-cache restore path, which can panic after a long dev session.
+    turbopackFileSystemCacheForDev: process.env.BEADHUE_E2E_BUILD === '1' ? false : true,
   },
   // Playwright intentionally opens the dev server through the IPv4 loopback
   // address so Chromium, Firefox and WebKit exercise the same origin.

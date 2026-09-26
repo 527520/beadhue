@@ -585,7 +585,9 @@ exit 0
     expect(ci).toContain('run: npm run test:coverage');
     expect(ci).toContain('RUNS_RESULT: ${{ needs.coverage_runs.result }}');
     expect(ci).toContain('npm run test:performance:stable');
-    expect(ci).toContain('npm run test:e2e:stable');
+    expect(ci).toContain('browser: [chromium, firefox, webkit]');
+    expect(ci).toContain('round: [1, 2, 3]');
+    expect(ci).toContain('node tests/e2e/stable.cjs 1 ${{ matrix.browser }}');
     expect(ci).toContain('npm run test:protocol-preflight');
     expect(ci).toContain('cron: "17 3 * * 1"');
     expect(release).toContain('uses: ./.github/workflows/ci.yml');
