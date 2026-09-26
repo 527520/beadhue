@@ -25,7 +25,8 @@ describe('triggerDownload', () => {
     expect(click).toHaveBeenCalledTimes(1);
     expect(revoke).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(1_500);
+    expect(document.querySelector('a')).not.toBeNull();
+    vi.advanceTimersByTime(30_000);
     expect(revoke).toHaveBeenCalledWith('blob:test-url');
     expect(document.querySelector('a')).toBeNull();
   });

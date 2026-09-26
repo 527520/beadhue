@@ -713,10 +713,13 @@ describe('Workbench 全流程', () => {
     regenerateWithWidth('20');
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }, { timeout: 5000 }));
     await waitFor(() => expect(screen.getByText(beads(400))).toBeTruthy(), { timeout: 20_000 });
+    // 重生成结果先出现在画布，自动保存结束后撤销才解锁；并行覆盖率 runner 上
+    // 两者会落在不同的事件循环拍，不能在按钮仍禁用时丢掉点击。
+    await waitFor(() => expect(undoButton()).toBeEnabled(), { timeout: 10_000 });
     fireEvent.click(undoButton());
-    await waitFor(() => expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy(), { timeout: 10_000 });
     expect(undoButton()).toBeDisabled();
-  }, 20_000);
+  }, 30_000);
 
   it('手工修补后切换套装档位必须先确认，取消不改变档位也不重生成', async () => {
     const generateFn = vi.fn(instantGenerate);
@@ -970,10 +973,12 @@ describe('Workbench 本地保存', () => {
     const storage = new FakeStorage();
     render(<Workbench storage={storage} decodeFn={fakeDecode} generateFn={instantGenerate} />);
     fireEvent.change(selectUploadInput(), { target: { files: [makeFile()] } });
+    // Arm the quota before generation: on slower runners autosave can finish
+    // while we wait for the generated preview below.
+    storage.quotaExceeded = true;
     fireEvent.click(await screen.findByRole('button',{name:zhCN.beadhue.generate}));
     await waitFor(() => expect(screen.queryByLabelText(zhCN.upload.inputLabel)).not.toBeInTheDocument(), { timeout: 20_000 });
     await screen.findByText(beads(SQUARE_BEADS), undefined, { timeout: 20_000 });
-    storage.quotaExceeded = true;
     saveNow();
 
     await screen.findByText(zhCN.workbench.quotaError);
