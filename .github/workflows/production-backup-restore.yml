@@ -31,7 +31,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the pinned restore environment
         run: docker build -f deploy/Dockerfile.backup -t beadhue-backup-restore:local deploy
       - name: Download latest promoted COS archive and restore into disposable PostgreSQL 16
