@@ -220,7 +220,9 @@ test('长选项搜索、键盘取消、减少动态效果与200%布局放大',as
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:output(`admin-${info.project.name}.png`),fullPage:true});
   await page.goto('/app');await waitHydrated(page);await page.evaluate(()=>{document.body.style.zoom='2';});
-  // Layout-zoom simulation, not a claim of physical-device browser zoom. WebKit 应用 zoom 后要到下一帧才重排，轮询取值。
+  // 让浏览器完成 zoom 后的重排；立即读取 scrollWidth 可能拿到缩放前的 390px，造成假通过。
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  // Layout-zoom simulation, not a claim of physical-device browser zoom.
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole('button',{name:'选择图片',exact:true})).toBeVisible();
   await page.screenshot({path:output(`zoom-layout-${info.project.name}.png`),fullPage:true});
