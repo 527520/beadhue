@@ -34,7 +34,7 @@
         "test:e2e:check": "node tests/e2e/checkBrowsers.cjs",
         "test:e2e": "npm run test:e2e:check && playwright test",
         "test:e2e:production": "playwright test --config playwright.production.config.mts",
-        "test:e2e:stable": "node tests/ci/repeat.cjs 3 npm run test:e2e",
+        "test:e2e:stable": "node tests/e2e/stable.cjs 3",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "node db/migrate.cjs",
         "brand:check": "node scripts/check-brand.cjs"

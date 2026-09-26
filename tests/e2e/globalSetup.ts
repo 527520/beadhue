@@ -50,13 +50,13 @@ export default async function globalSetup(): Promise<void> {
         NEXT_TELEMETRY_DISABLED: '1',
         // 显式移除 DATABASE_URL → PGlite 回退
         DATABASE_URL: '',
-        // 回退库退回内存（不落盘）：每轮 E2E 全新库，且不与本地 dev 的 .pglite-dev 竞争
-        PGLITE_DATA_DIR: '',
+        // 稳定性门禁分段重启 dev 服务器时，沿用本轮的临时数据库；普通单次 E2E 仍用内存库。
+        PGLITE_DATA_DIR: process.env.E2E_PGLITE_DATA_DIR ?? '',
         BEADHUE_E2E_SEED: '1',
         BEADHUE_E2E_BUILD: '1',
         // Three browser projects intentionally share one disposable PGlite
-        // process. Keep production defaults intact while preventing valid
-        // cross-browser logins from exhausting the shared IP bucket.
+        // database per round. Keep production defaults intact while preventing
+        // valid cross-browser logins from exhausting the shared IP bucket.
         RATE_LOGIN: '1000',
         RATE_REGISTER: '1000',
         RATE_TOKEN: '1000',
@@ -105,7 +105,7 @@ export default async function globalSetup(): Promise<void> {
   }
 
   // 预热：逐个请求关键路由，触发 Turbopack 编译，避免测试期首次编译争用
-  const warmRoutes = ['/', '/app', '/register', '/login', '/verify-email', '/forgot-password', '/me', '/me/settings', '/palettes', '/admin/reviews', '/help', '/about'];
+  const warmRoutes = ['/', '/app', '/register', '/login', '/verify-email', '/forgot-password', '/me', '/me/settings', '/palettes', '/admin/reviews', '/admin/batches', '/help', '/about'];
   for (const route of warmRoutes) {
     try {
       await fetch(`${E2E_ORIGIN}${route}`, { method: 'GET' });

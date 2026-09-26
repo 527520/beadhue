@@ -112,15 +112,18 @@ jobs:
       matrix:
         attempt: [1, 2]
     continue-on-error: true
-    # 3 浏览器 × 完整套件（273 个用例）＝**一轮**；门禁要连续跑 3 轮。
+    # 3 浏览器 × 完整套件＝一轮；门禁连续跑 3 轮。每个浏览器的套件分成
+    # 00–11 / 12–19 两段，段间重启 dev server，临时 PGlite 保留本轮状态。
+    # run #128 两份 runner 都在第 65 个用例后失联；缩短单个 dev server 的
+    # 生命周期，避免长时间编译路由累积占用拖垮宿主机。
     # 这里此前把「一轮 32~35 分钟」误当成整套耗时，所以 40 → 60 → 90 一路抬高都不够：
     # run #96 实测第 1 轮 32.5 分钟、第 2 轮 33.7 分钟（两轮都 273/273 全绿），
     # 3 轮合计约 100 分钟，第 3 轮跑到一半就被 90 分钟上限 cancelled——
     # 被 cancelled 时步骤直接中断，连失败诊断重跑都没机会执行，等于把门禁静默关掉
     # （同样的教训已经出现过三次：run #74 coverage、run #81、run #92）。
     #
-    # 所以按「一轮 ~34 分钟 × 3 轮 + 依赖安装/浏览器安装 ~2 分钟 + 失败时诊断重跑」留余量：
-    # 正常全绿约 102 分钟，给到 150 分钟。上限只是基础设施预算，不是门禁口径——
+    # 所以按「一轮 ~34 分钟 × 3 轮 + 段间重启 + 失败时诊断重跑」留余量：
+    # 给到 150 分钟。上限只是基础设施预算，不是门禁口径——
     # 连续 3 轮、不重试、以及所有断言阈值都没有放宽。
     timeout-minutes: 150
     needs: [static, coverage, integration, performance]
@@ -137,7 +140,7 @@ jobs:
       - name: Verify Playwright browsers
         run: npm run test:e2e:check
       - name: Run E2E without retries（连续 3 次）
-        # 门禁本身不变：仍然调用 npm run test:e2e:stable（连续 3 次、不重试）。
+        # 门禁仍调用 npm run test:e2e:stable（每轮完整覆盖所有测试，连续 3 轮、不重试）。
         # 额外只是把失败暴露到匿名可读的地方：日志与 playwright-report 都要登录才能看，
         # 只有 check-run 的 annotation 匿名可读，所以失败时用 --last-failed 取回失败用例的
         # 标题与文件，并把第一个失败的 spec 编码进退出码（41=02 42=03 43=13 44=17）。
