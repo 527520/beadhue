@@ -713,10 +713,13 @@ describe('Workbench 全流程', () => {
     regenerateWithWidth('20');
     fireEvent.click(await screen.findByRole('button', { name: zhCN.workbench.confirmRegenerateAction }, { timeout: 5000 }));
     await waitFor(() => expect(screen.getByText(beads(400))).toBeTruthy(), { timeout: 20_000 });
+    // 重生成结果先出现在画布，自动保存结束后撤销才解锁；并行覆盖率 runner 上
+    // 两者会落在不同的事件循环拍，不能在按钮仍禁用时丢掉点击。
+    await waitFor(() => expect(undoButton()).toBeEnabled(), { timeout: 10_000 });
     fireEvent.click(undoButton());
-    await waitFor(() => expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(beads(SQUARE_BEADS))).toBeTruthy(), { timeout: 10_000 });
     expect(undoButton()).toBeDisabled();
-  }, 20_000);
+  }, 30_000);
 
   it('手工修补后切换套装档位必须先确认，取消不改变档位也不重生成', async () => {
     const generateFn = vi.fn(instantGenerate);

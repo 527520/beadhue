@@ -110,27 +110,28 @@ jobs:
         run: npm run test:performance:stable
 
   e2e:
-    name: E2E（${{ matrix.browser }}，第 ${{ matrix.attempt }} 份）
+    name: E2E（${{ matrix.browser }}，第 ${{ matrix.round }} 轮，第 ${{ matrix.attempt }} 份）
     # 固定 22.04 池：2026-09 下旬 ubuntu-latest 处于镜像池迁移期（job 上有官方迁移通知），
     # E2E 步骤在 ~7 分钟处被 SIGTERM（exit 143）杀掉的概率高得异常（run #117/#119/#120/#123，
     # 无任何用例失败输出；同池 coverage/windows 未受影响）。迁移期避开 latest，
     # 等上游镜像池稳定后可改回。
     runs-on: ubuntu-22.04
     # 基础设施冗余：runner 层 SIGTERM / 掉线概率 ~75%（两个镜像池都中招，官方状态页无事件）。
-    # 每种浏览器各跑两份（各自仍是完整 3 连跑、不重试、阈值不变），
-    # 由 e2e-gate 要求三种浏览器分别至少有一份完整跑绿。
+    # 每种浏览器的三轮分别放到独立 runner 并行跑，每轮两份独立尝试；
+    # e2e-gate 要求每种浏览器的每一轮都至少有一份完整跑绿。
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit]
+        round: [1, 2, 3]
         attempt: [1, 2]
     continue-on-error: true
-    # 三种浏览器在独立 runner 上并行；每份仍跑完整套件 3 轮。
+    # 三种浏览器及三轮都在独立 runner 上并行；每份只跑完整套件 1 轮。
     # 每轮分 00–11 / 12–19 两段，段间重启 dev server 并重新播种内存 PGlite。
     # run #128 两份 runner 都在第 65 个用例后失联；缩短单个 dev server 的
     # 生命周期，避免长时间编译路由累积占用拖垮宿主机。
-    # 单份只跑一种浏览器，90 分钟含慢 runner 和失败诊断余量。
-    timeout-minutes: 90
+    # 单份只跑一种浏览器的一轮；仍给慢 runner 留出余量。
+    timeout-minutes: 45
     # coverage_runs 与 E2E 并行；最终门禁再汇总覆盖率结果。
     needs: [static, integration, performance]
     env:
@@ -143,41 +144,21 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Build PDF font subset used by E2E
+        run: node scripts/build-pdf-font-subset.mjs
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Run E2E without retries（连续 3 次）
-        # 每份只跑一种浏览器，仍是完整套件连续 3 轮、不重试。
-        # 额外只是把失败暴露到匿名可读的地方：日志与 playwright-report 都要登录才能看，
-        # 只有 check-run 的 annotation 匿名可读，所以失败时用 --last-failed 取回失败用例的
-        # 标题与文件，并把第一个失败的 spec 编码进退出码（41=02 42=03 43=13 44=17）。
-        #
-        # 约束：--last-failed 只在「确实记录了失败」时才跑。整套全绿时它没有可跑用例，
-        # 但在某些情况下会退化成再跑一遍全量，把预算顶满——
-        # 那会让本来红得起的门禁变成 cancelled。所以先看日志里有没有失败块。
+      - name: Run E2E without retries（第 ${{ matrix.round }}/3 轮）
+        # 失败由首次运行的 progressReporter 写入 check annotation；
+        # 不再 --last-failed 重跑，节省失败时数分钟且保留原始 trace。
         run: |
           set +e
-          npm run test:e2e:stable -- ${{ matrix.browser }} 2>&1 | tee e2e-stable.log
+          node tests/e2e/stable.cjs 1 ${{ matrix.browser }} 2>&1 | tee e2e-stable.log
           status=${PIPESTATUS[0]}
           if [ "$status" != 0 ]; then
             echo "E2E-FAIL exit=$status"
             grep -E -m 8 -A 10 '^\s+[0-9]+\) ' e2e-stable.log || true
-            if grep -qE '^\s+[0-9]+\) ' e2e-stable.log; then
-              npm run test:e2e -- --project=${{ matrix.browser }} --last-failed --reporter=line 2>&1 | tee e2e-last-failed.log || true
-              for entry in "02-workbench-journey:41" "03-upload-edge:42" "13-optional-recrop:43" "17-visual-refinement:44"; do
-                spec="${entry%%:*}"
-                if grep -qE "tests[\\/]e2e[\\/]${spec}\.spec\.ts" e2e-last-failed.log; then
-                  echo "E2E-FAILED-SPEC ${spec} -> code ${entry##*:}"
-                  echo "${entry##*:}" >> e2e-failed-codes.txt
-                fi
-              done
-              cat e2e-failed-codes.txt 2>/dev/null || true
-            else
-              echo "E2E-DIAGNOSTIC-SKIPPED 日志里没有可解析的失败块，跳过 --last-failed 以免再跑一遍全量"
-            fi
-          fi
-          set -e
-          if [ -s e2e-failed-codes.txt ]; then
-            exit "$(head -n 1 e2e-failed-codes.txt)"
+            cp "$(node -p 'require("node:os").tmpdir()')/beadhue-e2e-dev-3100.log" e2e-dev.log 2>/dev/null || true
           fi
           exit "$status"
         env:
@@ -188,26 +169,30 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}-${{ matrix.attempt }}
-          path: playwright-report/
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}
+          path: |
+            playwright-report/
+            e2e-stable.log
+            e2e-dev.log
           retention-days: 7
-      # 绿标：只有前面的 3 连跑步骤全部成功（exit 0）才会执行；被 SIGTERM 杀掉的尝试到不了这里。
+      # 绿标：只有本轮完整套件成功（exit 0）才会执行；被 SIGTERM 杀掉的尝试到不了这里。
       - name: E2E 绿标
         if: success()
         run: |
           mkdir -p e2e-marker
-          echo "${{ matrix.browser }} attempt ${{ matrix.attempt }}：完整 3 连跑全绿" > e2e-marker/${{ matrix.browser }}-${{ matrix.attempt }}.txt
+          echo "${{ matrix.browser }} round ${{ matrix.round }} attempt ${{ matrix.attempt }}：完整套件全绿" > e2e-marker/${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}.txt
       - name: Upload E2E 绿标
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-marker-${{ matrix.browser }}-${{ matrix.attempt }}
+          name: e2e-marker-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}
           path: e2e-marker/
           retention-days: 3
 
   e2e-gate:
-    # 三种浏览器各至少一份完整 3 连跑全绿，且五份 coverage 全绿，才算过。
+    # 三种浏览器各三轮，每轮至少一份完整全绿，且五份 coverage 全绿，才算过。
     # 被 infra 杀的尝试或真实用例失败均不会上传绿标。
+    # 保留已有 required check 名称；三轮现在由矩阵并行完成。
     name: E2E gate（至少一份 3 连跑全绿）
     runs-on: ubuntu-latest
     needs: [e2e, coverage]
@@ -228,10 +213,12 @@ jobs:
             exit 1
           fi
           for browser in chromium firefox webkit; do
-            if [ ! -f "e2e-markers/${browser}-1.txt" ] && [ ! -f "e2e-markers/${browser}-2.txt" ]; then
-              echo "${browser} 没有任何一份 E2E 完整 3 连跑全绿" >&2
-              exit 1
-            fi
+            for round in 1 2 3; do
+              if [ ! -f "e2e-markers/${browser}-${round}-1.txt" ] && [ ! -f "e2e-markers/${browser}-${round}-2.txt" ]; then
+                echo "${browser} 第 ${round} 轮没有任何一份 E2E 完整全绿" >&2
+                exit 1
+              fi
+            done
           done
           echo "覆盖率及三种浏览器的 E2E 门禁全部通过"
 

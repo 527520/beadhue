@@ -16,10 +16,10 @@
 - Vitest 拆分为 `unit`、`serial`、`integration` 和 `performance` 项目。Argon2 与共享数据库状态的用例串行运行，性能测试不带覆盖率插桩。
 - `src/lib` 覆盖率门禁为 lines/statements/functions ≥90%、branches ≥75%。认证数据库、Cookie 和事务边界从该插桩集合排除，由独立 integration job 执行。
 - Route Handler 集成测试当前使用 PGlite 测试适配器。CI 另配置 PostgreSQL 16 迁移、原生 Argon2 smoke，以及 standalone 生产 Route 的设计/色板 CAS、设计行数与字节配额、墓碑、游标分页和令牌并发契约。
-- Playwright 当前使用 Next 16 Turbopack 开发服务器；单个浏览器内串行运行，CI 将 Chromium、Firefox 和 WebKit 放到独立 runner 并行执行。重试为 0，失败保留 trace；每种浏览器的完整套件运行 3 次。
+- Playwright 当前使用 Next 16 Turbopack 开发服务器；单个浏览器内串行运行。CI 将 Chromium、Firefox、WebKit 及各自的 3 轮放到独立 runner 并行执行，每轮拆成两段并重启服务器，运行前确认关键动态 API 路由可用；测试重试为 0，失败保留 trace。每轮有两份独立尝试，门禁要求每种浏览器的 3 轮各至少一份全绿。
 - 当前入库图片 fixture 包括静态/animated GIF、animated WebP、透明 PNG、截断 PNG、小型照片 PNG、伪 HEIC、真实静态 HEIC、EXIF 旋转 JPEG，以及 8000×8000 / 100×8000 极限 PNG。
 - 500 色 PDF 同时验证完整色号文本、分页，并解析产物 `Tm` 绘制坐标后用实际 Helvetica/Noto 字体宽度检查页边距与列边界。
-- CI 分别执行 lint/typecheck/build、覆盖率在五份独立 runner 并行执行、PGlite/API integration、性能连续 5 次、三引擎各自 E2E 连续 3 次，以及生产依赖审计、Node 20 standalone 镜像、PostgreSQL 16 迁移和临时 canary 备份恢复演练。Release workflow 复用该 CI workflow。
+- CI 分别执行 lint/typecheck/build、覆盖率在五份独立 runner 并行执行、PGlite/API integration、性能连续 5 次、三引擎各自 E2E 独立并行 3 轮，以及生产依赖审计、Node 20 standalone 镜像、PostgreSQL 16 迁移和临时 canary 备份恢复演练。Release workflow 复用该 CI workflow。
 
 ### 尚未被上述门禁证明
 
