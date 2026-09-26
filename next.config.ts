@@ -13,8 +13,6 @@ const nextConfig: NextConfig = {
   distDir: process.env.BEADHUE_E2E_BUILD === '1' ? '.next-e2e' : '.next',
   experimental: {
     authInterrupts: true,
-    // E2E 在一台 runner 上连续编译大量路由；及时释放已写入磁盘的 Turbopack 缓存。
-    ...(process.env.BEADHUE_E2E_BUILD === '1' ? { turbopackMemoryEviction: 'full' as const } : {}),
   },
   // Playwright intentionally opens the dev server through the IPv4 loopback
   // address so Chromium, Firefox and WebKit exercise the same origin.

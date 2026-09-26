@@ -50,13 +50,12 @@ export default async function globalSetup(): Promise<void> {
         NEXT_TELEMETRY_DISABLED: '1',
         // 显式移除 DATABASE_URL → PGlite 回退
         DATABASE_URL: '',
-        // 稳定性门禁分段重启 dev 服务器时，沿用本轮的临时数据库；普通单次 E2E 仍用内存库。
+        // 稳定性门禁每段都使用新的内存库；手动设置时可指定持久化数据目录。
         PGLITE_DATA_DIR: process.env.E2E_PGLITE_DATA_DIR ?? '',
         BEADHUE_E2E_SEED: '1',
         BEADHUE_E2E_BUILD: '1',
-        // Three browser projects intentionally share one disposable PGlite
-        // database per round. Keep production defaults intact while preventing
-        // valid cross-browser logins from exhausting the shared IP bucket.
+        // Keep production defaults intact while preventing repeated browser
+        // tests from exhausting the shared loopback IP bucket.
         RATE_LOGIN: '1000',
         RATE_REGISTER: '1000',
         RATE_TOKEN: '1000',

@@ -581,7 +581,9 @@ exit 0
     const ci = read('.github/workflows/ci.yml');
     const release = read('.github/workflows/release.yml');
     expect(ci).toContain('workflow_call:');
-    expect(ci).toContain('npm run test:coverage:stable');
+    expect(ci).toContain('round: [1, 2, 3, 4, 5]');
+    expect(ci).toContain('run: npm run test:coverage');
+    expect(ci).toContain('RUNS_RESULT: ${{ needs.coverage_runs.result }}');
     expect(ci).toContain('npm run test:performance:stable');
     expect(ci).toContain('npm run test:e2e:stable');
     expect(ci).toContain('npm run test:protocol-preflight');
