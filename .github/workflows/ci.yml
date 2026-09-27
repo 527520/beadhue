@@ -144,9 +144,10 @@ jobs:
       - name: Run E2E without retries（分片 ${{ matrix.shard }}/4）
         # 失败由首次运行的 progressReporter 写入 check annotation；
         # 不再 --last-failed 重跑，节省失败时数分钟且保留原始 trace。
+        # 单分片若卡住，先于 job 上限结束命令，给日志与报告上传留出时间。
         run: |
           set +e
-          npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 2>&1 | tee e2e-stable.log
+          timeout --signal=TERM --kill-after=30s 18m npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 2>&1 | tee e2e-stable.log
           status=${PIPESTATUS[0]}
           if [ "$status" != 0 ]; then
             echo "E2E-FAIL exit=$status"
