@@ -20,6 +20,15 @@
 	}
 }
 
+# 旧域名跳转：品牌更名后 doupu.fun 与 www 一律 301 到 beadhue.com（老链接/书签/收录不失效）。
+# 证书自动签发；chi.doupu.fun 的站点块在文件末尾，不受此影响。
+doupu.fun {
+	redir https://beadhue.com{uri} permanent
+}
+www.doupu.fun {
+	redir https://beadhue.com{uri} permanent
+}
+
 # www 子域重定向到主域（避免重复内容，www 证书同样自动签发）
 www.{$SITE_DOMAIN} {
 	redir https://{$SITE_DOMAIN}{uri} permanent
