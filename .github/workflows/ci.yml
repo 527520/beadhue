@@ -147,10 +147,15 @@ jobs:
         # 单分片若卡住，先于 job 上限结束命令，给日志与报告上传留出时间。
         run: |
           set +e
-          timeout --signal=TERM --kill-after=30s 18m npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 2>&1 | tee e2e-stable.log
-          status=${PIPESTATUS[0]}
+          timeout --signal=TERM --kill-after=30s 18m bash -o pipefail -c \
+            'npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 2>&1 | tee e2e-stable.log'
+          status=$?
           if [ "$status" != 0 ]; then
             echo "E2E-FAIL exit=$status"
+            if [ "$status" = 124 ]; then
+              echo "::error::E2E command exceeded 18 minutes; last test output follows"
+              tail -n 35 e2e-stable.log
+            fi
             grep -E -m 8 -A 10 '^\s+[0-9]+\) ' e2e-stable.log || true
             cp "$(node -p 'require("node:os").tmpdir()')/beadhue-e2e-dev-3100.log" e2e-dev.log 2>/dev/null || true
           fi
