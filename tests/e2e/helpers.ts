@@ -112,10 +112,9 @@ export async function openPublishDeepLink(page: Page, photo: string): Promise<{ 
 /**
  * 长页面里滚动后再点击：WebKit 在滚动 + 指针刚移入后的一两帧内，事件命中测试仍用旧布局，
  * mousedown 会落到祖先元素，click 因此派发给共同祖先而不是按钮（React onClick 不触发）。
- * 先悬停并等两帧让合成层提交，再按下；真人操作的指针到达和按下之间天然有这段间隔。
+ * hover 自带滚动和定位器重查；悬停后等两帧让合成层提交，再按下。
  */
 export async function settledClick(locator: Locator): Promise<void> {
-  await locator.scrollIntoViewIfNeeded();
   await locator.hover();
   await locator.page().evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   await locator.click();

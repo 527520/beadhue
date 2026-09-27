@@ -17,6 +17,7 @@ async function expectBottomsAligned(locators:Locator[],tolerance=1){
  * 用轮询而不是一次性 await finished：列表是异步到的，取样那一刻可能还没有动画。无限循环的（加载环）不算。
  */
 async function settleMotion(page:Page){
+  await page.evaluate(()=>new Promise<void>(done=>requestAnimationFrame(()=>requestAnimationFrame(()=>done()))));
   await expect.poll(()=>page.evaluate(()=>{
     if(document.querySelector('.skeleton, [aria-busy="true"]')) return 'loading';
     const running=document.getAnimations().filter(animation=>(animation.playState==='running'||animation.pending)&&animation.effect?.getTiming().iterations!==Infinity);
@@ -116,6 +117,8 @@ test('后台待审、批次和人员队列五宽度排版与无障碍',async({pa
     if(route==='/admin/reviews'){
       await page.getByRole('region',{name:'待审队列'}).getByRole('button',{name:new RegExp(title)}).click();
       await expect(page.getByRole('img',{name:new RegExp(title)}).first()).toBeVisible();
+      // 详情就绪后按钮从禁用配色过渡；不要在过渡途中采样颜色对比度。
+      await expect(page.getByRole('button',{name:'通过并发布'})).toBeEnabled();
     }
     for(const width of widths){
       await page.setViewportSize({width,height:844});

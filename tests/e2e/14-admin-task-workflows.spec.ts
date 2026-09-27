@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_GENERATION_PARAMS } from '../../src/lib/types';
-import { fillField, settledClick, uploadDraftOriginal } from './helpers';
+import { fillField, settledClick, uploadDraftOriginal, waitHydrated } from './helpers';
 
 async function login(page: Page, next: string, email = 'e2e-admin@example.com') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
@@ -19,9 +19,18 @@ async function post(page: Page, url: string, body: unknown) {
   expect(result.status, JSON.stringify(result.body)).toBeLessThan(300);
   return result.body;
 }
-/** 后台表格（R15-10）：搜索框去抖后按关键字过滤，夹具才一定在第一页。 */
+/** 等搜索去抖后的请求和表格刷新完成，避免点击即将被替换的旧行。 */
 async function searchTable(page: Page, placeholder: string, keyword: string, expected = keyword) {
-  await page.getByRole('searchbox', { name: placeholder }).fill(keyword);
+  await waitHydrated(page);
+  const search = page.getByRole('searchbox', { name: placeholder });
+  const loaded = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'GET' && url.pathname.startsWith('/api/admin/') && url.searchParams.get('q') === keyword;
+  }, { timeout: 20_000 });
+  await search.fill('');
+  await search.pressSequentially(keyword);
+  expect((await loaded).ok()).toBe(true);
+  await expect(page.getByRole('table').locator('..')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('tbody tr').filter({ hasText: expected }).first()).toBeVisible();
 }
 const row = (page: Page, text: string) => page.locator('tbody tr').filter({ hasText: text });
@@ -79,7 +88,7 @@ test('标签创建丢响应同键恢复，改名停用及具名合并可完成',
   await searchTable(page, '搜索标签', name);
   await expect(row(page, name)).toHaveCount(1);
   expect(writes).toHaveLength(2); expect(writes[0]).toEqual(writes[1]);
-  await row(page, name).getByRole('button', { name, exact: true }).click();
+  await settledClick(row(page, name).getByRole('button', { name, exact: true }));
   const drawer = page.getByRole('dialog', { name: `编辑标签「${name}」` });
   await drawer.getByLabel('名称', { exact: true }).fill(`新${name}`);
   const enabled = drawer.getByRole('switch', { name: '启用', exact: true });
@@ -94,7 +103,7 @@ test('标签创建丢响应同键恢复，改名停用及具名合并可完成',
   await post(page, '/api/admin/community/tags', { name: `归档 ${suffix}`, slug: `target-${suffix}`, reason: '归并重复分类', expectedVersion: 0 });
   await page.reload();
   await searchTable(page, '搜索标签', `新${name}`);
-  await row(page, `新${name}`).getByRole('button', { name: `新${name}`, exact: true }).click();
+  await settledClick(row(page, `新${name}`).getByRole('button', { name: `新${name}`, exact: true }));
   const edit = page.getByRole('dialog', { name: `编辑标签「新${name}」` });
   await edit.getByText('合并重复标签', { exact: true }).click();
   await edit.getByRole('combobox', { name: '合并到标签' }).click();

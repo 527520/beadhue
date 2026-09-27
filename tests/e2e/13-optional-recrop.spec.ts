@@ -32,6 +32,7 @@ async function start(page: Page) {
 
 test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动接回原图 → 缺原图如实提示', async ({ page }) => {
   await start(page);
+  await waitSaved(page, 30_000);
   await openRecrop(page);
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
@@ -47,7 +48,7 @@ test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动�
   await openRecrop(page);
   await expect(cropDialog(page)).toContainText('取景：200 × 200 像素');
   await page.keyboard.press('Escape');
-  await waitSaved(page);
+  await waitSaved(page, 30_000);
 
   // 刷新后从本机原图缓存自动接回，仍可重新裁剪。
   await page.reload();
