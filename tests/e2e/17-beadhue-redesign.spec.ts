@@ -127,22 +127,16 @@ test("B: user pages retain the approved palette and fit phone/tablet/desktop", a
           ),
         )
         .toBe(true);
-      expect(
-        await page
-          .locator("button,.btn-primary,.btn-outline,.button")
-          .evaluateAll((nodes) =>
-            nodes
-              .filter((el) => {
-                const s = getComputedStyle(el);
-                return (
-                  s.display !== "none" &&
-                  s.boxShadow !== "none" &&
-                  !s.boxShadow.startsWith("inset")
-                );
-              })
-              .map((el) => el.textContent),
-          ),
-      ).toEqual([]);
+      // 原生查询只检查页面 DOM；Playwright locator 还会进入 Next 开发提示的 Shadow DOM。
+      const buttonsWithShadow = await page.evaluate(() =>
+        Array.from(document.querySelectorAll("button,.btn-primary,.btn-outline,.button"))
+          .filter((el) => {
+            const s = getComputedStyle(el);
+            return s.display !== "none" && s.boxShadow !== "none" && !s.boxShadow.startsWith("inset");
+          })
+          .map((el) => el.textContent),
+      );
+      expect(buttonsWithShadow).toEqual([]);
       // 旧内容仍在 .beadhue-ui（candy）作用域；已重做的页面（账号页）只有新界面区域。
       const legacy = page.locator(".beadhue-ui");
       if (await legacy.count()) expect(await legacy.first().getAttribute("data-theme")).toBe("candy");
