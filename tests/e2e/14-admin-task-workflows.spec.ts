@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_GENERATION_PARAMS } from '../../src/lib/types';
-import { fillField, settledClick, uploadDraftOriginal } from './helpers';
+import { fillField, settledClick, uploadDraftOriginal, waitHydrated } from './helpers';
 
 async function login(page: Page, next: string, email = 'e2e-admin@example.com') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
@@ -21,11 +21,14 @@ async function post(page: Page, url: string, body: unknown) {
 }
 /** 等搜索去抖后的请求和表格刷新完成，避免点击即将被替换的旧行。 */
 async function searchTable(page: Page, placeholder: string, keyword: string, expected = keyword) {
+  await waitHydrated(page);
+  const search = page.getByRole('searchbox', { name: placeholder });
   const loaded = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return response.request().method() === 'GET' && url.pathname.startsWith('/api/admin/') && url.searchParams.get('q') === keyword;
-  });
-  await page.getByRole('searchbox', { name: placeholder }).fill(keyword);
+  }, { timeout: 20_000 });
+  await search.fill('');
+  await search.pressSequentially(keyword);
   expect((await loaded).ok()).toBe(true);
   await expect(page.getByRole('table').locator('..')).not.toHaveAttribute('aria-busy', 'true');
   await expect(page.locator('tbody tr').filter({ hasText: expected }).first()).toBeVisible();
