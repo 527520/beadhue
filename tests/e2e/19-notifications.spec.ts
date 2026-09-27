@@ -62,7 +62,10 @@ test('审核通过后作者看到通知：换页刷新未读数，打开即已�
   await expect(item).toContainText(`「${title}」已通过审核并公开`);
   await expect(item.locator('[data-slot="unread-dot"]')).toBeVisible();
   await expect(page.getByRole('button', { name: '通知', exact: true })).toBeVisible();
-  expect(await page.evaluate(async () => (await (await fetch('/api/me/notifications/unread-count')).json()).unreadCount)).toBe(0);
+  await expect.poll(
+    () => page.evaluate(async () => (await (await fetch('/api/me/notifications/unread-count')).json()).unreadCount),
+    { timeout: 15_000 },
+  ).toBe(0);
 
   // 点击进入作品详情。
   await item.click();
