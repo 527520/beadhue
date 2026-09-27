@@ -1,0 +1,18 @@
+{
+  "version": "0.6.0",
+  "candidateCommit": "affd30e9f09f0fa6c3197b6d6f258af14afde73e",
+  "completedAt": "2026-09-27T07:22:01.9157261Z",
+  "tester": "wuqian",
+  "ios": {
+    "device": "iPhone 16 Pro",
+    "os": "iOS 18",
+    "browser": "Safari",
+    "passed": true
+  },
+  "android": {
+    "device": "小米 15 Pro",
+    "os": "Android 16",
+    "browser": "Chrome",
+    "passed": true
+  }
+}
