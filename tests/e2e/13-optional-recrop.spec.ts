@@ -28,11 +28,11 @@ async function start(page: Page) {
   await generateWith(page, { width: 100, removeBackground: false });
   await expect(beads(page, 6300)).toBeAttached();
   await expect(cropDialog(page)).toHaveCount(0);
-  await waitSaved(page, 30_000);
 }
 
 test('整图首版 → 取消不更新 → 确认自动更新 → 刷新自动接回原图 → 缺原图如实提示', async ({ page }) => {
   await start(page);
+  await waitSaved(page, 30_000);
   await openRecrop(page);
   await cropDialog(page).getByRole('button', { name: '1:1', exact: true }).click();
   await cropDialog(page).getByRole('button', { name: '取消', exact: true }).click();
