@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fillField, openPublishDeepLink } from './helpers';
+import { fillField, openPublishDeepLink, settledClick } from './helpers';
 
 const BATCH_PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
@@ -136,7 +136,7 @@ test('评论只能删除不能编辑，待审评论只对本人显示', async ({
   await expect(pending).toHaveCount(0);
   const foreign = comment('E2E 被举报评论');
   await expect(foreign).toBeVisible();
-  await foreign.getByRole('button', { name: /的评论：更多操作$/ }).click();
+  await settledClick(foreign.getByRole('button', { name: /的评论：更多操作$/ }));
   await expect(page.getByRole('menuitem', { name: '举报…' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '删除评论' })).toHaveCount(0);
   await page.keyboard.press('Escape');
@@ -193,9 +193,9 @@ test('admin 可读取人员、审计和系统证据；规则页已退役', async
   expect(people.items.find((item: { username: string }) => item.username === 'E2E Admin')).toMatchObject({ maskedEmail: 'e***n@example.com' });
   expect(JSON.stringify(people)).not.toContain('e2e-admin@example.com');
   expect((await page.request.get('/admin/rules')).status()).toBe(404);
-  await page.goto('/admin/audit');
+  await page.goto('/admin/audit', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: '审计记录', exact: true, level: 1 })).toBeVisible();
-  await page.goto('/admin/system');
+  await page.goto('/admin/system', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('未接入').first()).toBeVisible();
   await expect(page.getByText('评论内容安全服务（腾讯云）')).toBeVisible();
   await expect(page.getByText('0021_account_profile_and_batch_names')).toBeVisible();
@@ -255,7 +255,7 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   await savedItem.getByRole('checkbox').click();
   await page.getByRole('button', { name: /发布已勾选草稿/ }).click();
   await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).click();
-  await page.getByRole('button', { name: '确认公开' }).click();
+  await settledClick(page.getByRole('button', { name: '确认公开' }));
   await expect(page.getByRole('status').filter({ hasText: '已发布 1 个官方作品。' })).toBeVisible();
   await expect(savedItem.getByRole('checkbox')).toHaveCount(0);
   await expect(card('second-photo.png').getByRole('checkbox')).toBeEnabled();
@@ -267,7 +267,7 @@ test('官方批次允许单项失败、保留成功草稿并只发布勾选项',
   await restored.getByRole('checkbox').click();
   await page.getByRole('button', { name: /发布已勾选草稿/ }).click();
   await page.getByRole('checkbox', { name: /我已核对所选图纸与标题/ }).click();
-  await page.getByRole('button', { name: '确认公开' }).click();
+  await settledClick(page.getByRole('button', { name: '确认公开' }));
   await expect(page.getByRole('status').filter({ hasText: '已发布 1 个官方作品。' })).toBeVisible();
   await expect(page.locator('[data-batch-card]').getByRole('checkbox')).toHaveCount(0);
   await page.goto('/?sort=new');

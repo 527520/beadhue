@@ -34,13 +34,13 @@ jobs:
         run: npm run build
 
   coverage_runs:
-    name: unit coverage run ${{ matrix.round }}/5
+    name: unit coverage run ${{ matrix.round }}
     runs-on: ubuntu-latest
-    # 五份隔离 runner 并行执行同一套覆盖率断言；任一失败则汇总门禁失败。
+    # PR 只跑一次完整覆盖率；main、定期与发布调用仍跑五份稳定性检查。
     strategy:
       fail-fast: false
       matrix:
-        round: [1, 2, 3, 4, 5]
+        round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3,4,5]') }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -49,17 +49,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Unit tests + coverage（第 ${{ matrix.round }}/5 次）
+      - name: Unit tests + coverage（第 ${{ matrix.round }} 次）
         run: npm run test:coverage
 
   coverage:
-    # 保留原有 required check 名称，并要求五份覆盖率运行全部成功。
+    # 保留原有 required check 名称，并要求本事件的全部覆盖率运行成功。
     name: unit coverage
     runs-on: ubuntu-latest
     needs: [coverage_runs]
     if: always()
     steps:
-      - name: 判定五份覆盖率结果
+      - name: 判定覆盖率结果
         env:
           RUNS_RESULT: ${{ needs.coverage_runs.result }}
         run: |
@@ -110,30 +110,23 @@ jobs:
         run: npm run test:performance:stable
 
   e2e:
-    name: E2E（${{ matrix.browser }}，第 ${{ matrix.round }} 轮，第 ${{ matrix.attempt }} 份）
+    name: E2E（${{ matrix.browser }}，第 ${{ matrix.round }} 轮，分片 ${{ matrix.shard }}/4）
     # 固定 22.04 池：2026-09 下旬 ubuntu-latest 处于镜像池迁移期（job 上有官方迁移通知），
     # E2E 步骤在 ~7 分钟处被 SIGTERM（exit 143）杀掉的概率高得异常（run #117/#119/#120/#123，
     # 无任何用例失败输出；同池 coverage/windows 未受影响）。迁移期避开 latest，
     # 等上游镜像池稳定后可改回。
     runs-on: ubuntu-22.04
-    # 基础设施冗余：runner 层 SIGTERM / 掉线概率 ~75%（两个镜像池都中招，官方状态页无事件）。
-    # 每种浏览器的三轮分别放到独立 runner 并行跑，每轮两份独立尝试；
-    # e2e-gate 要求每种浏览器的每一轮都至少有一份完整跑绿。
+    # PR 每浏览器完整覆盖一次，按测试文件分成四个独立 runner；主干、定期和发布仍跑三轮。
+    # 每个分片只跑一份；失败时直接保留原始报告，避免重复跑同一故障。
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox, webkit]
-        round: [1, 2, 3]
-        attempt: [1, 2]
-    continue-on-error: true
-    # 三种浏览器及三轮都在独立 runner 上并行；每份只跑完整套件 1 轮。
-    # 每轮分 00–11 / 12–19 两段，段间重启 dev server 并重新播种内存 PGlite。
-    # run #128 两份 runner 都在第 65 个用例后失联；缩短单个 dev server 的
-    # 生命周期，避免长时间编译路由累积占用拖垮宿主机。
-    # 单份只跑一种浏览器的一轮；仍给慢 runner 留出余量。
-    timeout-minutes: 45
-    # coverage_runs 与 E2E 并行；最终门禁再汇总覆盖率结果。
-    needs: [static, integration, performance]
+        round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3]') }}
+        shard: [1, 2, 3, 4]
+    # run #135 的长 runner 在约第 62 个用例附近卡住并退出 143；每份分片最多 49 个用例。
+    # 不再等待静态/集成/性能检查，所有门禁从工作流开始并行执行。
+    timeout-minutes: 25
     env:
       E2E_BROWSER: ${{ matrix.browser }}
     steps:
@@ -148,12 +141,12 @@ jobs:
         run: node scripts/build-pdf-font-subset.mjs
       - name: Install Playwright browsers
         run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Run E2E without retries（第 ${{ matrix.round }}/3 轮）
+      - name: Run E2E without retries（分片 ${{ matrix.shard }}/4）
         # 失败由首次运行的 progressReporter 写入 check annotation；
         # 不再 --last-failed 重跑，节省失败时数分钟且保留原始 trace。
         run: |
           set +e
-          node tests/e2e/stable.cjs 1 ${{ matrix.browser }} 2>&1 | tee e2e-stable.log
+          npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4 2>&1 | tee e2e-stable.log
           status=${PIPESTATUS[0]}
           if [ "$status" != 0 ]; then
             echo "E2E-FAIL exit=$status"
@@ -169,58 +162,34 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.shard }}
           path: |
             playwright-report/
             e2e-stable.log
             e2e-dev.log
           retention-days: 7
-      # 绿标：只有本轮完整套件成功（exit 0）才会执行；被 SIGTERM 杀掉的尝试到不了这里。
-      - name: E2E 绿标
-        if: success()
-        run: |
-          mkdir -p e2e-marker
-          echo "${{ matrix.browser }} round ${{ matrix.round }} attempt ${{ matrix.attempt }}：完整套件全绿" > e2e-marker/${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}.txt
-      - name: Upload E2E 绿标
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-marker-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.attempt }}
-          path: e2e-marker/
-          retention-days: 3
-
   e2e-gate:
-    # 三种浏览器各三轮，每轮至少一份完整全绿，且五份 coverage 全绿，才算过。
-    # 被 infra 杀的尝试或真实用例失败均不会上传绿标。
-    # 保留已有 required check 名称；三轮现在由矩阵并行完成。
+    # PR 每浏览器四分片全绿；主干、定期、发布加跑第二、三轮。
+    # 保留已有 required check 名称，避免现有分支保护规则失效。
     name: E2E gate（至少一份 3 连跑全绿）
     runs-on: ubuntu-latest
     needs: [e2e, coverage]
     if: always()
     steps:
-      - name: 收集 E2E 绿标
-        uses: actions/download-artifact@v4
-        with:
-          pattern: e2e-marker-*
-          merge-multiple: true
-          path: e2e-markers
       - name: 判定
         env:
           COVERAGE_RESULT: ${{ needs.coverage.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
         run: |
           if [ "$COVERAGE_RESULT" != success ]; then
-            echo "五份覆盖率检查未全部通过" >&2
+            echo "覆盖率检查未全部通过" >&2
             exit 1
           fi
-          for browser in chromium firefox webkit; do
-            for round in 1 2 3; do
-              if [ ! -f "e2e-markers/${browser}-${round}-1.txt" ] && [ ! -f "e2e-markers/${browser}-${round}-2.txt" ]; then
-                echo "${browser} 第 ${round} 轮没有任何一份 E2E 完整全绿" >&2
-                exit 1
-              fi
-            done
-          done
-          echo "覆盖率及三种浏览器的 E2E 门禁全部通过"
+          if [ "$E2E_RESULT" != success ]; then
+            echo "至少一个 E2E 分片未完整通过" >&2
+            exit 1
+          fi
+          echo "覆盖率及三种浏览器的全部 E2E 分片通过"
 
   release-safety:
     name: audit / standalone / PostgreSQL / backup restore

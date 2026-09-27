@@ -581,13 +581,14 @@ exit 0
     const ci = read('.github/workflows/ci.yml');
     const release = read('.github/workflows/release.yml');
     expect(ci).toContain('workflow_call:');
-    expect(ci).toContain('round: [1, 2, 3, 4, 5]');
+    expect(ci).toContain("round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3,4,5]') }}");
     expect(ci).toContain('run: npm run test:coverage');
     expect(ci).toContain('RUNS_RESULT: ${{ needs.coverage_runs.result }}');
     expect(ci).toContain('npm run test:performance:stable');
     expect(ci).toContain('browser: [chromium, firefox, webkit]');
-    expect(ci).toContain('round: [1, 2, 3]');
-    expect(ci).toContain('node tests/e2e/stable.cjs 1 ${{ matrix.browser }}');
+    expect(ci).toContain("round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3]') }}");
+    expect(ci).toContain('shard: [1, 2, 3, 4]');
+    expect(ci).toContain('npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4');
     expect(ci).toContain('npm run test:protocol-preflight');
     expect(ci).toContain('cron: "17 3 * * 1"');
     expect(release).toContain('uses: ./.github/workflows/ci.yml');
