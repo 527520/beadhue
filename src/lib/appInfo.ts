@@ -1,6 +1,6 @@
 /** 应用级常量：名称、版本、外部链接。 */
 export const APP_NAME = '豆色绘';
-export const APP_VERSION = '0.5.0';
+export const APP_VERSION = '0.6.0';
 export const SOURCE_REPO_URL = 'https://github.com/527520/beadhue';
 export const ISSUES_URL = 'https://github.com/527520/beadhue/issues';
 export const AUTHOR_NAME = 'wuqian';
