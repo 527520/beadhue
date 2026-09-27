@@ -45,8 +45,10 @@ test('注册 → 邮箱验证 → 登录 → 首页显示登录态入口', async
   await page.goto('/me/settings');
   const usernameInput = page.getByLabel('用户名');
   await expect(usernameInput).toHaveValue(username);
-  await usernameInput.fill('新的拼豆名');
-  await page.getByRole('button', { name: '保存', exact: true }).click();
+  await fillField(page, '用户名', '新的拼豆名');
+  const save = page.getByRole('button', { name: '保存', exact: true });
+  await expect(save).toBeEnabled();
+  await save.click();
   await expect(page.locator('[data-slot="toast"]').filter({ hasText: '已保存' })).toBeVisible();
   // 保存后顶栏头像菜单里的展示名随之更新（外壳重新探测登录态）。
   await page.getByRole('button', { name: '账号菜单' }).click();

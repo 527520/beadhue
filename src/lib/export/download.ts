@@ -5,9 +5,12 @@ export function triggerDownload(bytes: Uint8Array, filename: string): void {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.tabIndex = -1;
+  anchor.setAttribute('aria-hidden', 'true');
   document.body.appendChild(anchor);
   try { anchor.click(); } finally {
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1_500);
+    // Firefox can begin a large Blob download after the click handler returns.
+    // Keep both the link and Blob URL alive until the browser has consumed it.
+    window.setTimeout(() => { anchor.remove(); URL.revokeObjectURL(url); }, 30_000);
   }
 }

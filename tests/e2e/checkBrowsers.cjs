@@ -27,11 +27,17 @@ function assertPlaywrightBrowsersInstalled(browsers = installedBrowserPaths(), e
 
 /** @returns {BrowserInstallation[]} */
 function installedBrowserPaths() {
-  return [
+  const browsers = [
     { name: 'chromium', executablePath: chromium.executablePath() },
     { name: 'firefox', executablePath: firefox.executablePath() },
     { name: 'webkit', executablePath: webkit.executablePath() },
   ];
+  const selected = process.env.E2E_BROWSER;
+  if (!selected) return browsers;
+  if (!browsers.some((browser) => browser.name === selected)) {
+    throw new Error(`未知 Playwright 浏览器：${selected}`);
+  }
+  return browsers.filter((browser) => browser.name === selected);
 }
 
 /** @param {string} path */
@@ -49,7 +55,7 @@ module.exports = { assertPlaywrightBrowsersInstalled, findMissingBrowsers };
 if (require.main === module) {
   try {
     assertPlaywrightBrowsersInstalled();
-    console.log('Playwright browsers ready: chromium, firefox, webkit');
+    console.log(`Playwright browsers ready: ${process.env.E2E_BROWSER || 'chromium, firefox, webkit'}`);
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

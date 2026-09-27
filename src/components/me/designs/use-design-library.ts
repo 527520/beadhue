@@ -24,7 +24,7 @@ import {
 } from '@/lib/storage';
 import { createBeadhueApi, type BeadhueApi, type MeInfo } from '@/lib/sync/api';
 import { ApiError, createSyncClient, type CloudDesignMeta, type SyncClient } from '@/lib/sync/clientAdapter';
-import { enqueueDesignSync, withDesignStorageLock } from '@/lib/sync/queue';
+import { enqueueDesignSync, waitForPendingDesignSync, withDesignStorageLock } from '@/lib/sync/queue';
 import type { ProjectFile } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { countColors, type LibraryDesign, type SyncStatus } from './design-model';
@@ -331,9 +331,12 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
     const client = syncClient ?? (st ? createSyncClient(st, api) : null);
     const nowIso = new Date().toISOString();
     if (st) {
-      const local = (await st.getAll()).find((record) => record.id === design.id);
       const identity = await api.me().catch((): MeInfo => ({ state: 'guest' }));
       const verified = identity.state === 'verified';
+      // Workbench may still be finishing a CAS save after navigation to this page.
+      // Its response updates the local revision only after the cloud write commits.
+      if (verified) await waitForPendingDesignSync();
+      const local = (await st.getAll()).find((record) => record.id === design.id);
       // 列表的修订号是加载时的快照，之后落地的自动保存会把云端推到下一版，所以已登录时再看一眼本机记录。
       let cloudRevision = Math.max(design.cloudPresent ? design.revision : 0, verified ? local?.revision ?? 0 : 0);
       if (cloudRevision <= 0 && verified) {
@@ -348,13 +351,17 @@ export function useDesignLibrary({ storageOverride, apiOverride, loadPublishedId
       if (cloudRevision > 0) {
         // 用户确认的在线删除是条件写：先提交云端 CAS 删除，再删本机，避免迟到的同步把它复活。
         try {
-          await api.deleteDesign(design.id, cloudRevision);
+          await withDesignStorageLock(async () => {
+            // A save can enter the queue between the first read and this lock.
+            const latest = (await st.getAll()).find((record) => record.id === design.id);
+            await api.deleteDesign(design.id, Math.max(cloudRevision, verified ? latest?.revision ?? 0 : 0));
+            await st.delete(design.id);
+          });
         } catch (error) {
           if (!(error instanceof ApiError) || error.code !== 'REVISION_CONFLICT') throw error;
           await load();
           return { ok: false, message: t.deleteConflict };
         }
-        await withDesignStorageLock(() => st.delete(design.id));
       } else if (client) {
         // 只在本机的设计同样写持久墓碑，下次同步发现旧云端修订也不会悄悄复活。
         await withDesignStorageLock(() => client.deleteLocal(design.id, nowIso, local?.revision ?? design.revision));

@@ -60,12 +60,13 @@ export type RemovableChipProps = Omit<ComponentProps<'span'>, 'children'> &
   ChipBase & {
     children: string;
     onRemove: () => void;
+    disabled?: boolean;
     /** 移除按钮的可访问名称，默认「移除：<文字>」。 */
     removeLabel?: string;
   };
 
 /** 已选条件芯片：文字 + 右侧 × 按钮。 */
-export function RemovableChip({ className, variant, selected = false, count, icon, children, onRemove, removeLabel, ...props }: RemovableChipProps) {
+export function RemovableChip({ className, variant, selected = false, count, icon, children, onRemove, removeLabel, disabled = false, ...props }: RemovableChipProps) {
   return (
     <span data-slot="chip" className={cn(chipVariants({ variant, selected }), className)} {...props}>
       {icon}
@@ -76,6 +77,7 @@ export function RemovableChip({ className, variant, selected = false, count, ico
         data-slot="chip-remove"
         aria-label={removeLabel ?? zhCN.ui.removeChip(children)}
         onClick={onRemove}
+        disabled={disabled}
         className={cn(
           '-mr-1.5 grid size-4.5 place-items-center rounded-full focus-visible:focus-ring [&>svg]:size-4',
           selected ? 'hover:bg-on-ink/18' : 'hover:bg-ink/8',

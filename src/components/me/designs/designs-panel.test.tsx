@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError, type CloudDesignFull } from '@/lib/sync/clientAdapter';
+import { enqueueDesignSync } from '@/lib/sync/queue';
 import { createStitchProgress, type StitchProgress } from '@/lib/progress/stitchProgress';
 import type { BeadhueApi, MeInfo } from '@/lib/sync/api';
 import type { DesignRecord, StorageAdapter } from '@/lib/storage';
@@ -316,6 +317,45 @@ describe('我的 · 设计', () => {
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '删除' }));
     await waitFor(() => expect(api.deleted).toContain('late-save'));
     expect(await storage.getAll()).toEqual([]);
+  });
+
+  it('删除等待已提交但尚未回写本机修订号的后台保存', async () => {
+    const user = userEvent.setup();
+    const project = makeProject('保存后删除', iso(-1000));
+    const api = new FakeApi([{ id: 'inflight-delete', name: project.name, project, updatedAt: project.updatedAt, revision: 1 }]);
+    api.meState = verified;
+    const storage = new FakeStorage([localRecord('inflight-delete', project, 1, 'synced')]);
+    renderPanel(storage, api);
+    await more('保存后删除');
+
+    let committed!: () => void;
+    let release!: () => void;
+    const cloudCommitted = new Promise<void>((resolve) => { committed = resolve; });
+    const responseGate = new Promise<void>((resolve) => { release = resolve; });
+    const put = api.putDesign.bind(api);
+    api.putDesign = async (...args) => {
+      const response = await put(...args);
+      committed();
+      await responseGate;
+      return response;
+    };
+    storage.records.set('inflight-delete', { ...storage.records.get('inflight-delete')!, syncState: 'dirty' });
+    const pending = enqueueDesignSync(storage, api);
+    await cloudCommitted;
+    expect(api.cloud.get('inflight-delete')?.revision).toBe(2);
+    expect(storage.records.get('inflight-delete')?.revision).toBe(1);
+
+    try {
+      await user.click(await more('保存后删除'));
+      await user.click(await screen.findByRole('menuitem', { name: '删除' }));
+      fireEvent.click(within(await screen.findByRole('dialog', { name: '删除这个设计？' })).getByRole('button', { name: '删除' }));
+      expect(api.deleted).toEqual([]);
+    } finally {
+      release();
+    }
+    await pending;
+    await waitFor(() => expect(api.deleted).toContain('inflight-delete'));
+    expect(storage.records.has('inflight-delete')).toBe(false);
   });
 
   it('删除时云端已被其他设备改过：说明原因并刷新列表，本机与云端都不动', async () => {

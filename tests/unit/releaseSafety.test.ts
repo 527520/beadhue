@@ -581,9 +581,14 @@ exit 0
     const ci = read('.github/workflows/ci.yml');
     const release = read('.github/workflows/release.yml');
     expect(ci).toContain('workflow_call:');
-    expect(ci).toContain('npm run test:coverage:stable');
+    expect(ci).toContain("round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3,4,5]') }}");
+    expect(ci).toContain('run: npm run test:coverage');
+    expect(ci).toContain('RUNS_RESULT: ${{ needs.coverage_runs.result }}');
     expect(ci).toContain('npm run test:performance:stable');
-    expect(ci).toContain('npm run test:e2e:stable');
+    expect(ci).toContain('browser: [chromium, firefox, webkit]');
+    expect(ci).toContain("round: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1,2,3]') }}");
+    expect(ci).toContain('shard: [1, 2, 3, 4]');
+    expect(ci).toContain('npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/4');
     expect(ci).toContain('npm run test:protocol-preflight');
     expect(ci).toContain('cron: "17 3 * * 1"');
     expect(release).toContain('uses: ./.github/workflows/ci.yml');
@@ -701,7 +706,7 @@ exit 0
     const pkg = JSON.parse(read('package.json')) as { scripts: Record<string, string> };
     expect(pkg.scripts['test:coverage:stable']).toBe('node tests/ci/repeat.cjs 5 npm run test:coverage');
     expect(pkg.scripts['test:performance:stable']).toBe('node tests/ci/repeat.cjs 5 npm run test:performance');
-    expect(pkg.scripts['test:e2e:stable']).toBe('node tests/ci/repeat.cjs 3 npm run test:e2e');
+    expect(pkg.scripts['test:e2e:stable']).toBe('node tests/e2e/stable.cjs 3');
     expect(read('playwright.config.mts')).toMatch(/retries:\s*0/);
   });
 

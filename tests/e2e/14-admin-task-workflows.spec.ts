@@ -1,13 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_GENERATION_PARAMS } from '../../src/lib/types';
-import { fillField, uploadDraftOriginal } from './helpers';
+import { fillField, settledClick, uploadDraftOriginal } from './helpers';
 
 async function login(page: Page, next: string, email = 'e2e-admin@example.com') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await fillField(page, '邮箱', email); await fillField(page, '密码', 'E2e-pass-123!');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${next.replaceAll('/', '\\/')}$`));
+  // The first protected admin route can need a cold Turbopack compile in E2E.
+  await expect(page).toHaveURL(new RegExp(`${next.replaceAll('/', '\\/')}$`), { timeout: 60_000 });
   await expect(page.locator('h1')).toBeVisible();
 }
 async function post(page: Page, url: string, body: unknown) {
@@ -115,8 +116,9 @@ test('人员二次确认、暂停撤销会话、恢复与角色调整可完成',
     await login(page, '/admin/users');
     await searchTable(page, '搜索用户名、邮箱或编号', email, `E2E 治理目标 ${info.project.name}`);
     const entry = row(page, `E2E 治理目标 ${info.project.name}`);
-    await entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}`, exact: true }).click();
+    await settledClick(entry.getByRole('button', { name: `E2E 治理目标 ${info.project.name}`, exact: true }));
     const drawer = page.getByRole('dialog', { name: '账号详情' });
+    await expect(drawer).toBeVisible();
     const act = async (button: string, dialogName: RegExp, reasonLabel: string, confirm: string) => {
       await drawer.getByRole('button', { name: button }).click();
       const dialog = page.getByRole('dialog', { name: dialogName });

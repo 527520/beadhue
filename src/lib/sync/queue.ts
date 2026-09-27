@@ -17,6 +17,12 @@ let inProcessLockTail: Promise<void> = Promise.resolve();
 // otherwise the coalesced tail's empty result hides the original conflict.
 const pendingSessionOutcomes: SyncOutcome[] = [];
 
+/** Wait for an already-started save before a user-confirmed delete reads its CAS revision. */
+export async function waitForPendingDesignSync(): Promise<void> {
+  // A failed background pass must not prevent the user from retrying a delete.
+  await running?.catch(() => undefined);
+}
+
 type BrowserLockManager = {
   request<T>(name: string, callback: () => Promise<T>): Promise<T>;
 };
