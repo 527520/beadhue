@@ -1,0 +1,133 @@
+import Taro from "@tarojs/taro";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { LIMITS } from "@beadhue/core/limits";
+import type { ImageDataLike } from "@/lib/engine/types";
+import { wxFiles } from "./files";
+import { namespace } from "./designs";
+
+export interface PickedImage {
+  path: string;
+  width: number;
+  height: number;
+  orientation: string;
+  bytes: ArrayBuffer;
+  sha256: string;
+}
+export interface Crop {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+export const fullCrop: Crop = { x: 0, y: 0, width: 1, height: 1 };
+export async function readImage(path: string): Promise<PickedImage> {
+  const info = await Taro.getImageInfo({ src: path });
+  const bytes = wx
+    .getFileSystemManager()
+    .readFileSync(info.path || path) as ArrayBuffer;
+  if (bytes.byteLength > LIMITS.maxFileBytes)
+    throw new Error("图片不能超过 20 MB");
+  if (info.width * info.height > LIMITS.maxPixels)
+    throw new Error("图片尺寸过大，请选择不超过 6400 万像素的图片");
+  if (!["png", "jpeg", "jpg", "webp"].includes(info.type.toLowerCase()))
+    throw new Error("请选择 PNG、JPEG 或可解码的 WebP 图片");
+  return {
+    path: info.path || path,
+    width: info.width,
+    height: info.height,
+    orientation: info.orientation,
+    bytes,
+    sha256: Array.from(sha256(new Uint8Array(bytes)))
+      .map((n) => n.toString(16).padStart(2, "0"))
+      .join(""),
+  };
+}
+export async function pickImage() {
+  const result = await Taro.chooseMedia({
+    count: 1,
+    mediaType: ["image"],
+    sourceType: ["album"],
+    sizeType: ["original"],
+  });
+  if (result.tempFiles[0].size > LIMITS.maxFileBytes)
+    throw new Error("图片不能超过 20 MB");
+  return readImage(result.tempFiles[0].tempFilePath);
+}
+export async function canvasNode(
+  id: string,
+): Promise<WechatMiniprogram.Canvas> {
+  await new Promise<void>((resolve) => Taro.nextTick(resolve));
+  return new Promise((resolve, reject) => {
+    wx.createSelectorQuery()
+      .select(`#${id}`)
+      .fields({ node: true, size: true })
+      .exec((rows: Array<{ node?: WechatMiniprogram.Canvas }>) =>
+        rows[0]?.node
+          ? resolve(rows[0].node)
+          : reject(new Error("画布尚未准备好，请重试")),
+      );
+  });
+}
+export async function decodeImage(
+  picked: PickedImage,
+  canvas: WechatMiniprogram.Canvas,
+  crop: Crop,
+): Promise<ImageDataLike> {
+  const rotated = /^(left|right)/.test(picked.orientation);
+  const orientedW = rotated ? picked.height : picked.width,
+    orientedH = rotated ? picked.width : picked.height;
+  const cw = Math.max(1, Math.round(crop.width * orientedW)),
+    ch = Math.max(1, Math.round(crop.height * orientedH));
+  const scale = Math.min(
+    1,
+    LIMITS.generationSourceDimension / Math.max(cw, ch),
+  );
+  canvas.width = Math.max(1, Math.round(cw * scale));
+  canvas.height = Math.max(1, Math.round(ch * scale));
+  const image = canvas.createImage();
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () =>
+      reject(new Error("无法解码这张图片，请重新选择 PNG 或 JPEG"));
+    image.src = picked.path;
+  });
+  const ctx = canvas.getContext("2d") as unknown as CanvasRenderingContext2D;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.translate(-crop.x * orientedW, -crop.y * orientedH);
+  // Orientation is explicit; acceptance includes EXIF fixtures on both iOS and Android.
+  const transforms: Record<
+    string,
+    [number, number, number, number, number, number]
+  > = {
+    up: [1, 0, 0, 1, 0, 0],
+    "up-mirrored": [-1, 0, 0, 1, picked.width, 0],
+    down: [-1, 0, 0, -1, picked.width, picked.height],
+    "down-mirrored": [1, 0, 0, -1, 0, picked.height],
+    right: [0, 1, -1, 0, picked.height, 0],
+    "right-mirrored": [0, -1, -1, 0, picked.height, picked.width],
+    left: [0, -1, 1, 0, 0, picked.width],
+    "left-mirrored": [0, 1, 1, 0, 0, 0],
+  };
+  ctx.transform(...(transforms[picked.orientation] ?? transforms.up));
+  ctx.drawImage(
+    image as unknown as CanvasImageSource,
+    0,
+    0,
+    picked.width,
+    picked.height,
+  );
+  ctx.restore();
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+export function retainOriginal(image: PickedImage, space = namespace()) {
+  const files = wxFiles(space);
+  const name = `original-${image.sha256}.bin`;
+  try {
+    files.bytes(name);
+  } catch {
+    files.write(`${name}.tmp`, image.bytes);
+    files.rename(`${name}.tmp`, name);
+  }
+}
