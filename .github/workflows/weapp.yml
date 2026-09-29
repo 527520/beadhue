@@ -1,0 +1,24 @@
+name: WeChat personal client
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  weapp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run weapp:typecheck
+      - run: npm run weapp:test
+      - run: npm run weapp:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weapp-package-budget
+          path: .scratch/wechat-miniprogram/evidence/package-sizes.json
+# No upload/deploy step: AppID, filing and real-device approval are separate gates.

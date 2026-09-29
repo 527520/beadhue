@@ -95,3 +95,9 @@ next-env.d.ts
 
 # 本地 CI 轮询临时状态（不入库）
 .scratch/beadhue-ci-monitor.txt
+
+# Independent mini program workspace
+**/node_modules/
+apps/weapp/dist/
+apps/weapp/project.private.config.json
+apps/weapp/.workers/
