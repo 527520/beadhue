@@ -8,7 +8,7 @@ import {
   type DesignRecord,
   type GenerationSourceWrite,
   type StorageAdapter,
-} from '@/lib/storage';
+} from '@/lib/storage/contracts';
 import type { ProjectFile } from '@/lib/types';
 
 export interface CloudDesignMeta {
