@@ -1,4 +1,4 @@
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import Taro from "@tarojs/taro";
 import {
   createPngExportPlan,
@@ -44,7 +44,17 @@ export async function exportProject(project: ProjectFile): Promise<ExportFile> {
     type: "json",
   };
 }
-export async function exportPdf(project: ProjectFile): Promise<ExportFile> {
+function checkActive(active: () => boolean) {
+  if (!active()) {
+    const error = new Error("导出已取消");
+    error.name = "AbortError";
+    throw error;
+  }
+}
+export async function exportPdf(
+  project: ProjectFile,
+  active = () => true,
+): Promise<ExportFile> {
   if (!ASSET_BASE_URL.startsWith("https://"))
     throw new Error("中文 PDF 字体资源尚未配置");
   const font = await Taro.request<ArrayBuffer>({
@@ -54,11 +64,13 @@ export async function exportPdf(project: ProjectFile): Promise<ExportFile> {
   });
   if (font.statusCode !== 200)
     throw new Error("中文字体下载失败，请联网后重试");
+  checkActive(active);
   const bytes = await runTask<string>({
     kind: "pdf",
     project,
     font: bytesToHex(new Uint8Array(font.data)),
   });
+  checkActive(active);
   const name = `豆色绘-${safeName(project.name)}.pdf`;
   return { name, path: saveBytes(name, hexToBytes(bytes)), type: "pdf" };
 }
@@ -80,9 +92,11 @@ export async function exportPng(
   project: ProjectFile,
   canvas: WechatMiniprogram.Canvas,
   byBoard: boolean,
+  active = () => true,
 ): Promise<ExportFile[]> {
   // Never silently export CJK with missing glyphs.
   await loadFonts();
+  checkActive(active);
   const pattern = project.pattern,
     board = getBoardProfile(project.boardProfile).boardCols;
   const cell = 24;
@@ -100,6 +114,7 @@ export async function exportPng(
     height: number,
     paint: (ctx: CanvasRenderingContext2D) => void,
   ) {
+    checkActive(active);
     if (width > 4096 || height > 4096)
       throw new Error("当前图像超过画布能力，请选择按底板分页");
     canvas.width = width;
@@ -124,6 +139,7 @@ export async function exportPng(
             fail: reject,
           }),
       );
+    checkActive(active);
     out.push({ name, path: result.tempFilePath, type: "png" });
   }
   if (byBoard || plan.kind === "too-large") {

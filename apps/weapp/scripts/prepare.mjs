@@ -56,16 +56,18 @@ for (const name of [
   "FlipHorizontal",
   "CircleHelp",
 ]) {
-  await writeFile(
-    `${app}/src/assets/${name}.svg`,
-    renderToStaticMarkup(
-      createElement(icons[name], {
-        size: 24,
-        strokeWidth: 1.75,
-        color: "#1C1C1E",
-      }),
-    ),
-  );
+  for (const [suffix, color] of [
+    ["", tokens.get("--color-ink")],
+    ["-muted", tokens.get("--color-ink-4")],
+    ["-inverse", tokens.get("--color-on-ink")],
+  ]) {
+    await writeFile(
+      `${app}/src/assets/${name}${suffix}.svg`,
+      renderToStaticMarkup(
+        createElement(icons[name], { size: 24, strokeWidth: 1.75, color }),
+      ),
+    );
+  }
 }
 // Outline the approved brand font so the wordmark never waits for font loading.
 const fontkit = (await import("@pdf-lib/fontkit")).default;
@@ -94,3 +96,5 @@ await writeFile(
   `${app}/src/assets/brand.svg`,
   `<svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(advance)}" height="24" viewBox="0 0 ${Math.ceil(advance)} 24">${beads}${glyphs}</svg>`,
 );
+
+await import("./build-examples.mjs");

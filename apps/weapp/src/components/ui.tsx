@@ -16,10 +16,18 @@ import {
   type PropsWithChildren,
   type ReactNode,
 } from "react";
-export function Icon({ name, size = 24 }: { name: string; size?: number }) {
+export function Icon({
+  name,
+  size = 24,
+  tone,
+}: {
+  name: string;
+  size?: number;
+  tone?: "muted" | "inverse";
+}) {
   return (
     <Image
-      src={`/assets/${name}.svg`}
+      src={`/assets/${name}${tone ? `-${tone}` : ""}.svg`}
       style={{ width: size, height: size }}
       mode="aspectFit"
     />
@@ -68,7 +76,10 @@ export function IconButton({
       disabled={disabled}
       onClick={onClick}
     >
-      <Icon name={name} />
+      <Icon
+        name={name}
+        tone={disabled ? "muted" : active ? "inverse" : undefined}
+      />
     </NativeButton>
   );
 }

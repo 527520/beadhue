@@ -16,15 +16,19 @@ import {
   request,
   session,
   setSession,
+  updateSessionIfCurrent,
+  logoutSession,
   type Session,
 } from "../../platform/network";
 import { migrateGuestDesigns, storageFor } from "../../platform/designs";
+import { ApiError } from "@beadhue/core/sync";
 import { listBuiltinPalettes } from "@beadhue/core/palettes";
 import { AVATAR_PICKER_COLORS } from "@/lib/render/beadTokens";
 export default function Settings() {
   const [account, setAccount] = useState(session()),
     [email, setEmail] = useState(session()?.email ?? ""),
     [password, setPassword] = useState(""),
+    [reauth, setReauth] = useState(false),
     [register, setRegister] = useState(false),
     [username, setUsername] = useState(""),
     [binding, setBinding] = useState(false),
@@ -39,6 +43,8 @@ export default function Settings() {
   async function accept(value: Session) {
     setSession(value);
     setAccount(value);
+    setReauth(false);
+    setBinding(false);
     setPassword("");
     if (
       value.emailVerified &&
@@ -48,7 +54,7 @@ export default function Settings() {
         "是否将游客设计复制到此账号的私人空间？游客原件仍会保留。",
       ))
     )
-      await migrateGuestDesigns();
+      if (session()?.token === value.token) await migrateGuestDesigns();
   }
   async function refresh() {
     const s = session();
@@ -58,18 +64,26 @@ export default function Settings() {
       const me = await request<{
         emailVerified: boolean;
         username: string | null;
-      }>("/api/auth/me");
+      }>("/api/auth/me", { token: s.token });
+      if (session()?.token !== s.token) return;
       setUsername(me.username ?? "");
-      if (!s.emailVerified)
-        await accept({ ...s, emailVerified: me.emailVerified });
-      setBinding(
-        (await request<{ bound: boolean }>("/api/mini/auth/wechat-binding"))
-          .bound,
+      if (s.emailVerified !== me.emailVerified) {
+        const next = { ...s, emailVerified: me.emailVerified };
+        if (!updateSessionIfCurrent(s.token, next)) return;
+        setAccount(next);
+      }
+      const result = await request<{ bound: boolean }>(
+        "/api/mini/auth/wechat-binding",
+        { token: s.token },
       );
+      if (session()?.token === s.token) setBinding(result.bound);
     } catch (e) {
+      if (session()?.token !== s.token) return;
+      if (e instanceof ApiError && e.status === 401) setReauth(true);
       setNotice(e instanceof Error ? e.message : "无法获取账号信息");
     }
   }
+
   useDidShow(() => {
     void perform(refresh);
   });
@@ -117,9 +131,10 @@ export default function Settings() {
     await refresh();
   }
   async function logout() {
-    await request("/api/auth/logout", { method: "POST" });
-    setSession(null);
+    if (!(await logoutSession())) return;
     setAccount(null);
+    setReauth(false);
+    setBinding(false);
     setPassword("");
     setNotice("已退出，当前设备的私人设计仍保留在原账号空间。");
   }
@@ -127,8 +142,13 @@ export default function Settings() {
     <Shell title="账号设置" back>
       <View className="content stack">
         {notice && <Notice>{notice}</Notice>}
-        {!account ? (
+        {!account || reauth ? (
           <>
+            {account && (
+              <Button secondary onClick={() => setReauth(false)}>
+                返回当前账号
+              </Button>
+            )}
             <Text className="title1">
               {register ? "创建邮箱账号" : "登录豆色绘"}
             </Text>
@@ -402,7 +422,14 @@ export default function Settings() {
                 </Button>
               </>
             )}
-            <Button secondary onClick={() => void perform(logout)}>
+            <Button secondary disabled={busy} onClick={() => setReauth(true)}>
+              重新登录或切换账号
+            </Button>
+            <Button
+              secondary
+              disabled={busy}
+              onClick={() => void perform(logout)}
+            >
               退出登录
             </Button>
           </>

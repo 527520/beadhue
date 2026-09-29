@@ -12,6 +12,7 @@ import { ENGINE_VERSION } from "@beadhue/core/limits";
 import { createBlankPattern } from "@beadhue/core/kit";
 import { wxFiles } from "./files";
 import { openFileStorage } from "./storage";
+import { reorientSource } from "./generation-source";
 import { cloudApi, session } from "./network";
 
 const stores = new Map<string, StorageAdapter>();
@@ -79,6 +80,38 @@ export async function saveDesign(
   source?: GenerationSourceWrite,
 ) {
   const old = (await store.getAll()).find((x) => x.id === id);
+  const previous = old && parseStoredProject(old.projectJson);
+  if (
+    !source &&
+    previous?.original?.geometry &&
+    project.original?.geometry &&
+    previous.original.sha256 === project.original.sha256 &&
+    JSON.stringify(previous.original.geometry) !==
+      JSON.stringify(project.original.geometry)
+  ) {
+    const input = await store.getGenerationSource(id);
+    if (input)
+      source = {
+        mode: "replace",
+        source: reorientSource(
+          input,
+          previous.original.geometry,
+          project.original.geometry,
+        ),
+      };
+  }
+  if (
+    project.original &&
+    project.original.sha256 !== previous?.original?.sha256
+  ) {
+    // Only a new local original creates upload intent. Cloud deletion must not recreate it.
+    await store.setMeta(
+      `original-upload:${id}`,
+      project.original.assetId
+        ? `done:${project.original.sha256}`
+        : project.original.sha256,
+    );
+  }
   await store.put(
     {
       id,
@@ -115,8 +148,9 @@ export function blankProject(
   };
 }
 export async function migrateGuestDesigns() {
-  const target = storage();
-  if (namespace() === "guest") throw new Error("请先验证邮箱");
+  const space = namespace();
+  const target = storageFor(space);
+  if (space === "guest") throw new Error("请先验证邮箱");
   const guest = storageFor("guest");
   // Copy first and never delete the guest originals. New IDs prevent accidental remote merges.
   for (const record of await guest.getAll()) {
@@ -130,7 +164,7 @@ export async function migrateGuestDesigns() {
       const name = `original-${project.original.sha256}.bin`;
       const guestFiles = wxFiles("guest");
       if (guestFiles.list().includes(name))
-        wxFiles(namespace()).write(name, guestFiles.bytes(name));
+        wxFiles(space).write(name, guestFiles.bytes(name));
     }
     await saveDesign(
       id,

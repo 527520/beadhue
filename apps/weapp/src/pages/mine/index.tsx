@@ -24,6 +24,7 @@ import {
   storage,
   syncClient,
   synchronize,
+  namespace,
 } from "../../platform/designs";
 import { session } from "../../platform/network";
 import { synchronizeOriginals } from "../../platform/originals";
@@ -34,8 +35,14 @@ export default function Mine() {
     [selected, setSelected] = useState<DesignRecord | null>(null),
     [busy, setBusy] = useState(false),
     [status, setStatus] = useState("");
-  const refresh = async () => setRecords(await storage().getAll());
+  const refresh = async () => {
+    const space = namespace();
+    const values = await storage().getAll();
+    if (space === namespace()) setRecords(values);
+  };
   useDidShow(() => {
+    setSelected(null);
+    setStatus("");
     void perform(refresh);
   });
   const s = session();
@@ -54,7 +61,9 @@ export default function Mine() {
     setBusy(true);
     try {
       const result = await synchronize();
+      if (session()?.token !== s.token) return;
       const originals = await synchronizeOriginals();
+      if (session()?.token !== s.token) return;
       setStatus(
         result.errors.length
           ? `部分设计待重试：${result.errors.join("；")}`
@@ -219,9 +228,6 @@ export default function Mine() {
                     {
                       ...project,
                       name: project.name.slice(0, 95) + " 副本",
-                      original: project.original
-                        ? { ...project.original, assetId: undefined }
-                        : undefined,
                       updatedAt: new Date().toISOString(),
                     },
                     storage(),

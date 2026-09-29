@@ -24,7 +24,8 @@ export async function savePalette(
   },
 ) {
   const parsed = customPaletteSchema.parse(value);
-  const rows = await readPalettes();
+  const store = storage();
+  const rows = await readPalettes(store);
   const old = rows.find((r) => r.id === value.id);
   const next: PaletteRecord = {
     ...parsed,
@@ -33,14 +34,15 @@ export async function savePalette(
     revision: old?.revision ?? 0,
     dirty: true,
   };
-  await storage().setMeta(
+  await store.setMeta(
     key,
     JSON.stringify([...rows.filter((r) => r.id !== next.id), next]),
   );
 }
 export async function deletePalette(id: string) {
-  const rows = await readPalettes();
-  await storage().setMeta(
+  const store = storage();
+  const rows = await readPalettes(store);
+  await store.setMeta(
     key,
     JSON.stringify(
       rows.map((r) => (r.id === id ? { ...r, deleted: true, dirty: true } : r)),

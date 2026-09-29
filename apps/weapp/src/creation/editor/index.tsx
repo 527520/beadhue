@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Shell } from "../../components/shell";
 import {
   Button,
+  Empty,
   Chip,
   IconButton,
   Notice,
@@ -104,7 +105,7 @@ export default function Editor() {
   const redraw = () => render((n) => n + 1);
   useEffect(() => {
     let alive = true;
-    void perform(async () => {
+    void (async () => {
       const loaded = await loadDesign(id);
       if (!alive) return;
       store.current = loaded.store;
@@ -120,7 +121,9 @@ export default function Editor() {
               loaded.project.pattern.width,
               loaded.project.pattern.height,
             );
-      setProject(loaded.project);
+      if (alive) setProject(loaded.project);
+    })().catch((e) => {
+      if (alive) setError(e instanceof Error ? e.message : "无法打开设计");
     });
     return () => {
       alive = false;
@@ -356,7 +359,19 @@ export default function Editor() {
   if (!project)
     return (
       <Shell title="编辑图纸" back>
-        <Skeleton />
+        {error ? (
+          <Empty
+            title="无法打开设计"
+            detail={error}
+            action={
+              <Button onClick={() => go("/pages/mine/index")}>
+                返回我的设计
+              </Button>
+            }
+          />
+        ) : (
+          <Skeleton />
+        )}
       </Shell>
     );
   const s = state.current!,
