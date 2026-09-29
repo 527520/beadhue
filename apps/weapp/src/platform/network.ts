@@ -1,4 +1,5 @@
 import Taro from "@tarojs/taro";
+import { cachePreview } from "./preview-cache";
 import {
   cloudDesignPageSchema,
   cloudDesignFullSchema,
@@ -27,6 +28,27 @@ export function setSession(value: Session | null) {
   if (value) Taro.setStorageSync(SESSION_KEY, value);
   else Taro.removeStorageSync(SESSION_KEY);
   current = value;
+}
+/** Compare-and-set prevents late requests from restoring an old account after logout. */
+export function updateSessionIfCurrent(
+  expectedToken: string,
+  value: Session | null,
+): boolean {
+  if (session()?.token !== expectedToken) return false;
+  setSession(value);
+  return true;
+}
+export async function logoutSession(): Promise<boolean> {
+  const owner = session();
+  if (!owner) return true;
+  try {
+    await request("/api/auth/logout", { method: "POST", token: owner.token });
+  } catch (error) {
+    // Revoked/expired/suspended credentials are already unable to access the server.
+    if (!(error instanceof ApiError) || ![401, 403].includes(error.status))
+      throw error;
+  }
+  return updateSessionIfCurrent(owner.token, null);
 }
 function baseUrl() {
   if (!/^https:\/\/[^/]+/.test(API_BASE_URL))
@@ -118,10 +140,13 @@ export function cloudApi(token: string): CloudApi {
   };
 }
 export async function privateImage(path: string): Promise<string> {
-  const owner=session();
-  if(!owner?.emailVerified)throw new Error("请先登录并验证邮箱");
-  const data = await request<ArrayBuffer>(path, { responseBytes: true, token:owner.token });
-  const local = `${wx.env.USER_DATA_PATH}/preview-${owner.userId}-${Date.now()}.png`;
-  wx.getFileSystemManager().writeFileSync(local, data);
-  return local;
+  const owner = session();
+  if (!owner?.emailVerified) throw new Error("请先登录并验证邮箱");
+  const data = await request<ArrayBuffer>(path, {
+    responseBytes: true,
+    token: owner.token,
+  });
+  if (session()?.token !== owner.token)
+    throw new Error("账号已切换，请重新打开原图");
+  return cachePreview(owner.userId, path, data);
 }

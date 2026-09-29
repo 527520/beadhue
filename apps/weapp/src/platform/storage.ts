@@ -37,32 +37,47 @@ export function openFileStorage(files: FilePort): StorageAdapter {
     .list()
     .filter((n) => /^commit-\d+\.json$/.test(n))
     .sort((a, b) => Number(b.slice(7, -5)) - Number(a.slice(7, -5)));
-  for (const name of commits) {
+  function readValidCommit(name: string): Index | null {
     try {
       const value: Index = JSON.parse(files.read(name));
       if (
         value.version !== 1 ||
         !Number.isSafeInteger(value.sequence) ||
+        value.sequence !== Number(name.slice(7, -5)) ||
         !value.designs ||
         !value.meta ||
         !value.progress
       )
-        continue;
+        return null;
       for (const entry of Object.values(value.designs)) {
         const record: DesignRecord = JSON.parse(files.read(entry.record));
-        if (!parseStoredProject(record.projectJson))
-          throw new Error("项目损坏");
+        if (!parseStoredProject(record.projectJson)) return null;
         if (
           entry.source &&
-          files.bytes(entry.source.path).byteLength !==
-            entry.source.width * entry.source.height * 4
+          !isValidLocalGenerationSource({
+            version: 1,
+            width: entry.source.width,
+            height: entry.source.height,
+            rgba: files.bytes(entry.source.path),
+          })
         )
-          throw new Error("生成源损坏");
+          return null;
       }
+      for (const path of Object.values(value.progress)) {
+        const raw = JSON.parse(files.read(path));
+        if (!parseStitchProgress({ ...raw, done: new Uint8Array(raw.done) }))
+          return null;
+      }
+      return value;
+    } catch {
+      return null;
+    }
+  }
+  for (const name of commits) {
+    const value = readValidCommit(name);
+    if (value) {
       index = value;
       break;
-    } catch {
-      /* An incomplete generation does not invalidate its predecessor. */
     }
   }
   if (commits.length && !index.sequence)
@@ -102,12 +117,8 @@ export function openFileStorage(files: FilePort): StorageAdapter {
           .filter((n) => /^commit-\d+\.json$/.test(n))
           .sort((a, b) => Number(b.slice(7, -5)) - Number(a.slice(7, -5)))
           .filter((n) => {
-            try {
-              const c = JSON.parse(files.read(n));
-              return c.sequence <= index.sequence;
-            } catch {
-              return false;
-            }
+            const value = readValidCommit(n);
+            return value !== null && value.sequence <= index.sequence;
           })
           .slice(0, 2);
         const live = new Set(retained);

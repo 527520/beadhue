@@ -11,7 +11,7 @@ import {
   perform,
 } from "../../components/ui";
 import { privateImage, request, session } from "../../platform/network";
-import { synchronize } from "../../platform/designs";
+import { synchronize, storageFor } from "../../platform/designs";
 interface Original {
   designId: string;
   name: string;
@@ -26,11 +26,21 @@ export default function Originals() {
       null,
     );
   async function refresh() {
-    setItems(
-      (await request<{ items: Original[] }>("/api/originals/designs")).items,
-    );
-    setUsage(await request("/api/originals/usage"));
+    const owner = session();
+    if (!owner?.emailVerified) return;
+    const [list, quota] = await Promise.all([
+      request<{ items: Original[] }>("/api/originals/designs", {
+        token: owner.token,
+      }),
+      request<{ bytes: number; quotaBytes: number }>("/api/originals/usage", {
+        token: owner.token,
+      }),
+    ]);
+    if (session()?.token !== owner.token) return;
+    setItems(list.items);
+    setUsage(quota);
   }
+
   useDidShow(() => {
     if (session()?.emailVerified) void perform(refresh);
   });
@@ -85,13 +95,21 @@ export default function Originals() {
                           ))
                         )
                           return;
+                        const owner = session();
+                        if (!owner) throw new Error("请重新登录");
+                        await storageFor(`user-${owner.userId}`).setMeta(
+                          `original-upload:${item.designId}`,
+                          "deleted",
+                        );
                         await request(
                           `/api/designs/${item.designId}/original`,
                           {
                             method: "DELETE",
+                            token: owner.token,
                             data: { baseRevision: item.revision },
                           },
                         );
+                        if (session()?.token !== owner.token) return;
                         await synchronize();
                         await refresh();
                       })

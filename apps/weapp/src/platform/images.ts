@@ -4,6 +4,12 @@ import { LIMITS } from "@beadhue/core/limits";
 import type { ImageDataLike } from "@/lib/engine/types";
 import { wxFiles } from "./files";
 import { namespace } from "./designs";
+import { privateImage } from "./network";
+import {
+  originalRegion,
+  orientOriginalRegion,
+  type OriginalReference,
+} from "@/lib/originals/geometry";
 
 export interface PickedImage {
   path: string;
@@ -130,4 +136,30 @@ export function retainOriginal(image: PickedImage, space = namespace()) {
     files.write(`${name}.tmp`, image.bytes);
     files.rename(`${name}.tmp`, name);
   }
+}
+
+/** Restore the same cropped/oriented input for a design arriving from Web. */
+export async function restoreGenerationSource(
+  id: string,
+  original: OriginalReference,
+  canvas: WechatMiniprogram.Canvas,
+  space: string,
+) {
+  const local = `${wx.env.USER_DATA_PATH}/beadhue-${space}/original-${original.sha256}.bin`;
+  let path = local;
+  try {
+    wx.getFileSystemManager().accessSync(local);
+  } catch {
+    if (!original.assetId)
+      throw new Error("此设计的原图未同步，请重新选择原图后调整参数");
+    path = await privateImage(`/api/designs/${id}/original`);
+  }
+  const image = await readImage(path);
+  if (image.sha256 !== original.sha256)
+    throw new Error("原图校验失败，请重新同步设计");
+  const matrix =
+    original.geometry ??
+    ([1, 0, 0, 1, 0, 0] as import("@/lib/originals/geometry").OriginalMatrix);
+  const crop = originalRegion(matrix, 1, 1);
+  return orientOriginalRegion(await decodeImage(image, canvas, crop), matrix);
 }

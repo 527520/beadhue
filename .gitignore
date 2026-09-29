@@ -101,3 +101,4 @@ next-env.d.ts
 apps/weapp/dist/
 apps/weapp/project.private.config.json
 apps/weapp/.workers/
+apps/weapp/.swc/

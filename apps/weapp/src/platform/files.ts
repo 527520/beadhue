@@ -1,3 +1,4 @@
+import { clearPreviewCache } from "./preview-cache";
 export interface FilePort {
   read(path: string): string;
   bytes(path: string): ArrayBuffer;
@@ -23,12 +24,20 @@ export function wxFiles(namespace: string): FilePort {
   return {
     read: (name) => fs.readFileSync(path(name), "utf8") as string,
     bytes: (name) => fs.readFileSync(path(name)) as ArrayBuffer,
-    write: (name, value) =>
-      fs.writeFileSync(
-        path(name),
-        value,
-        typeof value === "string" ? "utf8" : undefined,
-      ),
+    write: (name, value) => {
+      const write = () =>
+        fs.writeFileSync(
+          path(name),
+          value,
+          typeof value === "string" ? "utf8" : undefined,
+        );
+      try {
+        write();
+      } catch {
+        clearPreviewCache();
+        write();
+      }
+    },
     rename: (a, b) => fs.renameSync(path(a), path(b)),
     remove: (name) => fs.unlinkSync(path(name)),
     list: () => fs.readdirSync(dir),

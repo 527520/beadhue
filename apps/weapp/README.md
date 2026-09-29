@@ -11,7 +11,7 @@
 - `npm run weapp:typecheck` / `npm run weapp:test`：独立 React 18 类型检查和平台边界测试。
 - 在 `apps/weapp` 执行 `node scripts/build-fonts.mjs`：从仓库授权字体生成远程 WOFF；Web 的 `npm run prebuild` 生成 PDF 中文字体子集。
 
-导入微信开发者工具的目录是 `apps/weapp`，编译输出在 `dist`。`touristappid` 仅允许部分工具调试，不是可发布 AppID。Worker 源改动需重新执行构建；不依赖浏览器 SharedArrayBuffer。保持 project.config.json 的 urlCheck 为 true。
+导入微信开发者工具的目录是 `apps/weapp`，编译输出在 `dist`。`touristappid` 仅允许部分工具调试，不是可发布 AppID。示例默认图纸由构建脚本调用共享算法生成，详情显示真实豆粒和用色。Worker 源改动需重新执行构建；不依赖浏览器 SharedArrayBuffer。保持 project.config.json 的 urlCheck 为 true。
 
 构建前通过环境变量设置 `WEAPP_API_BASE_URL`、`WEAPP_ASSET_BASE_URL`、`WEAPP_WEBSITE_URL`，均为 HTTPS，无尾随斜杠。未配置时本地工具可用，网络功能明确提示未配置。复制网站地址必须由用户点击触发，不传会话。字体、PDF 中文字库必须部署到资源域名：`/fonts/weapp/text-{400,500,600,700}.woff` 和 `/fonts/NotoSansCJKsc-Regular.subset.otf`，不能以内置系统字体替代完成视觉验收。
 
@@ -20,9 +20,10 @@
 ## 数据与能力
 
 - shared core 入口只导出实际复用算法、领域规则、存储契约、CAS、绘制与导出版式；Web 保留原有导入路径。
-- 原生本地存储采用不可变项目/RGBA文件和提交记录；最多回收不被最近两个提交引用的缓存。游客与每个 UUID 账号目录隔离；迁入是用户确认后的复制。
+- 原生本地存储采用不可变项目/RGBA文件和提交记录；最多回收不被最近两个有效提交引用的缓存。游客与每个 UUID 账号目录隔离；迁入是用户确认后的复制。
 - Auth token 单独本地保存；服务端存哈希。wx.login code 只发既有后端，微信 openid/session_key 不返回小程序。
 - 设计和色板沿用 revision，冲突保留副本。跟拼标记单独存在文件系统，不进入项目文件和云同步。
+- 原图只在有本地上传意图时提交；成功/主动删除保留抑制标记，避免 Web 或小程序删除后被自动上传。预览文件有界缓存，空间不足先清理可恢复预览。
 - 原图 PUT 使用字节和 If-Match。带鉴权的原图/缩略图经请求下载到本地。网络任务捕获启动时 token，账号切换不替换在途请求身份。
 - 单个 Worker 在生成、PDF 和 ZIP 任务之间复用调度；新任务取消旧任务，任务编号拒绝过期结果。页面隐藏终止耗时计算，已提交编辑继续本地保存。
 - 字体普通文本与 Canvas 双 scope；PNG 白底，过大时拆底板并独立图例；PDF 和 ZIP 都生成字节，再由文件系统保存。

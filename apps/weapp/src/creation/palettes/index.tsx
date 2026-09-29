@@ -12,6 +12,7 @@ import {
   confirm,
   perform,
 } from "../../components/ui";
+import { namespace } from "../../platform/designs";
 import { getBuiltinPalette, listBuiltinPalettes } from "@beadhue/core/palettes";
 import type { PaletteColor } from "@beadhue/core/types";
 import {
@@ -33,9 +34,13 @@ export default function Palettes() {
     [text, setText] = useState(""),
     [notice, setNotice] = useState("");
   async function refresh() {
-    setCustom((await readPalettes()).filter((p) => !p.deleted));
+    const space = namespace();
+    const values = (await readPalettes()).filter((p) => !p.deleted);
+    if (space === namespace()) setCustom(values);
   }
   useDidShow(() => {
+    setSelected(null);
+    setEditing(null);
     void perform(refresh);
   });
   const builtin = listBuiltinPalettes().filter((p) => p.label.includes(search));

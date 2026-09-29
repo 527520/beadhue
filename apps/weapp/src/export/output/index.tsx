@@ -1,6 +1,6 @@
 import { Canvas, Switch, Text, View } from "@tarojs/components";
 import Taro, { useDidHide, useRouter } from "@tarojs/taro";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Shell } from "../../components/shell";
 import { Button, Notice, perform } from "../../components/ui";
 import { PatternPreview } from "../../components/pattern";
@@ -17,6 +17,7 @@ import { cancelTask } from "../../platform/worker";
 import type { ProjectFile } from "@beadhue/core/types";
 export default function Output() {
   const id = useRouter().params.id ?? "";
+  const epoch = useRef(0);
   const [project, setProject] = useState<ProjectFile | null>(null),
     [files, setFiles] = useState<ExportFile[]>([]),
     [busy, setBusy] = useState(false),
@@ -24,22 +25,33 @@ export default function Output() {
   useEffect(() => {
     void perform(async () => setProject((await loadDesign(id)).project));
   }, [id]);
-  useDidHide(cancelTask);
+  useDidHide(() => {
+    ++epoch.current;
+    cancelTask();
+    setBusy(false);
+  });
   async function generate(kind: "png" | "pdf" | "json") {
     if (!project) return;
+    const task = ++epoch.current;
+    const active = () => task === epoch.current;
     setBusy(true);
     try {
-      setFiles(
+      const result =
         kind === "png"
-          ? await exportPng(project, await canvasNode("export-canvas"), boards)
+          ? await exportPng(
+              project,
+              await canvasNode("export-canvas"),
+              boards,
+              active,
+            )
           : [
               await (kind === "pdf"
-                ? exportPdf(project)
+                ? exportPdf(project, active)
                 : exportProject(project)),
-            ],
-      );
+            ];
+      if (active()) setFiles(result);
     } finally {
-      setBusy(false);
+      if (active()) setBusy(false);
     }
   }
   return (
@@ -184,7 +196,7 @@ export default function Output() {
                   })
                 }
               >
-                打包 ZIP 并发送
+                生成 ZIP 文件
               </Button>
             )}
           </>

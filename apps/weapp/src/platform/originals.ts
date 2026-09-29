@@ -17,6 +17,8 @@ export async function synchronizeOriginals(): Promise<string[]> {
       record.syncState !== "synced"
     )
       continue;
+    const intentKey = `original-upload:${record.id}`;
+    if ((await store.getMeta(intentKey)) !== project.original.sha256) continue;
     let bytes: ArrayBuffer;
     try {
       bytes = files.bytes(`original-${project.original.sha256}.bin`);
@@ -36,6 +38,8 @@ export async function synchronizeOriginals(): Promise<string[]> {
       );
       const current = (await store.getAll()).find((r) => r.id === record.id);
       if (!current || current.projectJson !== record.projectJson) continue;
+      if ((await store.getMeta(intentKey)) !== project.original.sha256)
+        continue;
       const next = {
         ...project,
         original: { ...project.original, assetId: asset.assetId },
@@ -54,6 +58,8 @@ export async function synchronizeOriginals(): Promise<string[]> {
       );
       const latest = (await store.getAll()).find((r) => r.id === record.id);
       if (!latest || latest.projectJson !== record.projectJson) continue;
+      // Persist the acknowledgement before local record update; never undo a later cloud deletion.
+      await store.setMeta(intentKey, `done:${project.original.sha256}`);
       await store.put({
         ...record,
         projectJson: JSON.stringify(next),

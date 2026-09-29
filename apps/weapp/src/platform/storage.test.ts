@@ -128,6 +128,20 @@ describe("file storage crash recovery", () => {
     await recovered.setMeta("new", "y");
     expect(await openFileStorage(m.files).getMeta("new")).toBe("y");
   });
+  it("retains a fully valid predecessor after recovering a missing data file", async () => {
+    const m = memory();
+    const store = openFileStorage(m.files);
+    await store.put(record);
+    await store.put({ ...record, name: "lost" });
+    const broken = JSON.parse(m.files.read("commit-2.json"));
+    m.map.delete(broken.designs[id].record);
+    const recovered = openFileStorage(m.files);
+    await recovered.setMeta("saved-again", "yes");
+    expect(m.map.has("commit-1.json")).toBe(true);
+    expect(m.map.has("commit-2.json")).toBe(false);
+    m.map.set("commit-3.json", "interrupted");
+    expect((await openFileStorage(m.files).getAll())[0].name).toBe("test");
+  });
   it("keeps users in different file spaces and never evicts a dirty project", async () => {
     const a = memory(),
       b = memory();

@@ -1,4 +1,4 @@
-import { bytesToHex } from '@noble/hashes/utils.js';
+import { bytesToHex } from "@noble/hashes/utils.js";
 import {
   Canvas,
   Image,
@@ -38,6 +38,7 @@ import {
   newId,
   saveDesign,
   storage,
+  namespace,
 } from "../../platform/designs";
 import { cancelTask, runTask } from "../../platform/worker";
 import {
@@ -47,6 +48,7 @@ import {
   pickImage,
   readImage,
   retainOriginal,
+  restoreGenerationSource,
   type Crop,
   type PickedImage,
 } from "../../platform/images";
@@ -56,6 +58,8 @@ import { examples } from "../../examples";
 export default function Entry() {
   const route = useRouter();
   const epoch = useRef(0);
+  const ownerSpace = useRef(namespace());
+  const [original, setOriginal] = useState<ProjectFile["original"]>();
   const [name, setName] = useState("未命名设计");
   const [image, setImage] = useState<PickedImage | null>(null);
   const [crop, setCrop] = useState<Crop>(fullCrop);
@@ -85,7 +89,9 @@ export default function Entry() {
   useEffect(() => {
     void perform(async () => {
       setCustom(
-        JSON.parse((await storage().getMeta("custom-palettes")) ?? "[]"),
+        JSON.parse((await storage().getMeta("custom-palettes")) ?? "[]").filter(
+          (p: { deleted?: boolean }) => !p.deleted,
+        ),
       );
       const sample = examples.find((e) => e.id === route.params.example);
       if (sample) {
@@ -94,6 +100,7 @@ export default function Entry() {
       }
       if (route.params.id) {
         const { project, store } = await loadDesign(route.params.id);
+        setOriginal(project.original);
         setName(project.name);
         setParams(project.params);
         setSelection(project.paletteSelection);
@@ -105,6 +112,16 @@ export default function Entry() {
             height: s.height,
             data: new Uint8ClampedArray(s.rgba),
           });
+        else if (project.original) {
+          setSource(
+            await restoreGenerationSource(
+              route.params.id,
+              project.original,
+              await canvasNode("decode"),
+              ownerSpace.current,
+            ),
+          );
+        }
       }
     });
   }, []);
@@ -137,7 +154,13 @@ export default function Entry() {
           kind: "generate",
           width: input.width,
           height: input.height,
-          rgba: bytesToHex(new Uint8Array(input.data.buffer,input.data.byteOffset,input.data.byteLength)),
+          rgba: bytesToHex(
+            new Uint8Array(
+              input.data.buffer,
+              input.data.byteOffset,
+              input.data.byteLength,
+            ),
+          ),
           params,
           selection,
         });
@@ -145,7 +168,8 @@ export default function Entry() {
         project.pattern = output.pattern;
         setSource(input);
       }
-      if (image)
+      if (!blank && !image && original) project.original = { ...original };
+      if (!blank && image)
         project.original = {
           sha256: image.sha256,
           width: image.width,
@@ -159,6 +183,8 @@ export default function Entry() {
   }
   async function edit() {
     if (!preview) return;
+    if (namespace() !== ownerSpace.current)
+      throw new Error("账号已切换，请重新打开创作页面");
     const id = newId();
     if (image) retainOriginal(image);
     await saveDesign(

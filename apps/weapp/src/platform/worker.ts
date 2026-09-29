@@ -49,7 +49,10 @@ export function runTask<T>(task: WorkerTask): Promise<T> {
           });
           instance.postMessage({ id, task });
         } catch (error) {
-          if (active?.id === id) active = null;
+          if (active?.id === id) {
+            active.instance?.terminate();
+            active = null;
+          }
           reject(error);
         }
       },

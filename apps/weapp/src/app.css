@@ -1,6 +1,6 @@
 page {
   background: var(--color-bg);
-  color: var(--color-ink, #1c1c1e);
+  color: var(--color-ink);
   font-family: "BeadHue Text", "PingFang SC", sans-serif;
   font-size: var(--text-body);
   line-height: var(--text-body--line-height);
@@ -21,14 +21,11 @@ button {
 }
 input {
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--text-body);
   min-height: 24px;
 }
 image {
   flex-shrink: 0;
-}
-button[disabled] {
-  opacity: 0.45;
 }
 .shell {
   min-height: 100vh;
@@ -52,7 +49,7 @@ button[disabled] {
   padding-left: 16px;
 }
 .topbar-title {
-  font-size: 17px;
+  font-size: var(--text-topbar);
   line-height: 24px;
   font-weight: 600;
   white-space: nowrap;
@@ -80,41 +77,41 @@ button[disabled] {
   flex-wrap: wrap;
 }
 .title1 {
-  font-size: 22px;
+  font-size: var(--text-title-1);
   line-height: 30px;
   font-weight: 600;
   display: block;
 }
 .title2 {
-  font-size: 18px;
+  font-size: var(--text-title-2);
   line-height: 26px;
   font-weight: 600;
   display: block;
 }
 .title3 {
-  font-size: 16px;
+  font-size: var(--text-title-3);
   line-height: 24px;
   font-weight: 600;
   display: block;
 }
 .muted {
   color: var(--color-ink-3);
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   line-height: 22px;
 }
 .caption {
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 18px;
   color: var(--color-ink-3);
 }
 .button {
-  height: 44px;
-  border-radius: 12px;
+  height: var(--spacing-control-md);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 16px;
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   line-height: 20px;
   font-weight: 600;
   background: var(--color-accent);
@@ -133,41 +130,41 @@ button[disabled] {
   background: var(--color-bg-muted);
 }
 .icon-button {
-  width: 44px;
-  height: 44px;
+  width: var(--spacing-control-md);
+  height: var(--spacing-control-md);
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   padding: 0;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 .icon-button.selected {
-  background: var(--color-accent-soft);
-  border: 1px solid var(--color-accent);
+  background: var(--color-ink);
+  border: 1px solid var(--color-ink);
 }
 .field {
   margin: 16px 0;
 }
 .label {
   display: block;
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   margin-bottom: 8px;
 }
 .input {
-  height: 44px;
+  height: var(--spacing-control-md);
   border: 1px solid var(--color-line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   background: var(--color-bg);
 }
 .search {
-  height: 44px;
+  height: var(--spacing-control-md);
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-line);
   padding: 0 16px;
@@ -181,14 +178,14 @@ button[disabled] {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--color-line);
-  border-radius: 999px;
-  font-size: 13px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-footnote);
   line-height: 20px;
   white-space: nowrap;
 }
 .chip.active {
-  background: var(--color-ink, #1c1c1e);
-  border-color: var(--color-ink, #1c1c1e);
+  background: var(--color-ink);
+  border-color: var(--color-ink);
   color: var(--color-bg);
 }
 .chips {
@@ -206,18 +203,18 @@ button[disabled] {
 .card-image {
   width: 100%;
   height: 100%;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--color-bg-subtle);
 }
 .card-square {
   aspect-ratio: 1;
   width: 100%;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--color-bg-subtle);
 }
 .card-title {
-  font-size: 14px;
+  font-size: var(--text-body-sm);
   font-weight: 500;
   line-height: 22px;
   margin-top: 8px;
@@ -230,20 +227,20 @@ button[disabled] {
   min-width: 0;
 }
 .card-meta {
-  font-size: 12px;
+  font-size: var(--text-caption);
   line-height: 18px;
   color: var(--color-ink-3);
 }
 .panel {
   padding: 16px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--color-line);
 }
 .notice {
   padding: 12px 16px;
   background: var(--color-accent-soft);
-  border-radius: 12px;
-  font-size: 13px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-footnote);
   line-height: 20px;
   color: var(--color-ink-2);
 }
@@ -285,7 +282,7 @@ button[disabled] {
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  font-size: 11px;
+  font-size: var(--text-tabbar);
   line-height: 12px;
   color: var(--color-ink-3);
   width: 33%;
@@ -299,7 +296,7 @@ button[disabled] {
   height: 48px;
   border-radius: 50%;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,7 +313,7 @@ button[disabled] {
 }
 .sheet {
   width: 100%;
-  border-radius: 24px 24px 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   background: var(--color-bg);
   padding: 8px 16px calc(24px + env(safe-area-inset-bottom));
   max-height: 88vh;
@@ -333,7 +330,7 @@ button[disabled] {
 }
 .skeleton {
   height: 180px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: var(--color-bg-muted);
 }
 .action-row {
@@ -348,7 +345,7 @@ button[disabled] {
   width: 100%;
   height: 260px;
   background: var(--color-bg-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 .swatch {
@@ -410,14 +407,14 @@ button[disabled] {
   display: flex;
   padding: 4px;
   background: var(--color-bg-muted);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 .mode-tabs view {
   flex: 1;
   text-align: center;
   padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-sm);
 }
 .mode-tabs .active {
   background: var(--color-bg);
@@ -431,15 +428,24 @@ button[disabled] {
   height: 1px;
 }
 .error {
-  color: var(--color-danger, #b3262a);
+  color: var(--color-danger);
   padding: 12px 0;
 }
 .sample-image {
   width: 100%;
   height: 280px;
   background: var(--color-bg-subtle);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 .link {
   color: var(--color-accent);
+}
+
+.button[disabled],
+.button.secondary[disabled],
+.icon-button[disabled],
+.icon-button.selected[disabled] {
+  background: var(--color-bg-muted);
+  color: var(--color-ink-4);
+  border-color: var(--color-line);
 }
