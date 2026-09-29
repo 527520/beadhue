@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-09-29T08:46:38.505Z",
+  "generatedAt": "2026-09-29T09:07:52.485Z",
   "budget": 1887436,
   "sizes": {
-    "main": 1159579,
-    "creation": 58277,
-    "account": 22947,
-    "export": 31916,
-    "workers": 1811685
+    "main": 1192250,
+    "creation": 138841,
+    "account": 24357,
+    "export": 24216,
+    "workers": 1815482
   }
 }

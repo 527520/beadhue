@@ -1,7 +1,7 @@
 # 04 共用后端与微信认证
 
 Status: ready-for-agent
-Completion: in-progress
+Completion: complete
 Dependencies: 03
 
 ## 实现范围
@@ -19,3 +19,5 @@ Dependencies: 03
 ## Comments
 
 2026-09-29：依批准计划创建；验证进展集中记录 ../verification.md。
+
+2026-09-29 实施交付：增量迁移与后端认证实现完成；mini/session/admin 专项 24 项通过，Web 登录 E2E 通过。真实微信身份交换、邮件与正式网络联调仍待票 10 的环境。

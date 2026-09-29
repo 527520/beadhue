@@ -1,6 +1,6 @@
 # 10 回归和发布准备
 
-Status: ready-for-agent
+Status: ready-for-human
 Completion: in-progress
 Dependencies: 01–09
 
@@ -19,3 +19,5 @@ Web 与小程序回归、视觉证据、配置、备案和提审清单。范围�
 ## Comments
 
 2026-09-29：依批准计划创建；验证进展集中记录 ../verification.md。
+
+2026-09-29 实施交付：源码、配置说明、CI、验证记录和提审清单已交付。阻塞：AppID、小程序备案、API/资源域名备案和接入核验、微信开发者工具、iOS/Android、四宽视觉证据、实际上传审核。未执行生产迁移或部署。
