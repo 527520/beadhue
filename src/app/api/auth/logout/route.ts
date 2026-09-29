@@ -1,3 +1,4 @@
+import { miniRequestContext } from '@/lib/mini/context';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getDb } from '@/lib/auth/db';
@@ -11,6 +12,11 @@ async function post(request: Request): Promise<NextResponse> {
   // 与其他 mutating 端点一致：Origin 守卫防跨站强制登出（安全审查 P1）
   const guard = enforceMutatingGuard(request);
   if (guard) return guard;
+  const mini = miniRequestContext.getStore();
+  if (mini) {
+    if (mini.session) await deleteSessionByToken(getDb(), mini.session.token);
+    return new NextResponse(null, { status: 204 });
+  }
   const jar = await cookies();
   for (const cookie of [SESSION_COOKIE_NAME, LEGACY_SESSION_COOKIE_NAME]) {
     const token = jar.get(cookie)?.value;

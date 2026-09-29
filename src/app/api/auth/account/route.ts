@@ -77,3 +77,6 @@ async function updateProfile(request: Request): Promise<NextResponse> {
 }
 
 export const PATCH = withApiErrors(updateProfile);
+
+/** wx.request supports POST but not PATCH. Same validation and authorization. */
+export const POST = withApiErrors(updateProfile);
