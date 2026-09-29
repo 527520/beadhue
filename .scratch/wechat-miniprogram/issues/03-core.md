@@ -1,7 +1,7 @@
 # 03 共享核心和设计令牌
 
 Status: ready-for-agent
-Completion: in-progress
+Completion: complete
 Dependencies: 02
 
 ## 实现范围
@@ -19,3 +19,5 @@ Web 回归通过；构建边界不包含 DOM/服务端依赖。代码验证、�
 ## Comments
 
 2026-09-29：依批准计划创建；验证进展集中记录 ../verification.md。
+
+2026-09-29 实施交付：共享核心与令牌提取完成；Web 类型、构建、算法/存储/同步回归已运行，共享依赖边界通过。默认全量回归的超时及复跑记录见 verification.md，发布验收归票 10。
