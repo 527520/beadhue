@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-07T08:21:22.141Z",
+  "environment": "WeChat Developer Tools, not a real device",
+  "method": "anonymous GET after domain refresh and recompile; no response body or credentials recorded",
+  "probes": [
+    {
+      "path": "/api/auth/me",
+      "status": 401,
+      "contentType": "application/json"
+    },
+    {
+      "path": "/api/mini/auth/wechat-binding",
+      "status": 404,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/fonts/weapp/text-400.woff",
+      "status": 404,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/fonts/NotoSansCJKsc-Regular.subset.otf",
+      "status": 200,
+      "contentType": "font/otf"
+    }
+  ]
+}
