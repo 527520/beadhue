@@ -1,4 +1,5 @@
 import "./platform/polyfills";
+import "./platform/validation";
 import { useLaunch, useDidHide } from "@tarojs/taro";
 import type { PropsWithChildren } from "react";
 import { loadFonts } from "./platform/fonts";

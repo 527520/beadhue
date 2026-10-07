@@ -10,6 +10,7 @@ import {
   orientOriginalRegion,
   type OriginalReference,
 } from "@/lib/originals/geometry";
+export { canvasNode } from "./canvas";
 
 export interface PickedImage {
   path: string;
@@ -28,9 +29,12 @@ export interface Crop {
 export const fullCrop: Crop = { x: 0, y: 0, width: 1, height: 1 };
 export async function readImage(path: string): Promise<PickedImage> {
   const info = await Taro.getImageInfo({ src: path });
+  // getImageInfo strips the leading slash from bundled assets. Keep the root
+  // path so nested pages and Canvas resolve the same image as the filesystem.
+  const imagePath = path.startsWith("/") ? path : info.path || path;
   const bytes = wx
     .getFileSystemManager()
-    .readFileSync(info.path || path) as ArrayBuffer;
+    .readFileSync(imagePath) as ArrayBuffer;
   if (bytes.byteLength > LIMITS.maxFileBytes)
     throw new Error("图片不能超过 20 MB");
   if (info.width * info.height > LIMITS.maxPixels)
@@ -38,7 +42,7 @@ export async function readImage(path: string): Promise<PickedImage> {
   if (!["png", "jpeg", "jpg", "webp"].includes(info.type.toLowerCase()))
     throw new Error("请选择 PNG、JPEG 或可解码的 WebP 图片");
   return {
-    path: info.path || path,
+    path: imagePath,
     width: info.width,
     height: info.height,
     orientation: info.orientation,
@@ -58,21 +62,6 @@ export async function pickImage() {
   if (result.tempFiles[0].size > LIMITS.maxFileBytes)
     throw new Error("图片不能超过 20 MB");
   return readImage(result.tempFiles[0].tempFilePath);
-}
-export async function canvasNode(
-  id: string,
-): Promise<WechatMiniprogram.Canvas> {
-  await new Promise<void>((resolve) => Taro.nextTick(resolve));
-  return new Promise((resolve, reject) => {
-    wx.createSelectorQuery()
-      .select(`#${id}`)
-      .fields({ node: true, size: true })
-      .exec((rows: Array<{ node?: WechatMiniprogram.Canvas }>) =>
-        rows[0]?.node
-          ? resolve(rows[0].node)
-          : reject(new Error("画布尚未准备好，请重试")),
-      );
-  });
 }
 export async function decodeImage(
   picked: PickedImage,

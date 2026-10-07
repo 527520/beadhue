@@ -19,7 +19,4 @@ export default {
     backgroundTextStyle: "dark",
   },
   lazyCodeLoading: "requiredComponents",
-  permission: {
-    "scope.writePhotosAlbum": { desc: "保存您主动导出的拼豆图纸到相册" },
-  },
 };

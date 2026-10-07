@@ -1,6 +1,5 @@
 import { bytesToHex } from "@noble/hashes/utils.js";
 import {
-  Canvas,
   Image,
   Picker,
   ScrollView,
@@ -42,7 +41,6 @@ import {
 } from "../../platform/designs";
 import { cancelTask, runTask } from "../../platform/worker";
 import {
-  canvasNode,
   decodeImage,
   fullCrop,
   pickImage,
@@ -52,6 +50,7 @@ import {
   type Crop,
   type PickedImage,
 } from "../../platform/images";
+import { createDecodeCanvas } from "../../platform/canvas";
 import type { EngineOutput, ImageDataLike } from "@/lib/engine/types";
 import { examples } from "../../examples";
 
@@ -117,7 +116,7 @@ export default function Entry() {
             await restoreGenerationSource(
               route.params.id,
               project.original,
-              await canvasNode("decode"),
+              createDecodeCanvas(),
               ownerSpace.current,
             ),
           );
@@ -141,7 +140,7 @@ export default function Entry() {
     setBusy(true);
     try {
       const input = image
-        ? await decodeImage(image, await canvasNode("decode"), crop)
+        ? await decodeImage(image, createDecodeCanvas(), crop)
         : source;
       if (task !== epoch.current) return;
       if (!blank && !input) throw new Error("请选择图片或空白画布");
@@ -456,7 +455,6 @@ export default function Entry() {
           </>
         )}
         <Notice>本地创作无需登录。您可以随时在「我的」选择云同步。</Notice>
-        <Canvas type="2d" id="decode" className="hidden-canvas" />
       </View>
     </Shell>
   );

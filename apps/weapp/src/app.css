@@ -59,8 +59,10 @@ image {
 .content {
   padding: 16px;
 }
-.stack > * + * {
-  margin-top: 16px;
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .row {
   display: flex;
@@ -145,6 +147,9 @@ image {
 }
 .field {
   margin: 16px 0;
+}
+.stack > .field {
+  margin: 0;
 }
 .label {
   display: block;
@@ -441,10 +446,10 @@ image {
   color: var(--color-accent);
 }
 
-.button[disabled],
-.button.secondary[disabled],
-.icon-button[disabled],
-.icon-button.selected[disabled] {
+.button.disabled,
+.button.secondary.disabled,
+.icon-button.disabled,
+.icon-button.selected.disabled {
   background: var(--color-bg-muted);
   color: var(--color-ink-4);
   border-color: var(--color-line);
