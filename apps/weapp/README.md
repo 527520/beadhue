@@ -1,6 +1,6 @@
 # 豆色绘微信个人工具版
 
-独立前端 workspace。复用现有 Next.js 后端和 PostgreSQL，使用原生小程序页面，没有 web-view、云函数、云开发环境或公开社区接口。Web 基准 main `9a95b456`。详细 PRD 和 10 张任务票位于 `.scratch/wechat-miniprogram/`。
+独立前端 workspace。复用现有 Next.js 后端和 PostgreSQL，使用原生小程序页面，没有 web-view、云函数、云开发环境或公开社区接口。Web 基准 main `9a95b456`。详细 PRD 和独立任务票位于 `.scratch/wechat-miniprogram/`。
 
 ## 开发与构建
 
