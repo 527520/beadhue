@@ -41,7 +41,8 @@
         "weapp:dev": "npm run dev -w @beadhue/weapp",
         "weapp:build": "npm run build -w @beadhue/weapp",
         "weapp:typecheck": "npm run typecheck -w @beadhue/weapp",
-        "weapp:test": "npm run test -w @beadhue/weapp"
+        "weapp:test": "npm run test -w @beadhue/weapp",
+        "test:security:dependencies": "node --test tests/security/braces.test.cjs tests/security/dependency-graph.test.cjs tests/security/standalone-boundary.test.cjs tests/security/taro-native.test.cjs"
     },
     "dependencies": {
         "@base-ui/react": "1.8.0",
@@ -64,7 +65,8 @@
         "react-dom": "^19.2.8",
         "subset-font": "^2.6.0",
         "tailwind-merge": "^3.7.0",
-        "zod": "^4.4.3"
+        "zod": "^4.4.3",
+        "braces": "file:vendor/braces"
     },
     "devDependencies": {
         "@axe-core/playwright": "^4.13.0",
@@ -95,5 +97,13 @@
     "workspaces": [
         "apps/weapp",
         "packages/core"
-    ]
+    ],
+    "overrides": {
+        "braces": "$braces",
+        "@tarojs/components@4.2.1": {
+            "swiper": "12.1.2"
+        },
+        "webpack-dev-server": "5.2.6",
+        "webpack-dev-middleware": "7.4.6"
+    }
 }

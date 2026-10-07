@@ -1,0 +1,90 @@
+{
+  "date": "2026-10-07",
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "lockSha256": "c45e84e3ec09f766d616a1d5655b043c5d6a6e83b146cb022ae2d2478e79bc98",
+  "scope": "Local macOS validation. Full Linux CI, Node20 Alpine image, standalone production smoke and WeChat devices remain separate gates.",
+  "checks": [
+    {
+      "command": "npm run typecheck",
+      "exit": 0
+    },
+    {
+      "command": "npm run weapp:typecheck",
+      "exit": 0
+    },
+    {
+      "command": "npm run weapp:test",
+      "exit": 0,
+      "files": 12,
+      "tests": 33
+    },
+    {
+      "command": "vitest run --project unit tests/unit/dependencySecurity.test.ts",
+      "exit": 0,
+      "files": 1,
+      "tests": 1
+    },
+    {
+      "command": "npm run test:security:dependencies",
+      "exit": 0,
+      "tests": 9,
+      "goldenAssertions": 576,
+      "hostileSubprocessTimeoutMs": 5000
+    },
+    {
+      "command": "eslint (changed CommonJS, vendor, bridge and ESLint configuration)",
+      "exit": 0
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    },
+    {
+      "command": "npm ls braces vite @vitejs/plugin-react webpack-dev-server webpack-dev-middleware swiper react --all",
+      "exit": 0,
+      "invalidPeers": 0
+    },
+    {
+      "command": "node scripts/build-native-taro-vendor.cjs (regeneration)",
+      "exit": 0,
+      "identicalArchives": [
+        {
+          "archive": "beadhue-taro-react-webpack-4.2.1-beadhue.1.tgz",
+          "archiveIntegrity": "sha512-/+CASmi8P0XfEqOfCObeuSj5ysrFo48KvKKXA1CULnCQ7zkkUfNCHXKiOlIWHujSHcCTK98y4MYx4hbtCi95Aw=="
+        },
+        {
+          "archive": "beadhue-taro-api-weapp-4.2.1-beadhue.1.tgz",
+          "archiveIntegrity": "sha512-3uP0nUgpAVWdeag63cXaQ7FGv7VCAwUd9B8nCbu9HWV7Gp/MfiAanEmXb0wMzVkbxWZ2xCN76LQNHyy4VrqDFQ=="
+        }
+      ]
+    }
+  ],
+  "localRawLogs": [
+    ".artifacts/dependency-security-20261007/clean-install-security.log",
+    ".artifacts/dependency-security-20261007/native-production.log",
+    ".artifacts/dependency-security-20261007/native-watch.log",
+    ".artifacts/dependency-security-20261007/security-tests.log"
+  ],
+  "nativeProduction": {
+    "exit": 0,
+    "webpackVersion": "5.91.0",
+    "watch": false,
+    "moduleCount": 316,
+    "prebundleObserved": false,
+    "rejectedPrebundleModules": [],
+    "rejectedClientModules": [],
+    "rejectedBuildLoads": [],
+    "passed": true
+  },
+  "nativeWatch": {
+    "command": "WEAPP_VERIFY_PREBUNDLE=1 npm run weapp:dev",
+    "successfulCompilations": 2,
+    "code": null,
+    "signal": "SIGTERM",
+    "intentionallyStopped": true,
+    "prebundleObserved": true,
+    "prebundleModuleCount": 178,
+    "passed": true
+  }
+}

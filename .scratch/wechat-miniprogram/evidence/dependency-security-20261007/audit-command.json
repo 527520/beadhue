@@ -1,0 +1,5 @@
+{
+  "command": "npm audit --omit=dev --audit-level=high --registry=https://registry.npmjs.org --json",
+  "exit": 0,
+  "stderr": ""
+}

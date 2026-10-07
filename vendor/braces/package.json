@@ -1,0 +1,14 @@
+{
+  "name": "@beadhue/braces",
+  "version": "3.0.3-beadhue.1",
+  "private": true,
+  "description": "BeadHue maintained braces 3.0.3 fork with bounded AST traversal (GHSA-vfj7-8cjw-p6xm)",
+  "license": "MIT",
+  "main": "index.js",
+  "engines": {
+    "node": ">=8"
+  },
+  "dependencies": {
+    "fill-range": "^7.1.1"
+  }
+}

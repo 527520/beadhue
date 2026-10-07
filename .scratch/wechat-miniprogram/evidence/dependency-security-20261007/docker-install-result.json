@@ -1,0 +1,27 @@
+{
+  "command": "npm ci --workspaces=false --no-audit --no-fund --registry=https://registry.npmjs.org",
+  "exit": 0,
+  "installedPackages": 614,
+  "node": "v22.22.3",
+  "platform": "darwin",
+  "layout": [
+    "package.json",
+    "package-lock.json",
+    "vendor/"
+  ],
+  "bracesResolved": "vendor/braces/index.js",
+  "bracesName": "@beadhue/braces",
+  "excludedNativeAndH5Packages": [
+    "@tarojs/taro",
+    "@tarojs/helper",
+    "webpack-dev-server",
+    "node-forge"
+  ],
+  "webTestViteVersion": "8.2.1",
+  "normalGlob": [
+    "a.js",
+    "b.ts"
+  ],
+  "limitation": "Dependency-install layout reproduced on macOS Node 22; complete Alpine Node 20 image/standalone validation remains CI work.",
+  "depthGuard": true
+}

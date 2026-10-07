@@ -11,7 +11,10 @@ export default defineConfig<"webpack5">({
   outputRoot: "dist",
   framework: "react",
   compiler: "webpack5",
-  plugins: ["@tarojs/plugin-platform-weapp"],
+  plugins: [
+    "@tarojs/plugin-platform-weapp",
+    path.resolve(__dirname, "../scripts/build-boundary-plugin.cjs"),
+  ],
   alias: { "@": path.resolve(__dirname, "../../../src") },
   defineConstants: {
     API_BASE_URL: JSON.stringify(process.env.WEAPP_API_BASE_URL ?? defaultOrigin),

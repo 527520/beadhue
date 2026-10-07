@@ -11,7 +11,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ['**/*.cjs'],
+    files: ['**/*.cjs', 'vendor/braces/**/*.js'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
