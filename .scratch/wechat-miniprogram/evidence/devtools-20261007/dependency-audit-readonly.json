@@ -1,0 +1,1139 @@
+{
+  "generatedAt": "2026-10-07T06:55:21.380535+00:00",
+  "lockfileSHA256": "e9ebd8c66ea0abb502863d35e46a863d6134f6fc480739896a145fc1d64668b4",
+  "readonlyLockUnchanged": true,
+  "reports": [
+    {
+      "scope": "ci-all-workspaces",
+      "command": [
+        "npm",
+        "audit",
+        "--omit=dev",
+        "--audit-level=high",
+        "--registry=https://registry.npmjs.org",
+        "--json"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 8,
+          "high": 16,
+          "critical": 4,
+          "total": 28
+        },
+        "dependencies": {
+          "prod": 539,
+          "dev": 1173,
+          "optional": 322,
+          "peer": 80,
+          "peerOptional": 0,
+          "total": 1829
+        }
+      },
+      "highOrCritical": [
+        {
+          "package": "@tarojs/components",
+          "severity": "critical",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/@tarojs/components",
+              "version": "4.2.1"
+            }
+          ],
+          "affectedRange": ">=3.3.0-alpha.0",
+          "advisories": [
+            {
+              "dependency": "@tarojs/taro"
+            },
+            {
+              "dependency": "swiper"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/components",
+            "version": "3.2.16",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "@tarojs/helper",
+          "severity": "high",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/@tarojs/helper",
+              "version": "4.2.1"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "dependency": "chokidar"
+            },
+            {
+              "dependency": "esbuild"
+            },
+            {
+              "dependency": "find-yarn-workspace-root"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/helper",
+            "version": "3.6.5",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "@tarojs/runner-utils",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/@tarojs/runner-utils",
+              "version": "4.2.1"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "dependency": "@tarojs/helper"
+            },
+            {
+              "dependency": "scss-bundle"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/plugin-platform-weapp",
+            "version": "3.6.5",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "@tarojs/taro",
+          "severity": "critical",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "apps/weapp/node_modules/@tarojs/taro",
+              "version": "4.2.1"
+            },
+            {
+              "path": "node_modules/@tarojs/components/node_modules/@tarojs/taro",
+              "version": "4.2.1"
+            }
+          ],
+          "affectedRange": ">=3.6.23-nightly.0",
+          "advisories": [
+            {
+              "dependency": "@tarojs/components"
+            },
+            {
+              "dependency": "@tarojs/helper"
+            },
+            {
+              "dependency": "webpack-dev-server"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "braces",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/braces",
+              "version": "3.0.3"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "source": 1240992,
+              "name": "braces",
+              "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+              "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+              "severity": "high",
+              "range": "<=3.0.3",
+              "cwe": [
+                "CWE-674"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/helper",
+            "version": "3.6.5",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "chokidar",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/chokidar",
+              "version": "3.6.0"
+            }
+          ],
+          "affectedRange": "2.0.0 - 3.6.0",
+          "advisories": [
+            {
+              "dependency": "braces"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/helper",
+            "version": "3.6.5",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "find-yarn-workspace-root",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/find-yarn-workspace-root",
+              "version": "2.0.0"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "dependency": "micromatch"
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "http-proxy-middleware",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/http-proxy-middleware",
+              "version": "2.0.10"
+            }
+          ],
+          "affectedRange": ">=0.3.0",
+          "advisories": [
+            {
+              "dependency": "micromatch"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "micromatch",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/micromatch",
+              "version": "4.0.8"
+            }
+          ],
+          "affectedRange": ">=0.2.0",
+          "advisories": [
+            {
+              "dependency": "braces"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "next",
+          "severity": "critical",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/next",
+              "version": "16.3.4"
+            }
+          ],
+          "affectedRange": "16.2.0 - 16.3.5",
+          "advisories": [
+            {
+              "source": 1240609,
+              "name": "next",
+              "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+              "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j",
+              "severity": "critical",
+              "range": ">=16.2.0 <16.3.6",
+              "cwe": [
+                "CWE-1395"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "next",
+            "version": "16.4.0",
+            "isSemVerMajor": false
+          }
+        },
+        {
+          "package": "node-forge",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/node-forge",
+              "version": "1.4.0"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "source": 1240912,
+              "name": "node-forge",
+              "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+              "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+              "severity": "high",
+              "range": "<=1.4.0",
+              "cwe": [
+                "CWE-347"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "nodemailer",
+          "severity": "high",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/nodemailer",
+              "version": "9.1.1"
+            }
+          ],
+          "affectedRange": "<=10.0.8",
+          "advisories": [
+            {
+              "source": 1239931,
+              "name": "nodemailer",
+              "title": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+              "url": "https://github.com/advisories/GHSA-6vj9-mwq6-2f5v",
+              "severity": "moderate",
+              "range": ">=5.0.0 <10.0.2",
+              "cwe": [
+                "CWE-295"
+              ],
+              "cvss": {
+                "score": 5.9,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N"
+              }
+            },
+            {
+              "source": 1240033,
+              "name": "nodemailer",
+              "title": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+              "url": "https://github.com/advisories/GHSA-8vvx-rff5-p5rq",
+              "severity": "moderate",
+              "range": "<10.0.2",
+              "cwe": [
+                "CWE-674"
+              ],
+              "cvss": {
+                "score": 5.9,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            },
+            {
+              "source": 1240113,
+              "name": "nodemailer",
+              "title": "Nodemailer: Quoted local-part can produce malformed envelope recipient through RFC 5322 comment parsing",
+              "url": "https://github.com/advisories/GHSA-g57g-f23g-4646",
+              "severity": "moderate",
+              "range": ">=9.1.0 <10.0.9",
+              "cwe": [
+                "CWE-20",
+                "CWE-436"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              }
+            },
+            {
+              "source": 1240114,
+              "name": "nodemailer",
+              "title": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+              "url": "https://github.com/advisories/GHSA-v53p-9fqp-m79j",
+              "severity": "high",
+              "range": "<=10.0.5",
+              "cwe": [
+                "CWE-407",
+                "CWE-1333"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            },
+            {
+              "source": 1241277,
+              "name": "nodemailer",
+              "title": "Nodemailer addressparser: O(n^2) on comment-joined addresses enables a remote DoS (reachable via mailparser)",
+              "url": "https://github.com/advisories/GHSA-prgh-xp8r-p3m5",
+              "severity": "high",
+              "range": ">=9.1.0 <=10.0.4",
+              "cwe": [
+                "CWE-400",
+                "CWE-407"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "nodemailer",
+            "version": "10.0.15",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "scss-bundle",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/scss-bundle",
+              "version": "3.1.2"
+            }
+          ],
+          "affectedRange": "<=0.0.0-canary.e3c9a99 || >=2.5.0-beta",
+          "advisories": [
+            {
+              "dependency": "chokidar"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/plugin-platform-weapp",
+            "version": "3.6.5",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "selfsigned",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/selfsigned",
+              "version": "2.4.1"
+            }
+          ],
+          "affectedRange": "1.1.1 - 4.0.1",
+          "advisories": [
+            {
+              "dependency": "node-forge"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "sharp",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/sharp",
+              "version": "0.35.4"
+            }
+          ],
+          "affectedRange": "<0.35.5",
+          "advisories": [
+            {
+              "source": 1241331,
+              "name": "sharp",
+              "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+              "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+              "severity": "high",
+              "range": "<0.35.5",
+              "cwe": [
+                "CWE-416",
+                "CWE-1395"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "source-map-js",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/source-map-js",
+              "version": "1.2.1"
+            }
+          ],
+          "affectedRange": "1.0.0 - 1.2.1",
+          "advisories": [
+            {
+              "source": 1241209,
+              "name": "source-map-js",
+              "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+              "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+              "severity": "high",
+              "range": ">=1.0.0 <1.2.2",
+              "cwe": [
+                "CWE-1284"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "swiper",
+          "severity": "critical",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/swiper",
+              "version": "11.1.15"
+            }
+          ],
+          "affectedRange": "6.5.1 - 12.1.1",
+          "advisories": [
+            {
+              "source": 1113431,
+              "name": "swiper",
+              "title": "Prototype pollution in swiper",
+              "url": "https://github.com/advisories/GHSA-hmx5-qpq5-p643",
+              "severity": "critical",
+              "range": ">=6.5.1 <12.1.2",
+              "cwe": [
+                "CWE-1321"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/components",
+            "version": "3.2.16",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "vite",
+          "severity": "high",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "apps/weapp/node_modules/vite",
+              "version": "4.5.14"
+            }
+          ],
+          "affectedRange": "<=6.4.2",
+          "advisories": [
+            {
+              "source": 1107323,
+              "name": "vite",
+              "title": "Vite middleware may serve files starting with the same name with the public directory",
+              "url": "https://github.com/advisories/GHSA-g4jq-h2w9-997c",
+              "severity": "low",
+              "range": "<=5.4.19",
+              "cwe": [
+                "CWE-22",
+                "CWE-200",
+                "CWE-284"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1107327,
+              "name": "vite",
+              "title": "Vite's `server.fs` settings were not applied to HTML files",
+              "url": "https://github.com/advisories/GHSA-jqfw-vq24-v9c3",
+              "severity": "low",
+              "range": "<=5.4.19",
+              "cwe": [
+                "CWE-23",
+                "CWE-200",
+                "CWE-284"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1109132,
+              "name": "vite",
+              "title": "vite allows server.fs.deny bypass via backslash on Windows",
+              "url": "https://github.com/advisories/GHSA-93m4-6634-74q7",
+              "severity": "moderate",
+              "range": ">=4.5.3 <5.0.0",
+              "cwe": [
+                "CWE-22"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1116229,
+              "name": "vite",
+              "title": "Vite Vulnerable to Path Traversal in Optimized Deps `.map` Handling",
+              "url": "https://github.com/advisories/GHSA-4w7w-66w2-5vf9",
+              "severity": "moderate",
+              "range": "<=6.4.1",
+              "cwe": [
+                "CWE-22",
+                "CWE-200"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1120061,
+              "name": "vite",
+              "title": "launch-editor vulnerable to command injection via the crafted request on Windows",
+              "url": "https://github.com/advisories/GHSA-c27g-q93r-2cwf",
+              "severity": "high",
+              "range": "<=5.4.8",
+              "cwe": [
+                "CWE-77"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1120784,
+              "name": "vite",
+              "title": "launch-editor: NTLMv2 hash disclosure via UNC path handling on Windows",
+              "url": "https://github.com/advisories/GHSA-v6wh-96g9-6wx3",
+              "severity": "moderate",
+              "range": "<=6.4.2",
+              "cwe": [
+                "CWE-73",
+                "CWE-522"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            },
+            {
+              "source": 1123525,
+              "name": "vite",
+              "title": "vite: `server.fs.deny` bypass on Windows alternate paths",
+              "url": "https://github.com/advisories/GHSA-fx2h-pf6j-xcff",
+              "severity": "high",
+              "range": "<=6.4.2",
+              "cwe": [
+                "CWE-22",
+                "CWE-200"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+              }
+            },
+            {
+              "dependency": "esbuild"
+            }
+          ],
+          "fixAvailable": {
+            "name": "vite",
+            "version": "8.3.3",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "webpack-dev-middleware",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/webpack-dev-middleware",
+              "version": "5.3.4"
+            }
+          ],
+          "affectedRange": "<7.4.5",
+          "advisories": [
+            {
+              "source": 1240027,
+              "name": "webpack-dev-middleware",
+              "title": "webpack-dev-middleware vulnerable to Path Traversal via non-slash-terminated publicPath",
+              "url": "https://github.com/advisories/GHSA-g84c-rxfj-3j2c",
+              "severity": "high",
+              "range": "<7.4.5",
+              "cwe": [
+                "CWE-22"
+              ],
+              "cvss": {
+                "score": 7.4,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:N"
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "webpack-dev-server",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/webpack-dev-server",
+              "version": "4.15.2"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "source": 1108429,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server users' source code may be stolen when they access a malicious web site with non-Chromium based browser",
+              "url": "https://github.com/advisories/GHSA-9jgg-88mc-972h",
+              "severity": "moderate",
+              "range": "<=5.2.0",
+              "cwe": [
+                "CWE-346"
+              ],
+              "cvss": {
+                "score": 6.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:N/A:N"
+              }
+            },
+            {
+              "source": 1108430,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server users' source code may be stolen when they access a malicious web site",
+              "url": "https://github.com/advisories/GHSA-4v9v-hfq4-rm2v",
+              "severity": "moderate",
+              "range": "<=5.2.0",
+              "cwe": [
+                "CWE-749"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+              }
+            },
+            {
+              "source": 1119074,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server vulnerable to cross-origin source code exposure on non-HTTPS origins",
+              "url": "https://github.com/advisories/GHSA-79cf-xcqc-c78w",
+              "severity": "moderate",
+              "range": "<=5.2.3",
+              "cwe": [
+                "CWE-749"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+              }
+            },
+            {
+              "source": 1121087,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server vulnerable to HMR WebSocket interception via permissive user proxies",
+              "url": "https://github.com/advisories/GHSA-mx8g-39q3-5c79",
+              "severity": "moderate",
+              "range": "<5.2.5",
+              "cwe": [
+                "CWE-346",
+                "CWE-441"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            },
+            {
+              "source": 1123965,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server vulnerable to cross-site request forgery via internal developer endpoints",
+              "url": "https://github.com/advisories/GHSA-f5vj-f2hx-8m93",
+              "severity": "moderate",
+              "range": "<=5.2.5",
+              "cwe": [
+                "CWE-352",
+                "CWE-749"
+              ],
+              "cvss": {
+                "score": 4.7,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:N/A:L"
+              }
+            },
+            {
+              "source": 1123966,
+              "name": "webpack-dev-server",
+              "title": "webpack-dev-server vulnerable to denial of service via a malformed Host or Origin header",
+              "url": "https://github.com/advisories/GHSA-m28w-2pqf-7qgj",
+              "severity": "moderate",
+              "range": "<=5.2.5",
+              "cwe": [
+                "CWE-20",
+                "CWE-248"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+              }
+            },
+            {
+              "dependency": "chokidar"
+            },
+            {
+              "dependency": "http-proxy-middleware"
+            },
+            {
+              "dependency": "selfsigned"
+            },
+            {
+              "dependency": "sockjs"
+            },
+            {
+              "dependency": "webpack-dev-middleware"
+            }
+          ],
+          "fixAvailable": {
+            "name": "@tarojs/taro",
+            "version": "3.6.40",
+            "isSemVerMajor": true
+          }
+        }
+      ]
+    },
+    {
+      "scope": "web-root-only",
+      "command": [
+        "npm",
+        "audit",
+        "--omit=dev",
+        "--audit-level=high",
+        "--registry=https://registry.npmjs.org",
+        "--json",
+        "--workspaces=false"
+      ],
+      "exitCode": 1,
+      "summary": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 5,
+          "critical": 1,
+          "total": 6
+        },
+        "dependencies": {
+          "prod": 539,
+          "dev": 1173,
+          "optional": 322,
+          "peer": 80,
+          "peerOptional": 0,
+          "total": 1829
+        }
+      },
+      "highOrCritical": [
+        {
+          "package": "braces",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/braces",
+              "version": "3.0.3"
+            }
+          ],
+          "affectedRange": "*",
+          "advisories": [
+            {
+              "source": 1240992,
+              "name": "braces",
+              "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+              "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+              "severity": "high",
+              "range": "<=3.0.3",
+              "cwe": [
+                "CWE-674"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "micromatch",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/micromatch",
+              "version": "4.0.8"
+            }
+          ],
+          "affectedRange": ">=0.2.0",
+          "advisories": [
+            {
+              "dependency": "braces"
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "next",
+          "severity": "critical",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/next",
+              "version": "16.3.4"
+            }
+          ],
+          "affectedRange": "16.2.0 - 16.3.5",
+          "advisories": [
+            {
+              "source": 1240609,
+              "name": "next",
+              "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+              "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j",
+              "severity": "critical",
+              "range": ">=16.2.0 <16.3.6",
+              "cwe": [
+                "CWE-1395"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "next",
+            "version": "16.4.0",
+            "isSemVerMajor": false
+          }
+        },
+        {
+          "package": "nodemailer",
+          "severity": "high",
+          "isDirect": true,
+          "installed": [
+            {
+              "path": "node_modules/nodemailer",
+              "version": "9.1.1"
+            }
+          ],
+          "affectedRange": "<=10.0.8",
+          "advisories": [
+            {
+              "source": 1239931,
+              "name": "nodemailer",
+              "title": "Nodemailer: Process-global DNS cache reuses TLS `servername` across transports, enabling cross-tenant SMTP credential disclosure",
+              "url": "https://github.com/advisories/GHSA-6vj9-mwq6-2f5v",
+              "severity": "moderate",
+              "range": ">=5.0.0 <10.0.2",
+              "cwe": [
+                "CWE-295"
+              ],
+              "cvss": {
+                "score": 5.9,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:L/A:N"
+              }
+            },
+            {
+              "source": 1240033,
+              "name": "nodemailer",
+              "title": "Nodemailer: Nested structured recipient arrays bypass the parser depth limit and cause stack exhaustion DoS",
+              "url": "https://github.com/advisories/GHSA-8vvx-rff5-p5rq",
+              "severity": "moderate",
+              "range": "<10.0.2",
+              "cwe": [
+                "CWE-674"
+              ],
+              "cvss": {
+                "score": 5.9,
+                "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            },
+            {
+              "source": 1240113,
+              "name": "nodemailer",
+              "title": "Nodemailer: Quoted local-part can produce malformed envelope recipient through RFC 5322 comment parsing",
+              "url": "https://github.com/advisories/GHSA-g57g-f23g-4646",
+              "severity": "moderate",
+              "range": ">=9.1.0 <10.0.9",
+              "cwe": [
+                "CWE-20",
+                "CWE-436"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              }
+            },
+            {
+              "source": 1240114,
+              "name": "nodemailer",
+              "title": "Nodemailer: Quadratic backtracking in the addressparser free-text fallback allows remote denial of service",
+              "url": "https://github.com/advisories/GHSA-v53p-9fqp-m79j",
+              "severity": "high",
+              "range": "<=10.0.5",
+              "cwe": [
+                "CWE-407",
+                "CWE-1333"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            },
+            {
+              "source": 1241277,
+              "name": "nodemailer",
+              "title": "Nodemailer addressparser: O(n^2) on comment-joined addresses enables a remote DoS (reachable via mailparser)",
+              "url": "https://github.com/advisories/GHSA-prgh-xp8r-p3m5",
+              "severity": "high",
+              "range": ">=9.1.0 <=10.0.4",
+              "cwe": [
+                "CWE-400",
+                "CWE-407"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": {
+            "name": "nodemailer",
+            "version": "10.0.15",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "package": "sharp",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/sharp",
+              "version": "0.35.4"
+            }
+          ],
+          "affectedRange": "<0.35.5",
+          "advisories": [
+            {
+              "source": 1241331,
+              "name": "sharp",
+              "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+              "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+              "severity": "high",
+              "range": "<0.35.5",
+              "cwe": [
+                "CWE-416",
+                "CWE-1395"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              }
+            }
+          ],
+          "fixAvailable": true
+        },
+        {
+          "package": "source-map-js",
+          "severity": "high",
+          "isDirect": false,
+          "installed": [
+            {
+              "path": "node_modules/source-map-js",
+              "version": "1.2.1"
+            }
+          ],
+          "affectedRange": "1.0.0 - 1.2.1",
+          "advisories": [
+            {
+              "source": 1241209,
+              "name": "source-map-js",
+              "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+              "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+              "severity": "high",
+              "range": ">=1.0.0 <1.2.2",
+              "cwe": [
+                "CWE-1284"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+              }
+            }
+          ],
+          "fixAvailable": true
+        }
+      ]
+    }
+  ]
+}
