@@ -22,6 +22,7 @@ import {
   notifications,
   rateLimits,
   sessions,
+  wechatBindings,
   users,
 } from '@/../db/schema';
 import { AppError } from '@/lib/errors';
@@ -77,6 +78,7 @@ export async function anonymizeAccount(
     await tx.update(communityOriginals).set({ deletedAt: now, uploadedByUserId: null })
       .where(and(inArray(communityOriginals.workId, ownWorks), isNull(communityOriginals.deletedAt)));
     await tx.update(communityOriginals).set({ uploadedByUserId: null }).where(eq(communityOriginals.uploadedByUserId, account.id));
+    await tx.delete(wechatBindings).where(eq(wechatBindings.userId, account.id));
     await tx.delete(sessions).where(eq(sessions.userId, account.id));
     await tx.delete(rateLimits).where(eq(rateLimits.key, `sync:write:${account.id}`));
     await tx.delete(emailTokens).where(eq(emailTokens.userId, account.id));

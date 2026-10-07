@@ -3,6 +3,7 @@
  * 契约：getSessionUserId() 供读取当前登录用户；
  * getVerifiedSessionUserId() 供数据类 API 使用——未验证邮箱的会话一律视为未授权。
  */
+import { miniRequestContext } from '@/lib/mini/context';
 import { cookies } from 'next/headers';
 import { and, eq, gt, ne } from 'drizzle-orm';
 import { sessions, users } from '@/../db/schema';
@@ -24,13 +25,14 @@ export async function createSession(
   userId: string,
   now: Date = new Date(),
   deviceLabel: string | null = null,
+  clientType: 'web' | 'weapp' = 'web',
 ): Promise<{ token: string; expiresAt: Date }> {
   const token = generateToken();
   const expiresAt = new Date(now.getTime() + TTL_MS);
   const absoluteExpiresAt = new Date(now.getTime() + ABSOLUTE_TTL_MS);
   await db.transaction(async (tx) => {
     await lockActiveAccount(tx, userId);
-    await tx.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, absoluteExpiresAt, deviceLabel });
+    await tx.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, absoluteExpiresAt, deviceLabel, clientType });
   });
   return { token, expiresAt };
 }
@@ -69,6 +71,16 @@ export async function resolveSession(
 ): Promise<ResolvedSession | null> {
   const token = readSessionToken(cookieHeader);
   if (!token) return null;
+  const result = await resolveTokenSession(db, token, now, { ...opts, clientType: 'web', legacyCookie: !!cookieHeader?.includes(`${LEGACY_SESSION_COOKIE_NAME}=`) });
+  return result;
+}
+
+export async function resolveTokenSession(
+  db: AnyDatabase,
+  token: string,
+  now: Date = new Date(),
+  opts: { requireVerified?: boolean; renew?: boolean; clientType: 'web' | 'weapp'; legacyCookie?: boolean } = { clientType: 'web' },
+): Promise<ResolvedSession | null> {
   const tokenHash = hashToken(token);
   const rows = await db
     .select({
@@ -83,11 +95,11 @@ export async function resolveSession(
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .where(and(eq(sessions.tokenHash, tokenHash), gt(sessions.expiresAt, now), gt(sessions.absoluteExpiresAt, now)));
+    .where(and(eq(sessions.tokenHash, tokenHash), eq(sessions.clientType, opts.clientType), gt(sessions.expiresAt, now), gt(sessions.absoluteExpiresAt, now)));
   if (rows.length === 0) return null;
   if (rows[0].accountStatus !== 'active') return null;
   if (opts.requireVerified && !rows[0].verified) return null;
-  let renewedExpiresAt: Date | null = opts.renew && cookieHeader?.includes(`${LEGACY_SESSION_COOKIE_NAME}=`) ? rows[0].expiresAt : null;
+  let renewedExpiresAt: Date | null = opts.renew && opts.legacyCookie ? rows[0].expiresAt : null;
   // 半程阈值滚动续期：仅当剩余有效期不足 15 天时把过期时间前移 30 天
   if (opts.renew && rows[0].expiresAt.getTime() - now.getTime() < RENEW_THRESHOLD_MS) {
     renewedExpiresAt = new Date(Math.min(now.getTime() + TTL_MS, rows[0].absoluteExpiresAt.getTime()));
@@ -115,6 +127,8 @@ export async function resolveSessionUserId(
 
 /** Route Handler 入口：解析并同步续期数据库与响应 Cookie。 */
 export async function getSessionUserId(): Promise<string | null> {
+  const mini = miniRequestContext.getStore();
+  if (mini) return mini.session?.userId ?? null;
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
@@ -125,6 +139,8 @@ export async function getSessionUserId(): Promise<string | null> {
 
 /** 读取当前请求的已验证登录用户 id（数据类 API 统一入口，未验证视为未授权）。 */
 export async function getVerifiedSessionUserId(): Promise<string | null> {
+  const mini = miniRequestContext.getStore();
+  if (mini) return mini.session?.emailVerified ? mini.session.userId : null;
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
@@ -135,6 +151,8 @@ export async function getVerifiedSessionUserId(): Promise<string | null> {
 
 /** 页面默认只读；仅 Route Handler / Server Action 可显式启用续期。 */
 export async function getSessionActor(opts: { requireVerified?: boolean; renew?: boolean } = {}): Promise<Actor | null> {
+  const mini = miniRequestContext.getStore();
+  if (mini) return opts.requireVerified && !mini.session?.emailVerified ? null : mini.session;
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
   const now = new Date();
@@ -162,4 +180,12 @@ function renewCookie(
 
 function buildHeader(token: string | null, legacy = false): string | null {
   return token === null ? null : `${legacy ? LEGACY_SESSION_COOKIE_NAME : SESSION_COOKIE_NAME}=${token}`;
+}
+
+/** Same credential source for password changes, logout and device revocation. */
+export async function currentSessionToken(): Promise<string | null> {
+  const mini = miniRequestContext.getStore();
+  if (mini) return mini.session?.token ?? null;
+  const jar = await cookies();
+  return jar.get(SESSION_COOKIE_NAME)?.value ?? jar.get(LEGACY_SESSION_COOKIE_NAME)?.value ?? null;
 }

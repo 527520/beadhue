@@ -5,6 +5,7 @@
  */
 import {
   index,
+  check,
   boolean,
   date,
   integer,
@@ -244,9 +245,10 @@ export const sessions = pgTable(
       .default(sql`now() + interval '90 days'`),
     // 登录时由 User-Agent 归纳的「系统 · 浏览器」（如「macOS · Chrome」）；不存完整 UA、网络地址与位置。
     deviceLabel: text('device_label'),
+    clientType: text('client_type', { enum: ['web', 'weapp'] }).notNull().default('web'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('sessions_user_idx').on(table.userId)],
+  (table) => [index('sessions_user_idx').on(table.userId), check('sessions_client_type_check', sql`${table.clientType} in ('web', 'weapp')`)],
 );
 
 export const emailTokens = pgTable(
@@ -815,3 +817,17 @@ export const originalGarbage = pgTable('original_garbage', {
   cosKey: text('cos_key').primaryKey(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** WeChat identity never leaves the backend. No unionid-based account merging. */
+export const wechatBindings = pgTable('wechat_bindings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  appid: text('appid').notNull(),
+  openid: text('openid').notNull(),
+  unionid: text('unionid'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('wechat_identity_unique').on(table.appid, table.openid),
+  uniqueIndex('wechat_user_app_unique').on(table.appid, table.userId),
+]);

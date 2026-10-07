@@ -5,6 +5,7 @@
  * （浏览器同源请求的 Origin 恒等于页面自身来源，跨站攻击者无法伪造，CSRF 安全）。
  * 不满足时返回已构造好的错误响应；满足时返回 null。
  */
+import { miniRequestContext } from '@/lib/mini/context';
 import { NextResponse } from 'next/server';
 import { appUrl } from './mailer';
 
@@ -68,6 +69,7 @@ export function enforceBinaryUploadGuard(request: Request): NextResponse | null 
 }
 
 function enforceOriginGuard(request: Request): NextResponse | null {
+  if (miniRequestContext.getStore()?.request === request) return null;
   if (!isOriginAllowed(request.headers.get('origin'), request)) {
     return NextResponse.json(
       { error: { code: 'FORBIDDEN', message: '请求来源不被允许' } },

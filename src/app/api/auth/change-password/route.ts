@@ -1,12 +1,10 @@
 import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
 import { users } from '@/../db/schema';
 import { AppError } from '@/lib/errors';
 import { changePasswordSchema } from '@/lib/schemas';
 import { getDb } from '@/lib/auth/db';
 import { hashPassword, verifyPassword } from '@/lib/auth/password';
-import { getVerifiedSessionUserId } from '@/lib/auth/session';
-import { SESSION_COOKIE_NAME } from '@/lib/auth/cookies';
+import { currentSessionToken, getVerifiedSessionUserId } from '@/lib/auth/session';
 import { hashToken } from '@/lib/auth/tokens';
 import { changePasswordAndRevokeSessions } from '@/lib/auth/transitions';
 import { enforceMutatingGuard } from '@/lib/auth/guard';
@@ -38,8 +36,7 @@ async function post(request: Request) {
     return apiError(new AppError('VALIDATION', zhCN.auth.currentPasswordWrong, 'currentPassword'));
   }
 
-  const jar = await cookies();
-  const currentToken = jar.get(SESSION_COOKIE_NAME)?.value ?? null;
+  const currentToken = await currentSessionToken();
   const changed = await changePasswordAndRevokeSessions(db, {
     userId,
     expectedPasswordHash: rows[0].passwordHash,

@@ -6,6 +6,7 @@
  * 同一个 requestId、账号与掩码 IP。未知错误（500）落一条 system_logs；
  * 4xx/429 一律不落库，避免把攻击流量放大成写库流量。
  */
+import { withMiniRequest } from '@/lib/mini/request';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { AppError, type ApiErrorBody } from '@/lib/errors';
@@ -151,7 +152,7 @@ export function withApiErrors<Args extends unknown[]>(
     }, async () => {
       pushSpan({ kind: 'route', name: `${request?.method ?? 'REQUEST'} ${url?.pathname ?? ''}`.trim() });
       try {
-        return await attachRequestId(await handler(...args), requestId);
+        return await attachRequestId(await withMiniRequest(request, async () => handler(...args)), requestId);
       } catch (error) {
         return apiError(error, requestId);
       }

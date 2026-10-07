@@ -13,9 +13,9 @@ const nextConfig: NextConfig = {
   distDir: process.env.BEADHUE_E2E_BUILD === '1' ? '.next-e2e' : '.next',
   experimental: {
     authInterrupts: true,
-    // CI runs one dev server per E2E shard, so it never restores a previous
-    // shard's cache. Keep caching enabled for faster route compilation.
-    turbopackFileSystemCacheForDev: true,
+    // Fresh CI shards do not restore this disk cache. CI recorded an
+    // 11-minute cache write during a stall; retain it for normal development.
+    turbopackFileSystemCacheForDev: process.env.BEADHUE_E2E_BUILD !== '1',
   },
   // Playwright intentionally opens the dev server through the IPv4 loopback
   // address so Chromium, Firefox and WebKit exercise the same origin.

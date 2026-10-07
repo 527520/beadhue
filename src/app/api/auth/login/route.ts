@@ -1,3 +1,4 @@
+import { miniRequestContext } from '@/lib/mini/context';
 import { eq, sql } from 'drizzle-orm';
 import { users } from '@/../db/schema';
 import { AppError } from '@/lib/errors';
@@ -87,7 +88,8 @@ async function post(request: Request) {
   }
   // 成功登录清零失败计数与临时锁定；每 IP / 每邮箱的尝试配额保持原样（不因成功而返还）。
   await clearLoginFailures(db, email);
-  const session = await createSession(db, user.id, new Date(), deviceLabelFromUserAgent(request.headers.get('user-agent')));
+  const session = await createSession(db, user.id, new Date(), miniRequestContext.getStore() ? '微信小程序' : deviceLabelFromUserAgent(request.headers.get('user-agent')), miniRequestContext.getStore() ? 'weapp' : 'web');
+  if (miniRequestContext.getStore()) return okJson({ userId: user.id, token: session.token, expiresAt: session.expiresAt.toISOString(), email: user.email, emailVerified: user.emailVerifiedAt !== null }, { headers: { 'Cache-Control': 'no-store' } });
   return okJson(
     { email: user.email, emailVerified: user.emailVerifiedAt !== null },
     { headers: { 'Set-Cookie': serializeSessionCookie(session.token) } },

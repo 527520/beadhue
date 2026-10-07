@@ -155,6 +155,13 @@
       "when": 1790260650360,
       "tag": "0021_account_profile_and_batch_names",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790630000000,
+      "tag": "0022_wechat_personal",
+      "breakpoints": true
     }
   ]
 }

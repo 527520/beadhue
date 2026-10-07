@@ -111,11 +111,9 @@ jobs:
 
   e2e:
     name: E2E（${{ matrix.browser }}，第 ${{ matrix.round }} 轮，分片 ${{ matrix.shard }}/4）
-    # 固定 22.04 池：2026-09 下旬 ubuntu-latest 处于镜像池迁移期（job 上有官方迁移通知），
-    # E2E 步骤在 ~7 分钟处被 SIGTERM（exit 143）杀掉的概率高得异常（run #117/#119/#120/#123，
-    # 无任何用例失败输出；同池 coverage/windows 未受影响）。迁移期避开 latest，
-    # 等上游镜像池稳定后可改回。
-    runs-on: ubuntu-22.04
+    # 22.04 池在 #173/#174/#175 多次提前收到 runner shutdown signal（exit143）。
+    # 用明确的 24.04 标签验证另一镜像池；保留全部测试和门禁，不推定原宿主根因。
+    runs-on: ubuntu-24.04
     # PR 每浏览器完整覆盖一次，按测试文件分成四个独立 runner；主干、定期和发布仍跑三轮。
     # 每个分片只跑一份；失败时直接保留原始报告，避免重复跑同一故障。
     strategy:
@@ -171,6 +169,7 @@ jobs:
           name: playwright-report-${{ matrix.browser }}-${{ matrix.round }}-${{ matrix.shard }}
           path: |
             playwright-report/
+            test-results/
             e2e-stable.log
             e2e-dev.log
           retention-days: 7

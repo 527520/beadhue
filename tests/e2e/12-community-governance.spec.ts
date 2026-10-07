@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fillField, openPublishDeepLink, settledClick } from './helpers';
+import migrationJournal from '../../db/migrations/meta/_journal.json';
 
 const BATCH_PHOTO = resolve(process.cwd(), 'tests/fixtures/photo-gradient-64.png');
 
@@ -198,7 +199,11 @@ test('admin 可读取人员、审计和系统证据；规则页已退役', async
   await page.goto('/admin/system', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('未接入').first()).toBeVisible();
   await expect(page.getByText('评论内容安全服务（腾讯云）')).toBeVisible();
-  await expect(page.getByText('0021_account_profile_and_batch_names')).toBeVisible();
+  const latestMigrationTag = migrationJournal.entries.at(-1)?.tag;
+  expect(latestMigrationTag).toBeTruthy();
+  const recordedMigration = page.getByText('数据库已执行到的迁移', { exact: true }).locator('..').locator('dd');
+  await expect(recordedMigration).toBeVisible();
+  await expect(recordedMigration).toHaveText(latestMigrationTag!);
 });
 
 test('分析后台在精确与长期聚合范围间明确切换能力', async ({ page }) => {
