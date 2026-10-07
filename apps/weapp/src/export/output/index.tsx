@@ -201,7 +201,12 @@ export default function Output() {
             )}
           </>
         )}
-        <Canvas id="export-canvas" type="2d" className="hidden-canvas" />
+        <Canvas
+          id="export-canvas"
+          canvasId="export-canvas"
+          type="2d"
+          className="hidden-canvas"
+        />
       </View>
     </Shell>
   );

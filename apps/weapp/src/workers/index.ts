@@ -6,7 +6,11 @@ declare const worker: {
 };
 worker.onMessage(async ({ id, task }) => {
   try {
-    worker.postMessage({ id, result: await executeTask(task) });
+    // WeChat's transport treats repeated references as circular even when the
+    // value is JSON-safe. Pattern cells intentionally share palette objects.
+    worker.postMessage(
+      JSON.parse(JSON.stringify({ id, result: await executeTask(task) })),
+    );
   } catch (error) {
     worker.postMessage({
       id,

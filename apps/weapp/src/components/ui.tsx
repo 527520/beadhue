@@ -47,7 +47,7 @@ export function Button({
 }>) {
   return (
     <NativeButton
-      className={`button ${secondary ? "secondary" : ""}`}
+      className={`button ${secondary ? "secondary" : ""} ${disabled || loading ? "disabled" : ""}`}
       disabled={disabled || loading}
       loading={loading}
       onClick={onClick}
@@ -72,7 +72,7 @@ export function IconButton({
   return (
     <NativeButton
       ariaLabel={label}
-      className={`icon-button ${active ? "selected" : ""}`}
+      className={`icon-button ${active ? "selected" : ""} ${disabled ? "disabled" : ""}`}
       disabled={disabled}
       onClick={onClick}
     >

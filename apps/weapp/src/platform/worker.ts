@@ -47,7 +47,7 @@ export function runTask<T>(task: WorkerTask): Promise<T> {
               reject(new Error("设备内存不足，请保存设计后重试"));
             }
           });
-          instance.postMessage({ id, task });
+          instance.postMessage(JSON.parse(JSON.stringify({ id, task })));
         } catch (error) {
           if (active?.id === id) {
             active.instance?.terminate();

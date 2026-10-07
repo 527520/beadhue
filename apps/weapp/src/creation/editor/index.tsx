@@ -6,7 +6,12 @@ import {
   View,
   type CanvasProps,
 } from "@tarojs/components";
-import Taro, { useDidHide, useRouter } from "@tarojs/taro";
+import Taro, {
+  useDidHide,
+  useDidShow,
+  useReady,
+  useRouter,
+} from "@tarojs/taro";
 import { useEffect, useRef, useState } from "react";
 import { Shell } from "../../components/shell";
 import {
@@ -68,6 +73,10 @@ const tools: Array<[Tool, string, string]> = [
 export default function Editor() {
   const id = useRouter().params.id ?? "";
   const [project, setProject] = useState<ProjectFile | null>(null);
+  const [pageReady, setPageReady] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
+  useReady(() => setPageReady(true));
+  useDidShow(() => setPageVisible(true));
   const state = useRef<EditorState | null>(null);
   const store = useRef<StorageAdapter | null>(null);
   const history = useRef(new EditHistory());
@@ -131,7 +140,7 @@ export default function Editor() {
     };
   }, [id]);
   useEffect(() => {
-    if (!project) return;
+    if (!project || !pageReady || !pageVisible) return;
     let alive = true;
     void canvasNode("editor-canvas")
       .then((c) => {
@@ -140,12 +149,16 @@ export default function Editor() {
           redraw();
         }
       })
-      .catch(report);
+      .catch((error) => {
+        if (alive) report(error);
+      });
     return () => {
       alive = false;
+      node.current = null;
     };
-  }, [!!project]);
+  }, [!!project, pageReady, pageVisible]);
   useDidHide(() => {
+    setPageVisible(false);
     gesture.current.cancel();
     setTarget(null);
   });
@@ -163,58 +176,61 @@ export default function Editor() {
   useEffect(() => {
     const c = node.current,
       s = state.current;
-    if (!c || !s || !project) return;
+    if (!c || !s || !project || !pageVisible) return;
     const dpr = Math.min(info.pixelRatio, 2);
-    c.width = width * dpr;
-    c.height = height * dpr;
-    const ctx = c.getContext("2d") as unknown as CanvasRenderingContext2D;
-    ctx.scale(dpr, dpr);
-    ctx.fillStyle = "#F7F7F8";
-    ctx.fillRect(0, 0, width, height);
-    const f = frame();
-    drawPattern(ctx, s, {
-      ...f,
-      mode: mode === "stitch" ? "flat" : "bead",
-      grid: true,
-      codes: mode === "stitch",
-      seams: true,
-      board: getBoardProfile(project.boardProfile).boardCols,
-    });
-    if (mode === "stitch" && progressRef.current) {
-      ctx.fillStyle = "rgba(255,255,255,0.72)";
-      progressRef.current.done.forEach((done, i) => {
-        if (done)
-          ctx.fillRect(
-            f.x + (i % s.width) * f.cell,
-            f.y + Math.floor(i / s.width) * f.cell,
-            f.cell,
-            f.cell,
-          );
+    if (c.width !== width * dpr) c.width = width * dpr;
+    if (c.height !== height * dpr) c.height = height * dpr;
+    const request = c.requestAnimationFrame(() => {
+      const ctx = c.getContext("2d") as unknown as CanvasRenderingContext2D;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = "#F7F7F8";
+      ctx.fillRect(0, 0, width, height);
+      const f = frame();
+      drawPattern(ctx, s, {
+        ...f,
+        mode: mode === "stitch" ? "flat" : "bead",
+        grid: true,
+        codes: mode === "stitch",
+        seams: true,
+        board: getBoardProfile(project.boardProfile).boardCols,
       });
-      const bs = getBoardProfile(project.boardProfile).boardCols;
-      ctx.strokeStyle = "#3160E6";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        f.x + boardCol * bs * f.cell,
-        f.y + (boardRow * bs + row) * f.cell,
-        Math.min(bs, s.width - boardCol * bs) * f.cell,
-        f.cell,
-      );
-    }
-    if (target) {
-      const cell = toCell(target);
-      if (cell) {
+      if (mode === "stitch" && progressRef.current) {
+        ctx.fillStyle = "rgba(255,255,255,0.72)";
+        progressRef.current.done.forEach((done, i) => {
+          if (done)
+            ctx.fillRect(
+              f.x + (i % s.width) * f.cell,
+              f.y + Math.floor(i / s.width) * f.cell,
+              f.cell,
+              f.cell,
+            );
+        });
+        const bs = getBoardProfile(project.boardProfile).boardCols;
         ctx.strokeStyle = "#3160E6";
         ctx.lineWidth = 2;
         ctx.strokeRect(
-          f.x + cell.col * f.cell,
-          f.y + cell.row * f.cell,
-          f.cell,
+          f.x + boardCol * bs * f.cell,
+          f.y + (boardRow * bs + row) * f.cell,
+          Math.min(bs, s.width - boardCol * bs) * f.cell,
           f.cell,
         );
       }
-    }
-  }, [project, tick, mode, target, row, boardRow, boardCol]);
+      if (target) {
+        const cell = toCell(target);
+        if (cell) {
+          ctx.strokeStyle = "#3160E6";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(
+            f.x + cell.col * f.cell,
+            f.y + cell.row * f.cell,
+            f.cell,
+            f.cell,
+          );
+        }
+      }
+    });
+    return () => c.cancelAnimationFrame(request);
+  }, [project, tick, mode, target, row, boardRow, boardCol, pageVisible]);
   function toCell(point: Point) {
     const s = state.current;
     if (!s) return null;
@@ -399,28 +415,31 @@ export default function Editor() {
         </View>
       </View>
       <View className="editor-stage" style={{ height }}>
-        <Canvas
-          type="2d"
-          id="editor-canvas"
-          className="editor-canvas"
-          disableScroll
-          onTouchStart={(e) => gesture.current.begin(points(e))}
-          onTouchMove={(e) => {
-            const p = points(e);
-            gesture.current.move(p, tool === "hand" || mode === "stitch");
-            setTarget(
-              p.length === 1 && tool !== "hand" && mode === "edit"
-                ? p[0]
-                : null,
-            );
-            redraw();
-          }}
-          onTouchEnd={finish}
-          onTouchCancel={() => {
-            gesture.current.cancel();
-            setTarget(null);
-          }}
-        />
+        {pageVisible && (
+          <Canvas
+            type="2d"
+            id="editor-canvas"
+            canvasId="editor-canvas"
+            className="editor-canvas"
+            disableScroll
+            onTouchStart={(e) => gesture.current.begin(points(e))}
+            onTouchMove={(e) => {
+              const p = points(e);
+              gesture.current.move(p, tool === "hand" || mode === "stitch");
+              setTarget(
+                p.length === 1 && tool !== "hand" && mode === "edit"
+                  ? p[0]
+                  : null,
+              );
+              redraw();
+            }}
+            onTouchEnd={finish}
+            onTouchCancel={() => {
+              gesture.current.cancel();
+              setTarget(null);
+            }}
+          />
+        )}
         {reference && (
           <Image
             src={reference}

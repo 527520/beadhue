@@ -1,0 +1,40 @@
+{
+  "startedAt": "2026-10-07T02:11:25.426Z",
+  "checks": [
+    {
+      "name": "首页显示四张自有示例",
+      "status": "passed"
+    },
+    {
+      "name": "搜索筛选示例",
+      "status": "passed"
+    },
+    {
+      "name": "搜索空态",
+      "status": "passed"
+    },
+    {
+      "name": "动物分类仅显示两张",
+      "status": "passed"
+    },
+    {
+      "name": "示例详情与原生 Canvas 打开",
+      "status": "passed"
+    }
+  ],
+  "exceptions": [],
+  "system": {
+    "model": "iPhone 12/13 (Pro)",
+    "platform": "devtools",
+    "SDKVersion": "3.7.12",
+    "version": "8.0.5",
+    "windowWidth": 390,
+    "windowHeight": 844,
+    "pixelRatio": 3
+  },
+  "failure": {
+    "message": "Timed out: worker generation",
+    "stack": "Error: Timed out: worker generation\n    at waitFor (/Users/wuqian/project/doupu/doupu/.scratch/wechat-miniprogram/devtools-acceptance.cjs:16:9)\n    at async /Users/wuqian/project/doupu/doupu/.scratch/wechat-miniprogram/devtools-acceptance.cjs:75:3"
+  },
+  "toasts": []
+}

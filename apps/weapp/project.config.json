@@ -1,7 +1,37 @@
 {
   "description": "豆色绘个人工具版；正式发布需要自己的 AppID 和合法域名",
-  "miniprogramRoot": "dist/", "projectname": "beadhue-personal", "appid": "touristappid",
-  "compileType": "miniprogram", "libVersion": "3.7.12",
-  "setting": { "urlCheck": true, "es6": true, "minified": true, "postcss": true },
-  "packOptions": { "ignore": [] }
+  "miniprogramRoot": "dist/",
+  "projectname": "beadhue-personal",
+  "appid": "wxb76121c123fbc80c",
+  "compileType": "miniprogram",
+  "libVersion": "3.7.12",
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "minified": true,
+    "postcss": true,
+    "compileWorklet": false,
+    "uglifyFileName": false,
+    "uploadWithSourceMap": true,
+    "enhance": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "condition": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    }
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "simulatorPluginLibVersion": {},
+  "editorSetting": {}
 }
