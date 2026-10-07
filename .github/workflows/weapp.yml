@@ -8,8 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -17,7 +17,7 @@ jobs:
       - run: npm run weapp:typecheck
       - run: npm run weapp:test
       - run: npm run weapp:build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: weapp-package-budget
           path: .scratch/wechat-miniprogram/evidence/package-sizes.json
