@@ -1,6 +1,8 @@
 import { defineConfig } from "@tarojs/cli";
 import path from "node:path";
 
+const defaultOrigin = "https://beadhue.com";
+
 export default defineConfig<"webpack5">({
   projectName: "beadhue-weapp",
   date: "2026-09-29",
@@ -12,9 +14,9 @@ export default defineConfig<"webpack5">({
   plugins: ["@tarojs/plugin-platform-weapp"],
   alias: { "@": path.resolve(__dirname, "../../../src") },
   defineConstants: {
-    API_BASE_URL: JSON.stringify(process.env.WEAPP_API_BASE_URL ?? ""),
-    ASSET_BASE_URL: JSON.stringify(process.env.WEAPP_ASSET_BASE_URL ?? ""),
-    WEBSITE_URL: JSON.stringify(process.env.WEAPP_WEBSITE_URL ?? ""),
+    API_BASE_URL: JSON.stringify(process.env.WEAPP_API_BASE_URL ?? defaultOrigin),
+    ASSET_BASE_URL: JSON.stringify(process.env.WEAPP_ASSET_BASE_URL ?? defaultOrigin),
+    WEBSITE_URL: JSON.stringify(process.env.WEAPP_WEBSITE_URL ?? defaultOrigin),
   },
   copy: { patterns: [{ from: "src/assets", to: "dist/assets" }, { from: ".workers", to: "dist/workers" }], options: {} },
   mini: {
