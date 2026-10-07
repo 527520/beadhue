@@ -25,3 +25,9 @@ Dependencies: 12、14
 失败 jobs：112738225468（Chromium2）、112738225657（WebKit2）、112738226490（Chromium3）。GitHub原始artifact保留，下载的调查材料分别在 /tmp/beadhue-auth-chromium-{2,3}-170 与 /tmp/beadhue-auth-webkit-170。独立诊断确认业务耗时与构建耗时的区别，确切底层重置原因仍未确定。
 
 规范：spec.md、Next bundled docs/01-app/03-api-reference/05-config/01-next-config-js/turbopackFileSystemCache.md、原CI质量门禁。本票不制造真机/算法通过证据，也不宣称正式 release 完成。
+
+## 主干搜索竞争与后续 runner 停止
+
+main 候选 ccaa9c3 的 CI 37607489282 中，WebKit 第2轮分片3（job 112746438091）在审计搜索失败。真实 trace 表明：输入 community 后立即点击旧首行，160ms 去抖搜索恰在 click 执行中发出，点击后的快照已被加载骨架替换；请求 27.8ms 返回200，返回的首行仍是同一记录。测试改为提前监听精确 GET /api/admin/audit?q=community、确认响应成功并等待表格结束加载后再点击。未修改业务或增加超时；回归结果另记。
+
+认证 CI 37610515407 的 Firefox 分片2/4、WebKit分片3明确记录 runner 收到 shutdown signal 后退出143（E2E分别运行329/260/313秒）；均未到18分钟命令或25分钟job上限，报告上传被跳过，发起者未知。WebKit分片4另外在停止前已出现「开始制作」后未跳转的真实断言失败，不能并入纯runner停止。首次日志继续保留，缺失trace时不凭重跑绿灯断言业务问题已修复。

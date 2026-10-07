@@ -212,7 +212,15 @@ test('具名作品下架恢复与评论锁不绕过内容核查和确认', async
 
 test('审计可检索与查看状态，分析无效筛选和系统未知证据明示', async ({ page }) => {
   await login(page, '/admin/audit');
+  const searched = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'GET' && url.pathname === '/api/admin/audit' && url.searchParams.get('q') === 'community';
+  });
   await page.getByRole('searchbox', { name: '搜索操作人、动作或编号' }).fill('community');
+  expect((await searched).ok()).toBe(true);
+  // Search is debounced: open the refreshed row, rather than the old result
+  // that can be replaced by the loading skeleton during a click.
+  await expect(page.getByRole('table').locator('..')).not.toHaveAttribute('aria-busy', 'true');
   await page.locator('tbody tr').first().locator('[data-open]').click();
   await expect(page.getByRole('heading', { name: '操作前', exact: true })).toBeVisible(); await expect(page.getByRole('heading', { name: '操作后', exact: true })).toBeVisible();
   await page.goto('/admin/analytics?start=invalid'); await expect(page.locator('main [role=alert]')).toContainText('部分查询条件无效');
