@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
         source: "/fonts/:path*",
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          // wx.loadFontFace loads public fonts from servicewechat.com.
+          { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
     ];

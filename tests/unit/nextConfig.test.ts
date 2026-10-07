@@ -15,4 +15,15 @@ describe('Next.js configuration', () => {
       { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
     ]));
   });
+
+  it('allows WeChat to load public fonts without adding CORS to other routes', async () => {
+    const rules = await nextConfig.headers?.();
+    const corsRules = rules?.filter((rule) =>
+      rule.headers.some((header) => header.key.toLowerCase() === 'access-control-allow-origin'),
+    );
+
+    expect(corsRules).toHaveLength(1);
+    expect(corsRules?.[0].source).toBe('/fonts/:path*');
+    expect(corsRules?.[0].headers).toContainEqual({ key: 'Access-Control-Allow-Origin', value: '*' });
+  });
 });

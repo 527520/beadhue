@@ -1,0 +1,354 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@beadhue/taro-api-weapp": {
+      "name": "@beadhue/taro-api-weapp",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@tarojs/components",
+        "@tarojs/helper"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "apps/weapp/node_modules/@tarojs/taro"
+      ],
+      "fixAvailable": false
+    },
+    "@beadhue/taro-react-webpack": {
+      "name": "@beadhue/taro-react-webpack",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@tarojs/helper"
+      ],
+      "effects": [],
+      "range": "",
+      "nodes": [
+        "apps/weapp/node_modules/@tarojs/plugin-framework-react"
+      ],
+      "fixAvailable": false
+    },
+    "@tarojs/components": {
+      "name": "@tarojs/components",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@tarojs/taro"
+      ],
+      "effects": [
+        "@beadhue/taro-api-weapp"
+      ],
+      "range": "3.5.0-alpha.0 - 3.5.0-theta.0 || >=3.6.23-nightly.0",
+      "nodes": [
+        "node_modules/@tarojs/components"
+      ],
+      "fixAvailable": false
+    },
+    "@tarojs/helper": {
+      "name": "@tarojs/helper",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "esbuild"
+      ],
+      "effects": [
+        "@beadhue/taro-api-weapp",
+        "@beadhue/taro-react-webpack",
+        "@tarojs/runner-utils",
+        "@tarojs/service",
+        "@tarojs/taro"
+      ],
+      "range": ">=3.6.6-alpha.0",
+      "nodes": [
+        "node_modules/@tarojs/helper"
+      ],
+      "fixAvailable": false
+    },
+    "@tarojs/plugin-platform-weapp": {
+      "name": "@tarojs/plugin-platform-weapp",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@tarojs/service"
+      ],
+      "effects": [],
+      "range": "3.5.0-alpha.0 - 3.5.0-theta.0 || >=3.6.6-alpha.0",
+      "nodes": [
+        "node_modules/@tarojs/plugin-platform-weapp"
+      ],
+      "fixAvailable": {
+        "name": "@tarojs/plugin-platform-weapp",
+        "version": "3.6.5",
+        "isSemVerMajor": true
+      }
+    },
+    "@tarojs/runner-utils": {
+      "name": "@tarojs/runner-utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@tarojs/helper"
+      ],
+      "effects": [
+        "@tarojs/service"
+      ],
+      "range": "3.5.0-alpha.0 - 3.5.0-theta.0 || >=3.6.6-alpha.0",
+      "nodes": [
+        "node_modules/@tarojs/runner-utils"
+      ],
+      "fixAvailable": {
+        "name": "@tarojs/plugin-platform-weapp",
+        "version": "3.6.5",
+        "isSemVerMajor": true
+      }
+    },
+    "@tarojs/service": {
+      "name": "@tarojs/service",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@tarojs/helper",
+        "@tarojs/runner-utils"
+      ],
+      "effects": [
+        "@tarojs/plugin-platform-weapp"
+      ],
+      "range": "3.5.0-alpha.0 - 3.5.0-theta.0 || >=3.6.6-alpha.0",
+      "nodes": [
+        "node_modules/@tarojs/service"
+      ],
+      "fixAvailable": {
+        "name": "@tarojs/plugin-platform-weapp",
+        "version": "3.6.5",
+        "isSemVerMajor": true
+      }
+    },
+    "@tarojs/taro": {
+      "name": "@tarojs/taro",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@tarojs/components",
+        "@tarojs/helper",
+        "webpack-dev-server"
+      ],
+      "effects": [
+        "@tarojs/components"
+      ],
+      "range": ">=3.6.23-nightly.0",
+      "nodes": [
+        "node_modules/@tarojs/components/node_modules/@tarojs/taro"
+      ],
+      "fixAvailable": false
+    },
+    "esbuild": {
+      "name": "esbuild",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1102341,
+          "name": "esbuild",
+          "dependency": "esbuild",
+          "title": "esbuild enables any website to send any requests to the development server and read the response",
+          "url": "https://github.com/advisories/GHSA-67mh-4wv8-2f99",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-346"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N"
+          },
+          "range": "<=0.24.2"
+        }
+      ],
+      "effects": [
+        "@tarojs/helper"
+      ],
+      "range": "<=0.24.2",
+      "nodes": [
+        "node_modules/@tarojs/helper/node_modules/esbuild"
+      ],
+      "fixAvailable": false
+    },
+    "fflate": {
+      "name": "fflate",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1164782,
+          "name": "fflate",
+          "dependency": "fflate",
+          "title": "fflate unzipSync can enter an infinite loop when parsing malformed ZIP64 archives",
+          "url": "https://github.com/advisories/GHSA-px8p-9vwx-vf98",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-400"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=0.8.0 <0.8.3"
+        }
+      ],
+      "effects": [],
+      "range": "0.8.0 - 0.8.2",
+      "nodes": [
+        "node_modules/fflate"
+      ],
+      "fixAvailable": {
+        "name": "fflate",
+        "version": "0.8.3",
+        "isSemVerMajor": false
+      }
+    },
+    "sockjs": {
+      "name": "sockjs",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "uuid"
+      ],
+      "effects": [
+        "webpack-dev-server"
+      ],
+      "range": ">=0.3.17",
+      "nodes": [
+        "node_modules/sockjs"
+      ],
+      "fixAvailable": false
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "sockjs"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/uuid"
+      ],
+      "fixAvailable": false
+    },
+    "webpack": {
+      "name": "webpack",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1099351,
+          "name": "webpack",
+          "dependency": "webpack",
+          "title": "Webpack's AutoPublicPathRuntimeModule has a DOM Clobbering Gadget that leads to XSS",
+          "url": "https://github.com/advisories/GHSA-4vvj-4cpr-p986",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79"
+          ],
+          "cvss": {
+            "score": 6.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:H"
+          },
+          "range": ">=5.0.0-alpha.0 <5.94.0"
+        },
+        {
+          "source": 1113041,
+          "name": "webpack",
+          "dependency": "webpack",
+          "title": "webpack buildHttp: allowedUris allow-list bypass via URL userinfo (@) leading to build-time SSRF behavior",
+          "url": "https://github.com/advisories/GHSA-8fgc-7cc6-rx7x",
+          "severity": "low",
+          "cwe": [
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"
+          },
+          "range": ">=5.49.0 <=5.104.0"
+        },
+        {
+          "source": 1113042,
+          "name": "webpack",
+          "dependency": "webpack",
+          "title": "webpack buildHttp HttpUriPlugin allowedUris bypass via HTTP redirects → SSRF + cache persistence",
+          "url": "https://github.com/advisories/GHSA-38r7-794h-5758",
+          "severity": "low",
+          "cwe": [
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"
+          },
+          "range": ">=5.49.0 <5.104.0"
+        }
+      ],
+      "effects": [],
+      "range": "5.0.0-alpha.0 - 5.104.0",
+      "nodes": [
+        "node_modules/webpack"
+      ],
+      "fixAvailable": true
+    },
+    "webpack-dev-server": {
+      "name": "webpack-dev-server",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "sockjs"
+      ],
+      "effects": [
+        "@tarojs/taro"
+      ],
+      "range": "2.0.0-beta - 5.2.6",
+      "nodes": [
+        "node_modules/@tarojs/components/node_modules/webpack-dev-server"
+      ],
+      "fixAvailable": false
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 14,
+      "high": 0,
+      "critical": 0,
+      "total": 14
+    },
+    "dependencies": {
+      "prod": 556,
+      "dev": 1170,
+      "optional": 312,
+      "peer": 92,
+      "peerOptional": 0,
+      "total": 1854
+    }
+  }
+}

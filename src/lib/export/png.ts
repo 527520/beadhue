@@ -1,17 +1,14 @@
 /** PNG 图纸导出：统一规划、全不透明绘制，以及超限时图纸/图例拆分。 */
 import { DEFAULT_BOARD_SIZE } from '@/lib/boardProfiles';
-import { computeStats, totalBeadCount } from '@/lib/engine/generate';
-import { boardSeamPositions, contrastColor, labelVisible } from '@/lib/render/layout';
-import type { Pattern, PatternStatsItem } from '@/lib/types';
+import { computeStats } from '@/lib/engine/generate';
+import type { Pattern } from '@/lib/types';
 import { zhCN } from '@/messages/zh-CN';
 import { EXPORT_CELL_PX_DEFAULT, clampCellPx, patternHasPaintedCells, pngFileName } from './layout';
 import {
   PNG_BACKGROUND,
-  PNG_LEGEND_SWATCH_TEXT_GAP,
   createPngExportPlan,
   createStandaloneLegendPlan,
   type PngExportPlan,
-  type PngLegendPlan,
   type PngPatternPlan,
 } from './pngPlan';
 

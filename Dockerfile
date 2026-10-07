@@ -5,14 +5,16 @@ WORKDIR /app
 # 因此需要编译工具链（仅构建阶段，运行镜像不受影响）
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# npm's maintained braces dependency is a local directory, needed before ci.
+COPY vendor ./vendor
+RUN npm ci --workspaces=false --no-audit --no-fund
 
 FROM node:20-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npm run build && node scripts/check-standalone-boundary.cjs
 
 # ---------- 运行阶段 ----------
 FROM node:20-alpine AS runner

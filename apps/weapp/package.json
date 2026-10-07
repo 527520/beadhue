@@ -1,0 +1,41 @@
+{
+  "name": "@beadhue/weapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/prepare.mjs && node scripts/build-worker.mjs && taro build --type weapp --watch",
+    "build": "node scripts/prepare.mjs && node scripts/check-boundaries.mjs && node scripts/build-worker.mjs && taro build --type weapp && node scripts/check-package.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "fonts": "node scripts/build-fonts.mjs"
+  },
+  "dependencies": {
+    "@beadhue/core": "*",
+    "@tarojs/components": "4.2.1",
+    "@tarojs/helper": "4.2.1",
+    "@tarojs/plugin-framework-react": "file:../../vendor/taro-native/beadhue-taro-react-webpack-4.2.1-beadhue.1.tgz",
+    "@tarojs/plugin-platform-weapp": "4.2.1",
+    "@tarojs/react": "4.2.1",
+    "@tarojs/runtime": "4.2.1",
+    "@tarojs/shared": "4.2.1",
+    "@tarojs/taro": "file:../../vendor/taro-native/beadhue-taro-api-weapp-4.2.1-beadhue.1.tgz",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "fflate": "0.8.2",
+    "pdf-lib": "1.17.1",
+    "@pdf-lib/fontkit": "1.1.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-react": "^7.25.0",
+    "@tarojs/cli": "4.2.1",
+    "@tarojs/webpack5-runner": "4.2.1",
+    "babel-preset-taro": "4.2.1",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "miniprogram-api-typings": "^4.0.0",
+    "typescript": "^5.0.0",
+    "esbuild": "0.28.2"
+  }
+}

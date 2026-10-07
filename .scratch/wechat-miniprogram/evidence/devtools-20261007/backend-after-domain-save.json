@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-10-07T07:59:18.326Z",
+  "environment": "WeChat Developer Tools, not a real device",
+  "method": "anonymous GET only; no response body or credentials recorded",
+  "probes": [
+    {
+      "path": "/api/auth/me",
+      "error": "request:fail url not in domain list"
+    },
+    {
+      "path": "/api/mini/auth/wechat-binding",
+      "error": "request:fail url not in domain list"
+    },
+    {
+      "path": "/fonts/weapp/text-400.woff",
+      "error": "request:fail url not in domain list"
+    },
+    {
+      "path": "/fonts/NotoSansCJKsc-Regular.subset.otf",
+      "error": "request:fail url not in domain list"
+    }
+  ]
+}

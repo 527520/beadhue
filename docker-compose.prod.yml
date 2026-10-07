@@ -13,6 +13,9 @@ services:
     # 显式注入变量（安全自查 M5）：不整份 env_file，避免 COS 备份凭据等无关密钥进入 app 容器
     environment:
       APP_URL: ${APP_URL:?请在 .env 中设置 APP_URL}
+      MINI_AUTH_ENABLED: ${MINI_AUTH_ENABLED:-false}
+      WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
       ORIGINAL_QUOTA_BYTES: ${ORIGINAL_QUOTA_BYTES:-2147483648}
       RATE_ORIGINAL_USER_MINUTE: ${RATE_ORIGINAL_USER_MINUTE:-10}
       RATE_ORIGINAL_USER_HOUR: ${RATE_ORIGINAL_USER_HOUR:-60}

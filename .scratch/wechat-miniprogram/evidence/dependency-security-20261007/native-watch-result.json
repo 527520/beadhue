@@ -1,0 +1,10 @@
+{
+  "command": "WEAPP_VERIFY_PREBUNDLE=1 npm run weapp:dev",
+  "successfulCompilations": 2,
+  "code": null,
+  "signal": "SIGTERM",
+  "intentionallyStopped": true,
+  "prebundleObserved": true,
+  "prebundleModuleCount": 178,
+  "passed": true
+}

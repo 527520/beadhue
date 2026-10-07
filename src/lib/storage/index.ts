@@ -6,16 +6,15 @@
 import { migrateLegacyDatabase } from './brandMigration';
 import { conflictName } from '@/lib/project/parse';
 import { drawPattern } from '@/lib/render/draw';
-import { LIMITS } from '@/lib/appInfo';
 import { randomId } from '@/lib/ids';
-import { parseStitchProgress, type StitchProgress } from '@/lib/progress/stitchProgress';
+import { parseStitchProgress } from '@/lib/progress/stitchProgress';
 import type { Pattern, ProjectFile } from '@/lib/types';
 import { DEFAULT_BOARD_SIZE } from '@/lib/boardProfiles';
 
 // ---------- 类型 ----------
 
 export * from './contracts';
-import { type DesignRecord, type LocalGenerationSourceV1, type GenerationSourceWrite, type StorageAdapter, StorageError, PRESERVE_GENERATION_SOURCE, isValidLocalGenerationSource, parseStoredProject } from './contracts';
+import { type DesignRecord, type LocalGenerationSourceV1, type StorageAdapter, StorageError, PRESERVE_GENERATION_SOURCE, isValidLocalGenerationSource } from './contracts';
 
 // ---------- IndexedDB 适配 ----------
 

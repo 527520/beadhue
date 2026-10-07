@@ -1,6 +1,6 @@
 {
     "name": "beadhue",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "private": true,
     "author": "wuqian (https://github.com/527520)",
     "repository": {
@@ -37,7 +37,12 @@
         "test:e2e:stable": "node tests/e2e/stable.cjs 3",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "node db/migrate.cjs",
-        "brand:check": "node scripts/check-brand.cjs"
+        "brand:check": "node scripts/check-brand.cjs",
+        "weapp:dev": "npm run dev -w @beadhue/weapp",
+        "weapp:build": "npm run build -w @beadhue/weapp",
+        "weapp:typecheck": "npm run typecheck -w @beadhue/weapp",
+        "weapp:test": "npm run test -w @beadhue/weapp",
+        "test:security:dependencies": "node --test tests/security/braces.test.cjs tests/security/dependency-graph.test.cjs tests/security/standalone-boundary.test.cjs tests/security/taro-native.test.cjs"
     },
     "dependencies": {
         "@base-ui/react": "1.8.0",
@@ -60,7 +65,8 @@
         "react-dom": "^19.2.8",
         "subset-font": "^2.6.0",
         "tailwind-merge": "^3.7.0",
-        "zod": "^4.4.3"
+        "zod": "^4.4.3",
+        "braces": "file:vendor/braces"
     },
     "devDependencies": {
         "@axe-core/playwright": "^4.13.0",
@@ -87,5 +93,17 @@
         "tailwindcss": "^4",
         "typescript": "^5",
         "vitest": "^4.1.10"
+    },
+    "workspaces": [
+        "apps/weapp",
+        "packages/core"
+    ],
+    "overrides": {
+        "braces": "$braces",
+        "@tarojs/components@4.2.1": {
+            "swiper": "12.1.2"
+        },
+        "webpack-dev-server": "5.2.6",
+        "webpack-dev-middleware": "7.4.6"
     }
 }

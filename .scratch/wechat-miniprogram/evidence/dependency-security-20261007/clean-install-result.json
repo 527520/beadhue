@@ -1,0 +1,16 @@
+{
+  "command": "npm ci --no-audit --no-fund --registry=https://registry.npmjs.org",
+  "exit": 0,
+  "installedPackages": 1598,
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "lockSha256": "c45e84e3ec09f766d616a1d5655b043c5d6a6e83b146cb022ae2d2478e79bc98",
+  "npmLs": {
+    "exit": 0,
+    "problems": [
+      "extraneous: @emnapi/runtime@1.11.3 /private/var/folders/vs/ktxwjt9x4tz_z3f_xkwnvk980000gn/T/beadhue-ci-deps-nC81uE/node_modules/@emnapi/runtime",
+      "extraneous: @img/sharp-wasm32@0.35.5 /private/var/folders/vs/ktxwjt9x4tz_z3f_xkwnvk980000gn/T/beadhue-ci-deps-nC81uE/node_modules/@img/sharp-wasm32"
+    ],
+    "stderr": ""
+  }
+}
