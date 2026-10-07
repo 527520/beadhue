@@ -15,7 +15,7 @@
 
 原生运行时使用 Zod `jitless` 模式；微信的动态 Function 探测不能执行生成的校验函数。Canvas 等页面 ready、原生节点就绪后绘制；隐藏页面卸载旧 Canvas，返回时重建，本地设计与跟拼数据保留。图片解码使用独立离屏 2D Canvas。Worker 消息两端转成独立 JSON 对象，避免微信把共享颜色引用判为循环引用。
 
-构建前通过环境变量设置 `WEAPP_API_BASE_URL`、`WEAPP_ASSET_BASE_URL`、`WEAPP_WEBSITE_URL`，均为 HTTPS，无尾随斜杠。未配置时本地工具可用，网络功能明确提示未配置。复制网站地址必须由用户点击触发，不传会话。字体、PDF 中文字库必须部署到资源域名：`/fonts/weapp/text-{400,500,600,700}.woff` 和 `/fonts/NotoSansCJKsc-Regular.subset.otf`，不能以内置系统字体替代完成视觉验收。
+`WEAPP_API_BASE_URL`、`WEAPP_ASSET_BASE_URL`、`WEAPP_WEBSITE_URL` 默认均为 `https://beadhue.com`，与 Web 共用服务及资源。可用构建环境变量覆盖到 HTTPS 测试服务，无尾随斜杠；显式设为空字符串时保留本地工具，网络功能提示未配置。默认地址不代表生产后端已完成小程序接口部署或微信后台合法域名配置。复制网站地址必须由用户点击触发，不传会话。字体、PDF 中文字库须随 Web 镜像部署：`/fonts/weapp/text-{400,500,600,700}.woff` 和 `/fonts/NotoSansCJKsc-Regular.subset.otf`；公开字体响应提供 CORS 以供 `wx.loadFontFace` 加载，不能以内置系统字体替代完成视觉验收。
 
 服务器环境设 `MINI_AUTH_ENABLED=true`、`WECHAT_APP_ID`、`WECHAT_APP_SECRET`。默认关闭新登录入口。先完成数据库迁移 `0022_wechat_personal`、测试和配置核验；迁移用既有 db:migrate 流程执行。本次实施不会连接生产库或执行生产迁移。回滚优先关闭 MINI_AUTH_ENABLED，保留新表和私人数据；Web 默认 session client_type=web。
 
@@ -51,7 +51,7 @@
 ## 正式发布门槛（当前未完成）
 
 1. AppID 已提供并接入；仍需按真实功能核验个人主体类目、小程序备案和隐私指引配置。
-2. 向接入商说明实际服务、部署地区和数据流向，完成 API/资源域名备案和接入核验。现有未备案域名不可直接作为正式接入；增加反向代理不能自动满足要求。
+2. 已选用现有 `beadhue.com`；核验实际备案状态、API/资源服务、部署地区和数据流向。不因持有域名或 HTTPS 可访问就视为微信后台配置通过；需要备案/接入调整时按接入商核验要求办理。
 3. 配置 request/download 等合法域名，证书链有效、无跳向未配置域名的重定向；微信密钥只在服务器和 CI 中。
 4. `project.config.json` 已配置实际 AppID，urlCheck 保持 true。使用正式网络配置、真实测试邮箱与体验者账号完成联调。
 5. iOS/Android 真机分别验证字体（普通文本/Canvas/所有字重/中文缺字）、EXIF 方向、最大图纸、单 Worker/取消、低内存、存储满/中断/重启、账号切换、CAS 冲突、图片保存和 PDF/ZIP/项目发送。
